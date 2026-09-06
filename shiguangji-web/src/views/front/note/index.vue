@@ -11,14 +11,6 @@
     </div>
 
     <div class="filter-bar">
-      <!-- 标签筛选：选项来自标签管理（NOTE 模块），选择即筛选（精确匹配） -->
-      <tag-select
-        v-model="searchTag"
-        module="NOTE"
-        :multiple="false"
-        placeholder="按标签筛选"
-        class="tag-filter"
-      />
       <el-input
         v-model="searchTitle"
         placeholder="搜索笔记标题"
@@ -33,6 +25,9 @@
         </template>
       </el-input>
     </div>
+
+    <!-- 标签筛选：豆瓣式标签行（NOTE 模块），点击选中、再点取消 -->
+    <tag-pills v-model="searchTag" module="NOTE" @update:model-value="loadData" />
 
     <div v-if="filterItemId" class="filter-tip">
       <span>正在查看条目 #{{ filterItemId }} 的关联笔记</span>
@@ -137,6 +132,7 @@ import MarkdownEditor from '@/components/MarkdownEditor/index.vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import ItemSelect from '@/components/front/ItemSelect.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, getFrontNote, addFrontNote, updateFrontNote, delFrontNote } from '@/api/front/note'
 import type { SgjNote } from '@/types/api/business/note'
 
@@ -152,9 +148,8 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
 const searchTitle = ref('')
-/** 标签筛选（选择即查询） */
+/** 标签筛选（TagPills 点击选中、再点取消后触发 loadData） */
 const searchTag = ref('')
-watch(searchTag, () => loadData())
 /** 分页 */
 const pageNum = ref(1)
 const pageSize = 10
@@ -429,11 +424,6 @@ html.dark .page-banner {
   align-items: center;
   justify-content: flex-end;
   margin-bottom: 20px;
-
-  .tag-filter {
-    width: 180px;
-    margin-right: 12px;
-  }
 
   .search-input {
     width: 260px;

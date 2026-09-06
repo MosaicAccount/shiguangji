@@ -21,15 +21,6 @@
           @click="switchStatus(s.value)"
         >{{ s.label }}</button>
       </div>
-      <!-- 标签筛选：选项来自标签管理（BOOK 模块），选择即筛选（精确匹配） -->
-      <tag-select
-        v-model="searchTag"
-        module="BOOK"
-        :multiple="false"
-        placeholder="按标签筛选"
-        class="tag-filter"
-        @update:model-value="loadData"
-      />
       <el-input
         v-model="searchTitle"
         placeholder="搜索书名"
@@ -44,6 +35,9 @@
         </template>
       </el-input>
     </div>
+
+    <!-- 标签筛选：豆瓣式标签行（BOOK 模块），点击选中、再点取消 -->
+    <tag-pills v-model="searchTag" module="BOOK" @update:model-value="loadData" />
 
     <div v-loading="loading" class="card-grid">
       <el-empty v-if="!loading && !list.length && !loadError" description="暂无数据" />
@@ -189,6 +183,7 @@ import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import TagPills from '@/components/TagPills/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import type { SgjItem } from '@/types/api/business/item'
 
@@ -584,15 +579,6 @@ html.dark .detail-content .detail-icon {
   .search-input {
     width: 220px;
     margin-left: auto;
-  }
-
-  .tag-filter {
-    width: 170px;
-    margin-left: auto;
-  }
-
-  .tag-filter + .search-input {
-    margin-left: 0;
   }
 }
 

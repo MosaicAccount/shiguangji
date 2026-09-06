@@ -93,16 +93,18 @@ create table sgj_tag (
 
 ### 5.2 标签选择组件（核心改造点）
 
-新增 `src/components/TagSelect/index.vue`：
+新增两个组件：
 
-- props：`modelValue`（逗号分隔字符串）、`module`（必填）；内部请求 `/app/tag/list` 获取该模块启用标签，转 multi-select（el-select multiple，`filterable` 但**不开启 allow-create**，落实「禁止手输」）；
-- v-model 与逗号分隔字符串互转，保证与现有 `tags` 字段格式兼容，父组件零改动；
-- 使用位置（替换现有 el-input / 补齐缺失字段）：
-  1. `src/components/ItemEditDialog/index.vue`（影视/书籍/旅行编辑共用，module 随 item_type 传入）；
-  2. `src/views/front/movie/index.vue`、`book/index.vue`、`travel/index.vue` 新增表单（补齐 tags 字段）；
-  3. `src/views/front/note/index.vue` 新增/编辑表单；
-  4. `src/views/business/note/index.vue`（后台笔记管理表单）及 `ItemManager.vue` 的 tags 字段配置改为 TagSelect；
-- 列表筛选：前台四个模块页与 `ItemManager.vue` 的 tags 筛选输入改为 TagSelect（单选），提交值仍为标签名。
+- `src/components/TagSelect/index.vue`（表单用）：props `modelValue`（逗号分隔字符串）、`module`；内部请求 `/app/tag/list` 获取该模块启用标签，渲染 multi-select（el-select multiple，`filterable` 但**不开启 allow-create**，落实「禁止手输」）；v-model 与逗号分隔字符串互转，父组件零改动。用于各新增/编辑表单。
+- `src/components/TagPills/index.vue`（筛选用）：豆瓣式标签行——一行可点击的标签胶囊，点选高亮、再点取消（单选），默认展示 10 个、其余收进「更多」，选中项越界时追加显示；无标签时不渲染整行。与前台既有 filter-pill 胶囊同一设计语言。用于前台四页的列表筛选。
+
+使用位置：
+1. `src/components/ItemEditDialog/index.vue`（影视/书籍/旅行编辑共用，module 随 item_type 传入）→ TagSelect；
+2. `src/views/front/movie/index.vue`、`book/index.vue`、`travel/index.vue` 新增表单（补齐 tags 字段）→ TagSelect；
+3. `src/views/front/note/index.vue` 新增/编辑表单 → TagSelect；
+4. `src/views/business/note/index.vue`（后台笔记管理表单）及 `ItemManager.vue` 的 tags 字段 → TagSelect；
+5. 前台影视/书籍/旅行/笔记四页筛选栏 → TagPills（影视页模块跟随当前类型切换，切换时清空选中）；
+6. 后台 `ItemManager.vue` 与笔记管理页的 tags 筛选 → TagSelect 单选（与后台筛选下拉风格一致）。
 
 ## 6. 权限与菜单
 

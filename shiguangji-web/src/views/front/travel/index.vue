@@ -24,16 +24,6 @@
           @click="switchStatus(s.value)"
         >{{ s.label }}</button>
       </div>
-      <!-- 标签筛选：选项来自标签管理（PLACE 模块），选择即筛选（精确匹配） -->
-      <tag-select
-        v-if="mode === 'card'"
-        v-model="searchTag"
-        module="PLACE"
-        :multiple="false"
-        placeholder="按标签筛选"
-        class="tag-filter"
-        @update:model-value="loadData"
-      />
       <el-input
         v-if="mode === 'card'"
         v-model="searchTitle"
@@ -49,6 +39,9 @@
         </template>
       </el-input>
     </div>
+
+    <!-- 标签筛选：豆瓣式标签行（PLACE 模块，仅卡片模式），点击选中、再点取消 -->
+    <tag-pills v-if="mode === 'card'" v-model="searchTag" module="PLACE" @update:model-value="loadData" />
 
     <!-- 卡片模式 -->
     <template v-if="mode === 'card'">
@@ -265,6 +258,7 @@ import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import TagPills from '@/components/TagPills/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel } from '@/utils/sgj'
@@ -1001,15 +995,6 @@ html.dark .detail-content .detail-icon {
   .search-input {
     width: 220px;
     margin-left: auto;
-  }
-
-  .tag-filter {
-    width: 170px;
-    margin-left: auto;
-  }
-
-  .tag-filter + .search-input {
-    margin-left: 0;
   }
 }
 
