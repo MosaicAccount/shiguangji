@@ -20,9 +20,9 @@ import com.shiguangji.common.enums.BusinessType;
 import com.shiguangji.common.utils.DateUtils;
 import com.shiguangji.common.utils.SecurityUtils;
 import com.shiguangji.common.utils.StringUtils;
-import com.shiguangji.common.utils.file.FileUploadUtils;
 import com.shiguangji.common.utils.file.FileUtils;
 import com.shiguangji.common.utils.file.MimeTypeUtils;
+import com.shiguangji.file.storage.FileStorageService;
 import com.shiguangji.framework.web.service.TokenService;
 import com.shiguangji.system.service.ISysUserService;
 
@@ -40,6 +40,9 @@ public class SysProfileController extends BaseController
 
     @Autowired
     private TokenService tokenService;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     /**
      * 个人信息
@@ -127,7 +130,7 @@ public class SysProfileController extends BaseController
         if (!file.isEmpty())
         {
             LoginUser loginUser = getLoginUser();
-            String avatar = FileUploadUtils.upload(ShiGuangJiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
+            String avatar = fileStorageService.upload("avatar", file, MimeTypeUtils.IMAGE_EXTENSION, true);
             if (userService.updateUserAvatar(loginUser.getUserId(), avatar))
             {
                 String oldAvatar = loginUser.getUser().getAvatar();

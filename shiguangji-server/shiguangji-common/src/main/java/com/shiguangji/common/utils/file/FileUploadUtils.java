@@ -2,13 +2,11 @@ package com.shiguangji.common.utils.file;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.Objects;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.web.multipart.MultipartFile;
 import com.shiguangji.common.config.ShiGuangJiConfig;
 import com.shiguangji.common.constant.Constants;
-import com.shiguangji.common.exception.file.FileNameLengthLimitExceededException;
 import com.shiguangji.common.exception.file.FileSizeLimitExceededException;
 import com.shiguangji.common.exception.file.InvalidExtensionException;
 import com.shiguangji.common.utils.DateUtils;
@@ -18,7 +16,7 @@ import com.shiguangji.common.utils.uuid.Seq;
 
 /**
  * 文件上传工具类
- * 
+ *
  * @author shiguangji
  */
 public class FileUploadUtils
@@ -32,111 +30,6 @@ public class FileUploadUtils
      * 默认的文件名最大长度 100
      */
     public static final int DEFAULT_FILE_NAME_LENGTH = 100;
-
-    /**
-     * 默认上传的地址
-     */
-    private static String defaultBaseDir = ShiGuangJiConfig.getProfile();
-
-    public static void setDefaultBaseDir(String defaultBaseDir)
-    {
-        FileUploadUtils.defaultBaseDir = defaultBaseDir;
-    }
-
-    public static String getDefaultBaseDir()
-    {
-        return defaultBaseDir;
-    }
-
-    /**
-     * 以默认配置进行文件上传
-     *
-     * @param file 上传的文件
-     * @return 文件名称
-     * @throws Exception
-     */
-    public static final String upload(MultipartFile file) throws IOException
-    {
-        try
-        {
-            return upload(getDefaultBaseDir(), file, MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION);
-        }
-        catch (Exception e)
-        {
-            throw new IOException(e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 根据文件路径上传
-     *
-     * @param baseDir 相对应用的基目录
-     * @param file 上传的文件
-     * @return 文件名称
-     * @throws IOException
-     */
-    public static final String upload(String baseDir, MultipartFile file) throws IOException
-    {
-        try
-        {
-            return upload(baseDir, file, MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION);
-        }
-        catch (Exception e)
-        {
-            throw new IOException(e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 文件上传
-     *
-     * @param baseDir 相对应用的基目录
-     * @param file 上传的文件
-     * @param allowedExtension 上传文件类型
-     * @return 返回上传成功的文件名
-     * @throws FileSizeLimitExceededException 如果超出最大大小
-     * @throws FileNameLengthLimitExceededException 文件名太长
-     * @throws IOException 比如读写文件出错时
-     * @throws InvalidExtensionException 文件校验异常
-     */
-    public static final String upload(String baseDir, MultipartFile file, String[] allowedExtension)
-            throws FileSizeLimitExceededException, IOException, FileNameLengthLimitExceededException,
-            InvalidExtensionException
-    {
-        return upload(baseDir, file, allowedExtension, false);
-    }
-    
-    /**
-     * 文件上传
-     *
-     * @param baseDir 相对应用的基目录
-     * @param file 上传的文件
-     * @param useCustomNaming 系统自定义文件名
-     * @param allowedExtension 上传文件类型
-     * @return 返回上传成功的文件名
-     * @throws FileSizeLimitExceededException 如果超出最大大小
-     * @throws FileNameLengthLimitExceededException 文件名太长
-     * @throws IOException 比如读写文件出错时
-     * @throws InvalidExtensionException 文件校验异常
-     */
-    public static final String upload(String baseDir, MultipartFile file, String[] allowedExtension, boolean useCustomNaming)
-            throws FileSizeLimitExceededException, IOException, FileNameLengthLimitExceededException,
-            InvalidExtensionException
-    {
-        int fileNameLength = Objects.requireNonNull(file.getOriginalFilename()).length();
-        if (fileNameLength > FileUploadUtils.DEFAULT_FILE_NAME_LENGTH)
-        {
-            throw new FileNameLengthLimitExceededException(FileUploadUtils.DEFAULT_FILE_NAME_LENGTH);
-        }
-
-        assertAllowed(file, allowedExtension);
-
-        String fileName = useCustomNaming ? uuidFilename(file) : extractFilename(file);
-
-        String absPath = getAbsoluteFile(baseDir, fileName).getAbsolutePath();
-        file.transferTo(Paths.get(absPath));
-        return getPathFileName(baseDir, fileName);
-    }
 
     /**
      * 编码文件名(日期格式目录 + 原文件名 + 序列值 + 后缀)

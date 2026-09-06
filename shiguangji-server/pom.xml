@@ -176,6 +176,13 @@
                 <version>${shiguangji.version}</version>
             </dependency>
 
+            <!-- 文件存储模块-->
+            <dependency>
+                <groupId>com.shiguangji</groupId>
+                <artifactId>shiguangji-file</artifactId>
+                <version>${shiguangji.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -187,6 +194,7 @@
         <module>shiguangji-generator</module>
         <module>shiguangji-common</module>
 		<module>shiguangji-business</module>
+        <module>shiguangji-file</module>
     </modules>
     <packaging>pom</packaging>
 

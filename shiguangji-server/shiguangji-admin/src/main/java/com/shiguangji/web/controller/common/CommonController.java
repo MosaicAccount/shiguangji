@@ -16,8 +16,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.shiguangji.common.config.ShiGuangJiConfig;
 import com.shiguangji.common.core.domain.AjaxResult;
 import com.shiguangji.common.utils.StringUtils;
-import com.shiguangji.common.utils.file.FileUploadUtils;
 import com.shiguangji.common.utils.file.FileUtils;
+import com.shiguangji.common.utils.file.MimeTypeUtils;
+import com.shiguangji.file.storage.FileStorageService;
 import com.shiguangji.framework.config.ServerConfig;
 
 /**
@@ -33,6 +34,9 @@ public class CommonController
 
     @Autowired
     private ServerConfig serverConfig;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     private static final String FILE_DELIMITER = ",";
 
@@ -76,10 +80,8 @@ public class CommonController
     {
         try
         {
-            // 上传文件路径
-            String filePath = ShiGuangJiConfig.getUploadPath();
-            // 上传并返回新文件名称
-            String fileName = FileUploadUtils.upload(filePath, file);
+            // 上传并返回 /profile 前缀的相对路径
+            String fileName = fileStorageService.upload("upload", file, MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION, false);
             String url = serverConfig.getUrl() + fileName;
             AjaxResult ajax = AjaxResult.success();
             ajax.put("url", url);
@@ -102,16 +104,14 @@ public class CommonController
     {
         try
         {
-            // 上传文件路径
-            String filePath = ShiGuangJiConfig.getUploadPath();
             List<String> urls = new ArrayList<String>();
             List<String> fileNames = new ArrayList<String>();
             List<String> newFileNames = new ArrayList<String>();
             List<String> originalFilenames = new ArrayList<String>();
             for (MultipartFile file : files)
             {
-                // 上传并返回新文件名称
-                String fileName = FileUploadUtils.upload(filePath, file);
+                // 上传并返回 /profile 前缀的相对路径
+                String fileName = fileStorageService.upload("upload", file, MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION, false);
                 String url = serverConfig.getUrl() + fileName;
                 urls.add(url);
                 fileNames.add(fileName);
