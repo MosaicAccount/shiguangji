@@ -1,5 +1,7 @@
 package com.shiguangji.file.domain;
 
+import org.apache.ibatis.type.Alias;
+
 import com.shiguangji.common.core.domain.BaseEntity;
 
 /**
@@ -8,8 +10,11 @@ import com.shiguangji.common.core.domain.BaseEntity;
  * 仅登记上传事实供审计/清理/迁移使用，不记录业务关联；
  * 业务表自行保存 storageKey（/profile 前缀相对路径）。
  *
+ * framework 模块已有同名视图类，别名区分开避免 typeAliases 注册冲突
+ *
  * @author shiguangji
  */
+@Alias("FileRecord")
 public class SysFile extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
