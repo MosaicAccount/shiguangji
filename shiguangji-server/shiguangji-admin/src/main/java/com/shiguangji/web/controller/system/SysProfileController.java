@@ -21,6 +21,8 @@ import com.shiguangji.common.utils.DateUtils;
 import com.shiguangji.common.utils.SecurityUtils;
 import com.shiguangji.common.utils.StringUtils;
 import com.shiguangji.common.utils.file.MimeTypeUtils;
+import com.shiguangji.file.domain.SysFile;
+import com.shiguangji.file.service.ISysFileService;
 import com.shiguangji.file.storage.FileStorageService;import com.shiguangji.framework.web.service.TokenService;
 import com.shiguangji.system.service.ISysUserService;
 
@@ -41,6 +43,9 @@ public class SysProfileController extends BaseController
 
     @Autowired
     private FileStorageService fileStorageService;
+
+    @Autowired
+    private ISysFileService sysFileService;
 
     /**
      * 个人信息
@@ -129,6 +134,7 @@ public class SysProfileController extends BaseController
         {
             LoginUser loginUser = getLoginUser();
             String avatar = fileStorageService.upload("avatar", file, MimeTypeUtils.IMAGE_EXTENSION, true);
+            recordSysFile(file, avatar, loginUser.getUsername());
             if (userService.updateUserAvatar(loginUser.getUserId(), avatar))
             {
                 String oldAvatar = loginUser.getUser().getAvatar();
@@ -146,5 +152,20 @@ public class SysProfileController extends BaseController
             }
         }
         return error("上传图片异常，请联系管理员");
+    }
+
+    /**
+     * 登记文件台账（登记失败不影响上传结果）
+     */
+    private void recordSysFile(MultipartFile file, String storageKey, String username)
+    {
+        SysFile sysFile = new SysFile();
+        sysFile.setFileName(file.getOriginalFilename());
+        sysFile.setStorageKey(storageKey);
+        sysFile.setStorageType(fileStorageService.type());
+        sysFile.setFileSize(file.getSize());
+        sysFile.setContentType(file.getContentType());
+        sysFile.setCreateBy(username);
+        sysFileService.recordFile(sysFile);
     }
 }

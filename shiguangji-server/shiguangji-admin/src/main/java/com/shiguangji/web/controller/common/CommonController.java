@@ -15,10 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.shiguangji.common.config.ShiGuangJiConfig;
 import com.shiguangji.common.core.domain.AjaxResult;
+import com.shiguangji.common.utils.SecurityUtils;
 import com.shiguangji.common.utils.StringUtils;
 import com.shiguangji.common.utils.file.FileUtils;
 import com.shiguangji.common.utils.file.MimeTypeUtils;
+import com.shiguangji.file.domain.SysFile;
 import com.shiguangji.file.storage.FileStorageService;
+import com.shiguangji.file.service.ISysFileService;
 import com.shiguangji.framework.config.ServerConfig;
 
 /**
@@ -37,6 +40,9 @@ public class CommonController
 
     @Autowired
     private FileStorageService fileStorageService;
+
+    @Autowired
+    private ISysFileService sysFileService;
 
     private static final String FILE_DELIMITER = ",";
 
@@ -82,6 +88,7 @@ public class CommonController
         {
             // 上传并返回 /profile 前缀的相对路径
             String fileName = fileStorageService.upload("upload", file, MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION, false);
+            recordSysFile(file, fileName);
             String url = serverConfig.getUrl() + fileName;
             AjaxResult ajax = AjaxResult.success();
             ajax.put("url", url);
@@ -112,6 +119,7 @@ public class CommonController
             {
                 // 上传并返回 /profile 前缀的相对路径
                 String fileName = fileStorageService.upload("upload", file, MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION, false);
+                recordSysFile(file, fileName);
                 String url = serverConfig.getUrl() + fileName;
                 urls.add(url);
                 fileNames.add(fileName);
@@ -129,6 +137,27 @@ public class CommonController
         {
             return AjaxResult.error(e.getMessage());
         }
+    }
+
+    /**
+     * 登记文件台账（登记失败不影响上传结果）
+     */
+    private void recordSysFile(MultipartFile file, String storageKey)
+    {
+        SysFile sysFile = new SysFile();
+        sysFile.setFileName(file.getOriginalFilename());
+        sysFile.setStorageKey(storageKey);
+        sysFile.setStorageType(fileStorageService.type());
+        sysFile.setFileSize(file.getSize());
+        sysFile.setContentType(file.getContentType());
+        try
+        {
+            sysFile.setCreateBy(SecurityUtils.getUsername());
+        }
+        catch (Exception ignored)
+        {
+        }
+        sysFileService.recordFile(sysFile);
     }
 
     /**
