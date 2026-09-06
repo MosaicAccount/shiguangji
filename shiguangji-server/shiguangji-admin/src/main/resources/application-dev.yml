@@ -1,21 +1,21 @@
 # 数据源配置
 spring:
-  # 本地 Docker 开发依赖
+  # 本地 Docker 开发依赖（支持环境变量覆盖，供 CI 注入；默认值对应本地容器）
   data:
     redis:
-      host: localhost
-      port: 16379
-      database: 0
-      password: 123456
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:16379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:123456}
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
     druid:
       # 主库数据源（开发默认本地库；生产使用 application-prod.yml + 环境变量注入）
       master:
-        url: jdbc:mysql://localhost:13306/shiguangji?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8
-        username: jlian
-        password: 123456
+        url: ${MYSQL_URL:jdbc:mysql://localhost:13306/shiguangji?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8}
+        username: ${MYSQL_USERNAME:jlian}
+        password: ${MYSQL_PASSWORD:123456}
       # 从库数据源
       slave:
         # 从数据源开关/默认关闭
