@@ -15,14 +15,15 @@
           <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </el-form-item>
-      <!-- ：暴露 tags 搜索（后端 SgjItemMapper 已支持 tags 模糊查询） -->
+      <!-- 标签筛选：选项来自标签管理（按模块区分），FIND_IN_SET 精确匹配 -->
       <el-form-item label="标签" prop="tags">
-        <el-input
+        <tag-select
           v-model="queryParams.tags"
-          placeholder="标签关键字"
-          clearable
+          :module="itemType"
+          :multiple="false"
+          placeholder="选择标签"
           style="width: 200px"
-          @keyup.enter="handleQuery"
+          @update:model-value="handleQuery"
         />
       </el-form-item>
       <el-form-item>
@@ -124,6 +125,12 @@
               >
                 <el-option v-for="opt in field.dictType ? (dictMap[field.dictType] || []) : (field.options || [])" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
+              <tag-select
+                v-else-if="field.type === 'tags'"
+                v-model="form[field.key]"
+                :module="itemType"
+                placeholder="选择标签（可选）"
+              />
               <el-input-number
                 v-else-if="field.type === 'number'"
                 v-model="form[field.key]"
@@ -167,6 +174,7 @@ import { listItem, getItem, addItem, updateItem, delItem } from '@/api/business/
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import { useDict } from '@/utils/dict'
 import ItemCover from '@/components/ItemCover/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
 import type { SgjItem } from '@/types/api/business/item'
 import { parseTime } from '@/utils/sgj'
 
@@ -229,7 +237,7 @@ const statusOptions = computed(() => {
 interface FieldConfig {
   key: string
   label: string
-  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image'
+  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image' | 'tags'
   placeholder?: string
   required?: boolean
   span?: number
@@ -250,7 +258,7 @@ const formFields = computed<FieldConfig[]>(() => {
     { key: 'title', label: titleLabel.value, type: 'input', placeholder: '请输入' + titleLabel.value, required: true, maxlength: 200 },
     { key: 'status', label: '状态', type: 'select', options: statusOptions.value, required: true },
     { key: 'rating', label: '评分', type: 'number', min: 0, max: 10, precision: 1, step: 0.5, placeholder: '0-10' },
-    { key: 'tags', label: '标签', type: 'input', placeholder: '多个用英文逗号分隔', maxlength: 500 },
+    { key: 'tags', label: '标签', type: 'tags' },
     { key: 'coverUrl', label: '封面/图片', type: 'image', span: 24 },
     { key: 'startDate', label: '开始日期', type: 'date', placeholder: '选择日期' },
     { key: 'finishDate', label: '完成日期', type: 'date', placeholder: '选择日期' },

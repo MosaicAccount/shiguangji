@@ -31,6 +31,15 @@
           @click="switchStatus(s.value)"
         >{{ s.label }}</button>
       </div>
+      <!-- 标签筛选：选项来自标签管理（模块跟随当前类型），选择即筛选（精确匹配） -->
+      <tag-select
+        v-model="searchTag"
+        :module="activeType"
+        :multiple="false"
+        placeholder="按标签筛选"
+        class="tag-filter"
+        @update:model-value="loadData"
+      />
       <el-input
         v-model="searchTitle"
         placeholder="搜索标题"
@@ -119,6 +128,10 @@
             <el-option v-for="g in sgj_movie_genre" :key="g.value" :label="g.label" :value="g.value" />
           </el-select>
         </el-form-item>
+        <el-form-item label="标签">
+          <!-- 标签来自后台标签管理，按条目类型区分，禁止自由输入 -->
+          <tag-select v-model="addForm.tags" :module="activeType" placeholder="选择标签（可选）" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -204,6 +217,7 @@ import { selectDictLabel } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, updateFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import type { SgjItem } from '@/types/api/business/item'
 
@@ -223,6 +237,8 @@ const activeType = ref<'MOVIE' | 'TV'>('MOVIE')
 /** 访客默认只看已完成内容 */
 const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
+/** 标签筛选（选择即查询；切换类型时由 switchType 清空并随列表刷新） */
+const searchTag = ref('')
 const list = ref<SgjItem[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -250,7 +266,8 @@ const addForm = reactive({
   endYear: undefined,
   seasonCount: undefined,
   episodeCount: undefined,
-  genre: undefined
+  genre: undefined,
+  tags: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -282,6 +299,7 @@ function loadData(): Promise<void> {
     itemType: activeType.value,
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -303,6 +321,7 @@ function loadMore(): void {
     itemType: activeType.value,
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -316,8 +335,9 @@ function loadMore(): void {
 }
 
 function handleTypeChange(): void {
-  // 访客只浏览已完成内容，登录用户切换类型回到"想看"
+  // 访客只浏览已完成内容，登录用户切换类型回到"想看"；标签跟随模块切换需重选
   activeStatus.value = isLogin.value ? 'WANT' : 'DONE'
+  searchTag.value = ''
   loadData()
 }
 
@@ -365,7 +385,8 @@ function openAdd(): void {
     endYear: undefined,
     seasonCount: undefined,
     episodeCount: undefined,
-    genre: undefined
+    genre: undefined,
+    tags: undefined
   })
   addOpen.value = true
 }
@@ -634,6 +655,15 @@ html.dark .detail-content .detail-icon {
   .search-input {
     width: 220px;
     margin-left: auto;
+  }
+
+  .tag-filter {
+    width: 170px;
+    margin-left: auto;
+  }
+
+  .tag-filter + .search-input {
+    margin-left: 0;
   }
 }
 

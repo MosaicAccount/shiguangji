@@ -11,6 +11,14 @@
     </div>
 
     <div class="filter-bar">
+      <!-- 标签筛选：选项来自标签管理（NOTE 模块），选择即筛选（精确匹配） -->
+      <tag-select
+        v-model="searchTag"
+        module="NOTE"
+        :multiple="false"
+        placeholder="按标签筛选"
+        class="tag-filter"
+      />
       <el-input
         v-model="searchTitle"
         placeholder="搜索笔记标题"
@@ -76,7 +84,8 @@
           <item-select v-model="form.itemId" :key="form.noteId || 'new'" />
         </el-form-item>
         <el-form-item label="标签">
-          <el-input v-model="form.tags" placeholder="多个用英文逗号分隔" maxlength="500" />
+          <!-- 标签来自后台标签管理（NOTE 模块），禁止自由输入 -->
+          <tag-select v-model="form.tags" module="NOTE" placeholder="选择标签（可选）" />
         </el-form-item>
         <!-- 公开/私密：默认私密，公开后访客可见 -->
         <el-form-item label="公开状态">
@@ -127,6 +136,7 @@ import { getToken } from '@/utils/auth'
 import MarkdownEditor from '@/components/MarkdownEditor/index.vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import ItemSelect from '@/components/front/ItemSelect.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
 import { listFrontNote, getFrontNote, addFrontNote, updateFrontNote, delFrontNote } from '@/api/front/note'
 import type { SgjNote } from '@/types/api/business/note'
 
@@ -142,6 +152,9 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
 const searchTitle = ref('')
+/** 标签筛选（选择即查询） */
+const searchTag = ref('')
+watch(searchTag, () => loadData())
 /** 分页 */
 const pageNum = ref(1)
 const pageSize = 10
@@ -173,6 +186,7 @@ function loadData(): void {
   pageNum.value = 1
   listFrontNote({
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     itemId: filterItemId.value,
     pageNum: pageNum.value,
     pageSize: pageSize
@@ -193,6 +207,7 @@ function loadMore(): void {
   pageNum.value += 1
   listFrontNote({
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     itemId: filterItemId.value,
     pageNum: pageNum.value,
     pageSize: pageSize
@@ -414,6 +429,11 @@ html.dark .page-banner {
   align-items: center;
   justify-content: flex-end;
   margin-bottom: 20px;
+
+  .tag-filter {
+    width: 180px;
+    margin-right: 12px;
+  }
 
   .search-input {
     width: 260px;

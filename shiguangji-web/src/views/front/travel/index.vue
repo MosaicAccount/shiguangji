@@ -24,6 +24,16 @@
           @click="switchStatus(s.value)"
         >{{ s.label }}</button>
       </div>
+      <!-- 标签筛选：选项来自标签管理（PLACE 模块），选择即筛选（精确匹配） -->
+      <tag-select
+        v-if="mode === 'card'"
+        v-model="searchTag"
+        module="PLACE"
+        :multiple="false"
+        placeholder="按标签筛选"
+        class="tag-filter"
+        @update:model-value="loadData"
+      />
       <el-input
         v-if="mode === 'card'"
         v-model="searchTitle"
@@ -154,6 +164,10 @@
               <el-option v-for="c in sgj_place_category" :key="c.value" :label="c.label" :value="c.value" />
             </el-select>
           </el-form-item>
+          <el-form-item label="标签">
+            <!-- 标签来自后台标签管理（PLACE 模块），禁止自由输入 -->
+            <tag-select v-model="addForm.tags" module="PLACE" placeholder="选择标签（可选）" />
+          </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -250,6 +264,7 @@ import { getToken } from '@/utils/auth'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel } from '@/utils/sgj'
@@ -269,6 +284,8 @@ const mode = ref<'card' | 'map'>('card')
 /** 访客默认只看已完成内容 */
 const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
+/** 标签筛选（选择即查询，仅卡片模式） */
+const searchTag = ref('')
 const list = ref<SgjItem[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -310,7 +327,8 @@ const addForm = reactive({
   latitude: undefined as number | undefined,
   longitude: undefined as number | undefined,
   bestSeason: undefined as string | undefined,
-  placeCategory: undefined as string | undefined
+  placeCategory: undefined as string | undefined,
+  tags: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -368,6 +386,7 @@ function loadData(): Promise<void> {
     itemType: 'PLACE',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -389,6 +408,7 @@ function loadMore(): void {
     itemType: 'PLACE',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -610,7 +630,8 @@ function openAdd(): void {
     latitude: undefined,
     longitude: undefined,
     bestSeason: undefined,
-    placeCategory: undefined
+    placeCategory: undefined,
+    tags: undefined
   })
   addOpen.value = true
 }
@@ -980,6 +1001,15 @@ html.dark .detail-content .detail-icon {
   .search-input {
     width: 220px;
     margin-left: auto;
+  }
+
+  .tag-filter {
+    width: 170px;
+    margin-left: auto;
+  }
+
+  .tag-filter + .search-input {
+    margin-left: 0;
   }
 }
 

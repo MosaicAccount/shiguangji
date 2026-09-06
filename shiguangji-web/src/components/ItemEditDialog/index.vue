@@ -14,7 +14,8 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="标签" prop="tags">
-            <el-input v-model="form.tags" placeholder="多个用英文逗号分隔" maxlength="500" />
+            <!-- 标签来自后台标签管理，按条目类型区分，禁止自由输入 -->
+            <tag-select v-model="form.tags" :module="itemType" placeholder="选择标签（可选）" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -173,6 +174,7 @@
 
 <script setup lang="ts" name="ItemEditDialog">
 import { getFrontItem, updateFrontItem } from '@/api/front/item'
+import TagSelect from '@/components/TagSelect/index.vue'
 import type { SgjItem } from '@/types/api/business/item'
 
 const props = defineProps<{

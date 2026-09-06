@@ -21,6 +21,15 @@
           @click="switchStatus(s.value)"
         >{{ s.label }}</button>
       </div>
+      <!-- 标签筛选：选项来自标签管理（BOOK 模块），选择即筛选（精确匹配） -->
+      <tag-select
+        v-model="searchTag"
+        module="BOOK"
+        :multiple="false"
+        placeholder="按标签筛选"
+        class="tag-filter"
+        @update:model-value="loadData"
+      />
       <el-input
         v-model="searchTitle"
         placeholder="搜索书名"
@@ -97,6 +106,10 @@
           <el-select v-model="addForm.genre" placeholder="选择或输入分类（可选）" clearable filterable allow-create style="width: 100%">
             <el-option v-for="g in sgj_book_genre" :key="g.value" :label="g.label" :value="g.value" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="标签">
+          <!-- 标签来自后台标签管理（BOOK 模块），禁止自由输入 -->
+          <tag-select v-model="addForm.tags" module="BOOK" placeholder="选择标签（可选）" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -175,6 +188,7 @@ import { selectDictLabel } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import type { SgjItem } from '@/types/api/business/item'
 
@@ -189,6 +203,8 @@ const isLogin = computed(() => !!getToken())
 
 const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
+/** 标签筛选（选择即查询） */
+const searchTag = ref('')
 const list = ref<SgjItem[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -213,7 +229,8 @@ const addForm = reactive({
   publisher: undefined,
   publishDate: undefined,
   isbn: undefined,
-  genre: undefined
+  genre: undefined,
+  tags: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -260,6 +277,7 @@ function loadData(): Promise<void> {
     itemType: 'BOOK',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -281,6 +299,7 @@ function loadMore(): void {
     itemType: 'BOOK',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -300,7 +319,8 @@ function openAdd(): void {
     publisher: undefined,
     publishDate: undefined,
     isbn: undefined,
-    genre: undefined
+    genre: undefined,
+    tags: undefined
   })
   addOpen.value = true
 }
@@ -564,6 +584,15 @@ html.dark .detail-content .detail-icon {
   .search-input {
     width: 220px;
     margin-left: auto;
+  }
+
+  .tag-filter {
+    width: 170px;
+    margin-left: auto;
+  }
+
+  .tag-filter + .search-input {
+    margin-left: 0;
   }
 }
 
