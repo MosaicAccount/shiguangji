@@ -23,6 +23,18 @@
             <artifactId>shiguangji-common</artifactId>
         </dependency>
 
+        <!-- S3协议客户端（兼容 MinIO / 阿里云OSS 等）-->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+
+        <!-- S3客户端轻量HTTP实现 -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+        </dependency>
+
         <!-- 测试-->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -35,4 +35,11 @@ public interface FileStorageService
      * @param objectKey 去掉 /profile 前缀的对象 key，如 upload/2026/09/07/a_1.jpg
      */
     InputStream getContent(String objectKey) throws IOException;
+
+    /**
+     * 删除文件，文件不存在时静默返回
+     *
+     * @param objectKey 去掉 /profile 前缀的对象 key
+     */
+    void delete(String objectKey) throws IOException;
 }

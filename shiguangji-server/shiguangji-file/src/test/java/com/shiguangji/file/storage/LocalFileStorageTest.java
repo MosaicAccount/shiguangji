@@ -63,4 +63,16 @@ class LocalFileStorageTest
         assertThrows(Exception.class, () -> storage.getContent("../secret.txt"));
         assertThrows(Exception.class, () -> storage.getContent("upload/../../secret.txt"));
     }
+
+    @Test
+    void deleteRemovesFileAndIgnoresMissing() throws Exception
+    {
+        MultipartFile file = new MockMultipartFile("file", "a.png", "image/png", "data".getBytes(StandardCharsets.UTF_8));
+        String key = storage.upload("upload", file, MimeTypeUtils.IMAGE_EXTENSION, false);
+
+        storage.delete(key.substring(Constants.RESOURCE_PREFIX.length() + 1));
+        assertThrows(Exception.class, () -> storage.getContent(key.substring(Constants.RESOURCE_PREFIX.length() + 1)));
+        // 再删一次不抛异常
+        storage.delete(key.substring(Constants.RESOURCE_PREFIX.length() + 1));
+    }
 }

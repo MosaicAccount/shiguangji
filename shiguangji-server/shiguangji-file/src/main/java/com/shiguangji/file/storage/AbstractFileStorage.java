@@ -38,7 +38,7 @@ public abstract class AbstractFileStorage implements FileStorageService
         }
         String fileName = useCustomNaming ? FileUploadUtils.uuidFilename(file) : FileUploadUtils.extractFilename(file);
         String objectKey = category + "/" + fileName;
-        doStore(objectKey, file.getInputStream(), file.getSize());
+        doStore(objectKey, file.getInputStream(), file.getSize(), file.getContentType());
         return Constants.RESOURCE_PREFIX + "/" + objectKey;
     }
 
@@ -65,8 +65,9 @@ public abstract class AbstractFileStorage implements FileStorageService
      * @param objectKey 去掉 /profile 前缀的对象 key，如 upload/2026/09/07/a_1.jpg
      * @param in 文件内容流
      * @param size 文件大小（字节）
+     * @param contentType 文件 MIME 类型
      */
-    protected abstract void doStore(String objectKey, InputStream in, long size) throws IOException;
+    protected abstract void doStore(String objectKey, InputStream in, long size, String contentType) throws IOException;
 
     /** 按 doStore 生成的对象 key 读取内容 */
     protected abstract InputStream doGetContent(String objectKey) throws IOException;
