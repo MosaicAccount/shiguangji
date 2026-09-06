@@ -121,8 +121,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null and status != ''">
                 and i.status = #{status}
             </if>
+            <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中（如“科幻”误中“硬科幻”）；replace 兼容手输期的“逗号+空格”写法 -->
             <if test="tags != null and tags != ''">
-                and i.tags like concat('%', #{tags}, '%')
+                and find_in_set(#{tags}, replace(i.tags, ' ', ''))
             </if>
         </where>
         order by i.update_time desc, i.item_id desc
