@@ -40,15 +40,6 @@ npm run dev   # 默认端口 5173，/dev-api 代理到 18080
 
 数据库连接、Redis、JWT 密钥等一律通过 `MYSQL_URL`、`REDIS_HOST`、`JWT_SECRET` 等环境变量注入，不要写入仓库。
 
-## 文档
-
-- [当前功能清单](docs/当前功能清单.md)
-- [初始化验证记录](docs/初始化验证记录.md)
-- [旧 Git 历史梳理](docs/旧Git历史梳理.md)
-- [v1.0.0 发布要求规划](docs/v1.0.0发布要求规划.md)
-- [v1.0.0 发布差距分析](docs/v1.0.0发布差距分析.md)
-- 后端目录内：[测试说明](shiguangji-server/docs/testing.md)、[部署说明](shiguangji-server/docs/deployment.md)
-
 ## 项目状态
 
 - 前后端代码已完成首次提交，作为当前代码基线。
