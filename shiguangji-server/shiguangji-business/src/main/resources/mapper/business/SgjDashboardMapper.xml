@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguangji.business.mapper.SgjDashboardMapper">
+
+    <select id="selectItemTypeStats" resultType="java.util.HashMap">
+        select item_type as itemType,
+               status as status,
+               count(*) as cnt
+        from sgj_item
+        where del_flag = '0'
+        <if test="createBy != null and createBy != ''">
+            and create_by = #{createBy}
+        </if>
+        group by item_type, status
+    </select>
+
+    <select id="selectItemMonthTrend" resultType="java.util.HashMap">
+        select date_format(create_time, '%Y-%m') as month,
+               sum(case when item_type = 'MOVIE' then 1 else 0 end) as movie,
+               sum(case when item_type = 'TV' then 1 else 0 end) as tv,
+               sum(case when item_type = 'BOOK' then 1 else 0 end) as book,
+               sum(case when item_type = 'PLACE' then 1 else 0 end) as place,
+               count(*) as total
+        from sgj_item
+        where del_flag = '0'
+          and create_time &gt;= date_sub(curdate(), interval 5 month)
+        group by date_format(create_time, '%Y-%m')
+        order by month
+    </select>
+
+    <select id="selectNoteMonthTrend" resultType="java.util.HashMap">
+        select date_format(create_time, '%Y-%m') as month,
+               count(*) as cnt
+        from sgj_note
+        where del_flag = '0'
+          and create_time &gt;= date_sub(curdate(), interval 5 month)
+        group by date_format(create_time, '%Y-%m')
+        order by month
+    </select>
+
+    <select id="selectNoteTotal" resultType="long">
+        select count(*)
+        from sgj_note
+        where del_flag = '0'
+        <if test="createBy != null and createBy != ''">
+            and create_by = #{createBy}
+        </if>
+        <if test="publicOnly">
+            and is_public = '1'
+        </if>
+    </select>
+
+    <select id="selectNoteMonthCount" resultType="long">
+        select count(*)
+        from sgj_note
+        where del_flag = '0'
+          and date_format(create_time, '%Y-%m') = date_format(curdate(), '%Y-%m')
+    </select>
+
+    <select id="selectRecentItems" resultType="SgjItem">
+        select item_id as itemId,
+               item_type as itemType,
+               title,
+               status,
+               rating,
+               tags,
+               cover_url as coverUrl,
+               create_by as createBy,
+               create_time as createTime,
+               update_by as updateBy,
+               update_time as updateTime,
+               remark
+        from sgj_item
+        where del_flag = '0'
+        order by create_time desc, item_id desc
+        limit #{limit}
+    </select>
+
+    <select id="selectTodoItems" resultType="SgjItem">
+        select item_id as itemId,
+               item_type as itemType,
+               title,
+               status,
+               rating,
+               tags,
+               cover_url as coverUrl,
+               create_by as createBy,
+               create_time as createTime,
+               update_by as updateBy,
+               update_time as updateTime,
+               remark
+        from sgj_item
+        where del_flag = '0'
+          and status = 'WANT'
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+        order by create_time desc, item_id desc
+        limit #{limit}
+    </select>
+
+    <select id="selectTimeline" resultType="SgjItem">
+        select item_id as itemId,
+               item_type as itemType,
+               title,
+               status,
+               rating,
+               comment,
+               tags,
+               cover_url as coverUrl,
+               finish_date as finishDate,
+               create_by as createBy,
+               create_time as createTime,
+               update_by as updateBy,
+               update_time as updateTime,
+               remark
+        from sgj_item
+        where del_flag = '0'
+          and status = 'DONE'
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+        order by finish_date desc, update_time desc, item_id desc
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="countTimeline" resultType="long">
+        select count(*)
+        from sgj_item
+        where del_flag = '0'
+          and status = 'DONE'
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+    </select>
+
+    <select id="selectRecentNotes" resultType="SgjNote">
+        select note_id as noteId,
+               item_id as itemId,
+               title,
+               content,
+               tags,
+               is_public as isPublic,
+               create_by as createBy,
+               create_time as createTime,
+               update_by as updateBy,
+               update_time as updateTime,
+               remark
+        from sgj_note
+        where del_flag = '0'
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+        <if test="publicOnly">
+          and is_public = '1'
+        </if>
+        order by create_time desc, note_id desc
+        limit #{limit}
+    </select>
+
+</mapper>

@@ -1,0 +1,80 @@
+/**
+ * 统一加载动效（冷雾胶片 v3.3）
+ * 前台与后台共用同一套加载语言，与 index.html 启动屏同源：
+ *   - 路由切换：NProgress 顶部进度条 → 主色灰陶红（暗色自动提亮）
+ *   - 区域/全屏加载：el-loading 遮罩换冷雾面，圆环换胶片齿孔双帧交替曝光
+ * 齿孔 26×10/r5、1.5s ease-in-out、主色 --sgj-primary，均与启动屏保持一致。
+ * 色值走 front-tokens 的 CSS 变量，html.dark 下自动随主题翻转。
+ */
+
+/* ===== 路由进度条（覆盖 nprogress 默认蓝；body 前缀抬高优先级，避免打包顺序落在 nprogress.css 之后失效） ===== */
+body #nprogress .bar {
+  background: var(--sgj-primary);
+}
+
+body #nprogress .peg {
+  box-shadow:
+    0 0 10px var(--sgj-primary),
+    0 0 5px var(--sgj-primary-light);
+}
+
+/* ===== el-loading 遮罩（v-loading 指令与 ElLoading.service 共用） ===== */
+.el-loading-mask {
+  background-color: rgba(251, 252, 251, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+html.dark .el-loading-mask {
+  background-color: rgba(23, 27, 26, 0.7);
+}
+
+/* 隐藏 Element 默认圆环，换成胶片齿孔双帧交替曝光 */
+.el-loading-spinner .circular {
+  display: none;
+}
+
+.el-loading-spinner::before,
+.el-loading-spinner::after {
+  content: "";
+  display: inline-block;
+  width: 26px;
+  height: 10px;
+  margin: 12px 7px 0; /* 两齿孔间距 14px = 7 + 7 */
+  border-radius: 5px;
+  background: var(--sgj-border);
+  animation: sgj-frame-expose 1.5s ease-in-out infinite;
+}
+
+.el-loading-spinner::after {
+  animation-delay: -0.75s;
+}
+
+@keyframes sgj-frame-expose {
+  0%,
+  100% {
+    background: var(--sgj-border);
+    transform: scale(1);
+  }
+  50% {
+    background: var(--sgj-primary);
+    transform: scale(1.15);
+  }
+}
+
+.el-loading-spinner .el-loading-text {
+  /* 文字移出文档流，避免把两个齿孔隔到上下两行 */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 34px;
+  margin: 0;
+  font-size: var(--sgj-font-sm);
+  color: var(--sgj-text-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .el-loading-spinner::before,
+  .el-loading-spinner::after {
+    animation: none;
+  }
+}

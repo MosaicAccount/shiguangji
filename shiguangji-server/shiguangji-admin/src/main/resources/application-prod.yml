@@ -1,0 +1,105 @@
+# ============================================================
+# 生产环境配置（安全基线）
+# 启动方式：SPRING_PROFILES_ACTIVE=prod + 环境变量注入，见 docs/deployment.md
+# 安全约定：
+#   - 所有密钥/密码类配置仅从环境变量读取且不设默认值，缺项将拒绝启动（fail-fast）；
+#   - swagger / api-docs / druid 控制台全部关闭；
+#   - 仓库不保存任何真实生产密钥。
+# ============================================================
+
+# 项目相关配置
+shiguangji:
+  # 上传文件路径（按实际部署目录调整）
+  profile: ${SGJ_UPLOAD_PATH:/home/shiguangji/uploadPath}
+
+# 服务端口
+server:
+  port: ${SERVER_PORT:18080}
+
+# 日志配置（生产关闭 debug）
+logging:
+  level:
+    com.shiguangji: info
+    org.springframework: warn
+
+# Spring配置
+spring:
+  # 热部署仅开发使用，生产关闭
+  devtools:
+    restart:
+      enabled: false
+  data:
+    # redis 配置
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD}
+      timeout: 10s
+      lettuce:
+        pool:
+          min-idle: 0
+          max-idle: 8
+          max-active: 8
+          max-wait: -1ms
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    druid:
+      # 主库数据源
+      master:
+        url: ${MYSQL_URL}
+        username: ${MYSQL_USERNAME}
+        password: ${MYSQL_PASSWORD}
+      # 从库数据源（如未使用保持关闭）
+      slave:
+        enabled: false
+        url:
+        username:
+        password:
+      initialSize: 5
+      minIdle: 10
+      maxActive: 20
+      maxWait: 60000
+      connectTimeout: 30000
+      socketTimeout: 60000
+      timeBetweenEvictionRunsMillis: 60000
+      minEvictableIdleTimeMillis: 300000
+      maxEvictableIdleTimeMillis: 900000
+      validationQuery: SELECT 1 FROM DUAL
+      testWhileIdle: true
+      testOnBorrow: false
+      testOnReturn: false
+      # 生产关闭 web 统计与 druid 控制台
+      webStatFilter:
+        enabled: false
+      statViewServlet:
+        enabled: false
+      filter:
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: 1000
+          merge-sql: true
+        wall:
+          config:
+            multi-statement-allow: true
+
+# token配置
+token:
+  header: Authorization
+  # 生产必须注入强随机密钥（>= 32 字节，示例生成：openssl rand -base64 48）
+  secret: ${JWT_SECRET}
+  # 生产建议适当延长（分钟），按需调整
+  expireTime: ${TOKEN_EXPIRE_TIME:120}
+
+# Springdoc配置：生产关闭 api-docs 与 swagger-ui
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# 开发调试入口放行开关：生产必须关闭（SecurityConfig 默认即为 false，此处显式声明）
+sgj:
+  expose-dev-tools: false

@@ -1,0 +1,43 @@
+name: 前端持续集成
+
+on:
+  push:
+    paths:
+      - 'shiguangji-web/**'
+      - '.github/workflows/ci-web.yml'
+  pull_request:
+    paths:
+      - 'shiguangji-web/**'
+      - '.github/workflows/ci-web.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: shiguangji-web
+
+jobs:
+  build:
+    name: Node.js 构建检查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: shiguangji-web/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 执行 TypeScript 检查
+        run: npm run typecheck
+
+      - name: 执行生产构建
+        run: npm run build:prod

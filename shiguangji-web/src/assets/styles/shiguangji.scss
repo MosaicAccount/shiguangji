@@ -1,0 +1,17 @@
+/**
+ * 拾光记通用样式
+ * 当前项目业务样式主要在 sgj.scss 中维护，此文件保留兼容入口。
+ */
+
+/* 前台移动端最小适配：小屏下弹窗/抽屉不超出屏幕。
+   append-to-body 的弹层挂在 body 下，为全局节点，须在全局样式中约束；
+   max-width 可钳制元素内联 width（el-dialog 宽度/el-drawer size）而不影响大屏。 */
+@media (max-width: 768px) {
+  .el-dialog:not(.is-fullscreen) {
+    max-width: 92vw;
+  }
+
+  .el-drawer {
+    max-width: 92vw;
+  }
+}

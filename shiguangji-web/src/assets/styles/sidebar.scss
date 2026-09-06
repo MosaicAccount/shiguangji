@@ -1,0 +1,268 @@
+@use './variables.module.scss' as vars;
+
+#app {
+
+  .main-container {
+    min-height: 100%;
+    transition: margin-left .28s;
+    margin-left: vars.$base-sidebar-width;
+    position: relative;
+  }
+
+  .sidebarHide {
+    margin-left: 0!important;
+  }
+
+  .sidebar-container {
+    transition: width 0.28s;
+    width: vars.$base-sidebar-width !important;
+    height: 100%;
+    position: fixed;
+    font-size: 0px;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1001;
+    overflow: hidden;
+    -webkit-box-shadow: 2px 0 6px rgba(0,21,41,.35);
+    box-shadow: 0px 0px 8px 0px rgba(0, 0, 0, 0.1);
+
+    // reset element-ui css
+    .horizontal-collapse-transition {
+      transition: 0s width ease-in-out, 0s padding-left ease-in-out, 0s padding-right ease-in-out;
+    }
+
+    .scrollbar-wrapper {
+      overflow-x: hidden !important;
+    }
+
+    .el-scrollbar__bar.is-vertical {
+      right: 0px;
+    }
+
+    .el-scrollbar {
+      height: 100%;
+    }
+
+    &.has-logo {
+      .el-scrollbar {
+        height: calc(100% - 72px);
+      }
+    }
+
+    .is-horizontal {
+      display: none;
+    }
+
+    a {
+      display: inline-block;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .svg-icon {
+      margin-right: 10px !important;
+    }
+
+    .el-menu {
+      border: none;
+      height: 100%;
+      width: 100% !important;
+    }
+
+    .el-menu-item, .menu-title {
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      height: 38px !important;
+      line-height: 38px !important;
+    }
+
+    .el-sub-menu__title {
+      height: 38px !important;
+      line-height: 38px !important;
+    }
+
+    /* 一级菜单：内嵌胶囊（设计稿 192x38 · 9 圆角） */
+    .el-menu > .el-menu-item,
+    .el-menu > .el-sub-menu > .el-sub-menu__title {
+      margin: 0 16px;
+      border-radius: 9px;
+      width: auto !important;
+      min-width: 0 !important;
+    }
+
+    .el-menu-item .el-menu-tooltip__trigger {
+      display: inline-block !important;
+    }
+
+    /* 悬停统一色调（token 见 variables.module.scss）：
+       非激活项 = 提亮底色 + 提亮文字；激活项的陶土胶囊不随悬停变化
+       （此前悬停规则以更高优先级把胶囊底盖成半透明色，炭墨字瞬间不可读） */
+    .el-menu-item:not(.is-active),
+    .submenu-title-noDropdown,
+    .el-sub-menu__title:not(.is-active) {
+      &:hover {
+        background-color: var(--menu-hover, rgba(0, 0, 0, 0.04)) !important;
+        color: var(--menu-hover-text, inherit) !important;
+      }
+    }
+
+    & .nest-menu .el-sub-menu>.el-sub-menu__title,
+    & .el-sub-menu .el-menu-item {
+      min-width: vars.$base-sidebar-width !important;
+    }
+
+    /* 子菜单面板底（浅色模式深底侧栏的次级层次）；暗色的底/悬停由 variables.module.scss 接管 */
+    & .theme-dark .nest-menu .el-sub-menu>.el-sub-menu__title,
+    & .theme-dark .el-sub-menu .el-menu-item {
+      background-color: vars.$base-sub-menu-background;
+    }
+
+    // theme-dark 深色主题
+    &.theme-dark {
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.4);
+      border-right: none;
+
+      .el-sub-menu.is-active > .el-sub-menu__title {
+        /* 展开组标题带陶土实底（见 variables.module.scss），文字须用激活文字色：
+           亮色白字 / 暗色炭墨字，不能用 --current-color（与陶土底同色系会看不清） */
+        color: var(--menu-active-text, #ffffff) !important;
+      }
+    }
+  }
+
+  .hideSidebar {
+    .sidebar-container {
+      width: 54px !important;
+    }
+
+    /* 折叠态：取消一级菜单内嵌留白 */
+    .el-menu > .el-menu-item,
+    .el-menu > .el-sub-menu > .el-sub-menu__title {
+      margin: 0;
+      border-radius: 0;
+      width: 100% !important;
+    }
+
+    .main-container {
+      margin-left: 54px;
+    }
+
+    .sub-menu-title-noDropdown {
+      padding: 0 !important;
+      position: relative;
+
+      .el-tooltip {
+        padding: 0 !important;
+
+        .svg-icon {
+          margin-left: 20px;
+        }
+      }
+    }
+
+    .el-sub-menu {
+      overflow: hidden;
+
+      &>.el-sub-menu__title {
+        padding: 0 !important;
+
+        .svg-icon {
+          margin-left: 20px;
+        }
+
+      }
+    }
+
+    .el-menu--collapse {
+      .el-sub-menu {
+        &>.el-sub-menu__title {
+          &>span {
+            height: 0;
+            width: 0;
+            overflow: hidden;
+            visibility: hidden;
+            display: inline-block;
+          }
+          &>i {
+            height: 0;
+            width: 0;
+            overflow: hidden;
+            visibility: hidden;
+            display: inline-block;
+          }
+        }
+      }
+    }
+  }
+
+  .el-menu--collapse .el-menu .el-sub-menu {
+    min-width: vars.$base-sidebar-width !important;
+  }
+
+  // mobile responsive
+  .mobile {
+    .main-container {
+      margin-left: 0px;
+    }
+
+    .sidebar-container {
+      transition: transform .28s;
+      width: vars.$base-sidebar-width !important;
+    }
+
+    &.hideSidebar {
+      .sidebar-container {
+        pointer-events: none;
+        transition-duration: 0.3s;
+        transform: translate3d(-(vars.$base-sidebar-width), 0, 0);
+      }
+    }
+  }
+
+  .withoutAnimation {
+
+    .main-container,
+    .sidebar-container {
+      transition: none;
+    }
+  }
+}
+
+// when menu collapsed
+.el-menu--vertical {
+  &>.el-menu {
+    .svg-icon {
+      margin-right: 16px;
+    }
+  }
+
+  .nest-menu .el-sub-menu>.el-sub-menu__title,
+  .el-menu-item {
+    &:not(.is-active):hover {
+      // 折叠态弹出菜单悬停：同一套色调 token（弹层挂在 body 下，变量继承自 html，仍生效）
+      background-color: var(--menu-hover, rgba(0, 0, 0, 0.04)) !important;
+      color: var(--menu-hover-text, inherit) !important;
+    }
+  }
+
+  // the scroll bar appears when the sub-menu is too long
+  >.el-menu--popup {
+    max-height: 100vh;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar-track-piece {
+      background: #d3dce6;
+    }
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #99a9bf;
+      border-radius: 20px;
+    }
+  }
+}

@@ -1,0 +1,82 @@
+name: 后端持续集成
+
+on:
+  push:
+    paths:
+      - 'shiguangji-server/**'
+      - '.github/workflows/ci-server.yml'
+  pull_request:
+    paths:
+      - 'shiguangji-server/**'
+      - '.github/workflows/ci-server.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: shiguangji-server
+
+jobs:
+  test:
+    name: Java 17 构建与测试
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: '123456'
+          MYSQL_DATABASE: shiguangji
+          TZ: Asia/Shanghai
+        ports:
+          - 13306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -p123456"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 16379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: 安装 MySQL 客户端
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes mysql-client
+
+      - name: 初始化测试数据库
+        env:
+          MYSQL_PWD: '123456'
+        run: |
+          mysql --protocol=TCP -h 127.0.0.1 -P 13306 -u root shiguangji < sql/init_system.sql
+          mysql --protocol=TCP -h 127.0.0.1 -P 13306 -u root shiguangji < sql/quartz.sql
+          mysql --protocol=TCP -h 127.0.0.1 -P 13306 -u root shiguangji < sql/init_business.sql
+
+      - name: 执行后端测试
+        env:
+          MYSQL_URL: jdbc:mysql://127.0.0.1:13306/shiguangji?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8
+          MYSQL_USERNAME: root
+          MYSQL_PASSWORD: '123456'
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: '16379'
+          REDIS_PASSWORD: ''
+          JWT_SECRET: ci-only-jwt-secret-at-least-32-characters
+        run: mvn -B -ntp -pl shiguangji-admin -am test

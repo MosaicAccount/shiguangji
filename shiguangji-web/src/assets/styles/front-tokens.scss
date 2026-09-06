@@ -1,0 +1,174 @@
+/**
+ * 拾光记前台 Design Tokens（设计稿 v3.3「冷雾胶片」）
+ * 亮色 + 暗色双主题：
+ *   亮色 —— 页面冷雾灰 #F1F3F2 / 卡片微冷白 #FBFCFB / 主色灰陶红 #A85F52 / 辅色鼠尾草绿 #5D6F66
+ *   暗色 —— 页面冷炭灰 #171B1A / 卡片 #222826 / 主色提亮灰陶红 #C27A6D / 辅色提亮鼠尾草绿 #7F9B8D
+ * 暗色不是亮色反相：`html.dark` 下重新校准层级与对比度。
+ * 双写：SCSS 变量（$sgj-*，取亮色值，供 ECharts 等 JS 场景） + CSS 自定义属性（var(--sgj-*)）。
+ */
+
+/* ===== 字体 ===== */
+$sgj-font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;   /* 标题/Hero/大数字 */
+$sgj-font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; /* 正文 */
+
+/* ===== 色彩（亮色 · 冷雾胶片）===== */
+$sgj-primary: #A85F52;        /* 主色 · 灰陶红 */
+$sgj-primary-dark: #874A41;   /* hover/强调 · 深灰陶 */
+$sgj-primary-light: #C27A6D;  /* 浅灰陶点缀 */
+$sgj-primary-soft: #EFE0DC;   /* 浅色块 · 灰陶浅 */
+$sgj-moss: #5D6F66;           /* 完成/自然 · 鼠尾草 */
+$sgj-moss-soft: #E1E9E5;      /* 浅色块 */
+$sgj-amber: #B18458;          /* 星标/心愿 · 灰铜 */
+$sgj-amber-soft: #F0E7DC;     /* 浅色块 */
+$sgj-brick: #934C47;          /* 危险/删除 */
+$sgj-bg: #F1F3F2;             /* 页面底 · 冷雾灰 */
+$sgj-bg-deep: #E5E9E7;        /* 色块/页脚 */
+$sgj-bg-card: #FBFCFB;        /* 卡片 */
+$sgj-border: #D5DCD9;         /* 边框/分隔/输入描边 */
+$sgj-border-card: #E6EBE9;    /* 卡片描边 */
+$sgj-cover: #DCE2DF;          /* 封面占位中性色 */
+$sgj-text: #262B2A;           /* 主文字 · 炭墨 */
+$sgj-text-2: #525B58;         /* 次级文字 */
+$sgj-text-3: #7D8783;         /* 弱化文字/辅助 */
+$sgj-text-4: #A4ADA9;         /* 占位/时间戳/页脚 */
+$sgj-success: #5D6F66;        /* 已完成/成功 */
+$sgj-warning: #B18458;        /* 心愿/待完成/星标 */
+$sgj-danger: #934C47;         /* 删除/危险 */
+$sgj-link: #A85F52;           /* 链接（陶土，非蓝） */
+
+/* ===== 色彩（暗色 · 冷炭灰）===== */
+$sgj-dark-primary: #C27A6D;
+$sgj-dark-primary-deep: #D4968A;
+$sgj-dark-primary-soft: #3D2D2A;
+$sgj-dark-moss: #7F9B8D;
+$sgj-dark-moss-soft: #293833;
+$sgj-dark-amber: #C69A67;
+$sgj-dark-amber-soft: #3C3329;
+$sgj-dark-brick: #D67870;
+$sgj-dark-bg: #171B1A;
+$sgj-dark-bg-deep: #1C2220;
+$sgj-dark-bg-card: #222826;
+$sgj-dark-border: #39423E;
+$sgj-dark-cover: #303835;
+$sgj-dark-text: #EEF2F0;
+$sgj-dark-text-2: #C8D0CC;
+$sgj-dark-text-3: #96A09B;
+$sgj-dark-text-4: #6E7974;
+
+/* ===== 字体尺寸 ===== */
+$sgj-font-xs: 12px;           /* 时间戳/元信息 */
+$sgj-font-sm: 13px;           /* 辅助文字/短评/卡片 meta */
+$sgj-font-base: 14px;         /* 正文 */
+$sgj-font-md: 16px;           /* 卡片标题/列表项 */
+$sgj-font-lg: 18px;           /* 区块标题（后台） */
+$sgj-font-xl: 22px;           /* 移动端页面标题 */
+$sgj-font-2xl: 26px;          /* 页面 h1 */
+$sgj-font-display: 44px;      /* hero 标题（桌面） */
+
+/* ===== 圆角 ===== */
+$sgj-radius-sm: 6px;
+$sgj-radius-md: 10px;         /* 输入框 */
+$sgj-radius-lg: 16px;         /* 卡片 */
+$sgj-radius-xl: 20px;         /* 大区块 */
+$sgj-radius-pill: 999px;      /* 胶囊：导航/圆按钮/标签 */
+
+/* ===== 阴影（冷灰 rgba 档，不偏暖）===== */
+$sgj-shadow-sm: 0 1px 3px rgba(23, 27, 26, 0.05);
+$sgj-shadow-card: 0 4px 16px rgba(23, 27, 26, 0.05);
+$sgj-shadow-hover: 0 8px 24px rgba(23, 27, 26, 0.1);
+$sgj-shadow-hero: 0 8px 30px rgba(23, 27, 26, 0.06);
+
+/* ===== 间距（4px 基准）===== */
+$sgj-space-1: 4px;
+$sgj-space-2: 8px;
+$sgj-space-3: 12px;
+$sgj-space-4: 16px;
+$sgj-space-5: 20px;
+$sgj-space-6: 24px;
+$sgj-space-8: 32px;
+$sgj-space-10: 40px;
+
+/* ===== 栅格 ===== */
+$sgj-content-width: 1200px;   /* 前台内容宽度 */
+
+/* ===== CSS 自定义属性（亮色默认 + html.dark 暗色覆盖）===== */
+:root {
+  --sgj-font-serif: #{$sgj-font-serif};
+  --sgj-font-sans: #{$sgj-font-sans};
+
+  --sgj-primary: #{$sgj-primary};
+  --sgj-primary-dark: #{$sgj-primary-dark};
+  --sgj-primary-light: #{$sgj-primary-light};
+  --sgj-primary-soft: #{$sgj-primary-soft};
+  --sgj-moss: #{$sgj-moss};
+  --sgj-moss-soft: #{$sgj-moss-soft};
+  --sgj-amber: #{$sgj-amber};
+  --sgj-amber-soft: #{$sgj-amber-soft};
+  --sgj-brick: #{$sgj-brick};
+  --sgj-bg: #{$sgj-bg};
+  --sgj-bg-deep: #{$sgj-bg-deep};
+  --sgj-bg-card: #{$sgj-bg-card};
+  --sgj-border: #{$sgj-border};
+  --sgj-border-card: #{$sgj-border-card};
+  --sgj-cover: #{$sgj-cover};
+  --sgj-text: #{$sgj-text};
+  --sgj-text-2: #{$sgj-text-2};
+  --sgj-text-3: #{$sgj-text-3};
+  --sgj-text-4: #{$sgj-text-4};
+  --sgj-success: #{$sgj-success};
+  --sgj-warning: #{$sgj-warning};
+  --sgj-danger: #{$sgj-danger};
+  --sgj-link: #{$sgj-link};
+
+  --sgj-font-xs: #{$sgj-font-xs};
+  --sgj-font-sm: #{$sgj-font-sm};
+  --sgj-font-base: #{$sgj-font-base};
+  --sgj-font-md: #{$sgj-font-md};
+  --sgj-font-lg: #{$sgj-font-lg};
+  --sgj-font-xl: #{$sgj-font-xl};
+  --sgj-font-2xl: #{$sgj-font-2xl};
+  --sgj-font-display: #{$sgj-font-display};
+
+  --sgj-radius-sm: #{$sgj-radius-sm};
+  --sgj-radius-md: #{$sgj-radius-md};
+  --sgj-radius-lg: #{$sgj-radius-lg};
+  --sgj-radius-xl: #{$sgj-radius-xl};
+  --sgj-radius-pill: #{$sgj-radius-pill};
+
+  --sgj-shadow-sm: #{$sgj-shadow-sm};
+  --sgj-shadow-card: #{$sgj-shadow-card};
+  --sgj-shadow-hover: #{$sgj-shadow-hover};
+  --sgj-shadow-hero: #{$sgj-shadow-hero};
+}
+
+/* 暗色主题：组件色随 html.dark 重校准（不反相） */
+html.dark {
+  --sgj-primary: #{$sgj-dark-primary};
+  --sgj-primary-dark: #{$sgj-dark-primary-deep};
+  --sgj-primary-light: #{$sgj-dark-primary-deep};
+  --sgj-primary-soft: #{$sgj-dark-primary-soft};
+  --sgj-moss: #{$sgj-dark-moss};
+  --sgj-moss-soft: #{$sgj-dark-moss-soft};
+  --sgj-amber: #{$sgj-dark-amber};
+  --sgj-amber-soft: #{$sgj-dark-amber-soft};
+  --sgj-brick: #{$sgj-dark-brick};
+  --sgj-bg: #{$sgj-dark-bg};
+  --sgj-bg-deep: #{$sgj-dark-bg-deep};
+  --sgj-bg-card: #{$sgj-dark-bg-card};
+  --sgj-border: #{$sgj-dark-border};
+  --sgj-border-card: #{$sgj-dark-border};
+  --sgj-cover: #{$sgj-dark-cover};
+  --sgj-text: #{$sgj-dark-text};
+  --sgj-text-2: #{$sgj-dark-text-2};
+  --sgj-text-3: #{$sgj-dark-text-3};
+  --sgj-text-4: #{$sgj-dark-text-4};
+  --sgj-success: #{$sgj-dark-moss};
+  --sgj-warning: #{$sgj-dark-amber};
+  --sgj-danger: #{$sgj-dark-brick};
+  --sgj-link: #{$sgj-dark-primary};
+
+  --sgj-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --sgj-shadow-card: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --sgj-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --sgj-shadow-hero: 0 8px 30px rgba(0, 0, 0, 0.35);
+}

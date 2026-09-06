@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguangji.business.mapper.SgjItemMapper">
+
+    <resultMap type="SgjItem" id="SgjItemResult">
+        <result property="itemId"          column="item_id"          />
+        <result property="itemType"        column="item_type"        />
+        <result property="title"           column="title"            />
+        <result property="status"          column="status"           />
+        <result property="rating"          column="rating"           />
+        <result property="comment"         column="comment"          />
+        <result property="tags"            column="tags"             />
+        <result property="coverUrl"        column="cover_url"        />
+        <result property="startDate"       column="start_date"       />
+        <result property="finishDate"      column="finish_date"      />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateBy"        column="update_by"        />
+        <result property="updateTime"      column="update_time"      />
+        <result property="remark"          column="remark"           />
+
+        <result property="director"        column="director"         />
+        <result property="actors"          column="actors"           />
+        <result property="genre"           column="genre"            />
+        <result property="region"          column="region"           />
+        <result property="language"        column="language"         />
+        <result property="releaseYear"     column="release_year"     />
+        <result property="durationMinutes" column="duration_minutes" />
+        <result property="imdbId"          column="imdb_id"          />
+        <result property="doubanId"        column="douban_id"        />
+        <result property="startYear"       column="start_year"       />
+        <result property="endYear"         column="end_year"         />
+        <result property="seasonCount"     column="season_count"     />
+        <result property="episodeCount"    column="episode_count"    />
+        <result property="author"          column="author"           />
+        <result property="publisher"       column="publisher"        />
+        <result property="publishDate"     column="publish_date"     />
+        <result property="isbn"            column="isbn"             />
+        <result property="pages"           column="pages"            />
+        <result property="address"         column="address"          />
+        <result property="city"            column="city"             />
+        <result property="province"        column="province"         />
+        <result property="country"         column="country"          />
+        <result property="latitude"        column="latitude"         />
+        <result property="longitude"       column="longitude"        />
+        <result property="bestSeason"      column="best_season"      />
+        <result property="placeCategory"   column="place_category"   />
+    </resultMap>
+
+    <sql id="selectSgjItemVo">
+        select
+            i.item_id,
+            i.item_type,
+            i.title,
+            i.status,
+            i.rating,
+            i.comment,
+            i.tags,
+            i.cover_url,
+            i.start_date,
+            i.finish_date,
+            i.del_flag,
+            i.create_by,
+            i.create_time,
+            i.update_by,
+            i.update_time,
+            i.remark,
+            coalesce(m.director, t.director) as director,
+            coalesce(m.actors, t.actors) as actors,
+            coalesce(m.genre, t.genre, b.genre) as genre,
+            coalesce(m.region, t.region) as region,
+            coalesce(m.language, t.language) as language,
+            m.release_year as release_year,
+            m.duration_minutes as duration_minutes,
+            coalesce(m.imdb_id, t.imdb_id) as imdb_id,
+            coalesce(m.douban_id, t.douban_id) as douban_id,
+            t.start_year as start_year,
+            t.end_year as end_year,
+            t.season_count as season_count,
+            t.episode_count as episode_count,
+            b.author as author,
+            b.publisher as publisher,
+            b.publish_date as publish_date,
+            b.isbn as isbn,
+            b.pages as pages,
+            p.address as address,
+            p.city as city,
+            p.province as province,
+            p.country as country,
+            p.latitude as latitude,
+            p.longitude as longitude,
+            p.best_season as best_season,
+            p.place_category as place_category
+        from sgj_item i
+        left join sgj_item_movie m on m.item_id = i.item_id
+        left join sgj_item_tv t on t.item_id = i.item_id
+        left join sgj_item_book b on b.item_id = i.item_id
+        left join sgj_item_place p on p.item_id = i.item_id
+    </sql>
+
+    <select id="selectSgjItemById" parameterType="Long" resultMap="SgjItemResult">
+        <include refid="selectSgjItemVo"/>
+        where i.item_id = #{itemId} and i.del_flag = '0'
+    </select>
+
+    <select id="selectSgjItemList" parameterType="SgjItem" resultMap="SgjItemResult">
+        <include refid="selectSgjItemVo"/>
+        <where>
+            i.del_flag = '0'
+            <if test="createBy != null and createBy != ''">
+                and i.create_by = #{createBy}
+            </if>
+            <if test="itemType != null and itemType != ''">
+                and i.item_type = #{itemType}
+            </if>
+            <if test="title != null and title != ''">
+                and i.title like concat('%', #{title}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                and i.status = #{status}
+            </if>
+            <if test="tags != null and tags != ''">
+                and i.tags like concat('%', #{tags}, '%')
+            </if>
+        </where>
+        order by i.update_time desc, i.item_id desc
+    </select>
+
+    <insert id="insertSgjItem" parameterType="SgjItem" useGeneratedKeys="true" keyProperty="itemId">
+        insert into sgj_item
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            item_type,
+            title,
+            <if test="status != null and status != ''">status,</if>
+            <if test="rating != null">rating,</if>
+            <if test="comment != null">comment,</if>
+            <if test="tags != null and tags != ''">tags,</if>
+            <if test="coverUrl != null and coverUrl != ''">cover_url,</if>
+            <if test="startDate != null">start_date,</if>
+            <if test="finishDate != null">finish_date,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{itemType},
+            #{title},
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="rating != null">#{rating},</if>
+            <if test="comment != null">#{comment},</if>
+            <if test="tags != null and tags != ''">#{tags},</if>
+            <if test="coverUrl != null and coverUrl != ''">#{coverUrl},</if>
+            <if test="startDate != null">#{startDate},</if>
+            <if test="finishDate != null">#{finishDate},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateSgjItem" parameterType="SgjItem">
+        update sgj_item
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="rating != null">rating = #{rating},</if>
+            <if test="comment != null">comment = #{comment},</if>
+            <if test="tags != null">tags = #{tags},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="startDate != null">start_date = #{startDate},</if>
+            <if test="finishDate != null">finish_date = #{finishDate},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate(),
+        </set>
+        where item_id = #{itemId} and del_flag = '0'
+    </update>
+
+    <insert id="insertSgjItemExt" parameterType="SgjItem">
+        <choose>
+            <when test="itemType == 'MOVIE'">
+                insert into sgj_item_movie (
+                    item_id, director, actors, genre, region, language,
+                    release_year, duration_minutes, imdb_id, douban_id
+                ) values (
+                    #{itemId}, #{director}, #{actors}, #{genre}, #{region}, #{language},
+                    #{releaseYear}, #{durationMinutes}, #{imdbId}, #{doubanId}
+                )
+            </when>
+            <when test="itemType == 'TV'">
+                insert into sgj_item_tv (
+                    item_id, director, actors, genre, region, language,
+                    start_year, end_year, season_count, episode_count, imdb_id, douban_id
+                ) values (
+                    #{itemId}, #{director}, #{actors}, #{genre}, #{region}, #{language},
+                    #{startYear}, #{endYear}, #{seasonCount}, #{episodeCount}, #{imdbId}, #{doubanId}
+                )
+            </when>
+            <when test="itemType == 'BOOK'">
+                insert into sgj_item_book (
+                    item_id, author, publisher, publish_date, isbn, pages, genre
+                ) values (
+                    #{itemId}, #{author}, #{publisher}, #{publishDate}, #{isbn}, #{pages}, #{genre}
+                )
+            </when>
+            <when test="itemType == 'PLACE'">
+                insert into sgj_item_place (
+                    item_id, address, city, province, country,
+                    latitude, longitude, best_season, place_category
+                ) values (
+                    #{itemId}, #{address}, #{city}, #{province}, #{country},
+                    #{latitude}, #{longitude}, #{bestSeason}, #{placeCategory}
+                )
+            </when>
+        </choose>
+    </insert>
+
+    <update id="updateSgjItemExt" parameterType="SgjItem">
+        <choose>
+            <when test="itemType == 'MOVIE'">
+                update sgj_item_movie
+                <set>
+                    item_id = item_id,
+                    <if test="director != null">director = #{director},</if>
+                    <if test="actors != null">actors = #{actors},</if>
+                    <if test="genre != null">genre = #{genre},</if>
+                    <if test="region != null">region = #{region},</if>
+                    <if test="language != null">language = #{language},</if>
+                    <if test="releaseYear != null">release_year = #{releaseYear},</if>
+                    <if test="durationMinutes != null">duration_minutes = #{durationMinutes},</if>
+                    <if test="imdbId != null">imdb_id = #{imdbId},</if>
+                    <if test="doubanId != null">douban_id = #{doubanId},</if>
+                </set>
+                where item_id = #{itemId}
+            </when>
+            <when test="itemType == 'TV'">
+                update sgj_item_tv
+                <set>
+                    item_id = item_id,
+                    <if test="director != null">director = #{director},</if>
+                    <if test="actors != null">actors = #{actors},</if>
+                    <if test="genre != null">genre = #{genre},</if>
+                    <if test="region != null">region = #{region},</if>
+                    <if test="language != null">language = #{language},</if>
+                    <if test="startYear != null">start_year = #{startYear},</if>
+                    <if test="endYear != null">end_year = #{endYear},</if>
+                    <if test="seasonCount != null">season_count = #{seasonCount},</if>
+                    <if test="episodeCount != null">episode_count = #{episodeCount},</if>
+                    <if test="imdbId != null">imdb_id = #{imdbId},</if>
+                    <if test="doubanId != null">douban_id = #{doubanId},</if>
+                </set>
+                where item_id = #{itemId}
+            </when>
+            <when test="itemType == 'BOOK'">
+                update sgj_item_book
+                <set>
+                    item_id = item_id,
+                    <if test="author != null">author = #{author},</if>
+                    <if test="publisher != null">publisher = #{publisher},</if>
+                    <if test="publishDate != null">publish_date = #{publishDate},</if>
+                    <if test="isbn != null">isbn = #{isbn},</if>
+                    <if test="pages != null">pages = #{pages},</if>
+                    <if test="genre != null">genre = #{genre},</if>
+                </set>
+                where item_id = #{itemId}
+            </when>
+            <when test="itemType == 'PLACE'">
+                update sgj_item_place
+                <set>
+                    item_id = item_id,
+                    <if test="address != null">address = #{address},</if>
+                    <if test="city != null">city = #{city},</if>
+                    <if test="province != null">province = #{province},</if>
+                    <if test="country != null">country = #{country},</if>
+                    <if test="latitude != null">latitude = #{latitude},</if>
+                    <if test="longitude != null">longitude = #{longitude},</if>
+                    <if test="bestSeason != null">best_season = #{bestSeason},</if>
+                    <if test="placeCategory != null">place_category = #{placeCategory},</if>
+                </set>
+                where item_id = #{itemId}
+            </when>
+        </choose>
+    </update>
+
+    <select id="selectRecycleItemList" parameterType="SgjItem" resultMap="SgjItemResult">
+        <include refid="selectSgjItemVo"/>
+        <where>
+            i.del_flag = '2'
+            <if test="itemId != null">
+                and i.item_id = #{itemId}
+            </if>
+            <if test="createBy != null and createBy != ''">
+                and i.create_by = #{createBy}
+            </if>
+            <if test="itemType != null and itemType != ''">
+                and i.item_type = #{itemType}
+            </if>
+            <if test="title != null and title != ''">
+                and i.title like concat('%', #{title}, '%')
+            </if>
+        </where>
+        order by i.update_time desc, i.item_id desc
+    </select>
+
+    <!-- 软删除：标记 del_flag = '2' -->
+    <update id="deleteSgjItemById" parameterType="Long">
+        update sgj_item set del_flag = '2', update_time = sysdate()
+        where item_id = #{itemId} and del_flag = '0'
+    </update>
+
+    <update id="deleteSgjItemByIds" parameterType="Long">
+        update sgj_item set del_flag = '2', update_time = sysdate()
+        where item_id in
+        <foreach item="itemId" collection="array" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+        and del_flag = '0'
+    </update>
+
+    <!-- 恢复回收站条目 -->
+    <update id="restoreSgjItemByIds" parameterType="Long">
+        update sgj_item set del_flag = '0', update_time = sysdate()
+        where item_id in
+        <foreach item="itemId" collection="array" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+        and del_flag = '2'
+    </update>
+
+    <!-- 彻底删除回收站条目（物理删除，扩展表由外键级联删除） -->
+    <delete id="purgeSgjItemByIds" parameterType="Long">
+        delete from sgj_item where item_id in
+        <foreach item="itemId" collection="array" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+        and del_flag = '2'
+    </delete>
+
+</mapper>
