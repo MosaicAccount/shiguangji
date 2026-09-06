@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.shiguangji.common.annotation.Log;
-import com.shiguangji.common.config.ShiGuangJiConfig;
+import com.shiguangji.common.constant.Constants;
 import com.shiguangji.common.core.controller.BaseController;
 import com.shiguangji.common.core.domain.AjaxResult;
 import com.shiguangji.common.core.domain.entity.SysUser;
@@ -20,10 +20,10 @@ import com.shiguangji.common.enums.BusinessType;
 import com.shiguangji.common.utils.DateUtils;
 import com.shiguangji.common.utils.SecurityUtils;
 import com.shiguangji.common.utils.StringUtils;
-import com.shiguangji.common.utils.file.FileUploadUtils;
-import com.shiguangji.common.utils.file.FileUtils;
 import com.shiguangji.common.utils.file.MimeTypeUtils;
-import com.shiguangji.framework.web.service.TokenService;
+import com.shiguangji.file.domain.SysFile;
+import com.shiguangji.file.service.ISysFileService;
+import com.shiguangji.file.storage.FileStorageService;import com.shiguangji.framework.web.service.TokenService;
 import com.shiguangji.system.service.ISysUserService;
 
 /**
@@ -40,6 +40,12 @@ public class SysProfileController extends BaseController
 
     @Autowired
     private TokenService tokenService;
+
+    @Autowired
+    private FileStorageService fileStorageService;
+
+    @Autowired
+    private ISysFileService sysFileService;
 
     /**
      * 个人信息
@@ -127,13 +133,15 @@ public class SysProfileController extends BaseController
         if (!file.isEmpty())
         {
             LoginUser loginUser = getLoginUser();
-            String avatar = FileUploadUtils.upload(ShiGuangJiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
+            String avatar = fileStorageService.upload("avatar", file, MimeTypeUtils.IMAGE_EXTENSION, true);
+            recordSysFile(file, avatar, loginUser.getUsername());
             if (userService.updateUserAvatar(loginUser.getUserId(), avatar))
             {
                 String oldAvatar = loginUser.getUser().getAvatar();
-                if (StringUtils.isNotEmpty(oldAvatar))
+                if (StringUtils.isNotEmpty(oldAvatar) && oldAvatar.startsWith(Constants.RESOURCE_PREFIX + "/"))
                 {
-                    FileUtils.deleteFile(ShiGuangJiConfig.getProfile() + FileUtils.stripPrefix(oldAvatar));
+                    // 按当前存储策略删除旧头像（/profile 后的对象 key）
+                    fileStorageService.delete(oldAvatar.substring(Constants.RESOURCE_PREFIX.length() + 1));
                 }
                 AjaxResult ajax = AjaxResult.success();
                 ajax.put("imgUrl", avatar);
@@ -144,5 +152,20 @@ public class SysProfileController extends BaseController
             }
         }
         return error("上传图片异常，请联系管理员");
+    }
+
+    /**
+     * 登记文件台账（登记失败不影响上传结果）
+     */
+    private void recordSysFile(MultipartFile file, String storageKey, String username)
+    {
+        SysFile sysFile = new SysFile();
+        sysFile.setFileName(file.getOriginalFilename());
+        sysFile.setStorageKey(storageKey);
+        sysFile.setStorageType(fileStorageService.type());
+        sysFile.setFileSize(file.getSize());
+        sysFile.setContentType(file.getContentType());
+        sysFile.setCreateBy(username);
+        sysFileService.recordFile(sysFile);
     }
 }
