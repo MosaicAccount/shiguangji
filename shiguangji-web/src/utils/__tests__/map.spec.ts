@@ -60,3 +60,80 @@ describe('reverseGeocode', () => {
     await expect(reverseGeocode(30, 110)).rejects.toThrow()
   })
 })
+
+describe('isInChina 中国轮廓点内判定', () => {
+  const squareGeo = {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[100, 30], [101, 30], [101, 31], [100, 31], [100, 30]]] } }
+    ]
+  }
+
+  async function loadModule(geo: unknown) {
+    vi.resetModules()
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => geo })))
+    const mod = await import('../map')
+    await mod.loadChinaPolygons()
+    return mod
+  }
+
+  afterEach(() => {
+    vi.resetModules()
+    vi.unstubAllGlobals()
+  })
+
+  it('Polygon 内外判定', async () => {
+    const mod = await loadModule(squareGeo)
+    expect(mod.isInChina(100.5, 30.5)).toBe(true)
+    expect(mod.isInChina(100.99, 30.99)).toBe(true)
+    expect(mod.isInChina(100.5, 31.5)).toBe(false)
+    expect(mod.isInChina(102, 30.5)).toBe(false)
+  })
+
+  it('MultiPolygon 任一块命中即国内', async () => {
+    const geo = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: [
+          [[[100, 30], [101, 30], [101, 31], [100, 31], [100, 30]]],
+          [[[102, 30], [103, 30], [103, 31], [102, 31], [102, 30]]]
+        ] } }
+      ]
+    }
+    const mod = await loadModule(geo)
+    expect(mod.isInChina(100.5, 30.5)).toBe(true)
+    expect(mod.isInChina(102.5, 30.5)).toBe(true)
+    expect(mod.isInChina(101.5, 30.5)).toBe(false)
+  })
+
+  it('内环（洞）内为国外', async () => {
+    const geo = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', geometry: { type: 'Polygon', coordinates: [
+          [[100, 32], [104, 32], [104, 34], [100, 34], [100, 32]],
+          [[101.5, 32.5], [102.5, 32.5], [102.5, 33.5], [101.5, 33.5], [101.5, 32.5]]
+        ] } }
+      ]
+    }
+    const mod = await loadModule(geo)
+    expect(mod.isInChina(100.5, 32.5)).toBe(true)
+    expect(mod.isInChina(102, 33)).toBe(false)
+  })
+
+  it('加载失败后放行不阻塞选点', async () => {
+    vi.resetModules()
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })))
+    const mod = await import('../map')
+    await mod.loadChinaPolygons().catch(() => {})
+    expect(mod.isInChina(120, 40)).toBe(true)
+  })
+
+  it('空 GeoJSON 不缓存，保持放行', async () => {
+    vi.resetModules()
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ type: 'FeatureCollection', features: [] }) })))
+    const mod = await import('../map')
+    await mod.loadChinaPolygons().catch(() => {})
+    expect(mod.isInChina(120, 40)).toBe(true)
+  })
+})

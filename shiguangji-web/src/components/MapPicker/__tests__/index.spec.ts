@@ -103,6 +103,28 @@ function stubGeolocation(impl: (success: (p: { coords: { latitude: number; longi
   })
 }
 
+/** 假的中国轮廓（105~125E, 25~45N，覆盖北京），可附带搜索结果按 URL 路由 fetch */
+function stubChinaPolygonFetch(searchResults?: unknown[]) {
+  vi.stubGlobal('fetch', vi.fn(async (url: string | URL) => {
+    const u = String(url)
+    if (u.includes('/map/china.json')) {
+      return {
+        ok: true,
+        json: async () => ({
+          type: 'FeatureCollection',
+          features: [
+            { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: [[[[105, 25], [125, 25], [125, 45], [105, 45], [105, 25]]]] } }
+          ]
+        })
+      }
+    }
+    if (searchResults && u.includes('/search')) {
+      return { ok: true, json: async () => searchResults }
+    }
+    throw new Error('unexpected fetch: ' + u)
+  }))
+}
+
 describe('MapPicker', () => {
   it('地图限定中国：minZoom=6（省级）、maxBounds 为中国范围且不可拖出', async () => {
     const wrapper = await openPicker()
@@ -177,6 +199,18 @@ describe('MapPicker', () => {
     await flushPromises()
     expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
     expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
+    wrapper.unmount()
+  })
+
+  it('点击中国轮廓外（边界矩形内）不选点并提示', async () => {
+    stubChinaPolygonFetch()
+    const wrapper = await openPicker()
+    await flushPromises()
+    // 视角矩形范围内、但中国轮廓外（境外）
+    leafletMock.state.mapHandlers.click({ latlng: { lat: 20, lng: 110 } })
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('已选')
+    expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(true)
     wrapper.unmount()
   })
 
@@ -264,13 +298,9 @@ describe('MapPicker', () => {
   })
 
   it('搜索景点命中结果列表，选择后打点并定位', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => [{ display_name: '故宫博物院, 北京', lat: '39.91634', lon: '116.39716' }]
-      })
-    )
+    stubChinaPolygonFetch([
+      { display_name: '故宫博物院, 北京', lat: '39.91634', lon: '116.39716' }
+    ])
     const wrapper = await openPicker()
     await wrapper.find('input').setValue('故宫')
     const searchButton = wrapper.findAll('button').find(b => b.text().includes('搜索'))!
@@ -291,15 +321,25 @@ describe('MapPicker', () => {
   })
 
   it('搜索无结果时提示换关键词', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => [] })
-    )
+    stubChinaPolygonFetch([])
     const wrapper = await openPicker()
     await wrapper.find('input').setValue('不存在的地方xyz')
     await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('未找到相关地点')
+    wrapper.unmount()
+  })
+
+  it('搜索结果全部在中国轮廓外时提示无中国范围结果', async () => {
+    // 乌兰乌德（俄罗斯）：viewbox 矩形内、中国轮廓外
+    stubChinaPolygonFetch([
+      { display_name: 'Ulan-Ude, Russia', lat: '51.83', lon: '107.58' }
+    ])
+    const wrapper = await openPicker()
+    await wrapper.find('input').setValue('乌兰乌德')
+    await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('未找到中国范围内的地点')
     wrapper.unmount()
   })
 

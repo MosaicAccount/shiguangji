@@ -59,3 +59,45 @@ export async function loadChinaMap(): Promise<boolean> {
     return false
   }
 }
+
+/** 中国轮廓多边形缓存（GCJ-02，来自 public/map/china.json，与高德瓦片同坐标系） */
+let chinaPolygons: number[][][][] | null = null
+
+/** 加载中国轮廓多边形用于选点范围判定，失败由调用方降级放行 */
+export async function loadChinaPolygons(): Promise<void> {
+  if (chinaPolygons) return
+  const res = await fetch('/map/china.json')
+  if (!res.ok) throw new Error(`load china.json failed: ${res.status}`)
+  const geo = await res.json()
+  const polygons: number[][][][] = []
+  for (const feature of geo.features || []) {
+    const g = feature.geometry
+    if (!g) continue
+    if (g.type === 'Polygon') polygons.push(g.coordinates)
+    else if (g.type === 'MultiPolygon') polygons.push(...g.coordinates)
+  }
+  if (!polygons.length) throw new Error('empty china geojson')
+  chinaPolygons = polygons
+}
+
+/** 射线法：点是否在环内 */
+function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+/** 判定坐标（GCJ-02 显示空间）是否在中国轮廓内；轮廓未加载成功时放行（降级不阻塞选点） */
+export function isInChina(lng: number, lat: number): boolean {
+  if (!chinaPolygons) return true
+  return chinaPolygons.some(polygon => {
+    if (!pointInRing(lng, lat, polygon[0])) return false
+    return !polygon.slice(1).some(hole => pointInRing(lng, lat, hole))
+  })
+}

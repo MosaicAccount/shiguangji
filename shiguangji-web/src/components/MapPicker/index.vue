@@ -39,8 +39,9 @@
 <script setup lang="ts" name="MapPicker">
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { ElMessage } from 'element-plus'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
-import { reverseGeocode } from '@/utils/map'
+import { isInChina, loadChinaPolygons, reverseGeocode } from '@/utils/map'
 import type { PickedPlace } from '@/utils/map'
 
 const props = defineProps<{
@@ -120,6 +121,8 @@ async function initMap(): Promise<void> {
     lat.value != null && lng.value != null ? wgs84ToGcj02(lat.value, lng.value) : wgs84ToGcj02(...DEFAULT_CENTER),
     13
   )
+  // 中国轮廓用于选点是否在国内的判定；加载失败降级放行，不阻塞选点
+  await loadChinaPolygons().catch(() => {})
   L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: '1234',
     maxZoom: 19,
@@ -204,6 +207,11 @@ function renderMarker(): void {
 }
 
 function setPoint(latitude: number, longitude: number): void {
+  // 中国轮廓判定（GCJ-02 显示空间），界外（含矩形边界四角的外国领土）不允许选
+  if (!isInChina(longitude, latitude)) {
+    ElMessage.warning('只能选择中国范围内的地点')
+    return
+  }
   // 地图点击坐标是高德瓦片的 GCJ-02，转回 WGS-84 存表单，精度统一 6 位
   const [wLat, wLng] = gcj02ToWgs84(latitude, longitude)
   lat.value = Number(wLat.toFixed(6))
@@ -222,9 +230,17 @@ async function search(): Promise<void> {
     )
     if (!res.ok) throw new Error(String(res.status))
     const rows = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>
-    searchResults.value = rows.map(r => ({ label: r.display_name, lat: Number(r.lat), lng: Number(r.lon) }))
+    // 搜索结果同样限定中国轮廓内（viewbox 是矩形，四角仍会混入外国结果）
+    searchResults.value = rows
+      .map(r => ({ label: r.display_name, lat: Number(r.lat), lng: Number(r.lon) }))
+      .filter(r => {
+        const [gLat, gLng] = wgs84ToGcj02(r.lat, r.lng)
+        return isInChina(gLng, gLat)
+      })
     if (!searchResults.value.length) {
-      searchTip.value = '未找到相关地点，换个关键词试试'
+      searchTip.value = rows.length
+        ? '未找到中国范围内的地点，换个关键词试试'
+        : '未找到相关地点，换个关键词试试'
     }
   } catch (e) {
     searchResults.value = []
