@@ -133,11 +133,28 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('用户允许定位时视角移动到当前位置', async () => {
+  it('用户允许定位时视角移动到当前位置并显示蓝点标记', async () => {
     stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
     const wrapper = await openPicker()
     await flushPromises()
     expect(leafletMock.map.setView).toHaveBeenCalledWith([31.2304, 121.4737], 13)
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith([31.2304, 121.4737], expect.anything())
+    wrapper.unmount()
+  })
+
+  it('用户拖动地图后定位仅显示蓝点标记，不抢跳视角', async () => {
+    // 定位慢：10ms 后才返回，期间用户先拖动地图
+    stubGeolocation((success) => {
+      setTimeout(() => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }), 10)
+    })
+    const wrapper = mountPicker()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    leafletMock.state.mapHandlers.dragstart?.({})
+    await new Promise(resolve => setTimeout(resolve, 40))
+    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith([31.2304, 121.4737], expect.anything())
     wrapper.unmount()
   })
 

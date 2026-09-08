@@ -58,6 +58,9 @@ const lat = ref<number | null>(null)
 const lng = ref<number | null>(null)
 let map: L.Map | null = null
 let marker: L.Marker | null = null
+let locateMarker: L.Marker | null = null
+/** 用户（或搜索）已操作过地图时，定位结果不再抢跳视角 */
+let userMoved = false
 
 /** 地点搜索（Nominatim，景点/城市均可） */
 interface SearchResult {
@@ -100,6 +103,7 @@ async function initMap(): Promise<void> {
   await nextTick()
   if (!mapRef.value) return
   destroyMap()
+  userMoved = false
   // 最小层级=省级（6 级），配合硬边界基本看不到外国；有已选坐标时定位街道级
   map = L.map(mapRef.value, {
     minZoom: 6,
@@ -113,6 +117,8 @@ async function initMap(): Promise<void> {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(map)
   map.on('click', (e: L.LeafletMouseEvent) => setPoint(e.latlng.lat, e.latlng.lng))
+  map.on('dragstart', onUserMove)
+  map.on('zoomstart', onUserMove)
   if (lat.value != null && lng.value != null) {
     renderMarker()
   } else {
@@ -120,15 +126,25 @@ async function initMap(): Promise<void> {
   }
 }
 
-/** 尝试定位到用户当前位置；拒绝授权、失败或定位在国外时保持默认视角 */
+/** 用户拖动/缩放过地图后，定位结果不再抢跳视角 */
+function onUserMove(): void {
+  userMoved = true
+}
+
+/** 尝试定位到用户当前位置；拒绝授权、失败或定位在国外时不处理 */
 function locateUser(): void {
   if (!('geolocation' in navigator)) return
   navigator.geolocation.getCurrentPosition(
     position => {
       const { latitude, longitude } = position.coords
-      // 用户已手动选点则不打扰视角；定位点在中国范围外也不采用
-      if (lat.value == null && lng.value == null && CHINA_BOUNDS.contains([latitude, longitude])) {
-        map?.setView([latitude, longitude], 13)
+      // 用户已手动选点则不打扰；定位点在中国范围外也不采用
+      if (lat.value != null || lng.value != null || !map || !CHINA_BOUNDS.contains([latitude, longitude])) {
+        return
+      }
+      showLocateMarker(latitude, longitude)
+      // 视角未被用户操作过才跳转，避免定位慢导致把用户已浏览的位置拽走
+      if (!userMoved) {
+        map.setView([latitude, longitude], 13)
       }
     },
     () => {},
@@ -136,8 +152,26 @@ function locateUser(): void {
   )
 }
 
+/** 当前位置蓝点标记（区别于主题色选点标记），让用户看到定位在哪 */
+function showLocateMarker(latitude: number, longitude: number): void {
+  if (!map) return
+  if (locateMarker) {
+    locateMarker.setLatLng([latitude, longitude])
+    return
+  }
+  locateMarker = L.marker([latitude, longitude], {
+    icon: L.divIcon({
+      className: '',
+      html: '<span style="display:block;width:12px;height:12px;border-radius:50%;background:#1E6FFF;border:2px solid #fff;box-shadow:0 0 0 6px rgba(30,111,255,.2)"></span>',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    })
+  }).addTo(map)
+}
+
 function destroyMap(): void {
   marker = null
+  locateMarker = null
   map?.remove()
   map = null
 }
