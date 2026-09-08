@@ -95,8 +95,14 @@ async function initMap(): Promise<void> {
   await nextTick()
   if (!mapRef.value) return
   destroyMap()
-  // 有已选坐标时定位到街道级，否则给中国全境视角
-  map = L.map(mapRef.value).setView([lat.value ?? 35, lng.value ?? 105], lat.value != null ? 13 : 4)
+  // 选点暂时限定在中国：最小层级=中国全境（3 级起）、不可拖出国界；
+  // 接入世界地图时移除 minZoom/maxBounds 与搜索 viewbox 限定即可
+  const chinaBounds = L.latLngBounds([15, 73], [54, 136])
+  map = L.map(mapRef.value, {
+    minZoom: 3,
+    maxBounds: chinaBounds,
+    maxBoundsViscosity: 1.0
+  }).setView([lat.value ?? 35, lng.value ?? 105], lat.value != null ? 13 : 3)
   // ponytail: OSM 瓦片（WGS-84，与表单存储坐标系一致）；国内访问偏慢是已知瓶颈，
   // 如不可接受可换高德瓦片，但需整体做 GCJ-02 坐标转换
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -145,7 +151,7 @@ async function search(): Promise<void> {
   searchTip.value = ''
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=zh-CN&q=${encodeURIComponent(q)}`
+      `https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=zh-CN&viewbox=73,54,136,15&bounded=1&q=${encodeURIComponent(q)}`
     )
     if (!res.ok) throw new Error(String(res.status))
     const rows = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>

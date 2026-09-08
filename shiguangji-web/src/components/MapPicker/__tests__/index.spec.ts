@@ -29,6 +29,7 @@ const leafletMock = vi.hoisted(() => {
     map,
     marker,
     mapFactory: vi.fn(() => map),
+    latLngBounds: vi.fn((sw, ne) => ({ sw, ne })),
     tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
     markerFactory: vi.fn(() => marker),
     divIcon: vi.fn(opts => opts)
@@ -38,6 +39,7 @@ const leafletMock = vi.hoisted(() => {
 vi.mock('leaflet', () => ({
   default: {
     map: leafletMock.mapFactory,
+    latLngBounds: leafletMock.latLngBounds,
     tileLayer: leafletMock.tileLayer,
     marker: leafletMock.markerFactory,
     divIcon: leafletMock.divIcon
@@ -83,6 +85,19 @@ afterEach(() => {
 })
 
 describe('MapPicker', () => {
+  it('地图限定中国：minZoom=3、maxBounds 为中国范围且不可拖出', async () => {
+    const wrapper = await openPicker()
+    expect(leafletMock.mapFactory).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        minZoom: 3,
+        maxBounds: { sw: [15, 73], ne: [54, 136] },
+        maxBoundsViscosity: 1.0
+      })
+    )
+    wrapper.unmount()
+  })
+
   it('打开时创建 OSM 地图，已有坐标定位到街道级并打点', async () => {
     const wrapper = await openPicker({ latitude: 30.5, longitude: 100.25 })
     expect(leafletMock.mapFactory).toHaveBeenCalled()
@@ -95,9 +110,9 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('无坐标时默认中国视角且不打点', async () => {
+  it('无坐标时默认中国全境视角且不打点', async () => {
     const wrapper = await openPicker()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([35, 105], 4)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([35, 105], 3)
     expect(leafletMock.markerFactory).not.toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('已选')
     wrapper.unmount()
@@ -161,6 +176,9 @@ describe('MapPicker', () => {
     await searchButton.trigger('click')
     await flushPromises()
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('q=%E6%95%85%E5%AE%AB'))
+    // 搜索结果限定在中国范围
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('viewbox=73,54,136,15'))
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('bounded=1'))
     expect(wrapper.text()).toContain('故宫博物院, 北京')
     await wrapper.find('.picker-results li').trigger('click')
     await flushPromises()
