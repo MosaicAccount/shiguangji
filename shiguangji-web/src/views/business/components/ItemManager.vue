@@ -140,6 +140,12 @@
                 :step="field.step || 1"
                 style="width: 100%"
               />
+              <!-- 地点名称带搜索：选中候选自动回填地址/城市/国家与坐标 -->
+              <place-search-input
+                v-else-if="field.type === 'placeTitle'"
+                v-model="form[field.key]"
+                @select="onPlaceSelect"
+              />
               <!-- 经纬度组合控件：手动输入或地图选点自动填入 -->
               <div v-else-if="field.type === 'coord'" class="coord-row">
                 <el-input-number v-model="form.latitude" :min="-90" :max="90" :precision="6" :controls="false" placeholder="纬度" style="width: 130px" />
@@ -184,8 +190,9 @@ import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/
 import { useDict } from '@/utils/dict'
 import ItemCover from '@/components/ItemCover/index.vue'
 import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
-import type { PickedPlace } from '@/utils/map'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 import { parseTime } from '@/utils/sgj'
 
@@ -248,7 +255,7 @@ const statusOptions = computed(() => {
 interface FieldConfig {
   key: string
   label: string
-  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image' | 'tags' | 'coord'
+  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image' | 'tags' | 'coord' | 'placeTitle'
   placeholder?: string
   required?: boolean
   span?: number
@@ -321,7 +328,10 @@ const formFields = computed<FieldConfig[]>(() => {
     ]
   }
 
-  return [...common, ...(typeFields[props.itemType] || [])]
+  // 地点表单的名称字段带搜索：选中候选自动回填地址/城市/国家与坐标
+  const fields = [...common, ...(typeFields[props.itemType] || [])]
+  if (props.itemType !== 'PLACE') return fields
+  return fields.map(f => (f.key === 'title' ? { ...f, type: 'placeTitle' as const } : f))
 })
 
 const rules = computed(() => {
@@ -353,6 +363,16 @@ const { form, queryParams } = toRefs(data)
 
 /** 地图选点弹窗 */
 const coordPickerOpen = ref(false)
+
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult) {
+  form.value.title = place.title
+  form.value.address = place.address
+  form.value.city = place.city
+  form.value.country = place.country
+  form.value.latitude = place.latitude
+  form.value.longitude = place.longitude
+}
 
 /** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
 function onCoordPick(place: PickedPlace) {

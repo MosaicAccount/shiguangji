@@ -110,7 +110,8 @@
     <el-dialog v-model="addOpen" title="添加想去" width="560px" append-to-body>
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="90px">
         <el-form-item label="地点名称" prop="title">
-          <el-input v-model="addForm.title" placeholder="请输入地点名称" maxlength="200" />
+          <!-- 支持名称搜索自动补全，选中直接回填地址/城市/国家与坐标 -->
+          <place-search-input v-model="addForm.title" placeholder="输入名称搜索地点，或直接填写" @select="onPlaceSelect" />
         </el-form-item>
         <el-form-item label="详细地址">
           <el-input v-model="addForm.address" placeholder="详细地址（可选）" maxlength="300" />
@@ -243,10 +244,11 @@ import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
 import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { loadChinaMap } from '@/utils/map'
-import type { PickedPlace } from '@/utils/map'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel } from '@/utils/sgj'
@@ -589,6 +591,16 @@ function openAdd(): void {
 
 function openMapPicker(): void {
   pickerOpen.value = true
+}
+
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult): void {
+  addForm.title = place.title
+  addForm.address = place.address
+  addForm.city = place.city
+  addForm.country = place.country
+  addForm.latitude = place.latitude
+  addForm.longitude = place.longitude
 }
 
 /** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */

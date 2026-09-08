@@ -137,3 +137,53 @@ describe('isInChina 中国轮廓点内判定', () => {
     expect(mod.isInChina(120, 40)).toBe(true)
   })
 })
+
+describe('searchPlaces 名称搜索', () => {
+  const chinaSquare = {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: [[[[105, 25], [125, 25], [125, 45], [105, 45], [105, 25]]]] } }
+    ]
+  }
+
+  function stubFetchWith(rows: unknown[]) {
+    vi.stubGlobal('fetch', vi.fn(async (url: string | URL) => {
+      const u = String(url)
+      if (u.includes('/map/china.json')) {
+        return { ok: true, json: async () => chinaSquare }
+      }
+      if (u.includes('/search')) {
+        return { ok: true, json: async () => rows }
+      }
+      throw new Error('unexpected fetch: ' + u)
+    }))
+  }
+
+  afterEach(() => {
+    vi.resetModules()
+    vi.unstubAllGlobals()
+  })
+
+  it('解析候选地点并过滤中国轮廓外结果', async () => {
+    vi.resetModules()
+    stubFetchWith([
+      { display_name: '故宫博物院, 北京市, 中国', name: '故宫博物院', lat: '39.91634', lon: '116.39716', address: { state: '北京市', city: '北京市', road: '景山前街', country: '中国' } },
+      { display_name: 'Ulan-Ude, Russia', lat: '51.83', lon: '107.58', address: { country: '俄罗斯' } }
+    ])
+    const mod = await import('../map')
+    await mod.loadChinaPolygons()
+    const results = await mod.searchPlaces('故宫')
+    expect(results).toHaveLength(1)
+    expect(results[0].title).toBe('故宫博物院')
+    expect(results[0].latitude).toBe(39.91634)
+    expect(results[0].city).toBe('北京市')
+    expect(results[0].label).toContain('故宫博物院')
+  })
+
+  it('请求失败时抛错', async () => {
+    vi.resetModules()
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })))
+    const mod = await import('../map')
+    await expect(mod.searchPlaces('x')).rejects.toThrow()
+  })
+})

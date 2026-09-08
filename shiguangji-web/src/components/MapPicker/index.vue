@@ -41,8 +41,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { ElMessage } from 'element-plus'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
-import { isInChina, loadChinaPolygons, reverseGeocode } from '@/utils/map'
-import type { PickedPlace } from '@/utils/map'
+import { isInChina, loadChinaPolygons, reverseGeocode, searchPlaces } from '@/utils/map'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 
 const props = defineProps<{
   modelValue: boolean
@@ -69,14 +69,9 @@ let locateMarker: L.Marker | null = null
 let userMoved = false
 
 /** 地点搜索（Nominatim，景点/城市均可） */
-interface SearchResult {
-  label: string
-  lat: number
-  lng: number
-}
 const keyword = ref('')
 const searching = ref(false)
-const searchResults = ref<SearchResult[]>([])
+const searchResults = ref<PlaceResult[]>([])
 const searchTip = ref('')
 
 /** 读取主题 CSS 变量（选点标记跟随亮/暗主题色） */
@@ -233,22 +228,9 @@ async function search(): Promise<void> {
   searching.value = true
   searchTip.value = ''
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=zh-CN&viewbox=73,54,136,15&bounded=1&q=${encodeURIComponent(q)}`
-    )
-    if (!res.ok) throw new Error(String(res.status))
-    const rows = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>
-    // 搜索结果同样限定中国轮廓内（viewbox 是矩形，四角仍会混入外国结果）
-    searchResults.value = rows
-      .map(r => ({ label: r.display_name, lat: Number(r.lat), lng: Number(r.lon) }))
-      .filter(r => {
-        const [gLat, gLng] = wgs84ToGcj02(r.lat, r.lng)
-        return isInChina(gLng, gLat)
-      })
+    searchResults.value = await searchPlaces(q)
     if (!searchResults.value.length) {
-      searchTip.value = rows.length
-        ? '未找到中国范围内的地点，换个关键词试试'
-        : '未找到相关地点，换个关键词试试'
+      searchTip.value = '未找到中国范围内的地点，换个关键词试试'
     }
   } catch (e) {
     searchResults.value = []
@@ -258,11 +240,11 @@ async function search(): Promise<void> {
   }
 }
 
-function chooseResult(result: SearchResult): void {
+function chooseResult(result: PlaceResult): void {
   // Nominatim 结果是 WGS-84，落点/视角转为高德瓦片的 GCJ-02
-  const [gLat, gLng] = wgs84ToGcj02(result.lat, result.lng)
-  lat.value = Number(result.lat.toFixed(6))
-  lng.value = Number(result.lng.toFixed(6))
+  const [gLat, gLng] = wgs84ToGcj02(result.latitude, result.longitude)
+  lat.value = Number(result.latitude.toFixed(6))
+  lng.value = Number(result.longitude.toFixed(6))
   renderMarker()
   map?.flyTo([gLat, gLng], 15)
   searchResults.value = []

@@ -4,7 +4,14 @@
       <el-row>
         <el-col :span="12">
           <el-form-item :label="titleLabel" prop="title">
-            <el-input v-model="form.title" :placeholder="'请输入' + titleLabel" maxlength="200" />
+            <!-- 地点支持名称搜索回填；其他类型普通输入 -->
+            <place-search-input
+              v-if="itemType === 'PLACE'"
+              v-model="form.title"
+              :placeholder="'输入名称搜索地点，或直接填写'"
+              @select="onPlaceSelect"
+            />
+            <el-input v-else v-model="form.title" :placeholder="'请输入' + titleLabel" maxlength="200" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -178,8 +185,9 @@
 <script setup lang="ts" name="ItemEditDialog">
 import { getFrontItem, updateFrontItem } from '@/api/front/item'
 import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
-import type { PickedPlace } from '@/utils/map'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 
 const props = defineProps<{
@@ -207,6 +215,16 @@ const submitting = ref(false)
 
 /** 地图选点弹窗 */
 const pickerOpen = ref(false)
+
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult): void {
+  form.title = place.title
+  form.address = place.address
+  form.city = place.city
+  form.country = place.country
+  form.latitude = place.latitude
+  form.longitude = place.longitude
+}
 
 /** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
 function onCoordPick(place: PickedPlace): void {

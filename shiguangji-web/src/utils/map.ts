@@ -1,4 +1,5 @@
 import * as echarts from 'echarts'
+import { wgs84ToGcj02 } from './coord'
 
 /** 地图选点确认后回填表单的地点信息（除坐标外由逆地理编码解析，可能为空） */
 export interface PickedPlace {
@@ -10,6 +11,34 @@ export interface PickedPlace {
   country?: string
 }
 
+/** 搜索候选地点（表单名称搜索与选点弹窗搜索共用） */
+export interface PlaceResult {
+  /** 下拉展示用完整描述 */
+  label: string
+  latitude: number
+  longitude: number
+  title: string
+  address: string
+  city: string
+  country: string
+}
+
+/** 解析 Nominatim 行（jsonv2）为地点名称/地址/城市/国家 */
+function parsePlace(row: any): { title: string; address: string; city: string; country: string } {
+  const a = row.address || {}
+  // 直辖市等 state 与 city 同名，拼接时去掉连续重复段
+  const address = [a.state || a.province, a.city || a.town || a.village, a.county || a.suburb, a.road, a.house_number]
+    .filter(Boolean)
+    .filter((part: string, i: number, arr: string[]) => part !== arr[i - 1])
+    .join('')
+  return {
+    title: row.name || [a.road, a.house_number].filter(Boolean).join('') || a.city || a.town || '',
+    address,
+    city: a.city || a.town || a.village || a.county || '',
+    country: a.country || ''
+  }
+}
+
 /**
  * 逆地理编码（Nominatim，免费无 key）：坐标解析为名称/详细地址/城市/国家。
  * zoom=18 取到门牌级明细；解析失败抛错由调用方兜底只回填坐标。
@@ -19,19 +48,22 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Omit<Pic
     `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=zh-CN`
   )
   if (!res.ok) throw new Error(`reverse geocode failed: ${res.status}`)
-  const data = await res.json()
-  const a = data.address || {}
-  // 直辖市等 state 与 city 同名，拼接时去掉连续重复段
-  const address = [a.state || a.province, a.city || a.town || a.village, a.county || a.suburb, a.road, a.house_number]
-    .filter(Boolean)
-    .filter((part: string, i: number, arr: string[]) => part !== arr[i - 1])
-    .join('')
-  return {
-    title: data.name || [a.road, a.house_number].filter(Boolean).join('') || a.city || a.town || '',
-    address,
-    city: a.city || a.town || a.village || a.county || '',
-    country: a.country || ''
-  }
+  return parsePlace(await res.json())
+}
+
+/** 关键词搜索地点（中国范围：viewbox 限定 + 中国轮廓过滤），地址明细随结果返回 */
+export async function searchPlaces(keyword: string): Promise<PlaceResult[]> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&accept-language=zh-CN&viewbox=73,54,136,15&bounded=1&q=${encodeURIComponent(keyword)}`
+  )
+  if (!res.ok) throw new Error(`search failed: ${res.status}`)
+  const rows = (await res.json()) as any[]
+  return rows
+    .map(row => ({ label: row.display_name, latitude: Number(row.lat), longitude: Number(row.lon), ...parsePlace(row) }))
+    .filter(r => {
+      const [gLat, gLng] = wgs84ToGcj02(r.latitude, r.longitude)
+      return isInChina(gLng, gLat)
+    })
 }
 
 /** 加载中国地图 GeoJSON 并注册为 echarts 'china' 地图（本地 public/map 优先，CDN 兜底） */

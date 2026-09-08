@@ -343,7 +343,7 @@ describe('MapPicker', () => {
     await wrapper.find('input').setValue('不存在的地方xyz')
     await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('未找到相关地点')
+    expect(wrapper.text()).toContain('未找到中国范围内的地点')
     wrapper.unmount()
   })
 
