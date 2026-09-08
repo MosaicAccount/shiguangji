@@ -6,14 +6,13 @@
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div v-loading="loading" class="picker-container">
-      <div v-if="error" class="picker-error">{{ error }}</div>
-      <div v-show="!error" ref="chartRef" class="picker-chart"></div>
+    <div class="picker-wrap">
+      <div ref="mapRef" class="picker-map"></div>
     </div>
     <template #footer>
       <div class="picker-footer">
         <span class="picker-coord">
-          {{ lat != null && lng != null ? `已选：纬度 ${lat}，经度 ${lng}` : '点击地图选择地点' }}
+          {{ lat != null && lng != null ? `已选：纬度 ${lat}，经度 ${lng}` : '点击地图选择地点，滚轮可放大到街道级' }}
         </span>
         <el-button type="primary" :disabled="lat == null || lng == null" @click="confirmPick">确认选择</el-button>
       </div>
@@ -22,8 +21,8 @@
 </template>
 
 <script setup lang="ts" name="MapPicker">
-import * as echarts from 'echarts'
-import { loadChinaMap, toCoord } from '@/utils/map'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 const props = defineProps<{
   modelValue: boolean
@@ -38,14 +37,13 @@ const emit = defineEmits<{
   (e: 'confirm', latitude: number, longitude: number): void
 }>()
 
-const loading = ref(false)
-const error = ref('')
-const chartRef = ref<HTMLElement | null>(null)
+const mapRef = ref<HTMLElement | null>(null)
 const lat = ref<number | null>(null)
 const lng = ref<number | null>(null)
-let chart: echarts.ECharts | null = null
+let map: L.Map | null = null
+let marker: L.Marker | null = null
 
-/** 读取主题 CSS 变量（供 ECharts 取当前亮/暗色） */
+/** 读取主题 CSS 变量（选点标记跟随亮/暗主题色） */
 function themeColor(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#A85F52'
 }
@@ -56,94 +54,58 @@ watch(
     if (value) {
       lat.value = props.latitude ?? null
       lng.value = props.longitude ?? null
-      init()
+      initMap()
     } else {
-      chart?.dispose()
-      chart = null
+      destroyMap()
     }
   }
 )
 
-async function init(): Promise<void> {
-  loading.value = true
-  error.value = ''
-  try {
-    const loaded = await loadChinaMap()
-    if (!loaded) {
-      error.value = '地图加载失败，请检查网络或稍后重试，也可以手动输入经纬度'
-      return
-    }
-    await nextTick()
-    render()
-  } finally {
-    loading.value = false
+async function initMap(): Promise<void> {
+  await nextTick()
+  if (!mapRef.value) return
+  destroyMap()
+  // 有已选坐标时定位到街道级，否则给中国全境视角
+  map = L.map(mapRef.value).setView([lat.value ?? 35, lng.value ?? 105], lat.value != null ? 13 : 4)
+  // ponytail: OSM 瓦片（WGS-84，与表单存储坐标系一致）；国内访问偏慢是已知瓶颈，
+  // 如不可接受可换高德瓦片，但需整体做 GCJ-02 坐标转换
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map)
+  map.on('click', (e: L.LeafletMouseEvent) => setPoint(e.latlng.lat, e.latlng.lng))
+  if (lat.value != null && lng.value != null) {
+    renderMarker()
   }
 }
 
-function render(): void {
-  if (!chartRef.value) return
-  if (!chart) {
-    chart = echarts.init(chartRef.value)
-    chart.getZr().on('click', onMapClick)
+function destroyMap(): void {
+  marker = null
+  map?.remove()
+  map = null
+}
+
+/** divIcon 圆点标记，避免 leaflet 默认图片图标在打包后 404 */
+function renderMarker(): void {
+  if (!map || lat.value == null || lng.value == null) return
+  if (marker) {
+    marker.setLatLng([lat.value, lng.value])
+    return
   }
-  const selectedData = lat.value != null && lng.value != null
-    ? [{ name: '已选', value: [lng.value, lat.value] }]
-    : []
-  chart.setOption({
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        if (params.seriesType === 'scatter' && params.value) {
-          return `纬度：${params.value[1]}<br/>经度：${params.value[0]}`
-        }
-        return params.name || ''
-      }
-    },
-    geo: {
-      map: 'china',
-      roam: true,
-      zoom: 1.2,
-      scaleLimit: { min: 1, max: 10 },
-      label: { show: false },
-      itemStyle: {
-        areaColor: themeColor('--sgj-primary-soft'),
-        borderColor: themeColor('--sgj-primary')
-      },
-      emphasis: {
-        itemStyle: { areaColor: themeColor('--sgj-primary-soft') }
-      }
-    },
-    series: [
-      {
-        name: '选点',
-        type: 'scatter',
-        coordinateSystem: 'geo',
-        data: selectedData,
-        symbolSize: 12,
-        itemStyle: { color: themeColor('--sgj-primary') },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{b}',
-          color: themeColor('--sgj-primary'),
-          fontSize: 12
-        }
-      }
-    ]
+  const icon = L.divIcon({
+    className: '',
+    html: `<span style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
   })
+  marker = L.marker([lat.value, lng.value], { icon }).addTo(map)
 }
 
-/** zrender 层点击 + convertFromPixel 拾取经纬度（geo 区域点击事件本身不带坐标） */
-function onMapClick(e: any): void {
-  if (!chart) return
-  const pixel = [e.offsetX, e.offsetY]
-  if (!chart.containPixel('geo', pixel)) return
-  const coord = toCoord(chart.convertFromPixel('geo', pixel))
-  if (!coord) return
+function setPoint(latitude: number, longitude: number): void {
   // 表单经纬度精度统一 6 位
-  lat.value = Number(coord.lat.toFixed(6))
-  lng.value = Number(coord.lng.toFixed(6))
-  render()
+  lat.value = Number(latitude.toFixed(6))
+  lng.value = Number(longitude.toFixed(6))
+  renderMarker()
 }
 
 function confirmPick(): void {
@@ -152,32 +114,17 @@ function confirmPick(): void {
   emit('update:modelValue', false)
 }
 
-onBeforeUnmount(() => {
-  chart?.dispose()
-  chart = null
-})
+onBeforeUnmount(destroyMap)
 </script>
 
 <style scoped lang="scss">
-.picker-container {
-  height: 420px;
-  background: var(--sgj-bg-card, #fff);
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-
-  .picker-chart {
-    width: 100%;
-    height: 100%;
-  }
-
-  .picker-error {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--sgj-text-4, #999);
+.picker-wrap {
+  .picker-map {
+    height: 420px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--sgj-bg-card, #fff);
+    z-index: 0;
   }
 }
 

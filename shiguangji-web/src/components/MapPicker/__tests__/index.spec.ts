@@ -3,37 +3,46 @@ import { defineComponent } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ElButton } from 'element-plus'
 import MapPicker from '../index.vue'
-import { loadChinaMap } from '@/utils/map'
 
 /**
- * echarts mock：init 返回共享假 chart，捕获 zrender click handler，
- * convertFromPixel 可按用例改写返回坐标
+ * leaflet mock：init 返回共享假 map，捕获 click handler 与 marker 交互
  */
-const echartsMock = vi.hoisted(() => {
+const leafletMock = vi.hoisted(() => {
   const state = {
-    zrHandlers: {} as Record<string, (e?: unknown) => void>,
-    convertResult: [116.4074, 39.9042]
+    mapHandlers: {} as Record<string, (e?: unknown) => void>,
+    clickLatlng: { lat: 39.9042, lng: 116.4074 }
   }
-  const chart = {
-    setOption: vi.fn(),
-    dispose: vi.fn(),
-    containPixel: vi.fn(() => true),
-    convertFromPixel: vi.fn(() => state.convertResult),
-    getZr: () => ({
-      on: (event: string, handler: (e?: unknown) => void) => {
-        state.zrHandlers[event] = handler
-      }
-    })
+  const map = {
+    setView: vi.fn(() => map),
+    on: vi.fn((event: string, handler: (e?: unknown) => void) => {
+      state.mapHandlers[event] = handler
+    }),
+    remove: vi.fn(),
+    flyTo: vi.fn()
   }
-  return { state, chart, init: vi.fn(() => chart), registerMap: vi.fn() }
+  const marker = {
+    addTo: vi.fn(),
+    setLatLng: vi.fn()
+  }
+  return {
+    state,
+    map,
+    marker,
+    mapFactory: vi.fn(() => map),
+    tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
+    markerFactory: vi.fn(() => marker),
+    divIcon: vi.fn(opts => opts)
+  }
 })
 
-vi.mock('echarts', () => ({ init: echartsMock.init, registerMap: echartsMock.registerMap }))
-
-vi.mock('@/utils/map', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/utils/map')>()
-  return { ...actual, loadChinaMap: vi.fn(async () => true) }
-})
+vi.mock('leaflet', () => ({
+  default: {
+    map: leafletMock.mapFactory,
+    tileLayer: leafletMock.tileLayer,
+    marker: leafletMock.markerFactory,
+    divIcon: leafletMock.divIcon
+  }
+}))
 
 /** el-dialog 桩：modelValue 为 true 时内联渲染默认与 footer 插槽 */
 const ElDialogStub = defineComponent({
@@ -45,8 +54,7 @@ function mountPicker(props: Record<string, unknown> = {}) {
   return mount(MapPicker, {
     props: { modelValue: false, ...props },
     global: {
-      components: { ElDialog: ElDialogStub, ElButton },
-      directives: { loading: {} }
+      components: { ElDialog: ElDialogStub, ElButton }
     }
   })
 }
@@ -66,53 +74,45 @@ function findConfirmButton(wrapper: ReturnType<typeof mountPicker>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  echartsMock.state.convertResult = [116.4074, 39.9042]
+  leafletMock.state.mapHandlers = {}
+  leafletMock.state.clickLatlng = { lat: 39.9042, lng: 116.4074 }
 })
 
 describe('MapPicker', () => {
-  it('打开时加载地图，并回显已有经纬度', async () => {
+  it('打开时创建 OSM 地图，已有坐标定位到街道级并打点', async () => {
     const wrapper = await openPicker({ latitude: 30.5, longitude: 100.25 })
-    expect(loadChinaMap).toHaveBeenCalled()
-    expect(echartsMock.init).toHaveBeenCalled()
-    const option = echartsMock.chart.setOption.mock.calls.at(-1)![0]
-    expect(option.series[0].data).toEqual([{ name: '已选', value: [100.25, 30.5] }])
+    expect(leafletMock.mapFactory).toHaveBeenCalled()
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([30.5, 100.25], 13)
+    expect(leafletMock.tileLayer).toHaveBeenCalledWith(
+      expect.stringContaining('openstreetmap'),
+      expect.objectContaining({ maxZoom: 19 })
+    )
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith([30.5, 100.25], expect.anything())
     wrapper.unmount()
   })
 
-  it('地图加载失败时提示错误且不初始化图表', async () => {
-    vi.mocked(loadChinaMap).mockResolvedValueOnce(false)
+  it('无坐标时默认中国视角且不打点', async () => {
     const wrapper = await openPicker()
-    expect(echartsMock.init).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('地图加载失败')
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([35, 105], 4)
+    expect(leafletMock.markerFactory).not.toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('已选')
     wrapper.unmount()
   })
 
-  it('点击地图拾取经纬度并启用确认按钮', async () => {
+  it('点击地图拾取经纬度并打点', async () => {
     const wrapper = await openPicker()
-    echartsMock.state.zrHandlers.click({ offsetX: 120, offsetY: 80 })
+    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
     await flushPromises()
-    expect(echartsMock.chart.containPixel).toHaveBeenCalledWith('geo', [120, 80])
-    expect(echartsMock.chart.convertFromPixel).toHaveBeenCalledWith('geo', [120, 80])
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith([39.9042, 116.4074], expect.anything())
     expect(wrapper.text()).toContain('已选：纬度 39.9042，经度 116.4074')
     expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(false)
     wrapper.unmount()
   })
 
-  it('点击地图区域外（containPixel 为否）不选点', async () => {
+  it('点击坐标按 6 位小数精度截断', async () => {
     const wrapper = await openPicker()
-    echartsMock.chart.containPixel.mockReturnValueOnce(false)
-    echartsMock.state.zrHandlers.click({ offsetX: 1, offsetY: 1 })
-    await flushPromises()
-    expect(echartsMock.chart.convertFromPixel).not.toHaveBeenCalled()
-    expect(wrapper.text()).not.toContain('已选')
-    expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(true)
-    wrapper.unmount()
-  })
-
-  it('拾取坐标按 6 位小数精度截断', async () => {
-    const wrapper = await openPicker()
-    echartsMock.state.convertResult = [116.1234567, 39.98765432]
-    echartsMock.state.zrHandlers.click({ offsetX: 10, offsetY: 10 })
+    leafletMock.state.clickLatlng = { lat: 39.98765432, lng: 116.1234567 }
+    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
     await flushPromises()
     expect(wrapper.text()).toContain('已选：纬度 39.987654，经度 116.123457')
     wrapper.unmount()
@@ -126,7 +126,7 @@ describe('MapPicker', () => {
 
   it('确认选择后 emit confirm 坐标并关闭弹窗', async () => {
     const wrapper = await openPicker({ latitude: 1, longitude: 2 })
-    echartsMock.state.zrHandlers.click({ offsetX: 120, offsetY: 80 })
+    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
     await flushPromises()
     await findConfirmButton(wrapper).trigger('click')
     expect(wrapper.emitted('confirm')).toEqual([[39.9042, 116.4074]])
@@ -134,12 +134,12 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('关闭弹窗时销毁图表实例', async () => {
+  it('关闭弹窗时销毁地图实例', async () => {
     const wrapper = await openPicker()
-    expect(echartsMock.chart.dispose).not.toHaveBeenCalled()
+    expect(leafletMock.map.remove).not.toHaveBeenCalled()
     await wrapper.setProps({ modelValue: false })
     await flushPromises()
-    expect(echartsMock.chart.dispose).toHaveBeenCalled()
+    expect(leafletMock.map.remove).toHaveBeenCalled()
     wrapper.unmount()
   })
 })

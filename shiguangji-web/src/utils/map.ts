@@ -25,12 +25,3 @@ export async function loadChinaMap(): Promise<boolean> {
     return false
   }
 }
-
-/** echarts 点击值转经纬度（非数组、长度不足或非数字返回 null） */
-export function toCoord(value: unknown): { lat: number; lng: number } | null {
-  if (!Array.isArray(value) || value.length < 2) return null
-  const lng = Number(value[0])
-  const lat = Number(value[1])
-  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
-  return { lat, lng }
-}
