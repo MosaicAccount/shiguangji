@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { ElButton } from 'element-plus'
+import { ElButton, ElInput } from 'element-plus'
 import MapPicker from '../index.vue'
 
 /**
@@ -54,7 +54,7 @@ function mountPicker(props: Record<string, unknown> = {}) {
   return mount(MapPicker, {
     props: { modelValue: false, ...props },
     global: {
-      components: { ElDialog: ElDialogStub, ElButton }
+      components: { ElDialog: ElDialogStub, ElButton, ElInput }
     }
   })
 }
@@ -76,6 +76,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   leafletMock.state.mapHandlers = {}
   leafletMock.state.clickLatlng = { lat: 39.9042, lng: 116.4074 }
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('MapPicker', () => {
@@ -140,6 +144,53 @@ describe('MapPicker', () => {
     await wrapper.setProps({ modelValue: false })
     await flushPromises()
     expect(leafletMock.map.remove).toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('搜索景点命中结果列表，选择后打点并定位', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [{ display_name: '故宫博物院, 北京', lat: '39.91634', lon: '116.39716' }]
+      })
+    )
+    const wrapper = await openPicker()
+    await wrapper.find('input').setValue('故宫')
+    const searchButton = wrapper.findAll('button').find(b => b.text().includes('搜索'))!
+    await searchButton.trigger('click')
+    await flushPromises()
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('q=%E6%95%85%E5%AE%AB'))
+    expect(wrapper.text()).toContain('故宫博物院, 北京')
+    await wrapper.find('.picker-results li').trigger('click')
+    await flushPromises()
+    // 打点 + 定位到 15 级
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith([39.91634, 116.39716], expect.anything())
+    expect(leafletMock.map.flyTo).toHaveBeenCalledWith([39.91634, 116.39716], 15)
+    expect(wrapper.text()).toContain('已选：纬度 39.91634，经度 116.39716')
+    wrapper.unmount()
+  })
+
+  it('搜索无结果时提示换关键词', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => [] })
+    )
+    const wrapper = await openPicker()
+    await wrapper.find('input').setValue('不存在的地方xyz')
+    await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('未找到相关地点')
+    wrapper.unmount()
+  })
+
+  it('搜索接口失败时提示可直接点图选点', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+    const wrapper = await openPicker()
+    await wrapper.find('input').setValue('杭州')
+    await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('搜索失败')
     wrapper.unmount()
   })
 })
