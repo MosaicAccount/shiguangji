@@ -208,14 +208,14 @@ const submitting = ref(false)
 /** 地图选点弹窗 */
 const pickerOpen = ref(false)
 
-/** 地图选点确认后回填：坐标覆盖，名称/地址/城市/国家只补空值不覆盖已输入 */
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
 function onCoordPick(place: PickedPlace): void {
   form.latitude = place.latitude
   form.longitude = place.longitude
-  form.title = form.title || place.title
-  form.address = form.address || place.address
-  form.city = form.city || place.city
-  form.country = form.country || place.country
+  form.title = place.title || form.title
+  form.address = place.address || form.address
+  form.city = place.city || form.city
+  form.country = place.country || form.country
 }
 
 const form = reactive<Record<string, any>>({})

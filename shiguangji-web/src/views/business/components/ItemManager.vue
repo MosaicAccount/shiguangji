@@ -354,14 +354,14 @@ const { form, queryParams } = toRefs(data)
 /** 地图选点弹窗 */
 const coordPickerOpen = ref(false)
 
-/** 地图选点确认后回填：坐标覆盖，名称/地址/城市/国家只补空值不覆盖已输入 */
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
 function onCoordPick(place: PickedPlace) {
   form.value.latitude = place.latitude
   form.value.longitude = place.longitude
-  form.value.title = form.value.title || place.title
-  form.value.address = form.value.address || place.address
-  form.value.city = form.value.city || place.city
-  form.value.country = form.value.country || place.country
+  form.value.title = place.title || form.value.title
+  form.value.address = place.address || form.value.address
+  form.value.city = place.city || form.value.city
+  form.value.country = place.country || form.value.country
 }
 
 /** 查询列表 */

@@ -591,14 +591,14 @@ function openMapPicker(): void {
   pickerOpen.value = true
 }
 
-/** 地图选点确认后回填：坐标覆盖，名称/地址/城市/国家只补空值不覆盖已输入 */
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
 function confirmPick(place: PickedPlace): void {
   addForm.latitude = place.latitude
   addForm.longitude = place.longitude
-  addForm.title = addForm.title || place.title
-  addForm.address = addForm.address || place.address
-  addForm.city = addForm.city || place.city
-  addForm.country = addForm.country || place.country
+  addForm.title = place.title || addForm.title
+  addForm.address = place.address || addForm.address
+  addForm.city = place.city || addForm.city
+  addForm.country = place.country || addForm.country
 }
 
 function submitAdd(): void {
