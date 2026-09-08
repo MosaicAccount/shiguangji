@@ -110,11 +110,12 @@ async function initMap(): Promise<void> {
     maxBounds: CHINA_BOUNDS,
     maxBoundsViscosity: 1.0
   }).setView(lat.value != null && lng.value != null ? [lat.value, lng.value] : DEFAULT_CENTER, 13)
-  // ponytail: OSM 瓦片（WGS-84，与表单存储坐标系一致）；国内访问偏慢是已知瓶颈，
-  // 如不可接受可换高德瓦片，但需整体做 GCJ-02 坐标转换
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // ponytail: 瓦片源用 CARTO 的 OSM 渲染（WGS-84，与表单存储坐标系一致）——
+  // OSM 官方瓦片在本网络被劫持（所有瓦片返回同一张占位图），高德瓦片是 GCJ-02 需整体转换，故不用
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
     maxZoom: 19,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map)
   map.on('click', (e: L.LeafletMouseEvent) => setPoint(e.latlng.lat, e.latlng.lng))
   map.on('dragstart', onUserMove)

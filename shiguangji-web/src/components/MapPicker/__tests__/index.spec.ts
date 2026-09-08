@@ -118,7 +118,7 @@ describe('MapPicker', () => {
     expect(leafletMock.mapFactory).toHaveBeenCalled()
     expect(leafletMock.map.setView).toHaveBeenCalledWith([30.5, 100.25], 13)
     expect(leafletMock.tileLayer).toHaveBeenCalledWith(
-      expect.stringContaining('openstreetmap'),
+      expect.stringContaining('basemaps.cartocdn.com'),
       expect.objectContaining({ maxZoom: 19 })
     )
     expect(leafletMock.markerFactory).toHaveBeenCalledWith([30.5, 100.25], expect.anything())
