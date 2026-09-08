@@ -3,9 +3,11 @@ import { defineComponent } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ElButton, ElInput } from 'element-plus'
 import MapPicker from '../index.vue'
+import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
 
 /**
- * leaflet mock：init 返回共享假 map，捕获 click handler 与 marker 交互
+ * leaflet mock：init 返回共享假 map，捕获 click/dragstart handler 与 marker 交互。
+ * 地图显示空间是高德瓦片的 GCJ-02，断言里的显示坐标用真实转换函数计算。
  */
 const leafletMock = vi.hoisted(() => {
   const state = {
@@ -113,21 +115,21 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('打开时创建 OSM 地图，已有坐标定位到街道级并打点', async () => {
+  it('打开时创建高德瓦片地图，已有坐标转 GCJ-02 定位街道级并打点', async () => {
     const wrapper = await openPicker({ latitude: 30.5, longitude: 100.25 })
     expect(leafletMock.mapFactory).toHaveBeenCalled()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([30.5, 100.25], 13)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(30.5, 100.25), 13)
     expect(leafletMock.tileLayer).toHaveBeenCalledWith(
-      expect.stringContaining('basemaps.cartocdn.com'),
+      expect.stringContaining('autonavi.com'),
       expect.objectContaining({ maxZoom: 19 })
     )
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith([30.5, 100.25], expect.anything())
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(30.5, 100.25), expect.anything())
     wrapper.unmount()
   })
 
   it('无定位授权时默认定位故宫视角且不打点', async () => {
     const wrapper = await openPicker()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
     expect(leafletMock.markerFactory).not.toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('已选')
     wrapper.unmount()
@@ -137,8 +139,8 @@ describe('MapPicker', () => {
     stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
     const wrapper = await openPicker()
     await flushPromises()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([31.2304, 121.4737], 13)
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith([31.2304, 121.4737], expect.anything())
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
     wrapper.unmount()
   })
 
@@ -153,8 +155,8 @@ describe('MapPicker', () => {
     leafletMock.state.mapHandlers.dragstart?.({})
     await new Promise(resolve => setTimeout(resolve, 40))
     expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith([31.2304, 121.4737], expect.anything())
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
     wrapper.unmount()
   })
 
@@ -163,7 +165,7 @@ describe('MapPicker', () => {
     const wrapper = await openPicker()
     await flushPromises()
     expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
     wrapper.unmount()
   })
 
@@ -172,26 +174,30 @@ describe('MapPicker', () => {
     const wrapper = await openPicker()
     await flushPromises()
     expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
     wrapper.unmount()
   })
 
-  it('点击地图拾取经纬度并打点', async () => {
+  it('点击地图拾取 GCJ-02 坐标，转 WGS-84 存表单并打点', async () => {
     const wrapper = await openPicker()
     leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
     await flushPromises()
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith([39.9042, 116.4074], expect.anything())
-    expect(wrapper.text()).toContain('已选：纬度 39.9042，经度 116.4074')
+    const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
+    const expLat = Number(wLat.toFixed(6))
+    const expLng = Number(wLng.toFixed(6))
+    expect(wrapper.text()).toContain(`已选：纬度 ${expLat}，经度 ${expLng}`)
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(expLat, expLng), expect.anything())
     expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(false)
     wrapper.unmount()
   })
 
-  it('点击坐标按 6 位小数精度截断', async () => {
+  it('存储坐标按 6 位小数精度截断', async () => {
     const wrapper = await openPicker()
     leafletMock.state.clickLatlng = { lat: 39.98765432, lng: 116.1234567 }
     leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
     await flushPromises()
-    expect(wrapper.text()).toContain('已选：纬度 39.987654，经度 116.123457')
+    const [wLat, wLng] = gcj02ToWgs84(39.98765432, 116.1234567)
+    expect(wrapper.text()).toContain(`已选：纬度 ${Number(wLat.toFixed(6))}，经度 ${Number(wLng.toFixed(6))}`)
     wrapper.unmount()
   })
 
@@ -201,12 +207,13 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('确认选择后 emit confirm 坐标并关闭弹窗', async () => {
+  it('确认选择后 emit confirm 的 WGS-84 坐标并关闭弹窗', async () => {
     const wrapper = await openPicker({ latitude: 1, longitude: 2 })
     leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
     await flushPromises()
+    const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
     await findConfirmButton(wrapper).trigger('click')
-    expect(wrapper.emitted('confirm')).toEqual([[39.9042, 116.4074]])
+    expect(wrapper.emitted('confirm')).toEqual([[Number(wLat.toFixed(6)), Number(wLng.toFixed(6))]])
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
     wrapper.unmount()
   })
@@ -240,9 +247,9 @@ describe('MapPicker', () => {
     expect(wrapper.text()).toContain('故宫博物院, 北京')
     await wrapper.find('.picker-results li').trigger('click')
     await flushPromises()
-    // 打点 + 定位到 15 级
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith([39.91634, 116.39716], expect.anything())
-    expect(leafletMock.map.flyTo).toHaveBeenCalledWith([39.91634, 116.39716], 15)
+    // 打点（显示坐标转 GCJ-02）+ 定位到 15 级；表单显示 WGS-84 原值
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.39716), expect.anything())
+    expect(leafletMock.map.flyTo).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.39716), 15)
     expect(wrapper.text()).toContain('已选：纬度 39.91634，经度 116.39716')
     wrapper.unmount()
   })

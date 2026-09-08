@@ -39,6 +39,7 @@
 <script setup lang="ts" name="MapPicker">
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
 
 const props = defineProps<{
   modelValue: boolean
@@ -80,7 +81,7 @@ function themeColor(name: string): string {
 
 // 选点暂时限定在中国：接入世界地图时移除 CHINA_BOUNDS/minZoom/搜索 viewbox 与定位回退即可
 const CHINA_BOUNDS = L.latLngBounds([15, 73], [54, 136])
-/** 未授权定位时的默认视角：故宫 */
+/** 未授权定位时的默认视角：故宫（WGS-84） */
 const DEFAULT_CENTER: [number, number] = [39.91634, 116.3972]
 
 watch(
@@ -105,17 +106,20 @@ async function initMap(): Promise<void> {
   destroyMap()
   userMoved = false
   // 最小层级=省级（6 级），配合硬边界基本看不到外国；有已选坐标时定位街道级
+  // ponytail: 高德瓦片是 GCJ-02 显示空间，表单/库存是 WGS-84，出入显示层各转一次
+  // （utils/coord）；将来接世界地图（MapLibre + WGS-84 瓦片）时删转换调用即可
   map = L.map(mapRef.value, {
     minZoom: 6,
     maxBounds: CHINA_BOUNDS,
     maxBoundsViscosity: 1.0
-  }).setView(lat.value != null && lng.value != null ? [lat.value, lng.value] : DEFAULT_CENTER, 13)
-  // ponytail: 瓦片源用 CARTO 的 OSM 渲染（WGS-84，与表单存储坐标系一致）——
-  // OSM 官方瓦片在本网络被劫持（所有瓦片返回同一张占位图），高德瓦片是 GCJ-02 需整体转换，故不用
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd',
+  }).setView(
+    lat.value != null && lng.value != null ? wgs84ToGcj02(lat.value, lng.value) : wgs84ToGcj02(...DEFAULT_CENTER),
+    13
+  )
+  L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+    subdomains: '1234',
     maxZoom: 19,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
+    attribution: '© <a href="https://www.amap.com/">高德地图</a>'
   }).addTo(map)
   map.on('click', (e: L.LeafletMouseEvent) => setPoint(e.latlng.lat, e.latlng.lng))
   map.on('dragstart', onUserMove)
@@ -145,7 +149,7 @@ function locateUser(): void {
       showLocateMarker(latitude, longitude)
       // 视角未被用户操作过才跳转，避免定位慢导致把用户已浏览的位置拽走
       if (!userMoved) {
-        map.setView([latitude, longitude], 13)
+        map.setView(wgs84ToGcj02(latitude, longitude), 13)
       }
     },
     () => {},
@@ -153,14 +157,15 @@ function locateUser(): void {
   )
 }
 
-/** 当前位置蓝点标记（区别于主题色选点标记），让用户看到定位在哪 */
+/** 当前位置蓝点标记（区别于主题色选点标记），入参 WGS-84 */
 function showLocateMarker(latitude: number, longitude: number): void {
   if (!map) return
+  const [gLat, gLng] = wgs84ToGcj02(latitude, longitude)
   if (locateMarker) {
-    locateMarker.setLatLng([latitude, longitude])
+    locateMarker.setLatLng([gLat, gLng])
     return
   }
-  locateMarker = L.marker([latitude, longitude], {
+  locateMarker = L.marker([gLat, gLng], {
     icon: L.divIcon({
       className: '',
       html: '<span style="display:block;width:12px;height:12px;border-radius:50%;background:#1E6FFF;border:2px solid #fff;box-shadow:0 0 0 6px rgba(30,111,255,.2)"></span>',
@@ -177,11 +182,12 @@ function destroyMap(): void {
   map = null
 }
 
-/** divIcon 圆点标记，避免 leaflet 默认图片图标在打包后 404 */
+/** divIcon 圆点标记，避免 leaflet 默认图片图标在打包后 404；lat/lng 为表单值（WGS-84） */
 function renderMarker(): void {
   if (!map || lat.value == null || lng.value == null) return
+  const [gLat, gLng] = wgs84ToGcj02(lat.value, lng.value)
   if (marker) {
-    marker.setLatLng([lat.value, lng.value])
+    marker.setLatLng([gLat, gLng])
     return
   }
   const icon = L.divIcon({
@@ -190,13 +196,14 @@ function renderMarker(): void {
     iconSize: [14, 14],
     iconAnchor: [7, 7]
   })
-  marker = L.marker([lat.value, lng.value], { icon }).addTo(map)
+  marker = L.marker([gLat, gLng], { icon }).addTo(map)
 }
 
 function setPoint(latitude: number, longitude: number): void {
-  // 表单经纬度精度统一 6 位
-  lat.value = Number(latitude.toFixed(6))
-  lng.value = Number(longitude.toFixed(6))
+  // 地图点击坐标是高德瓦片的 GCJ-02，转回 WGS-84 存表单，精度统一 6 位
+  const [wLat, wLng] = gcj02ToWgs84(latitude, longitude)
+  lat.value = Number(wLat.toFixed(6))
+  lng.value = Number(wLng.toFixed(6))
   renderMarker()
 }
 
@@ -224,8 +231,12 @@ async function search(): Promise<void> {
 }
 
 function chooseResult(result: SearchResult): void {
-  setPoint(result.lat, result.lng)
-  map?.flyTo([result.lat, result.lng], 15)
+  // Nominatim 结果是 WGS-84，落点/视角转为高德瓦片的 GCJ-02
+  const [gLat, gLng] = wgs84ToGcj02(result.lat, result.lng)
+  lat.value = Number(result.lat.toFixed(6))
+  lng.value = Number(result.lng.toFixed(6))
+  renderMarker()
+  map?.flyTo([gLat, gLng], 15)
   searchResults.value = []
   searchTip.value = ''
 }
