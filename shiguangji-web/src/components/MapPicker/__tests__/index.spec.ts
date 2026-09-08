@@ -168,6 +168,23 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
+  it('会话内缓存定位：再次打开立即就位，无需等待定位返回', async () => {
+    // 第一次打开：定位成功，写入会话缓存
+    stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
+    const wrapper = await openPicker()
+    await flushPromises()
+    await wrapper.setProps({ modelValue: false })
+    await flushPromises()
+    // 第二次打开：定位接口迟迟不返回（真实场景的数秒等待）
+    stubGeolocation(() => {})
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    // 视角与蓝点立即出现在缓存定位处，不依赖定位返回
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
+    wrapper.unmount()
+  })
+
   it('用户拖动地图后定位仅显示蓝点标记，不抢跳视角', async () => {
     // 定位慢：10ms 后才返回，期间用户先拖动地图
     stubGeolocation((success) => {

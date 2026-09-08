@@ -88,6 +88,8 @@ function themeColor(name: string): string {
 const CHINA_BOUNDS = L.latLngBounds([15, 73], [54, 136])
 /** 未授权定位时的默认视角：故宫（WGS-84） */
 const DEFAULT_CENTER: [number, number] = [39.91634, 116.3972]
+/** 会话内缓存的上次定位（WGS-84）：再次打开选点立即就位，避免每次等数秒定位 */
+let lastKnownLocation: [number, number] | null = null
 
 watch(
   () => props.modelValue,
@@ -134,6 +136,11 @@ async function initMap(): Promise<void> {
   if (lat.value != null && lng.value != null) {
     renderMarker()
   } else {
+    // 有会话内缓存定位：直接就位（后台再刷新），不让用户对着默认视角等定位
+    if (lastKnownLocation) {
+      map.setView(wgs84ToGcj02(...lastKnownLocation), 13)
+      showLocateMarker(lastKnownLocation[0], lastKnownLocation[1])
+    }
     locateUser()
   }
 }
@@ -149,18 +156,19 @@ function locateUser(): void {
   navigator.geolocation.getCurrentPosition(
     position => {
       const { latitude, longitude } = position.coords
-      // 用户已手动选点则不打扰；定位点在中国范围外也不采用
-      if (lat.value != null || lng.value != null || !map || !CHINA_BOUNDS.contains([latitude, longitude])) {
+      // 定位点在中国范围外不采用
+      if (!map || !CHINA_BOUNDS.contains([latitude, longitude])) {
         return
       }
+      lastKnownLocation = [latitude, longitude]
       showLocateMarker(latitude, longitude)
-      // 视角未被用户操作过才跳转，避免定位慢导致把用户已浏览的位置拽走
-      if (!userMoved) {
+      // 用户已选点或已操作视角时不打扰；maximumAge 让浏览器可复用近期定位，返回更快
+      if (lat.value == null && lng.value == null && !userMoved) {
         map.setView(wgs84ToGcj02(latitude, longitude), 13)
       }
     },
     () => {},
-    { timeout: 8000 }
+    { timeout: 8000, maximumAge: 30000 }
   )
 }
 
