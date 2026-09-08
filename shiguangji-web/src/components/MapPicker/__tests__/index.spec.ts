@@ -29,7 +29,13 @@ const leafletMock = vi.hoisted(() => {
     map,
     marker,
     mapFactory: vi.fn(() => map),
-    latLngBounds: vi.fn((sw, ne) => ({ sw, ne })),
+    latLngBounds: vi.fn((sw, ne) => ({
+      sw,
+      ne,
+      contains: vi.fn(([lat, lng]: [number, number]) =>
+        lat >= sw[0] && lat <= ne[0] && lng >= sw[1] && lng <= ne[1]
+      )
+    })),
     tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
     markerFactory: vi.fn(() => marker),
     divIcon: vi.fn(opts => opts)
@@ -82,16 +88,25 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  delete (window.navigator as any).geolocation
 })
 
+/** 注入 mock 的浏览器定位 API */
+function stubGeolocation(impl: (success: (p: { coords: { latitude: number; longitude: number } }) => void, error: (e: unknown) => void) => void) {
+  Object.defineProperty(window.navigator, 'geolocation', {
+    value: { getCurrentPosition: impl },
+    configurable: true
+  })
+}
+
 describe('MapPicker', () => {
-  it('地图限定中国：minZoom=3、maxBounds 为中国范围且不可拖出', async () => {
+  it('地图限定中国：minZoom=6（省级）、maxBounds 为中国范围且不可拖出', async () => {
     const wrapper = await openPicker()
     expect(leafletMock.mapFactory).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        minZoom: 3,
-        maxBounds: { sw: [15, 73], ne: [54, 136] },
+        minZoom: 6,
+        maxBounds: expect.objectContaining({ sw: [15, 73], ne: [54, 136] }),
         maxBoundsViscosity: 1.0
       })
     )
@@ -110,11 +125,37 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('无坐标时默认中国全境视角且不打点', async () => {
+  it('无定位授权时默认定位故宫视角且不打点', async () => {
     const wrapper = await openPicker()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith([35, 105], 3)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
     expect(leafletMock.markerFactory).not.toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('已选')
+    wrapper.unmount()
+  })
+
+  it('用户允许定位时视角移动到当前位置', async () => {
+    stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
+    const wrapper = await openPicker()
+    await flushPromises()
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([31.2304, 121.4737], 13)
+    wrapper.unmount()
+  })
+
+  it('定位结果在国外时保持故宫默认视角', async () => {
+    stubGeolocation((success) => success({ coords: { latitude: 35.6762, longitude: 139.6503 } }))
+    const wrapper = await openPicker()
+    await flushPromises()
+    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
+    wrapper.unmount()
+  })
+
+  it('拒绝授权时保持故宫默认视角', async () => {
+    stubGeolocation((_success, error) => error(new Error('denied')))
+    const wrapper = await openPicker()
+    await flushPromises()
+    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
+    expect(leafletMock.map.setView).toHaveBeenCalledWith([39.91634, 116.3972], 13)
     wrapper.unmount()
   })
 

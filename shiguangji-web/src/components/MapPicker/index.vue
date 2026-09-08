@@ -75,6 +75,11 @@ function themeColor(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#A85F52'
 }
 
+// 选点暂时限定在中国：接入世界地图时移除 CHINA_BOUNDS/minZoom/搜索 viewbox 与定位回退即可
+const CHINA_BOUNDS = L.latLngBounds([15, 73], [54, 136])
+/** 未授权定位时的默认视角：故宫 */
+const DEFAULT_CENTER: [number, number] = [39.91634, 116.3972]
+
 watch(
   () => props.modelValue,
   value => {
@@ -95,14 +100,12 @@ async function initMap(): Promise<void> {
   await nextTick()
   if (!mapRef.value) return
   destroyMap()
-  // 选点暂时限定在中国：最小层级=中国全境（3 级起）、不可拖出国界；
-  // 接入世界地图时移除 minZoom/maxBounds 与搜索 viewbox 限定即可
-  const chinaBounds = L.latLngBounds([15, 73], [54, 136])
+  // 最小层级=省级（6 级），配合硬边界基本看不到外国；有已选坐标时定位街道级
   map = L.map(mapRef.value, {
-    minZoom: 3,
-    maxBounds: chinaBounds,
+    minZoom: 6,
+    maxBounds: CHINA_BOUNDS,
     maxBoundsViscosity: 1.0
-  }).setView([lat.value ?? 35, lng.value ?? 105], lat.value != null ? 13 : 3)
+  }).setView(lat.value != null && lng.value != null ? [lat.value, lng.value] : DEFAULT_CENTER, 13)
   // ponytail: OSM 瓦片（WGS-84，与表单存储坐标系一致）；国内访问偏慢是已知瓶颈，
   // 如不可接受可换高德瓦片，但需整体做 GCJ-02 坐标转换
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -112,7 +115,25 @@ async function initMap(): Promise<void> {
   map.on('click', (e: L.LeafletMouseEvent) => setPoint(e.latlng.lat, e.latlng.lng))
   if (lat.value != null && lng.value != null) {
     renderMarker()
+  } else {
+    locateUser()
   }
+}
+
+/** 尝试定位到用户当前位置；拒绝授权、失败或定位在国外时保持默认视角 */
+function locateUser(): void {
+  if (!('geolocation' in navigator)) return
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      const { latitude, longitude } = position.coords
+      // 用户已手动选点则不打扰视角；定位点在中国范围外也不采用
+      if (lat.value == null && lng.value == null && CHINA_BOUNDS.contains([latitude, longitude])) {
+        map?.setView([latitude, longitude], 13)
+      }
+    },
+    () => {},
+    { timeout: 8000 }
+  )
 }
 
 function destroyMap(): void {
