@@ -185,6 +185,7 @@ import { useDict } from '@/utils/dict'
 import ItemCover from '@/components/ItemCover/index.vue'
 import MapPicker from '@/components/MapPicker/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import type { PickedPlace } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 import { parseTime } from '@/utils/sgj'
 
@@ -353,10 +354,14 @@ const { form, queryParams } = toRefs(data)
 /** 地图选点弹窗 */
 const coordPickerOpen = ref(false)
 
-/** 地图选点确认后回填表单经纬度 */
-function onCoordPick(latitude: number, longitude: number) {
-  form.value.latitude = latitude
-  form.value.longitude = longitude
+/** 地图选点确认后回填：坐标覆盖，名称/地址/城市/国家只补空值不覆盖已输入 */
+function onCoordPick(place: PickedPlace) {
+  form.value.latitude = place.latitude
+  form.value.longitude = place.longitude
+  form.value.title = form.value.title || place.title
+  form.value.address = form.value.address || place.address
+  form.value.city = form.value.city || place.city
+  form.value.country = form.value.country || place.country
 }
 
 /** 查询列表 */

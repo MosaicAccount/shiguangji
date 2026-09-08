@@ -179,6 +179,7 @@
 import { getFrontItem, updateFrontItem } from '@/api/front/item'
 import MapPicker from '@/components/MapPicker/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import type { PickedPlace } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 
 const props = defineProps<{
@@ -207,10 +208,14 @@ const submitting = ref(false)
 /** 地图选点弹窗 */
 const pickerOpen = ref(false)
 
-/** 地图选点确认后回填表单经纬度 */
-function onCoordPick(latitude: number, longitude: number): void {
-  form.latitude = latitude
-  form.longitude = longitude
+/** 地图选点确认后回填：坐标覆盖，名称/地址/城市/国家只补空值不覆盖已输入 */
+function onCoordPick(place: PickedPlace): void {
+  form.latitude = place.latitude
+  form.longitude = place.longitude
+  form.title = form.title || place.title
+  form.address = form.address || place.address
+  form.city = form.city || place.city
+  form.country = form.country || place.country
 }
 
 const form = reactive<Record<string, any>>({})

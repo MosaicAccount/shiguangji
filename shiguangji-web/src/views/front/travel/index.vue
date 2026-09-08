@@ -246,6 +246,7 @@ import MapPicker from '@/components/MapPicker/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { loadChinaMap } from '@/utils/map'
+import type { PickedPlace } from '@/utils/map'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel } from '@/utils/sgj'
@@ -590,10 +591,14 @@ function openMapPicker(): void {
   pickerOpen.value = true
 }
 
-/** 地图选点确认后回填表单经纬度 */
-function confirmPick(latitude: number, longitude: number): void {
-  addForm.latitude = latitude
-  addForm.longitude = longitude
+/** 地图选点确认后回填：坐标覆盖，名称/地址/城市/国家只补空值不覆盖已输入 */
+function confirmPick(place: PickedPlace): void {
+  addForm.latitude = place.latitude
+  addForm.longitude = place.longitude
+  addForm.title = addForm.title || place.title
+  addForm.address = addForm.address || place.address
+  addForm.city = addForm.city || place.city
+  addForm.country = addForm.country || place.country
 }
 
 function submitAdd(): void {

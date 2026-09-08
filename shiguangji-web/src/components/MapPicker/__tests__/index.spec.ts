@@ -86,6 +86,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   leafletMock.state.mapHandlers = {}
   leafletMock.state.clickLatlng = { lat: 39.9042, lng: 116.4074 }
+  // 默认拦截 fetch，避免确认选点的逆地理编码真实联网；搜索用例自行覆盖
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('no fetch in tests')))
 })
 
 afterEach(() => {
@@ -207,13 +209,47 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('确认选择后 emit confirm 的 WGS-84 坐标并关闭弹窗', async () => {
+  it('确认选择后 emit confirm 坐标并关闭弹窗（逆地理失败时仅坐标）', async () => {
     const wrapper = await openPicker({ latitude: 1, longitude: 2 })
     leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
     await flushPromises()
     const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
     await findConfirmButton(wrapper).trigger('click')
-    expect(wrapper.emitted('confirm')).toEqual([[Number(wLat.toFixed(6)), Number(wLng.toFixed(6))]])
+    await flushPromises()
+    expect(wrapper.emitted('confirm')).toEqual([[{ latitude: Number(wLat.toFixed(6)), longitude: Number(wLng.toFixed(6)) }]])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    wrapper.unmount()
+  })
+
+  it('确认选择时逆地理编码解析名称/地址/城市/国家一起 emit', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          name: '故宫博物院',
+          address: { state: '北京市', city: '北京市', county: '东城区', road: '景山前街', house_number: '4号', country: '中国' }
+        })
+      })
+    )
+    const wrapper = await openPicker({ latitude: 1, longitude: 2 })
+    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
+    await flushPromises()
+    const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
+    await findConfirmButton(wrapper).trigger('click')
+    await flushPromises()
+    expect(wrapper.emitted('confirm')).toEqual([
+      [
+        {
+          latitude: Number(wLat.toFixed(6)),
+          longitude: Number(wLng.toFixed(6)),
+          title: '故宫博物院',
+          address: '北京市东城区景山前街4号',
+          city: '北京市',
+          country: '中国'
+        }
+      ]
+    ])
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
     wrapper.unmount()
   })

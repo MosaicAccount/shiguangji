@@ -30,7 +30,7 @@
         <span class="picker-coord">
           {{ lat != null && lng != null ? `已选：纬度 ${lat}，经度 ${lng}` : '点击地图选择地点，滚轮可放大到街道级' }}
         </span>
-        <el-button type="primary" :disabled="lat == null || lng == null" @click="confirmPick">确认选择</el-button>
+        <el-button type="primary" :disabled="lat == null || lng == null" :loading="confirming" @click="confirmPick">确认选择</el-button>
       </div>
     </template>
   </el-dialog>
@@ -40,6 +40,8 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
+import { reverseGeocode } from '@/utils/map'
+import type { PickedPlace } from '@/utils/map'
 
 const props = defineProps<{
   modelValue: boolean
@@ -51,8 +53,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'confirm', latitude: number, longitude: number): void
+  (e: 'confirm', place: PickedPlace): void
 }>()
+
+const confirming = ref(false)
 
 const mapRef = ref<HTMLElement | null>(null)
 const lat = ref<number | null>(null)
@@ -241,9 +245,18 @@ function chooseResult(result: SearchResult): void {
   searchTip.value = ''
 }
 
-function confirmPick(): void {
-  if (lat.value == null || lng.value == null) return
-  emit('confirm', lat.value, lng.value)
+async function confirmPick(): Promise<void> {
+  if (lat.value == null || lng.value == null || confirming.value) return
+  confirming.value = true
+  // 确认时逆地理编码解析名称/地址/城市/国家，失败则只回填坐标
+  let place: PickedPlace = { latitude: lat.value, longitude: lng.value }
+  try {
+    place = { ...place, ...(await reverseGeocode(lat.value, lng.value)) }
+  } catch (e) {
+    // ignore
+  }
+  confirming.value = false
+  emit('confirm', place)
   emit('update:modelValue', false)
 }
 
