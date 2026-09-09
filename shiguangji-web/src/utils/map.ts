@@ -22,6 +22,8 @@ export interface PlaceResult {
   address: string
   city: string
   country: string
+  /** 选中徽标展示用的分类 emoji（POI 结果必有） */
+  emoji?: string
 }
 
 /** JS API 2.0 命名空间（官方 loader 未带类型，按 any 使用） */
@@ -49,22 +51,6 @@ function joinDistrict(parts: (string | undefined)[]): string {
     .filter(Boolean)
     .filter((part, i, arr) => part !== arr[i - 1])
     .join('')
-}
-
-/** 从 PlaceSearch POI（GCJ-02）解析出展示与回填字段，坐标转 WGS-84 存表单 */
-function parsePoi(poi: any): PlaceResult {
-  const district = joinDistrict([poi.pname, poi.cityname, poi.adname])
-  const address = typeof poi.address === 'string' ? poi.address : ''
-  const [wLat, wLng] = gcj02ToWgs84(poi.location.lat, poi.location.lng)
-  return {
-    label: address ? `${poi.name}（${district}${address}）` : `${poi.name}（${district}）`,
-    latitude: wLat,
-    longitude: wLng,
-    title: poi.name,
-    address: address || district,
-    city: poi.cityname || poi.pname || '',
-    country: '中国'
-  }
 }
 
 /**
@@ -106,6 +92,34 @@ const POI_CATEGORY_EMOJI: Record<string, string> = {
   汽车维修: '🔧'
 }
 
+/** 按 POI 一级分类取徽标 emoji */
+function poiEmojiOfCategory(category: string): string {
+  return POI_CATEGORY_EMOJI[category] || '📍'
+}
+
+/** 从 POI 的 type 字段（"一级分类;二级;三级"）取一级分类 */
+function poiCategory(poi: any): string {
+  const type = typeof poi.type === 'string' ? poi.type : ''
+  return type.split(';')[0] || ''
+}
+
+/** 从 PlaceSearch POI（GCJ-02）解析出展示与回填字段，坐标转 WGS-84 存表单 */
+function parsePoi(poi: any): PlaceResult {
+  const district = joinDistrict([poi.pname, poi.cityname, poi.adname])
+  const address = typeof poi.address === 'string' ? poi.address : ''
+  const [wLat, wLng] = gcj02ToWgs84(poi.location.lat, poi.location.lng)
+  return {
+    label: address ? `${poi.name}（${district}${address}）` : `${poi.name}（${district}）`,
+    latitude: wLat,
+    longitude: wLng,
+    title: poi.name,
+    address: address || district,
+    city: poi.cityname || poi.pname || '',
+    country: '中国',
+    emoji: poiEmojiOfCategory(poiCategory(poi))
+  }
+}
+
 /**
  * 查询 POI 详情类型并映射为选中徽标 emoji（点击底图图标时用）。
  * 查询失败抛错，调用方回退 📍。
@@ -118,9 +132,7 @@ export async function getPoiEmoji(id: string): Promise<string> {
         reject(new Error('poi details failed: ' + status))
         return
       }
-      const type: string = result?.poiList?.pois?.[0]?.type || ''
-      const category = type.split(';')[0] || ''
-      resolve(POI_CATEGORY_EMOJI[category] || '📍')
+      resolve(poiEmojiOfCategory(poiCategory(result?.poiList?.pois?.[0] || {})))
     })
   })
 }

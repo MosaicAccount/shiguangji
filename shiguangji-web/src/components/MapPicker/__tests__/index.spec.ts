@@ -474,7 +474,7 @@ describe('MapPicker', () => {
 
   it('搜索景点命中结果列表，选择后打点、定位并显示名称', async () => {
     vi.mocked(searchPlaces).mockResolvedValueOnce([
-      { label: '故宫博物院（北京市东城区）', latitude: 39.91634, longitude: 116.39716, title: '故宫博物院', address: '景山前街4号', city: '北京市', country: '中国' }
+      { label: '故宫博物院（北京市东城区）', latitude: 39.91634, longitude: 116.39716, title: '故宫博物院', address: '景山前街4号', city: '北京市', country: '中国', emoji: '🏞️' }
     ])
     const wrapper = await openPicker()
     await wrapper.find('input').setValue('故宫')
@@ -485,9 +485,13 @@ describe('MapPicker', () => {
     expect(wrapper.text()).toContain('故宫博物院（北京市东城区）')
     await wrapper.find('.picker-results li').trigger('click')
     await flushPromises()
-    // 打点（显示坐标转 GCJ-02）+ 定位到 15 级；表单显示 WGS-84 原值与地点名称
+    // 搜索结果即 POI：与底图点击一致显示放大徽标（带分类 emoji）+ 名称标签
     expect(amapMock.state.markers).toHaveLength(1)
-    expect(amapMock.state.markers[0].opts.position).toEqual(gcjLngLat(39.91634, 116.39716))
+    const markerContent = amapMock.state.markers[0].opts.content as string
+    expect(markerContent).toContain('32px')
+    expect(markerContent).toContain('🏞️')
+    expect(markerContent).toContain('font-size:14px')
+    expect(markerContent).toContain('故宫博物院')
     expect(amapMock.state.zoomCalls).toContainEqual([15, gcjLngLat(39.91634, 116.39716)])
     expect(wrapper.text()).toContain('已选：故宫博物院，纬度 39.91634，经度 116.39716')
     wrapper.unmount()

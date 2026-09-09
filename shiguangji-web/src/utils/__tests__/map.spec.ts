@@ -78,8 +78,8 @@ describe('searchPlaces 名称搜索（高德 PlaceSearch）', () => {
       cb('complete', {
         poiList: {
           pois: [
-            { name: '故宫博物院', address: '景山前街4号', pname: '北京市', cityname: '北京市', adname: '东城区', location: { lat: 39.916311, lng: 116.397161 } },
-            { name: '西湖景区', address: [], pname: '浙江省', cityname: '杭州市', adname: '西湖区', location: { lat: 30.24, lng: 120.15 } }
+            { name: '故宫博物院', type: '风景名胜;风景名胜;国家级景点', address: '景山前街4号', pname: '北京市', cityname: '北京市', adname: '东城区', location: { lat: 39.916311, lng: 116.397161 } },
+            { name: '西湖景区', type: '风景名胜;公园;城市公园', address: [], pname: '浙江省', cityname: '杭州市', adname: '西湖区', location: { lat: 30.24, lng: 120.15 } }
           ]
         }
       })
@@ -95,6 +95,9 @@ describe('searchPlaces 名称搜索（高德 PlaceSearch）', () => {
     expect(r0.city).toBe('北京市')
     expect(r0.country).toBe('中国')
     expect(r0.label).toContain('故宫博物院')
+    // 分类 emoji 随结果返回，选中也显示放大徽标
+    expect(r0.emoji).toBe('🏞️')
+    expect(r1.emoji).toBe('🏞️')
     // 直辖市 province 与 city 同名，区划拼接去重
     expect(r0.label).toContain('北京市东城区')
     expect(r0.label).not.toContain('北京市北京市')

@@ -307,7 +307,7 @@ function markerHtml(inner: string, animate = true): string {
 
 /** 选点标记；lat/lng 为表单值（WGS-84）。
  *  每次落点重建标记（而非 setPosition 挪位），重放 pick-pop 弹跳动画让用户看清本次选中处 */
-function renderMarker(asPoi = false) {
+function renderMarker(asPoi = false, emoji = '📍') {
   if (!map || lat.value == null || lng.value == null) return null
   const [gLat, gLng] = wgs84ToGcj02(lat.value, lng.value)
   if (marker) {
@@ -316,7 +316,7 @@ function renderMarker(asPoi = false) {
   marker = new AMap.Marker({
     position: [gLng, gLat],
     anchor: 'center',
-    content: markerHtml(asPoi ? poiBadgeHtml('📍') : pickDotHtml())
+    content: markerHtml(asPoi ? poiBadgeHtml(emoji) : pickDotHtml())
   })
   map.add(marker)
   return marker
@@ -377,12 +377,13 @@ async function search(): Promise<void> {
 }
 
 function chooseResult(result: PlaceResult): void {
-  // 搜索结果坐标已转 WGS-84 存表单，落点/视角转回高德的 GCJ-02
+  // 搜索结果坐标已转 WGS-84 存表单，落点/视角转回高德的 GCJ-02；
+  // 搜索结果即 POI（自带分类 emoji），与底图点击一样显示放大徽标 + 名称
   const [gLat, gLng] = wgs84ToGcj02(result.latitude, result.longitude)
   lat.value = Number(result.latitude.toFixed(6))
   lng.value = Number(result.longitude.toFixed(6))
   pickedName.value = result.title
-  renderMarker()
+  renderMarker(true, result.emoji || '📍')
   map?.setZoomAndCenter(15, [gLng, gLat])
   searchResults.value = []
   searchTip.value = ''
