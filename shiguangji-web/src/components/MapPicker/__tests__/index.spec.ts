@@ -288,27 +288,31 @@ describe('MapPicker', () => {
     const wrapper = await openPicker()
     await flushPromises()
     expect(wrapper.findAll('button').find(b => b.attributes('title') === '回到当前位置')).toBeUndefined()
-    expect(wrapper.findAll('button').find(b => b.attributes('title') === '选择当前位置')).toBeUndefined()
     wrapper.unmount()
   })
 
-  it('定位成功后可一键选中定位点，坐标不发生往返偏移', async () => {
+  it('已定位未手动选点时，确认选择即选定位点（坐标无往返偏移）', async () => {
     stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
+    vi.mocked(reverseGeocode).mockResolvedValueOnce({ title: '附近地址', address: '某地址', city: '某市', country: '中国' })
     const wrapper = await openPicker()
     await flushPromises()
-    const pickBtn = wrapper.findAll('button').find(b => b.attributes('title') === '选择当前位置')
-    expect(pickBtn).toBeDefined()
-    // 蓝点标记绑定了点击选中
+    // 蓝点绑定了点击选中；底栏提示确认行为
     const blue = amapMock.state.markers.find(mk => String(mk.opts.content).includes('#1E6FFF'))
     expect(blue.on).toHaveBeenCalledWith('click', expect.any(Function))
-    await pickBtn!.trigger('click')
+    expect(wrapper.text()).toContain('未手动选点时，确认选择将使用您的当前位置')
+    const btn = findConfirmButton(wrapper)
+    expect((btn.element as HTMLButtonElement).disabled).toBe(false)
+    await btn.trigger('click')
     await flushPromises()
-    // 表单值=定位原始值（无 GCJ/WGS 往返偏移），落点在蓝点显示位置
-    expect(wrapper.text()).toContain('已选：纬度 31.2304，经度 121.4737')
-    expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(false)
-    const pick = amapMock.state.markers.filter(mk => String(mk.opts.content).includes('pick-pin'))
-    expect(pick).toHaveLength(1)
-    expect(pick[0].opts.position).toEqual(gcjLngLat(31.2304, 121.4737))
+    // emit 的坐标 = 定位原始值（无 GCJ/WGS 往返偏移）；逆地理收到该点的 GCJ 坐标
+    expect(wrapper.emitted('confirm')).toEqual([
+      [{ latitude: 31.2304, longitude: 121.4737, title: '附近地址', address: '某地址', city: '某市', country: '中国' }]
+    ])
+    const [regeoLat, regeoLng] = vi.mocked(reverseGeocode).mock.calls[0]
+    const [gLat, gLng] = wgs84ToGcj02(31.2304, 121.4737)
+    expect(regeoLat).toBeCloseTo(gLat, 5)
+    expect(regeoLng).toBeCloseTo(gLng, 5)
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
     wrapper.unmount()
   })
 

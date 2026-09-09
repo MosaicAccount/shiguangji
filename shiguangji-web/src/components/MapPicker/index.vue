@@ -38,14 +38,6 @@
           title="回到当前位置"
           @click="backToLocate"
         />
-        <el-button
-          v-if="hasLocated"
-          class="locate-btn locate-pick-btn"
-          :icon="Select"
-          circle
-          title="选择当前位置"
-          @click="pickCurrentLocation"
-        />
       </div>
     </div>
     <template #footer>
@@ -53,7 +45,7 @@
         <span class="picker-coord">
           {{ coordText }}
         </span>
-        <el-button type="primary" :disabled="lat == null || lng == null" :loading="confirming" @click="confirmPick">确认选择</el-button>
+        <el-button type="primary" :disabled="!canConfirm" :loading="confirming" @click="confirmPick">确认选择</el-button>
       </div>
     </template>
   </el-dialog>
@@ -61,7 +53,7 @@
 
 <script setup lang="ts" name="MapPicker">
 import { ElMessage } from 'element-plus'
-import { Aim, Select } from '@element-plus/icons-vue'
+import { Aim } from '@element-plus/icons-vue'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
 import { isInChina, loadChinaPolygons, loadAMap, reverseGeocode, searchPlaces, getPoiEmoji } from '@/utils/map'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
@@ -126,9 +118,14 @@ const CHINA_MAX_LNG = 136
 let lastKnownLocation: [number, number] | null = null
 
 const coordText = computed(() => {
-  if (lat.value == null || lng.value == null) return '点击地图或底图上的地点图标选择，滚轮可放大到街道级'
-  return `已选：${pickedName.value ? pickedName.value + '，' : ''}纬度 ${lat.value}，经度 ${lng.value}`
+  if (lat.value != null && lng.value != null) return `已选：${pickedName.value ? pickedName.value + '，' : ''}纬度 ${lat.value}，经度 ${lng.value}`
+  // 已定位但未手动选点：确认即选当前位置
+  if (hasLocated.value) return '未手动选点时，确认选择将使用您的当前位置'
+  return '点击地图或底图上的地点图标选择，滚轮可放大到街道级'
 })
+
+/** 确认可点：已选点，或已定位（未选点时确认即选定位点） */
+const canConfirm = computed(() => (lat.value != null && lng.value != null) || hasLocated.value)
 
 watch(
   () => props.modelValue,
@@ -414,14 +411,22 @@ function chooseResult(result: PlaceResult): void {
 }
 
 async function confirmPick(): Promise<void> {
-  if (lat.value == null || lng.value == null || confirming.value) return
+  if (confirming.value) return
+  // 未手动选点时，定位点即所选：定位在哪里，确认就选哪里
+  if (lat.value == null || lng.value == null) {
+    if (!lastKnownLocation) return
+    pickCurrentLocation()
+  }
+  const pickedLat = lat.value
+  const pickedLng = lng.value
+  if (pickedLat == null || pickedLng == null) return
   confirming.value = true
   // 确认时逆地理编码解析名称/地址/城市/国家，失败则只回填坐标；
   // 点击 POI 图标/搜索命中时已拿到准确名称，优先于逆地理结果。
   // 表单是 WGS-84，高德 Geocoder 要 GCJ-02，先转换再查
-  let place: PickedPlace = { latitude: lat.value, longitude: lng.value }
+  let place: PickedPlace = { latitude: pickedLat, longitude: pickedLng }
   try {
-    const [gLat, gLng] = wgs84ToGcj02(lat.value, lng.value)
+    const [gLat, gLng] = wgs84ToGcj02(pickedLat, pickedLng)
     place = { ...place, ...(await reverseGeocode(gLat, gLng)) }
   } catch (e) {
     // ignore
@@ -505,10 +510,6 @@ onBeforeUnmount(() => {
       right: 12px;
       z-index: 800;
       box-shadow: 0 2px 8px rgba(23, 27, 26, 0.18);
-
-      &.locate-pick-btn {
-        top: 58px;
-      }
     }
   }
 }
