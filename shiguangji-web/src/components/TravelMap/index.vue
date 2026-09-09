@@ -37,8 +37,6 @@ let AMap: any = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let map: any = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let polyline: any = null
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let infoWindow: any = null
 const overlays = ref<any[]>([])
 
@@ -193,20 +191,6 @@ function renderOverlays(): void {
     }
   }
 
-  // 按时间排序的轨迹虚线
-  const path = props.visited
-    .filter(p => p.latitude != null && p.longitude != null)
-    .map(p => wgs84ToGcj02(p.latitude!, p.longitude!).reverse())
-  polyline = new AMap.Polyline({
-    path: path.length > 1 ? [path] : [],
-    strokeColor: '#A85F52',
-    strokeWeight: 2,
-    strokeOpacity: 0.6,
-    strokeStyle: 'dashed',
-    bubble: true
-  })
-  overlays.value.push(polyline)
-  map.add(polyline)
 }
 
 async function initMap(): Promise<void> {
