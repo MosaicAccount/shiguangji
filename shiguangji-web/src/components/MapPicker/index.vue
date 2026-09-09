@@ -43,7 +43,7 @@
     <template #footer>
       <div class="picker-footer">
         <span class="picker-coord">
-          {{ lat != null && lng != null ? `已选：纬度 ${lat}，经度 ${lng}` : '点击地图选择地点，滚轮可放大到街道级' }}
+          {{ coordText }}
         </span>
         <el-button type="primary" :disabled="lat == null || lng == null" :loading="confirming" @click="confirmPick">确认选择</el-button>
       </div>
@@ -52,12 +52,10 @@
 </template>
 
 <script setup lang="ts" name="MapPicker">
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { ElMessage } from 'element-plus'
 import { Aim } from '@element-plus/icons-vue'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
-import { isInChina, loadChinaPolygons, reverseGeocode, searchPlaces } from '@/utils/map'
+import { isInChina, loadChinaPolygons, loadAMap, reverseGeocode, searchPlaces } from '@/utils/map'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
 
 const props = defineProps<{
@@ -82,31 +80,47 @@ const hasLocated = ref(false)
 const mapRef = ref<HTMLElement | null>(null)
 const lat = ref<number | null>(null)
 const lng = ref<number | null>(null)
-let map: L.Map | null = null
-let marker: L.Marker | null = null
-let locateMarker: L.Marker | null = null
+/** 选中的底图地点名称（POI 热点/搜索命中时有值），展示并在确认时优先作为名称 */
+const pickedName = ref('')
+// JS API 2.0 命名空间官方 loader 未带类型，按 any 使用
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let AMap: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let map: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let marker: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let locateMarker: any = null
+/** initMap 代际号：加载 JS API/轮廓期间弹窗被关闭或重开时，放弃过期的初始化 */
+let initSeq = 0
 /** 用户（或搜索）已操作过地图时，定位结果不再抢跳视角 */
 let userMoved = false
 /** 打开时定位授权已授予：此时用户拖动视为主动避开定位；首次授权流程点「允许」后必须就位 */
 let grantedAtOpen = false
+/** 最近一次 POI 热点点击时刻：热点点击后紧随的 map click 不再覆盖选点 */
+let lastHotspotAt = 0
 
-/** 地点搜索（Nominatim，景点/城市均可） */
+/** 地点搜索（高德 PlaceSearch，仅中国范围数据） */
 const keyword = ref('')
 const searching = ref(false)
 const searchResults = ref<PlaceResult[]>([])
 const searchTip = ref('')
 
-/** 读取主题 CSS 变量（选点标记跟随亮/暗主题色） */
-function themeColor(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#A85F52'
-}
-
-// 选点暂时限定在中国：接入世界地图时移除 CHINA_BOUNDS/minZoom/搜索 viewbox 与定位回退即可
-const CHINA_BOUNDS = L.latLngBounds([15, 73], [54, 136])
+// 选点暂时限定在中国：接入世界地图时移除边界常量/搜索数据源与定位回退即可
 /** 未授权定位时的默认视角：故宫（WGS-84） */
 const DEFAULT_CENTER: [number, number] = [39.91634, 116.3972]
+/** 视角硬边界（近似中国矩形，WGS-84 与 GCJ-02 差异对视角钳制可忽略） */
+const CHINA_MIN_LAT = 15
+const CHINA_MAX_LAT = 54
+const CHINA_MIN_LNG = 73
+const CHINA_MAX_LNG = 136
 /** 会话内缓存的上次定位（WGS-84）：再次打开选点立即就位，避免每次等数秒定位 */
 let lastKnownLocation: [number, number] | null = null
+
+const coordText = computed(() => {
+  if (lat.value == null || lng.value == null) return '点击地图或底图上的地点图标选择，滚轮可放大到街道级'
+  return `已选：${pickedName.value ? pickedName.value + '，' : ''}纬度 ${lat.value}，经度 ${lng.value}`
+})
 
 watch(
   () => props.modelValue,
@@ -114,17 +128,20 @@ watch(
     if (value) {
       lat.value = props.latitude ?? null
       lng.value = props.longitude ?? null
+      pickedName.value = ''
       keyword.value = ''
       searchResults.value = []
       searchTip.value = ''
       initMap()
     } else {
+      initSeq++
       destroyMap()
     }
   }
 )
 
 async function initMap(): Promise<void> {
+  const seq = ++initSeq
   await nextTick()
   if (!mapRef.value) return
   destroyMap()
@@ -135,34 +152,47 @@ async function initMap(): Promise<void> {
   } catch {
     grantedAtOpen = false
   }
-  // 最小层级=省级（6 级），配合硬边界基本看不到外国；有已选坐标时定位街道级
-  // ponytail: 高德瓦片是 GCJ-02 显示空间，表单/库存是 WGS-84，出入显示层各转一次
-  // （utils/coord）；将来接世界地图（MapLibre + WGS-84 瓦片）时删转换调用即可
-  map = L.map(mapRef.value, {
-    minZoom: 6,
-    maxBounds: CHINA_BOUNDS,
-    maxBoundsViscosity: 1.0
-  }).setView(
-    lat.value != null && lng.value != null ? wgs84ToGcj02(lat.value, lng.value) : wgs84ToGcj02(...DEFAULT_CENTER),
-    13
-  )
+  try {
+    AMap = await loadAMap()
+  } catch (e) {
+    if (seq === initSeq) ElMessage.error('地图加载失败，请检查网络后重试')
+    return
+  }
+  if (seq !== initSeq) return
   // 中国轮廓用于选点是否在国内的判定；加载失败降级放行，不阻塞选点
   await loadChinaPolygons().catch(() => {})
-  L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
-    subdomains: '1234',
-    maxZoom: 19,
-    attribution: '© <a href="https://www.amap.com/">高德地图</a>'
-  }).addTo(map)
-  map.on('click', (e: L.LeafletMouseEvent) => setPoint(e.latlng.lat, e.latlng.lng))
+  if (seq !== initSeq || !mapRef.value) return
+  // 最小层级=省级（6 级），配合硬边界基本看不到外国；有已选坐标或缓存定位时直接就位
+  // ponytail: 高德 JS API 显示空间是 GCJ-02，表单/库存是 WGS-84，出入显示层各转一次
+  // （utils/coord）；将来接世界地图时删转换调用即可
+  const center = wgs84ToGcj02(
+    lat.value != null && lng.value != null
+      ? lat.value
+      : lastKnownLocation
+        ? lastKnownLocation[0]
+        : DEFAULT_CENTER[0],
+    lat.value != null && lng.value != null
+      ? lng.value
+      : lastKnownLocation
+        ? lastKnownLocation[1]
+        : DEFAULT_CENTER[1]
+  )
+  map = new AMap.Map(mapRef.value, {
+    zoom: 13,
+    zooms: [6, 19],
+    center: [center[1], center[0]]
+  })
+  map.setLimitBounds(new AMap.Bounds([CHINA_MIN_LNG, CHINA_MIN_LAT], [CHINA_MAX_LNG, CHINA_MAX_LAT]))
+  map.on('click', onMapClick)
+  map.on('hotspotclick', onHotspotClick)
   map.on('dragstart', onUserMove)
   map.on('zoomstart', onUserMove)
   if (lat.value != null && lng.value != null) {
     renderMarker()
   } else {
-    // 有会话内缓存定位：直接就位（后台刷新不遮罩），不让用户对着默认视角等定位；
+    // 有会话内缓存定位：视角已就位，蓝点补上（后台刷新不遮罩）；
     // 无缓存则遮罩等待首次定位（常含授权弹窗等待），期间不响应地图操作
     if (lastKnownLocation) {
-      map.setView(wgs84ToGcj02(...lastKnownLocation), 13)
       showLocateMarker(lastKnownLocation[0], lastKnownLocation[1])
       hasLocated.value = true
       locateUser(false)
@@ -177,6 +207,15 @@ function onUserMove(): void {
   userMoved = true
 }
 
+function inChinaBounds(latitude: number, longitude: number): boolean {
+  return (
+    latitude >= CHINA_MIN_LAT &&
+    latitude <= CHINA_MAX_LAT &&
+    longitude >= CHINA_MIN_LNG &&
+    longitude <= CHINA_MAX_LNG
+  )
+}
+
 /** 尝试定位到用户当前位置；拒绝授权、失败或定位在国外时不处理 */
 function locateUser(blockWhileLocating: boolean): void {
   if (!('geolocation' in navigator)) return
@@ -186,7 +225,7 @@ function locateUser(blockWhileLocating: boolean): void {
       locating.value = false
       const { latitude, longitude } = position.coords
       // 定位点在中国范围外不采用
-      if (!map || !CHINA_BOUNDS.contains([latitude, longitude])) {
+      if (!map || !inChinaBounds(latitude, longitude)) {
         return
       }
       lastKnownLocation = [latitude, longitude]
@@ -195,7 +234,8 @@ function locateUser(blockWhileLocating: boolean): void {
       // 用户已选点或已操作视角时不打扰（打开时未授权的首次流程除外：点「允许」即明确要求定位到当前位置）；
       // maximumAge 让浏览器可复用近期定位，返回更快
       if (lat.value == null && lng.value == null && (!grantedAtOpen || !userMoved)) {
-        map.setView(wgs84ToGcj02(latitude, longitude), 13)
+        const [gLat, gLng] = wgs84ToGcj02(latitude, longitude)
+        map.setZoomAndCenter(13, [gLng, gLat])
       }
     },
     () => {
@@ -205,62 +245,80 @@ function locateUser(blockWhileLocating: boolean): void {
   )
 }
 
+/** 一键回到最近一次定位点（视角 13 级，与自动定位一致） */
+function backToLocate(): void {
+  if (!map || !lastKnownLocation) return
+  const [gLat, gLng] = wgs84ToGcj02(...lastKnownLocation)
+  map.setZoomAndCenter(13, [gLng, gLat])
+}
+
 /** 当前位置蓝点标记（区别于主题色选点标记），入参 WGS-84 */
 function showLocateMarker(latitude: number, longitude: number): void {
   if (!map) return
   const [gLat, gLng] = wgs84ToGcj02(latitude, longitude)
   if (locateMarker) {
-    locateMarker.setLatLng([gLat, gLng])
+    locateMarker.setPosition([gLng, gLat])
     return
   }
-  locateMarker = L.marker([gLat, gLng], {
-    icon: L.divIcon({
-      className: '',
-      html: '<span style="display:block;width:12px;height:12px;border-radius:50%;background:#1E6FFF;border:2px solid #fff;box-shadow:0 0 0 6px rgba(30,111,255,.2)"></span>',
-      iconSize: [12, 12],
-      iconAnchor: [6, 6]
-    })
-  }).addTo(map)
-}
-
-/** 一键回到最近一次定位点（视角 13 级，与自动定位一致） */
-function backToLocate(): void {
-  if (!map || !lastKnownLocation) return
-  map.flyTo(wgs84ToGcj02(...lastKnownLocation), 13)
+  locateMarker = new AMap.Marker({
+    position: [gLng, gLat],
+    anchor: 'center',
+    content:
+      '<span style="display:block;width:12px;height:12px;border-radius:50%;background:#1E6FFF;border:2px solid #fff;box-shadow:0 0 0 6px rgba(30,111,255,.2)"></span>'
+  })
+  map.add(locateMarker)
 }
 
 function destroyMap(): void {
   marker = null
   locateMarker = null
   locating.value = false
-  map?.remove()
+  map?.destroy()
   map = null
 }
 
-/** divIcon 圆点标记，避免 leaflet 默认图片图标在打包后 404；lat/lng 为表单值（WGS-84）。
- *  每次落点重建标记（而非 setLatLng 挪位），重放 pick-pop 弹跳动画让用户看清本次选中处 */
+/** 读取主题 CSS 变量（选点标记跟随亮/暗主题色） */
+function themeColor(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#A85F52'
+}
+
+/** divIcon 圆点标记样式；lat/lng 为表单值（WGS-84）。
+ *  每次落点重建标记（而非 setPosition 挪位），重放 pick-pop 弹跳动画让用户看清本次选中处 */
 function renderMarker(): void {
   if (!map || lat.value == null || lng.value == null) return
   const [gLat, gLng] = wgs84ToGcj02(lat.value, lng.value)
   if (marker) {
-    map.removeLayer(marker)
+    map.remove(marker)
   }
-  const icon = L.divIcon({
-    className: '',
-    html: `<span class="pick-pin" style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7]
+  marker = new AMap.Marker({
+    position: [gLng, gLat],
+    anchor: 'center',
+    content: `<span class="pick-pin" style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`
   })
-  marker = L.marker([gLat, gLng], { icon }).addTo(map)
+  map.add(marker)
 }
 
-function setPoint(latitude: number, longitude: number): void {
-  // 中国轮廓判定（GCJ-02 显示空间），界外（含矩形边界四角的外国领土）不允许选
+/** 普通点击选点；POI 热点点击后紧随的 click 不再覆盖（坐标与名称以 POI 为准） */
+function onMapClick(e: any): void {
+  if (Date.now() - lastHotspotAt < 200) return
+  pickedName.value = ''
+  pickAt(e.lnglat.lat, e.lnglat.lng)
+}
+
+/** 点击底图 POI 图标（景点/酒店/医院等）：以 POI 坐标选点、标记弹跳放大并记住名称 */
+function onHotspotClick(e: any): void {
+  lastHotspotAt = Date.now()
+  pickedName.value = e.name || ''
+  pickAt(e.lnglat.lat, e.lnglat.lng)
+}
+
+function pickAt(latitude: number, longitude: number): void {
+  // 中国轮廓判定（GCJ-02 显示空间），界外（含边界矩形四角的外国领土）不允许选
   if (!isInChina(longitude, latitude)) {
     ElMessage.warning('只能选择中国范围内的地点')
     return
   }
-  // 地图点击坐标是高德瓦片的 GCJ-02，转回 WGS-84 存表单，精度统一 6 位
+  // 地图/POI 坐标是高德的 GCJ-02，转回 WGS-84 存表单，精度统一 6 位
   const [wLat, wLng] = gcj02ToWgs84(latitude, longitude)
   lat.value = Number(wLat.toFixed(6))
   lng.value = Number(wLng.toFixed(6))
@@ -275,7 +333,7 @@ async function search(): Promise<void> {
   try {
     searchResults.value = await searchPlaces(q)
     if (!searchResults.value.length) {
-      searchTip.value = '未找到中国范围内的地点，换个关键词试试'
+      searchTip.value = '未找到相关地点，换个关键词试试'
     }
   } catch (e) {
     searchResults.value = []
@@ -286,12 +344,13 @@ async function search(): Promise<void> {
 }
 
 function chooseResult(result: PlaceResult): void {
-  // Nominatim 结果是 WGS-84，落点/视角转为高德瓦片的 GCJ-02
+  // 搜索结果坐标已转 WGS-84 存表单，落点/视角转回高德的 GCJ-02
   const [gLat, gLng] = wgs84ToGcj02(result.latitude, result.longitude)
   lat.value = Number(result.latitude.toFixed(6))
   lng.value = Number(result.longitude.toFixed(6))
+  pickedName.value = result.title
   renderMarker()
-  map?.flyTo([gLat, gLng], 15)
+  map?.setZoomAndCenter(15, [gLng, gLat])
   searchResults.value = []
   searchTip.value = ''
 }
@@ -299,19 +358,24 @@ function chooseResult(result: PlaceResult): void {
 async function confirmPick(): Promise<void> {
   if (lat.value == null || lng.value == null || confirming.value) return
   confirming.value = true
-  // 确认时逆地理编码解析名称/地址/城市/国家，失败则只回填坐标
+  // 确认时逆地理编码解析名称/地址/城市/国家，失败则只回填坐标；
+  // 点击 POI 图标/搜索命中时已拿到准确名称，优先于逆地理结果
   let place: PickedPlace = { latitude: lat.value, longitude: lng.value }
   try {
     place = { ...place, ...(await reverseGeocode(lat.value, lng.value)) }
   } catch (e) {
     // ignore
   }
+  if (pickedName.value) place.title = pickedName.value
   confirming.value = false
   emit('confirm', place)
   emit('update:modelValue', false)
 }
 
-onBeforeUnmount(destroyMap)
+onBeforeUnmount(() => {
+  initSeq++
+  destroyMap()
+})
 </script>
 
 <style scoped lang="scss">
@@ -369,7 +433,7 @@ onBeforeUnmount(destroyMap)
       background: var(--sgj-bg-card, #fff);
       z-index: 0;
 
-      // 选点标记落点弹跳放大，提示用户选中位置（Marker DOM 由 Leaflet 动态注入，需 :deep 穿透）
+      // 选点标记落点弹跳放大，提示用户选中位置（Marker DOM 由地图动态注入，需 :deep 穿透）
       :deep(.pick-pin) {
         animation: pick-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       }

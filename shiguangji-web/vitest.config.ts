@@ -16,6 +16,11 @@ export default defineConfig({
     }
   },
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    // 高德 Key 测试值：loadAMap 断言用，不发真实请求
+    env: {
+      VITE_AMAP_KEY: 'test-amap-key',
+      VITE_AMAP_SECURITY_CODE: 'test-amap-security-code'
+    }
   }
 })

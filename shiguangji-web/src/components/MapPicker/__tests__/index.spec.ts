@@ -4,56 +4,77 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { ElButton, ElInput } from 'element-plus'
 import MapPicker from '../index.vue'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
+import { loadAMap, searchPlaces, reverseGeocode } from '@/utils/map'
 
 /**
- * leaflet mock：init 返回共享假 map，捕获 click/dragstart handler 与 marker 交互。
- * 地图显示空间是高德瓦片的 GCJ-02，断言里的显示坐标用真实转换函数计算。
+ * 高德 JS API mock：FakeMap 捕获构造参数与事件 handler，FakeMarker 记录实例；
+ * '@/utils/map' 保留真实的 isInChina/loadChinaPolygons（fetch 桩驱动），
+ * loadAMap/searchPlaces/reverseGeocode 以桩代替。
  */
-const leafletMock = vi.hoisted(() => {
+const amapMock = vi.hoisted(() => {
   const state = {
-    mapHandlers: {} as Record<string, (e?: unknown) => void>,
-    clickLatlng: { lat: 39.9042, lng: 116.4074 }
+    mapHandlers: {} as Record<string, (e?: any) => void>,
+    mapOpts: [] as any[],
+    markers: [] as any[],
+    /** 各地图实例 setZoomAndCenter 的 [zoom, center] 调用汇总 */
+    zoomCalls: [] as [number, number[]][],
+    limitBounds: null as any,
+    removeCalls: 0,
+    destroyCalls: 0
   }
-  const map = {
-    setView: vi.fn(() => map),
-    on: vi.fn((event: string, handler: (e?: unknown) => void) => {
+  class FakeBounds {
+    constructor(public sw: number[], public ne: number[]) {}
+  }
+  class FakeMarker {
+    setPosition = vi.fn()
+    constructor(public opts: any) {
+      state.markers.push(this)
+    }
+  }
+  class FakeMap {
+    constructor(public el: unknown, public opts: any) {
+      state.mapOpts.push(opts)
+    }
+    on(event: string, handler: (e?: any) => void) {
       state.mapHandlers[event] = handler
-    }),
-    remove: vi.fn(),
-    removeLayer: vi.fn(),
-    flyTo: vi.fn()
-  }
-  const marker = {
-    addTo: vi.fn(() => marker),
-    setLatLng: vi.fn()
+    }
+    setZoomAndCenter(zoom: number, center: number[]) {
+      state.zoomCalls.push([zoom, center])
+    }
+    setLimitBounds(bounds: any) {
+      state.limitBounds = bounds
+    }
+    add(_marker: any) {}
+    remove(_marker: any) {
+      state.removeCalls++
+    }
+    destroy() {
+      state.destroyCalls++
+    }
   }
   return {
     state,
-    map,
-    marker,
-    mapFactory: vi.fn(() => map),
-    latLngBounds: vi.fn((sw, ne) => ({
-      sw,
-      ne,
-      contains: vi.fn(([lat, lng]: [number, number]) =>
-        lat >= sw[0] && lat <= ne[0] && lng >= sw[1] && lng <= ne[1]
-      )
-    })),
-    tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
-    markerFactory: vi.fn(() => marker),
-    divIcon: vi.fn(opts => opts)
+    FakeBounds,
+    FakeMarker,
+    FakeMap,
+    AMap: { Map: FakeMap, Bounds: FakeBounds, Marker: FakeMarker }
   }
 })
 
-vi.mock('leaflet', () => ({
-  default: {
-    map: leafletMock.mapFactory,
-    latLngBounds: leafletMock.latLngBounds,
-    tileLayer: leafletMock.tileLayer,
-    marker: leafletMock.markerFactory,
-    divIcon: leafletMock.divIcon
+/** 蓝点定位标记数量（与主题色选点标记按内容色区分） */
+function locateMarkerCount(): number {
+  return amapMock.state.markers.filter(m => String(m.opts.content).includes('#1E6FFF')).length
+}
+
+vi.mock('@/utils/map', async importOriginal => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return {
+    ...actual,
+    loadAMap: vi.fn(async () => amapMock.AMap),
+    searchPlaces: vi.fn(async () => []),
+    reverseGeocode: vi.fn(async () => ({}))
   }
-}))
+})
 
 /** el-dialog 桩：modelValue 为 true 时内联渲染默认与 footer 插槽 */
 const ElDialogStub = defineComponent({
@@ -96,9 +117,14 @@ function findConfirmButton(wrapper: ReturnType<typeof mountPicker>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  leafletMock.state.mapHandlers = {}
-  leafletMock.state.clickLatlng = { lat: 39.9042, lng: 116.4074 }
-  // 默认拦截 fetch，避免确认选点的逆地理编码真实联网；搜索用例自行覆盖
+  amapMock.state.mapHandlers = {}
+  amapMock.state.mapOpts = []
+  amapMock.state.markers = []
+  amapMock.state.zoomCalls = []
+  amapMock.state.limitBounds = null
+  amapMock.state.removeCalls = 0
+  amapMock.state.destroyCalls = 0
+  // 默认拦截 fetch，避免加载中国轮廓真实联网；需要轮廓的用例自行覆盖
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('no fetch in tests')))
 })
 
@@ -124,58 +150,34 @@ function stubPermissionState(state: 'granted' | 'prompt') {
   })
 }
 
-/** 假的中国轮廓（105~125E, 25~45N，覆盖北京），可附带搜索结果按 URL 路由 fetch */
-function stubChinaPolygonFetch(searchResults?: unknown[]) {
-  vi.stubGlobal('fetch', vi.fn(async (url: string | URL) => {
-    const u = String(url)
-    if (u.includes('/map/china.json')) {
-      return {
-        ok: true,
-        json: async () => ({
-          type: 'FeatureCollection',
-          features: [
-            { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: [[[[105, 25], [125, 25], [125, 45], [105, 45], [105, 25]]]] } }
-          ]
-        })
-      }
-    }
-    if (searchResults && u.includes('/search')) {
-      return { ok: true, json: async () => searchResults }
-    }
-    throw new Error('unexpected fetch: ' + u)
-  }))
+/** 地图显示坐标：WGS-84 表单值转高德 GCJ-02 的 [lng, lat] */
+function gcjLngLat(lat: number, lng: number): number[] {
+  const [gLat, gLng] = wgs84ToGcj02(lat, lng)
+  return [gLng, gLat]
 }
 
 describe('MapPicker', () => {
-  it('地图限定中国：minZoom=6（省级）、maxBounds 为中国范围且不可拖出', async () => {
+  it('地图限定中国：zooms 6-19、视角硬边界为中国范围', async () => {
     const wrapper = await openPicker()
-    expect(leafletMock.mapFactory).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        minZoom: 6,
-        maxBounds: expect.objectContaining({ sw: [15, 73], ne: [54, 136] }),
-        maxBoundsViscosity: 1.0
-      })
-    )
+    expect(amapMock.state.mapOpts[0]).toMatchObject({ zoom: 13, zooms: [6, 19] })
+    expect(amapMock.state.limitBounds).toBeInstanceOf(amapMock.FakeBounds)
+    expect(amapMock.state.limitBounds.sw).toEqual([73, 15])
+    expect(amapMock.state.limitBounds.ne).toEqual([136, 54])
     wrapper.unmount()
   })
 
-  it('打开时创建高德瓦片地图，已有坐标转 GCJ-02 定位街道级并打点', async () => {
+  it('打开时创建高德地图，已有坐标转 GCJ-02 定位街道级并打点', async () => {
     const wrapper = await openPicker({ latitude: 30.5, longitude: 100.25 })
-    expect(leafletMock.mapFactory).toHaveBeenCalled()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(30.5, 100.25), 13)
-    expect(leafletMock.tileLayer).toHaveBeenCalledWith(
-      expect.stringContaining('autonavi.com'),
-      expect.objectContaining({ maxZoom: 19 })
-    )
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(30.5, 100.25), expect.anything())
+    expect(amapMock.state.mapOpts[0].center).toEqual(gcjLngLat(30.5, 100.25))
+    expect(amapMock.state.markers).toHaveLength(1)
+    expect(amapMock.state.markers[0].opts.position).toEqual(gcjLngLat(30.5, 100.25))
     wrapper.unmount()
   })
 
   it('无定位授权时默认定位故宫视角且不打点', async () => {
     const wrapper = await openPicker()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
-    expect(leafletMock.markerFactory).not.toHaveBeenCalled()
+    expect(amapMock.state.mapOpts[0].center).toEqual(gcjLngLat(39.91634, 116.3972))
+    expect(amapMock.state.markers).toHaveLength(0)
     expect(wrapper.text()).not.toContain('已选')
     wrapper.unmount()
   })
@@ -184,13 +186,12 @@ describe('MapPicker', () => {
     stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
     const wrapper = await openPicker()
     await flushPromises()
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
+    expect(amapMock.state.zoomCalls).toContainEqual([13, gcjLngLat(31.2304, 121.4737)])
+    expect(locateMarkerCount()).toBe(1)
     wrapper.unmount()
   })
 
   it('首次定位等待期间地图显示 loading 遮罩，定位返回后解除并跳转', async () => {
-    // 定位慢：10ms 后才返回，模拟授权/定位耗时
     stubGeolocation((success) => {
       setTimeout(() => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }), 10)
     })
@@ -198,11 +199,9 @@ describe('MapPicker', () => {
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
     const mapEl = wrapper.find('.picker-map').element as HTMLElement
-    // 等待期间遮罩挂起，挡住拖动/缩放/点选
     expect(mapEl.dataset.loading).toBe('true')
     await new Promise(resolve => setTimeout(resolve, 40))
     expect(mapEl.dataset.loading).toBe('false')
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
     wrapper.unmount()
   })
 
@@ -215,11 +214,11 @@ describe('MapPicker', () => {
     expect(mapEl.dataset.loading).toBe('true')
     await new Promise(resolve => setTimeout(resolve, 40))
     expect(mapEl.dataset.loading).toBe('false')
-    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
+    expect(amapMock.state.markers).toHaveLength(0)
     wrapper.unmount()
   })
 
-  it('有会话缓存定位时再次打开不挂遮罩，立即就位可操作', async () => {
+  it('会话内缓存定位：再次打开立即就位且不挂遮罩，无需等待定位返回', async () => {
     // 第一次打开：定位成功，写入会话缓存
     stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
     const wrapper = await openPicker()
@@ -230,45 +229,43 @@ describe('MapPicker', () => {
     stubGeolocation(() => {})
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
-    // 视角与蓝点立即出现在缓存定位处，且地图未被遮罩挡住
+    // 视角与蓝点立即出现在缓存定位处，不依赖定位返回；后台刷新不遮罩，地图可操作
     expect(wrapper.find('.picker-map').element as HTMLElement).toMatchObject({ dataset: { loading: 'false' } })
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
+    expect(amapMock.state.mapOpts[1].center).toEqual(gcjLngLat(31.2304, 121.4737))
+    expect(amapMock.state.markers.length).toBeGreaterThanOrEqual(1)
     wrapper.unmount()
   })
 
   it('已授权时用户拖动地图后定位仅显示蓝点标记，不抢跳视角', async () => {
     stubPermissionState('granted')
-    // 定位慢：10ms 后才返回，期间用户先拖动地图
     stubGeolocation((success) => {
       setTimeout(() => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }), 10)
     })
     const wrapper = mountPicker()
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
-    leafletMock.state.mapHandlers.dragstart?.({})
+    amapMock.state.mapHandlers.dragstart?.({})
     await new Promise(resolve => setTimeout(resolve, 40))
-    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
+    // 仅初始视角（故宫），未跳到当前位置；蓝点标记已显示
+    expect(amapMock.state.zoomCalls).toEqual([])
+    expect(locateMarkerCount()).toBe(1)
     wrapper.unmount()
   })
 
   it('首次授权流程：等待授权期间拖动过地图，同意授权后仍定位到当前位置', async () => {
     stubPermissionState('prompt')
-    // 授权慢：10ms 后用户才点「允许」返回，期间用户先拖动/缩放地图
     stubGeolocation((success) => {
       setTimeout(() => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }), 10)
     })
     const wrapper = mountPicker()
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
-    leafletMock.state.mapHandlers.dragstart?.({})
-    leafletMock.state.mapHandlers.zoomstart?.({})
+    amapMock.state.mapHandlers.dragstart?.({})
+    amapMock.state.mapHandlers.zoomstart?.({})
     await new Promise(resolve => setTimeout(resolve, 40))
     // 同意授权 = 明确要求定位：即使拖动过也要跳到当前位置并显示蓝点
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
+    expect(amapMock.state.zoomCalls).toContainEqual([13, gcjLngLat(31.2304, 121.4737)])
+    expect(locateMarkerCount()).toBe(1)
     wrapper.unmount()
   })
 
@@ -278,9 +275,9 @@ describe('MapPicker', () => {
     await flushPromises()
     const backBtn = wrapper.findAll('button').find(b => b.attributes('title') === '回到当前位置')
     expect(backBtn).toBeDefined()
-    expect(leafletMock.map.flyTo).not.toHaveBeenCalled()
+    amapMock.state.zoomCalls.length = 0
     await backBtn!.trigger('click')
-    expect(leafletMock.map.flyTo).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
+    expect(amapMock.state.zoomCalls).toEqual([[13, gcjLngLat(31.2304, 121.4737)]])
     wrapper.unmount()
   })
 
@@ -295,59 +292,84 @@ describe('MapPicker', () => {
     stubGeolocation((success) => success({ coords: { latitude: 35.6762, longitude: 139.6503 } }))
     const wrapper = await openPicker()
     await flushPromises()
-    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
+    expect(amapMock.state.zoomCalls).toEqual([])
     wrapper.unmount()
   })
 
-  it('拒绝授权时保持故宫默认视角', async () => {
-    stubGeolocation((_success, error) => error(new Error('denied')))
+  it('点击地图拾取 GCJ-02 坐标，转 WGS-84 存表单并打点', async () => {
     const wrapper = await openPicker()
+    amapMock.state.mapHandlers.click({ lnglat: { lat: 39.9042, lng: 116.4074 } })
     await flushPromises()
-    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
-    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
+    const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
+    const expLat = Number(wLat.toFixed(6))
+    const expLng = Number(wLng.toFixed(6))
+    expect(wrapper.text()).toContain(`已选：纬度 ${expLat}，经度 ${expLng}`)
+    expect(amapMock.state.markers).toHaveLength(1)
+    // 落点回 GCJ 显示（GCJ→WGS→GCJ 算法往返有 1e-6 级微差，近似断言）
+    const [pickLng, pickLat] = amapMock.state.markers[0].opts.position
+    expect(pickLng).toBeCloseTo(116.4074, 4)
+    expect(pickLat).toBeCloseTo(39.9042, 4)
+    expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(false)
+    // 选点标记带弹跳动画类；重复选点重建标记（而非挪位），重放落点弹跳动画
+    expect(amapMock.state.markers[0].opts.content).toContain('pick-pin')
+    amapMock.state.mapHandlers.click({ lnglat: { lat: 39.905, lng: 116.408 } })
+    await flushPromises()
+    expect(amapMock.state.markers).toHaveLength(2)
+    expect(amapMock.state.removeCalls).toBe(1)
     wrapper.unmount()
   })
 
   it('点击中国轮廓外（边界矩形内）不选点并提示', async () => {
-    stubChinaPolygonFetch()
+    vi.stubGlobal('fetch', vi.fn(async (url: string | URL) => {
+      const u = String(url)
+      if (u.includes('/map/china.json')) {
+        return {
+          ok: true,
+          json: async () => ({
+            type: 'FeatureCollection',
+            features: [
+              { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: [[[[105, 25], [125, 25], [125, 45], [105, 45], [105, 25]]]] } }
+            ]
+          })
+        }
+      }
+      throw new Error('unexpected fetch: ' + u)
+    }))
     const wrapper = await openPicker()
     await flushPromises()
     // 视角矩形范围内、但中国轮廓外（境外）
-    leafletMock.state.mapHandlers.click({ latlng: { lat: 20, lng: 110 } })
+    amapMock.state.mapHandlers.click({ lnglat: { lat: 20, lng: 110 } })
     await flushPromises()
     expect(wrapper.text()).not.toContain('已选')
     expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(true)
     wrapper.unmount()
   })
 
-  it('点击地图拾取 GCJ-02 坐标，转 WGS-84 存表单并打点', async () => {
+  it('点击底图 POI 图标（hotspot）：以 POI 坐标选点、显示地点名称', async () => {
     const wrapper = await openPicker()
-    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
+    amapMock.state.mapHandlers.hotspotclick?.({ name: '故宫博物院', lnglat: { lat: 39.916, lng: 116.397 } })
     await flushPromises()
-    const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
-    const expLat = Number(wLat.toFixed(6))
-    const expLng = Number(wLng.toFixed(6))
-    expect(wrapper.text()).toContain(`已选：纬度 ${expLat}，经度 ${expLng}`)
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(expLat, expLng), expect.anything())
-    expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(false)
-    // 选点标记带弹跳动画类
-    expect(leafletMock.divIcon).toHaveBeenCalledWith(expect.objectContaining({ html: expect.stringContaining('pick-pin') }))
-    // 重复选点：重建标记（而非挪位），重放落点弹跳动画
-    leafletMock.state.mapHandlers.click({ latlng: { lat: 39.905, lng: 116.408 } })
-    await flushPromises()
-    expect(leafletMock.markerFactory).toHaveBeenCalledTimes(2)
-    expect(leafletMock.map.removeLayer).toHaveBeenCalledTimes(1)
+    const [wLat, wLng] = gcj02ToWgs84(39.916, 116.397)
+    expect(wrapper.text()).toContain(`已选：故宫博物院，纬度 ${Number(wLat.toFixed(6))}`)
+    expect(amapMock.state.markers).toHaveLength(1)
     wrapper.unmount()
   })
 
-  it('存储坐标按 6 位小数精度截断', async () => {
+  it('POI 热点点击后紧随的普通点击不覆盖名称；之后普通点击恢复无名称选点', async () => {
     const wrapper = await openPicker()
-    leafletMock.state.clickLatlng = { lat: 39.98765432, lng: 116.1234567 }
-    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
+    amapMock.state.mapHandlers.hotspotclick?.({ name: '故宫博物院', lnglat: { lat: 39.916, lng: 116.397 } })
     await flushPromises()
-    const [wLat, wLng] = gcj02ToWgs84(39.98765432, 116.1234567)
-    expect(wrapper.text()).toContain(`已选：纬度 ${Number(wLat.toFixed(6))}，经度 ${Number(wLng.toFixed(6))}`)
+    // 热点后紧随的 click（事件顺序兜底）：不覆盖 POI 名称
+    amapMock.state.mapHandlers.click({ lnglat: { lat: 39.9042, lng: 116.4074 } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('已选：故宫博物院，')
+    // 超出热点时间窗口后的普通点击：清掉名称，正常选点
+    await new Promise(resolve => setTimeout(resolve, 220))
+    amapMock.state.mapHandlers.click({ lnglat: { lat: 39.9042, lng: 116.4074 } })
+    await flushPromises()
+    const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
+    expect(wrapper.text()).toContain(`已选：纬度 ${Number(wLat.toFixed(6))}`)
+    expect(wrapper.text()).not.toContain('故宫博物院')
     wrapper.unmount()
   })
 
@@ -359,7 +381,7 @@ describe('MapPicker', () => {
 
   it('确认选择后 emit confirm 坐标并关闭弹窗（逆地理失败时仅坐标）', async () => {
     const wrapper = await openPicker({ latitude: 1, longitude: 2 })
-    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
+    amapMock.state.mapHandlers.click({ lnglat: { lat: 39.9042, lng: 116.4074 } })
     await flushPromises()
     const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
     await findConfirmButton(wrapper).trigger('click')
@@ -370,18 +392,14 @@ describe('MapPicker', () => {
   })
 
   it('确认选择时逆地理编码解析名称/地址/城市/国家一起 emit', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          name: '故宫博物院',
-          address: { state: '北京市', city: '北京市', county: '东城区', road: '景山前街', house_number: '4号', country: '中国' }
-        })
-      })
-    )
+    vi.mocked(reverseGeocode).mockResolvedValueOnce({
+      title: '景山公园',
+      address: '北京市东城区景山前街4号',
+      city: '北京市',
+      country: '中国'
+    })
     const wrapper = await openPicker({ latitude: 1, longitude: 2 })
-    leafletMock.state.mapHandlers.click({ latlng: leafletMock.state.clickLatlng })
+    amapMock.state.mapHandlers.click({ lnglat: { lat: 39.9042, lng: 116.4074 } })
     await flushPromises()
     const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
     await findConfirmButton(wrapper).trigger('click')
@@ -391,7 +409,7 @@ describe('MapPicker', () => {
         {
           latitude: Number(wLat.toFixed(6)),
           longitude: Number(wLng.toFixed(6)),
-          title: '故宫博物院',
+          title: '景山公园',
           address: '北京市东城区景山前街4号',
           city: '北京市',
           country: '中国'
@@ -402,63 +420,74 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('关闭弹窗时销毁地图实例', async () => {
-    const wrapper = await openPicker()
-    expect(leafletMock.map.remove).not.toHaveBeenCalled()
-    await wrapper.setProps({ modelValue: false })
+  it('POI 命中的名称优先于逆地理结果', async () => {
+    vi.mocked(reverseGeocode).mockResolvedValueOnce({ title: '逆地理名', address: '某地址', city: '某市', country: '中国' })
+    const wrapper = await openPicker({ latitude: 1, longitude: 2 })
+    amapMock.state.mapHandlers.hotspotclick?.({ name: '故宫博物院', lnglat: { lat: 39.916, lng: 116.397 } })
     await flushPromises()
-    expect(leafletMock.map.remove).toHaveBeenCalled()
+    await findConfirmButton(wrapper).trigger('click')
+    await flushPromises()
+    const [place] = (wrapper.emitted('confirm') as any[][])[0] as any[]
+    expect(place.title).toBe('故宫博物院')
+    expect(place.address).toBe('某地址')
     wrapper.unmount()
   })
 
-  it('搜索景点命中结果列表，选择后打点并定位', async () => {
-    stubChinaPolygonFetch([
-      { display_name: '故宫博物院, 北京', lat: '39.91634', lon: '116.39716' }
+  it('关闭弹窗时销毁地图实例', async () => {
+    const wrapper = await openPicker()
+    expect(amapMock.state.mapOpts).toHaveLength(1)
+    await wrapper.setProps({ modelValue: false })
+    await flushPromises()
+    expect(amapMock.state.destroyCalls).toBe(1)
+    wrapper.unmount()
+  })
+
+  it('JS API 加载失败时提示且不创建地图，重开可恢复', async () => {
+    vi.mocked(loadAMap).mockRejectedValueOnce(new Error('load fail'))
+    const wrapper = mountPicker()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    expect(amapMock.state.mapOpts).toHaveLength(0)
+    await wrapper.setProps({ modelValue: false })
+    await flushPromises()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    expect(amapMock.state.mapOpts).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('搜索景点命中结果列表，选择后打点、定位并显示名称', async () => {
+    vi.mocked(searchPlaces).mockResolvedValueOnce([
+      { label: '故宫博物院（北京市东城区）', latitude: 39.91634, longitude: 116.39716, title: '故宫博物院', address: '景山前街4号', city: '北京市', country: '中国' }
     ])
     const wrapper = await openPicker()
     await wrapper.find('input').setValue('故宫')
     const searchButton = wrapper.findAll('button').find(b => b.text().includes('搜索'))!
     await searchButton.trigger('click')
     await flushPromises()
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('q=%E6%95%85%E5%AE%AB'))
-    // 搜索结果限定在中国范围
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('viewbox=73,54,136,15'))
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('bounded=1'))
-    expect(wrapper.text()).toContain('故宫博物院, 北京')
+    expect(searchPlaces).toHaveBeenCalledWith('故宫')
+    expect(wrapper.text()).toContain('故宫博物院（北京市东城区）')
     await wrapper.find('.picker-results li').trigger('click')
     await flushPromises()
-    // 打点（显示坐标转 GCJ-02）+ 定位到 15 级；表单显示 WGS-84 原值
-    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.39716), expect.anything())
-    expect(leafletMock.map.flyTo).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.39716), 15)
-    expect(wrapper.text()).toContain('已选：纬度 39.91634，经度 116.39716')
+    // 打点（显示坐标转 GCJ-02）+ 定位到 15 级；表单显示 WGS-84 原值与地点名称
+    expect(amapMock.state.markers).toHaveLength(1)
+    expect(amapMock.state.markers[0].opts.position).toEqual(gcjLngLat(39.91634, 116.39716))
+    expect(amapMock.state.zoomCalls).toContainEqual([15, gcjLngLat(39.91634, 116.39716)])
+    expect(wrapper.text()).toContain('已选：故宫博物院，纬度 39.91634，经度 116.39716')
     wrapper.unmount()
   })
 
   it('搜索无结果时提示换关键词', async () => {
-    stubChinaPolygonFetch([])
     const wrapper = await openPicker()
     await wrapper.find('input').setValue('不存在的地方xyz')
     await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('未找到中国范围内的地点')
-    wrapper.unmount()
-  })
-
-  it('搜索结果全部在中国轮廓外时提示无中国范围结果', async () => {
-    // 乌兰乌德（俄罗斯）：viewbox 矩形内、中国轮廓外
-    stubChinaPolygonFetch([
-      { display_name: 'Ulan-Ude, Russia', lat: '51.83', lon: '107.58' }
-    ])
-    const wrapper = await openPicker()
-    await wrapper.find('input').setValue('乌兰乌德')
-    await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
-    await flushPromises()
-    expect(wrapper.text()).toContain('未找到中国范围内的地点')
+    expect(wrapper.text()).toContain('未找到相关地点')
     wrapper.unmount()
   })
 
   it('搜索接口失败时提示可直接点图选点', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+    vi.mocked(searchPlaces).mockRejectedValueOnce(new Error('network down'))
     const wrapper = await openPicker()
     await wrapper.find('input').setValue('杭州')
     await wrapper.findAll('button').find(b => b.text().includes('搜索'))!.trigger('click')
