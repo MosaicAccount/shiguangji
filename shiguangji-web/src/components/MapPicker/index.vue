@@ -180,6 +180,8 @@ async function initMap(): Promise<void> {
   map = new AMap.Map(mapRef.value, {
     zoom: 13,
     zooms: [6, 19],
+    // 开启底图 POI 热点：hotspotclick 需要此选项才会触发（官方 demo 要求）
+    isHotspot: true,
     center: [center[1], center[0]]
   })
   map.setLimitBounds(new AMap.Bounds([CHINA_MIN_LNG, CHINA_MIN_LAT], [CHINA_MAX_LNG, CHINA_MAX_LAT]))
