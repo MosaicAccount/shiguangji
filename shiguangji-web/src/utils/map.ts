@@ -1,5 +1,6 @@
 import * as echarts from 'echarts'
-import { wgs84ToGcj02 } from './coord'
+import AMapLoader from '@amap/amap-jsapi-loader'
+import { gcj02ToWgs84 } from './coord'
 
 /** 地图选点确认后回填表单的地点信息（除坐标外由逆地理编码解析，可能为空） */
 export interface PickedPlace {
@@ -23,47 +24,92 @@ export interface PlaceResult {
   country: string
 }
 
-/** 解析 Nominatim 行（jsonv2）为地点名称/地址/城市/国家 */
-function parsePlace(row: any): { title: string; address: string; city: string; country: string } {
-  const a = row.address || {}
-  // 直辖市等 state 与 city 同名，拼接时去掉连续重复段
-  const address = [a.state || a.province, a.city || a.town || a.village, a.county || a.suburb, a.road, a.house_number]
+/** JS API 2.0 命名空间（官方 loader 未带类型，按 any 使用） */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AMapNS = any
+
+let amapPromise: Promise<AMapNS> | null = null
+
+/** 加载高德 JS API 2.0（含选点所需插件），进程内只加载一次 */
+export function loadAMap(): Promise<AMapNS> {
+  if (!amapPromise) {
+    window._AMapSecurityConfig = { securityJsCode: import.meta.env.VITE_AMAP_SECURITY_CODE }
+    amapPromise = AMapLoader.load({
+      key: import.meta.env.VITE_AMAP_KEY,
+      version: '2.0',
+      plugins: ['AMap.PlaceSearch', 'AMap.Geocoder']
+    })
+  }
+  return amapPromise
+}
+
+/** 区划串去重拼接（直辖市等 province 与 city 同名时去掉连续重复段） */
+function joinDistrict(parts: (string | undefined)[]): string {
+  return parts
     .filter(Boolean)
-    .filter((part: string, i: number, arr: string[]) => part !== arr[i - 1])
+    .filter((part, i, arr) => part !== arr[i - 1])
     .join('')
+}
+
+/** 从 PlaceSearch POI（GCJ-02）解析出展示与回填字段，坐标转 WGS-84 存表单 */
+function parsePoi(poi: any): PlaceResult {
+  const district = joinDistrict([poi.pname, poi.cityname, poi.adname])
+  const address = typeof poi.address === 'string' ? poi.address : ''
+  const [wLat, wLng] = gcj02ToWgs84(poi.location.lat, poi.location.lng)
   return {
-    title: row.name || [a.road, a.house_number].filter(Boolean).join('') || a.city || a.town || '',
-    address,
-    city: a.city || a.town || a.village || a.county || '',
-    country: a.country || ''
+    label: address ? `${poi.name}（${district}${address}）` : `${poi.name}（${district}）`,
+    latitude: wLat,
+    longitude: wLng,
+    title: poi.name,
+    address: address || district,
+    city: poi.cityname || poi.pname || '',
+    country: '中国'
   }
 }
 
 /**
- * 逆地理编码（Nominatim，免费无 key）：坐标解析为名称/详细地址/城市/国家。
- * zoom=18 取到门牌级明细；解析失败抛错由调用方兜底只回填坐标。
+ * 关键词搜索地点（高德 PlaceSearch，仅中国范围数据）。
+ * 搜索失败（status=error）抛错由调用方兜底提示。
  */
-export async function reverseGeocode(lat: number, lng: number): Promise<Omit<PickedPlace, 'latitude' | 'longitude'>> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=zh-CN`
-  )
-  if (!res.ok) throw new Error(`reverse geocode failed: ${res.status}`)
-  return parsePlace(await res.json())
+export async function searchPlaces(keyword: string): Promise<PlaceResult[]> {
+  const AMap = await loadAMap()
+  return new Promise((resolve, reject) => {
+    new AMap.PlaceSearch({ pageSize: 6, extensions: 'all' }).search(keyword, (status: string, result: any) => {
+      if (status === 'error') {
+        reject(new Error('place search failed'))
+        return
+      }
+      const pois = status === 'complete' ? (result?.poiList?.pois ?? []) : []
+      resolve(pois.map(parsePoi))
+    })
+  })
 }
 
-/** 关键词搜索地点（中国范围：viewbox 限定 + 中国轮廓过滤），地址明细随结果返回 */
-export async function searchPlaces(keyword: string): Promise<PlaceResult[]> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&accept-language=zh-CN&viewbox=73,54,136,15&bounded=1&q=${encodeURIComponent(keyword)}`
-  )
-  if (!res.ok) throw new Error(`search failed: ${res.status}`)
-  const rows = (await res.json()) as any[]
-  return rows
-    .map(row => ({ label: row.display_name, latitude: Number(row.lat), longitude: Number(row.lon), ...parsePlace(row) }))
-    .filter(r => {
-      const [gLat, gLng] = wgs84ToGcj02(r.latitude, r.longitude)
-      return isInChina(gLng, gLat)
+/**
+ * 逆地理编码（高德 Geocoder）：坐标（GCJ-02）解析为名称/详细地址/城市/国家。
+ * 解析失败抛错由调用方兜底只回填坐标。
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<Omit<PickedPlace, 'latitude' | 'longitude'>> {
+  const AMap = await loadAMap()
+  return new Promise((resolve, reject) => {
+    new AMap.Geocoder().getAddress([lng, lat], (status: string, result: any) => {
+      if (status !== 'complete' || !result?.regeocode) {
+        reject(new Error('reverse geocode failed: ' + status))
+        return
+      }
+      const { regeocode } = result
+      const comp = regeocode.addressComponent || {}
+      // 直辖市 city 为空数组，回退用 province
+      const city = typeof comp.city === 'string' && comp.city ? comp.city : comp.province || ''
+      const poiName = regeocode.pois?.[0]?.name || ''
+      resolve({
+        title: poiName || regeocode.formattedAddress || '',
+        address: regeocode.formattedAddress || '',
+        city,
+        country: comp.country || '中国'
+      })
     })
+  })
 }
 
 /** 加载中国地图 GeoJSON 并注册为 echarts 'china' 地图（本地 public/map 优先，CDN 兜底） */
