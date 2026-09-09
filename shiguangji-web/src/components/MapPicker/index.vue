@@ -67,6 +67,8 @@ let marker: L.Marker | null = null
 let locateMarker: L.Marker | null = null
 /** 用户（或搜索）已操作过地图时，定位结果不再抢跳视角 */
 let userMoved = false
+/** 打开时定位授权已授予：此时用户拖动视为主动避开定位；首次授权流程点「允许」后必须就位 */
+let grantedAtOpen = false
 
 /** 地点搜索（Nominatim，景点/城市均可） */
 const keyword = ref('')
@@ -107,6 +109,12 @@ async function initMap(): Promise<void> {
   if (!mapRef.value) return
   destroyMap()
   userMoved = false
+  // 老浏览器无 permissions API 时按未授予处理（catch 兜底）：同意授权后定位必跳转
+  try {
+    grantedAtOpen = (await navigator.permissions.query({ name: 'geolocation' })).state === 'granted'
+  } catch {
+    grantedAtOpen = false
+  }
   // 最小层级=省级（6 级），配合硬边界基本看不到外国；有已选坐标时定位街道级
   // ponytail: 高德瓦片是 GCJ-02 显示空间，表单/库存是 WGS-84，出入显示层各转一次
   // （utils/coord）；将来接世界地图（MapLibre + WGS-84 瓦片）时删转换调用即可
@@ -157,8 +165,9 @@ function locateUser(): void {
       }
       lastKnownLocation = [latitude, longitude]
       showLocateMarker(latitude, longitude)
-      // 用户已选点或已操作视角时不打扰；maximumAge 让浏览器可复用近期定位，返回更快
-      if (lat.value == null && lng.value == null && !userMoved) {
+      // 用户已选点或已操作视角时不打扰（打开时未授权的首次流程除外：点「允许」即明确要求定位到当前位置）；
+      // maximumAge 让浏览器可复用近期定位，返回更快
+      if (lat.value == null && lng.value == null && (!grantedAtOpen || !userMoved)) {
         map.setView(wgs84ToGcj02(latitude, longitude), 13)
       }
     },

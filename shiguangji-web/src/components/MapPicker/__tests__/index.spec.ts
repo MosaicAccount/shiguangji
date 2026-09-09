@@ -93,12 +93,21 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   delete (window.navigator as any).geolocation
+  delete (window.navigator as any).permissions
 })
 
 /** 注入 mock 的浏览器定位 API */
 function stubGeolocation(impl: (success: (p: { coords: { latitude: number; longitude: number } }) => void, error: (e: unknown) => void) => void) {
   Object.defineProperty(window.navigator, 'geolocation', {
     value: { getCurrentPosition: impl },
+    configurable: true
+  })
+}
+
+/** 注入权限查询状态：granted=已授权（拖动=主动避开定位），prompt=待授权（同意后必跳转） */
+function stubPermissionState(state: 'granted' | 'prompt') {
+  Object.defineProperty(window.navigator, 'permissions', {
+    value: { query: async () => ({ state }) },
     configurable: true
   })
 }
@@ -185,7 +194,8 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('用户拖动地图后定位仅显示蓝点标记，不抢跳视角', async () => {
+  it('已授权时用户拖动地图后定位仅显示蓝点标记，不抢跳视角', async () => {
+    stubPermissionState('granted')
     // 定位慢：10ms 后才返回，期间用户先拖动地图
     stubGeolocation((success) => {
       setTimeout(() => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }), 10)
@@ -197,6 +207,24 @@ describe('MapPicker', () => {
     await new Promise(resolve => setTimeout(resolve, 40))
     expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
     expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(39.91634, 116.3972), 13)
+    expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
+    wrapper.unmount()
+  })
+
+  it('首次授权流程：等待授权期间拖动过地图，同意授权后仍定位到当前位置', async () => {
+    stubPermissionState('prompt')
+    // 授权慢：10ms 后用户才点「允许」返回，期间用户先拖动/缩放地图
+    stubGeolocation((success) => {
+      setTimeout(() => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }), 10)
+    })
+    const wrapper = mountPicker()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    leafletMock.state.mapHandlers.dragstart?.({})
+    leafletMock.state.mapHandlers.zoomstart?.({})
+    await new Promise(resolve => setTimeout(resolve, 40))
+    // 同意授权 = 明确要求定位：即使拖动过也要跳到当前位置并显示蓝点
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
     expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
     wrapper.unmount()
   })
