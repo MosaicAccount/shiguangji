@@ -23,12 +23,22 @@
         </ul>
         <div v-if="searchTip" class="picker-search-tip">{{ searchTip }}</div>
       </div>
-      <div
-        ref="mapRef"
-        class="picker-map"
-        v-loading="locating"
-        element-loading-text="正在定位当前位置，请稍候…"
-      ></div>
+      <div class="picker-map-wrap">
+        <div
+          ref="mapRef"
+          class="picker-map"
+          v-loading="locating"
+          element-loading-text="正在定位当前位置，请稍候…"
+        ></div>
+        <el-button
+          v-if="hasLocated"
+          class="locate-btn"
+          :icon="Aim"
+          circle
+          title="回到当前位置"
+          @click="backToLocate"
+        />
+      </div>
     </div>
     <template #footer>
       <div class="picker-footer">
@@ -45,6 +55,7 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { ElMessage } from 'element-plus'
+import { Aim } from '@element-plus/icons-vue'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
 import { isInChina, loadChinaPolygons, reverseGeocode, searchPlaces } from '@/utils/map'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
@@ -65,6 +76,8 @@ const emit = defineEmits<{
 const confirming = ref(false)
 /** 首次定位进行中：地图遮罩等待，避免定位慢期间用户操作地图后视角被跳转打断 */
 const locating = ref(false)
+/** 本次会话已定位成功：控制「回到当前位置」按钮显隐（与 lastKnownLocation 同步） */
+const hasLocated = ref(false)
 
 const mapRef = ref<HTMLElement | null>(null)
 const lat = ref<number | null>(null)
@@ -151,6 +164,7 @@ async function initMap(): Promise<void> {
     if (lastKnownLocation) {
       map.setView(wgs84ToGcj02(...lastKnownLocation), 13)
       showLocateMarker(lastKnownLocation[0], lastKnownLocation[1])
+      hasLocated.value = true
       locateUser(false)
     } else {
       locateUser(true)
@@ -176,6 +190,7 @@ function locateUser(blockWhileLocating: boolean): void {
         return
       }
       lastKnownLocation = [latitude, longitude]
+      hasLocated.value = true
       showLocateMarker(latitude, longitude)
       // 用户已选点或已操作视角时不打扰（打开时未授权的首次流程除外：点「允许」即明确要求定位到当前位置）；
       // maximumAge 让浏览器可复用近期定位，返回更快
@@ -206,6 +221,12 @@ function showLocateMarker(latitude: number, longitude: number): void {
       iconAnchor: [6, 6]
     })
   }).addTo(map)
+}
+
+/** 一键回到最近一次定位点（视角 13 级，与自动定位一致） */
+function backToLocate(): void {
+  if (!map || !lastKnownLocation) return
+  map.flyTo(wgs84ToGcj02(...lastKnownLocation), 13)
 }
 
 function destroyMap(): void {
@@ -338,12 +359,24 @@ onBeforeUnmount(destroyMap)
     }
   }
 
-  .picker-map {
-    height: 420px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: var(--sgj-bg-card, #fff);
-    z-index: 0;
+  .picker-map-wrap {
+    position: relative;
+
+    .picker-map {
+      height: 420px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--sgj-bg-card, #fff);
+      z-index: 0;
+    }
+
+    .locate-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 800;
+      box-shadow: 0 2px 8px rgba(23, 27, 26, 0.18);
+    }
   }
 }
 

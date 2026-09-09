@@ -271,6 +271,25 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
+  it('定位成功后显示回到当前位置按钮，点击飞回定位点', async () => {
+    stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
+    const wrapper = await openPicker()
+    await flushPromises()
+    const backBtn = wrapper.findAll('button').find(b => b.attributes('title') === '回到当前位置')
+    expect(backBtn).toBeDefined()
+    expect(leafletMock.map.flyTo).not.toHaveBeenCalled()
+    await backBtn!.trigger('click')
+    expect(leafletMock.map.flyTo).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
+    wrapper.unmount()
+  })
+
+  it('定位未成功时不显示回到当前位置按钮', async () => {
+    const wrapper = await openPicker()
+    await flushPromises()
+    expect(wrapper.findAll('button').find(b => b.attributes('title') === '回到当前位置')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it('定位结果在国外时保持故宫默认视角', async () => {
     stubGeolocation((success) => success({ coords: { latitude: 35.6762, longitude: 139.6503 } }))
     const wrapper = await openPicker()
