@@ -159,9 +159,9 @@ function gcjLngLat(lat: number, lng: number): number[] {
 }
 
 describe('MapPicker', () => {
-  it('地图限定中国：zooms 6-19、视角硬边界为中国范围', async () => {
+  it('地图限定中国：zooms 6-17（街道级上限）、视角硬边界为中国范围', async () => {
     const wrapper = await openPicker()
-    expect(amapMock.state.mapOpts[0]).toMatchObject({ zoom: 13, zooms: [6, 19] })
+    expect(amapMock.state.mapOpts[0]).toMatchObject({ zoom: 13, zooms: [6, 17] })
     expect(amapMock.state.limitBounds).toBeInstanceOf(amapMock.FakeBounds)
     expect(amapMock.state.limitBounds.sw).toEqual([73, 15])
     expect(amapMock.state.limitBounds.ne).toEqual([136, 54])

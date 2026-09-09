@@ -179,7 +179,8 @@ async function initMap(): Promise<void> {
   )
   map = new AMap.Map(mapRef.value, {
     zoom: 13,
-    zooms: [6, 19],
+    // 上限 17（街道级）：高德矢量数据在 18+ 仅覆盖主要城区，小城市/郊区会大片空白
+    zooms: [6, 17],
     // 开启底图 POI 热点：hotspotclick 需要此选项才会触发（官方 demo 要求）
     isHotspot: true,
     center: [center[1], center[0]]
