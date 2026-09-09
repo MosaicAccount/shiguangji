@@ -127,6 +127,9 @@ public class SgjItem extends BaseEntity
     /** 地点：地点分类 */
     private String placeCategory;
 
+    /** 条目照片URL，多个英文逗号分隔（逗号顺序即展示顺序；虚拟字段，实际存 sgj_item_photo 表） */
+    private String photos;
+
     public Long getItemId()
     {
         return itemId;
@@ -485,5 +488,15 @@ public class SgjItem extends BaseEntity
     public void setPlaceCategory(String placeCategory)
     {
         this.placeCategory = placeCategory;
+    }
+
+    public String getPhotos()
+    {
+        return photos;
+    }
+
+    public void setPhotos(String photos)
+    {
+        this.photos = photos;
     }
 }
