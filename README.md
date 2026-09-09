@@ -35,7 +35,8 @@ java -jar shiguangji-admin/target/shiguangji-admin.jar   # 默认端口 18080
 ```bash
 cd shiguangji-web
 npm ci
-npm run dev   # 默认端口 5173，/dev-api 代理到 18080
+npm run dev        # 默认端口 5173，/dev-api 代理到 18080
+npm run test:unit  # 前端单元测试（vitest）
 ```
 
 数据库连接、Redis、JWT 密钥等一律通过 `MYSQL_URL`、`REDIS_HOST`、`JWT_SECRET` 等环境变量注入，不要写入仓库。

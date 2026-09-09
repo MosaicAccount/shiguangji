@@ -140,6 +140,18 @@
                 :step="field.step || 1"
                 style="width: 100%"
               />
+              <!-- 地点名称带搜索：选中候选自动回填地址/城市/国家与坐标 -->
+              <place-search-input
+                v-else-if="field.type === 'placeTitle'"
+                v-model="form[field.key]"
+                @select="onPlaceSelect"
+              />
+              <!-- 经纬度组合控件：手动输入或地图选点自动填入 -->
+              <div v-else-if="field.type === 'coord'" class="coord-row">
+                <el-input-number v-model="form.latitude" :min="-90" :max="90" :precision="6" :controls="false" placeholder="纬度" style="width: 130px" />
+                <el-input-number v-model="form.longitude" :min="-180" :max="180" :precision="6" :controls="false" placeholder="经度" style="width: 130px" />
+                <el-button type="primary" plain size="small" @click="coordPickerOpen = true">🗺 地图选点</el-button>
+              </div>
               <el-date-picker
                 v-else-if="field.type === 'date'"
                 v-model="form[field.key]"
@@ -166,6 +178,9 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 地图选点（地点表单经纬度自动填入） -->
+    <map-picker v-model="coordPickerOpen" :latitude="form.latitude" :longitude="form.longitude" @confirm="onCoordPick" />
   </div>
 </template>
 
@@ -174,7 +189,10 @@ import { listItem, getItem, addItem, updateItem, delItem } from '@/api/business/
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import { useDict } from '@/utils/dict'
 import ItemCover from '@/components/ItemCover/index.vue'
+import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 import { parseTime } from '@/utils/sgj'
 
@@ -237,7 +255,7 @@ const statusOptions = computed(() => {
 interface FieldConfig {
   key: string
   label: string
-  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image' | 'tags'
+  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image' | 'tags' | 'coord' | 'placeTitle'
   placeholder?: string
   required?: boolean
   span?: number
@@ -304,14 +322,16 @@ const formFields = computed<FieldConfig[]>(() => {
       { key: 'city', label: '城市', type: 'input', maxlength: 100 },
       { key: 'province', label: '省/州', type: 'input', maxlength: 100 },
       { key: 'country', label: '国家', type: 'input', maxlength: 100 },
-      { key: 'latitude', label: '纬度', type: 'number', min: -90, max: 90, precision: 6, step: 0.000001 },
-      { key: 'longitude', label: '经度', type: 'number', min: -180, max: 180, precision: 6, step: 0.000001 },
+      { key: 'coord', label: '经纬度', type: 'coord', span: 24 },
       { key: 'bestSeason', label: '最佳季节', type: 'select', dictType: 'sgj_best_season' },
       { key: 'placeCategory', label: '地点分类', type: 'select', dictType: 'sgj_place_category', allowCreate: true, filterable: true }
     ]
   }
 
-  return [...common, ...(typeFields[props.itemType] || [])]
+  // 地点表单的名称字段带搜索：选中候选自动回填地址/城市/国家与坐标
+  const fields = [...common, ...(typeFields[props.itemType] || [])]
+  if (props.itemType !== 'PLACE') return fields
+  return fields.map(f => (f.key === 'title' ? { ...f, type: 'placeTitle' as const } : f))
 })
 
 const rules = computed(() => {
@@ -340,6 +360,29 @@ const data = reactive({
 })
 
 const { form, queryParams } = toRefs(data)
+
+/** 地图选点弹窗 */
+const coordPickerOpen = ref(false)
+
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult) {
+  form.value.title = place.title
+  form.value.address = place.address
+  form.value.city = place.city
+  form.value.country = place.country
+  form.value.latitude = place.latitude
+  form.value.longitude = place.longitude
+}
+
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
+function onCoordPick(place: PickedPlace) {
+  form.value.latitude = place.latitude
+  form.value.longitude = place.longitude
+  form.value.title = place.title || form.value.title
+  form.value.address = place.address || form.value.address
+  form.value.city = place.city || form.value.city
+  form.value.country = place.country || form.value.country
+}
 
 /** 查询列表 */
 function getList() {
@@ -527,3 +570,12 @@ function handleExport(command: string) {
 
 getList()
 </script>
+
+<style scoped lang="scss">
+.coord-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+</style>

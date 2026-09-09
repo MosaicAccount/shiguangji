@@ -12,10 +12,19 @@ interface ImportMetaEnv {
   readonly VITE_APP_ENV: string
   readonly VITE_DEV_PORT?: string
   readonly VITE_DEV_PROXY_TARGET?: string
+  /** 高德地图 JS API Key（Web端） */
+  readonly VITE_AMAP_KEY: string
+  /** 高德地图 JS API 安全密钥 */
+  readonly VITE_AMAP_SECURITY_CODE: string
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv
+}
+
+// 高德地图 JS API 安全密钥配置（须在 loader 加载前挂到 window）
+interface Window {
+  _AMapSecurityConfig?: { securityJsCode: string }
 }
 
 // element-plus

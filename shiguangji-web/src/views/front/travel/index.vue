@@ -110,7 +110,8 @@
     <el-dialog v-model="addOpen" title="添加想去" width="560px" append-to-body>
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="90px">
         <el-form-item label="地点名称" prop="title">
-          <el-input v-model="addForm.title" placeholder="请输入地点名称" maxlength="200" />
+          <!-- 支持名称搜索自动补全，选中直接回填地址/城市/国家与坐标 -->
+          <place-search-input v-model="addForm.title" placeholder="输入名称搜索地点，或直接填写" @select="onPlaceSelect" />
         </el-form-item>
         <el-form-item label="详细地址">
           <el-input v-model="addForm.address" placeholder="详细地址（可选）" maxlength="300" />
@@ -169,22 +170,7 @@
     </el-dialog>
 
     <!-- 地图选点 -->
-    <el-dialog v-model="pickerOpen" title="地图选点" width="640px" append-to-body>
-      <div v-loading="pickerLoading" class="picker-container">
-        <div v-if="pickerError" class="map-error">{{ pickerError }}</div>
-        <div v-else ref="pickerRef" class="picker-chart"></div>
-      </div>
-      <div class="picker-footer">
-        <span class="picker-coord">
-          {{ pickerLat != null && pickerLng != null
-            ? `已选：纬度 ${pickerLat}，经度 ${pickerLng}`
-            : '点击地图选择地点' }}
-        </span>
-        <el-button type="primary" :disabled="pickerLat == null || pickerLng == null" @click="confirmPick">
-          确认选择
-        </el-button>
-      </div>
-    </el-dialog>
+    <map-picker v-model="pickerOpen" :latitude="addForm.latitude" :longitude="addForm.longitude" @confirm="confirmPick" />
 
     <!-- 标记去过 -->
     <el-dialog v-model="completeOpen" :title="'标记去过：' + (currentItem?.title || '')" width="520px" append-to-body>
@@ -257,8 +243,12 @@ import { getToken } from '@/utils/auth'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
+import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
+import { loadChinaMap } from '@/utils/map'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel } from '@/utils/sgj'
@@ -306,12 +296,6 @@ const currentItem = ref<SgjItem | null>(null)
 const detail = ref<SgjItem | null>(null)
 
 const pickerOpen = ref(false)
-const pickerLoading = ref(false)
-const pickerError = ref('')
-const pickerRef = ref<HTMLElement | null>(null)
-const pickerLat = ref<number | null>(null)
-const pickerLng = ref<number | null>(null)
-let pickerChart: any = null
 
 const addForm = reactive({
   title: undefined as string | undefined,
@@ -461,31 +445,6 @@ function preloadPointDetails(): void {
   })
 }
 
-async function loadChinaMap(): Promise<boolean> {
-  // 本地 public/map/china.json 优先
-  try {
-    const localRes = await fetch('/map/china.json')
-    if (localRes.ok) {
-      const geoJson = await localRes.json()
-      echarts.registerMap('china', geoJson)
-      return true
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  // CDN 兜底
-  try {
-    const res = await fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
-    if (!res.ok) return false
-    const geoJson = await res.json()
-    echarts.registerMap('china', geoJson)
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
 function initMapChart(): void {
   if (!mapRef.value) return
   const visited = trajectory.value?.visited || []
@@ -630,95 +589,28 @@ function openAdd(): void {
   addOpen.value = true
 }
 
-async function openMapPicker(): Promise<void> {
+function openMapPicker(): void {
   pickerOpen.value = true
-  pickerLat.value = addForm.latitude ?? null
-  pickerLng.value = addForm.longitude ?? null
-  pickerLoading.value = true
-  pickerError.value = ''
-  try {
-    const loaded = await loadChinaMap()
-    if (!loaded) {
-      pickerError.value = '地图加载失败，请检查网络或稍后重试，也可以手动输入经纬度'
-      return
-    }
-    await nextTick()
-    initPickerChart()
-  } finally {
-    pickerLoading.value = false
-  }
 }
 
-function initPickerChart(): void {
-  if (!pickerRef.value) return
-  pickerChart?.dispose()
-  pickerChart = echarts.init(pickerRef.value)
-
-  const selectedData = pickerLat.value != null && pickerLng.value != null
-    ? [{ name: '已选', value: [pickerLng.value, pickerLat.value] }]
-    : []
-
-  pickerChart.setOption({
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        if (params.seriesType === 'scatter' && params.value) {
-          return `纬度：${params.value[1]}<br/>经度：${params.value[0]}`
-        }
-        return params.name || ''
-      }
-    },
-    geo: {
-      map: 'china',
-      roam: true,
-      zoom: 1.2,
-      scaleLimit: { min: 1, max: 10 },
-      label: { show: false },
-      itemStyle: {
-        areaColor: themeColor('--sgj-primary-soft'),
-        borderColor: themeColor('--sgj-primary')
-      },
-      emphasis: {
-        itemStyle: { areaColor: themeColor('--sgj-primary-soft') }
-      }
-    },
-    series: [
-      {
-        name: '选点',
-        type: 'scatter',
-        coordinateSystem: 'geo',
-        data: selectedData,
-        symbolSize: 12,
-        itemStyle: { color: themeColor('--sgj-primary') },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{b}',
-          color: themeColor('--sgj-primary'),
-          fontSize: 12
-        }
-      }
-    ]
-  })
-
-  pickerChart.on('click', (params: any) => {
-    if (params.componentType !== 'geo' && params.componentType !== 'series') return
-    if (params.componentType === 'series' && !params.value) return
-    const value = params.value
-    if (Array.isArray(value) && value.length >= 2) {
-      pickerLng.value = Number(value[0])
-      pickerLat.value = Number(value[1])
-      initPickerChart()
-    }
-  })
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult): void {
+  addForm.title = place.title
+  addForm.address = place.address
+  addForm.city = place.city
+  addForm.country = place.country
+  addForm.latitude = place.latitude
+  addForm.longitude = place.longitude
 }
 
-function confirmPick(): void {
-  if (pickerLat.value != null && pickerLng.value != null) {
-    addForm.latitude = pickerLat.value
-    addForm.longitude = pickerLng.value
-    pickerOpen.value = false
-  }
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
+function confirmPick(place: PickedPlace): void {
+  addForm.latitude = place.latitude
+  addForm.longitude = place.longitude
+  addForm.title = place.title || addForm.title
+  addForm.address = place.address || addForm.address
+  addForm.city = place.city || addForm.city
+  addForm.country = place.country || addForm.country
 }
 
 function submitAdd(): void {
@@ -1180,40 +1072,6 @@ html.dark .detail-content .detail-icon {
   margin-top: 4px;
   font-size: 12px;
   color: var(--sgj-text-4);
-}
-
-.picker-container {
-  height: 420px;
-  background: var(--sgj-bg-card);
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-
-  .picker-chart {
-    width: 100%;
-    height: 100%;
-  }
-
-  .map-error {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--sgj-text-4);
-  }
-}
-
-.picker-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
-
-  .picker-coord {
-    font-size: 13px;
-    color: var(--sgj-text-2);
-  }
 }
 
 .detail-content {

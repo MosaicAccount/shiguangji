@@ -4,7 +4,14 @@
       <el-row>
         <el-col :span="12">
           <el-form-item :label="titleLabel" prop="title">
-            <el-input v-model="form.title" :placeholder="'请输入' + titleLabel" maxlength="200" />
+            <!-- 地点支持名称搜索回填；其他类型普通输入 -->
+            <place-search-input
+              v-if="itemType === 'PLACE'"
+              v-model="form.title"
+              :placeholder="'输入名称搜索地点，或直接填写'"
+              @select="onPlaceSelect"
+            />
+            <el-input v-else v-model="form.title" :placeholder="'请输入' + titleLabel" maxlength="200" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -135,14 +142,14 @@
               <el-input v-model="form.country" placeholder="国家（可选）" maxlength="100" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="纬度" prop="latitude">
-              <el-input-number v-model="form.latitude" :min="-90" :max="90" :precision="6" :controls="false" placeholder="纬度" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="经度" prop="longitude">
-              <el-input-number v-model="form.longitude" :min="-180" :max="180" :precision="6" :controls="false" placeholder="经度" style="width: 100%" />
+          <el-col :span="24">
+            <el-form-item label="经纬度">
+              <!-- 手动输入或地图选点自动填入 -->
+              <div class="coord-row">
+                <el-input-number v-model="form.latitude" :min="-90" :max="90" :precision="6" :controls="false" placeholder="纬度" style="width: 130px" />
+                <el-input-number v-model="form.longitude" :min="-180" :max="180" :precision="6" :controls="false" placeholder="经度" style="width: 130px" />
+                <el-button type="primary" plain size="small" @click="pickerOpen = true">🗺 地图选点</el-button>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -170,11 +177,17 @@
       <el-button @click="dialogVisible = false">取 消</el-button>
     </template>
   </el-dialog>
+
+  <!-- 地图选点（地点表单经纬度自动填入） -->
+  <map-picker v-model="pickerOpen" :latitude="form.latitude" :longitude="form.longitude" @confirm="onCoordPick" />
 </template>
 
 <script setup lang="ts" name="ItemEditDialog">
 import { getFrontItem, updateFrontItem } from '@/api/front/item'
+import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 
 const props = defineProps<{
@@ -199,6 +212,29 @@ const dialogVisible = computed({
 
 const itemType = ref<'MOVIE' | 'TV' | 'BOOK' | 'PLACE'>('MOVIE')
 const submitting = ref(false)
+
+/** 地图选点弹窗 */
+const pickerOpen = ref(false)
+
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult): void {
+  form.title = place.title
+  form.address = place.address
+  form.city = place.city
+  form.country = place.country
+  form.latitude = place.latitude
+  form.longitude = place.longitude
+}
+
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
+function onCoordPick(place: PickedPlace): void {
+  form.latitude = place.latitude
+  form.longitude = place.longitude
+  form.title = place.title || form.title
+  form.address = place.address || form.address
+  form.city = place.city || form.city
+  form.country = place.country || form.country
+}
 
 const form = reactive<Record<string, any>>({})
 const editFormRef = ref()
@@ -246,3 +282,12 @@ function viewNotes(): void {
   router.push({ path: props.notesPath || '/note', query: { itemId: String(props.itemId) } })
 }
 </script>
+
+<style scoped lang="scss">
+.coord-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+</style>
