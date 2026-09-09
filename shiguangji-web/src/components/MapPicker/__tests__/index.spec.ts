@@ -20,10 +20,11 @@ const leafletMock = vi.hoisted(() => {
       state.mapHandlers[event] = handler
     }),
     remove: vi.fn(),
+    removeLayer: vi.fn(),
     flyTo: vi.fn()
   }
   const marker = {
-    addTo: vi.fn(),
+    addTo: vi.fn(() => marker),
     setLatLng: vi.fn()
   }
   return {
@@ -330,6 +331,13 @@ describe('MapPicker', () => {
     expect(wrapper.text()).toContain(`已选：纬度 ${expLat}，经度 ${expLng}`)
     expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(expLat, expLng), expect.anything())
     expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(false)
+    // 选点标记带弹跳动画类
+    expect(leafletMock.divIcon).toHaveBeenCalledWith(expect.objectContaining({ html: expect.stringContaining('pick-pin') }))
+    // 重复选点：重建标记（而非挪位），重放落点弹跳动画
+    leafletMock.state.mapHandlers.click({ latlng: { lat: 39.905, lng: 116.408 } })
+    await flushPromises()
+    expect(leafletMock.markerFactory).toHaveBeenCalledTimes(2)
+    expect(leafletMock.map.removeLayer).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 

@@ -237,17 +237,17 @@ function destroyMap(): void {
   map = null
 }
 
-/** divIcon 圆点标记，避免 leaflet 默认图片图标在打包后 404；lat/lng 为表单值（WGS-84） */
+/** divIcon 圆点标记，避免 leaflet 默认图片图标在打包后 404；lat/lng 为表单值（WGS-84）。
+ *  每次落点重建标记（而非 setLatLng 挪位），重放 pick-pop 弹跳动画让用户看清本次选中处 */
 function renderMarker(): void {
   if (!map || lat.value == null || lng.value == null) return
   const [gLat, gLng] = wgs84ToGcj02(lat.value, lng.value)
   if (marker) {
-    marker.setLatLng([gLat, gLng])
-    return
+    map.removeLayer(marker)
   }
   const icon = L.divIcon({
     className: '',
-    html: `<span style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`,
+    html: `<span class="pick-pin" style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7]
   })
@@ -368,6 +368,11 @@ onBeforeUnmount(destroyMap)
       overflow: hidden;
       background: var(--sgj-bg-card, #fff);
       z-index: 0;
+
+      // 选点标记落点弹跳放大，提示用户选中位置（Marker DOM 由 Leaflet 动态注入，需 :deep 穿透）
+      :deep(.pick-pin) {
+        animation: pick-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
     }
 
     .locate-btn {
@@ -388,6 +393,20 @@ onBeforeUnmount(destroyMap)
   .picker-coord {
     font-size: 13px;
     color: var(--sgj-text-2, #666);
+  }
+}
+
+@keyframes pick-pop {
+  0% {
+    transform: scale(0.3);
+  }
+
+  60% {
+    transform: scale(1.4);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 </style>
