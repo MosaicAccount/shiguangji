@@ -28,6 +28,7 @@ const amapMock = vi.hoisted(() => {
   class FakeMarker {
     setPosition = vi.fn()
     setContent = vi.fn()
+    on = vi.fn()
     constructor(public opts: any) {
       state.markers.push(this)
     }
@@ -287,6 +288,27 @@ describe('MapPicker', () => {
     const wrapper = await openPicker()
     await flushPromises()
     expect(wrapper.findAll('button').find(b => b.attributes('title') === '回到当前位置')).toBeUndefined()
+    expect(wrapper.findAll('button').find(b => b.attributes('title') === '选择当前位置')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('定位成功后可一键选中定位点，坐标不发生往返偏移', async () => {
+    stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
+    const wrapper = await openPicker()
+    await flushPromises()
+    const pickBtn = wrapper.findAll('button').find(b => b.attributes('title') === '选择当前位置')
+    expect(pickBtn).toBeDefined()
+    // 蓝点标记绑定了点击选中
+    const blue = amapMock.state.markers.find(mk => String(mk.opts.content).includes('#1E6FFF'))
+    expect(blue.on).toHaveBeenCalledWith('click', expect.any(Function))
+    await pickBtn!.trigger('click')
+    await flushPromises()
+    // 表单值=定位原始值（无 GCJ/WGS 往返偏移），落点在蓝点显示位置
+    expect(wrapper.text()).toContain('已选：纬度 31.2304，经度 121.4737')
+    expect((findConfirmButton(wrapper).element as HTMLButtonElement).disabled).toBe(false)
+    const pick = amapMock.state.markers.filter(mk => String(mk.opts.content).includes('pick-pin'))
+    expect(pick).toHaveLength(1)
+    expect(pick[0].opts.position).toEqual(gcjLngLat(31.2304, 121.4737))
     wrapper.unmount()
   })
 
@@ -420,6 +442,12 @@ describe('MapPicker', () => {
     const [wLat, wLng] = gcj02ToWgs84(39.9042, 116.4074)
     await findConfirmButton(wrapper).trigger('click')
     await flushPromises()
+    // 逆地理编码收到 GCJ-02 坐标（高德接口要求），而非表单 WGS-84
+    expect(reverseGeocode).toHaveBeenCalledTimes(1)
+    const [regeoLat, regeoLng] = vi.mocked(reverseGeocode).mock.calls[0]
+    const [gLat, gLng] = wgs84ToGcj02(Number(wLat.toFixed(6)), Number(wLng.toFixed(6)))
+    expect(regeoLat).toBeCloseTo(gLat, 5)
+    expect(regeoLng).toBeCloseTo(gLng, 5)
     expect(wrapper.emitted('confirm')).toEqual([
       [
         {

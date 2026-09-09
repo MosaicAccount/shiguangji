@@ -38,6 +38,14 @@
           title="回到当前位置"
           @click="backToLocate"
         />
+        <el-button
+          v-if="hasLocated"
+          class="locate-btn locate-pick-btn"
+          :icon="Select"
+          circle
+          title="选择当前位置"
+          @click="pickCurrentLocation"
+        />
       </div>
     </div>
     <template #footer>
@@ -53,7 +61,7 @@
 
 <script setup lang="ts" name="MapPicker">
 import { ElMessage } from 'element-plus'
-import { Aim } from '@element-plus/icons-vue'
+import { Aim, Select } from '@element-plus/icons-vue'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
 import { isInChina, loadChinaPolygons, loadAMap, reverseGeocode, searchPlaces, getPoiEmoji } from '@/utils/map'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
@@ -255,6 +263,19 @@ function backToLocate(): void {
   map.setZoomAndCenter(13, [gLng, gLat])
 }
 
+/** 选中定位点为地点：表单直接采用 WGS-84 定位值（不做地图坐标往返转换）。
+ *  蓝点点击与「选择当前位置」按钮共用 */
+function pickCurrentLocation(): void {
+  if (!lastKnownLocation) return
+  const [locLat, locLng] = lastKnownLocation
+  const [gLat, gLng] = wgs84ToGcj02(locLat, locLng)
+  if (!isInChina(gLng, gLat)) return
+  pickedName.value = ''
+  lat.value = Number(locLat.toFixed(6))
+  lng.value = Number(locLng.toFixed(6))
+  renderMarker()
+}
+
 /** 当前位置蓝点标记（区别于主题色选点标记），入参 WGS-84 */
 function showLocateMarker(latitude: number, longitude: number): void {
   if (!map) return
@@ -267,8 +288,10 @@ function showLocateMarker(latitude: number, longitude: number): void {
     position: [gLng, gLat],
     anchor: 'center',
     content:
-      '<span style="display:block;width:12px;height:12px;border-radius:50%;background:#1E6FFF;border:2px solid #fff;box-shadow:0 0 0 6px rgba(30,111,255,.2)"></span>'
+      '<span title="点击选择当前位置" style="cursor:pointer;display:block;width:12px;height:12px;border-radius:50%;background:#1E6FFF;border:2px solid #fff;box-shadow:0 0 0 6px rgba(30,111,255,.2)"></span>'
   })
+  // 点蓝点即可把定位点选为地点
+  locateMarker.on('click', () => pickCurrentLocation())
   map.add(locateMarker)
 }
 
@@ -394,10 +417,12 @@ async function confirmPick(): Promise<void> {
   if (lat.value == null || lng.value == null || confirming.value) return
   confirming.value = true
   // 确认时逆地理编码解析名称/地址/城市/国家，失败则只回填坐标；
-  // 点击 POI 图标/搜索命中时已拿到准确名称，优先于逆地理结果
+  // 点击 POI 图标/搜索命中时已拿到准确名称，优先于逆地理结果。
+  // 表单是 WGS-84，高德 Geocoder 要 GCJ-02，先转换再查
   let place: PickedPlace = { latitude: lat.value, longitude: lng.value }
   try {
-    place = { ...place, ...(await reverseGeocode(lat.value, lng.value)) }
+    const [gLat, gLng] = wgs84ToGcj02(lat.value, lng.value)
+    place = { ...place, ...(await reverseGeocode(gLat, gLng)) }
   } catch (e) {
     // ignore
   }
@@ -480,6 +505,10 @@ onBeforeUnmount(() => {
       right: 12px;
       z-index: 800;
       box-shadow: 0 2px 8px rgba(23, 27, 26, 0.18);
+
+      &.locate-pick-btn {
+        top: 58px;
+      }
     }
   }
 }
