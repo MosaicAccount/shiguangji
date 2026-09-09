@@ -363,8 +363,11 @@ describe('MapPicker', () => {
     expect(badge.opts.content).toContain('故宫博物院')
     await flushPromises()
     expect(badge.setContent).toHaveBeenCalledTimes(1)
-    expect(String(badge.setContent.mock.calls[0][0])).toContain('🏨')
-    expect(String(badge.setContent.mock.calls[0][0])).toContain('故宫博物院')
+    // 静默替换：emoji 更新为分类图标，但不带动画类，避免二次弹跳
+    const swapped = String(badge.setContent.mock.calls[0][0])
+    expect(swapped).toContain('🏨')
+    expect(swapped).toContain('故宫博物院')
+    expect(swapped).not.toContain('pick-pin')
     wrapper.unmount()
   })
 

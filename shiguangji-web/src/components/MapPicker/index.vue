@@ -299,9 +299,10 @@ function nameTagHtml(name: string): string {
   return `<span style="position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:6px;padding:2px 10px;border-radius:999px;background:#fff;border:1px solid ${themeColor('--sgj-primary')};color:${themeColor('--sgj-primary')};font-size:14px;font-weight:600;line-height:1.4;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.18)">${name}</span>`
 }
 
-/** 选点标记整体：内层图形 + 可选的放大名称标签，pick-pop 弹跳作用在整体上 */
-function markerHtml(inner: string): string {
-  return `<span class="pick-pin" style="position:relative;display:flex;align-items:center;justify-content:center">${inner}${pickedName.value ? nameTagHtml(pickedName.value) : ''}</span>`
+/** 选点标记整体：内层图形 + 可选的放大名称标签，pick-pop 弹跳作用在整体上；
+ *  animate=false 用于 emoji 分类就位后的静默替换，避免二次弹跳 */
+function markerHtml(inner: string, animate = true): string {
+  return `<span${animate ? ' class="pick-pin"' : ''} style="position:relative;display:flex;align-items:center;justify-content:center">${inner}${pickedName.value ? nameTagHtml(pickedName.value) : ''}</span>`
 }
 
 /** 选点标记；lat/lng 为表单值（WGS-84）。
@@ -346,11 +347,12 @@ function pickAt(latitude: number, longitude: number, poiId?: string): void {
   lat.value = Number(wLat.toFixed(6))
   lng.value = Number(wLng.toFixed(6))
   const m = renderMarker(poiId != null)
-  // 查 POI 分类并替换徽标 emoji（如酒店 🏨）；期间若又点了别处，标记已被重建则放弃
+  // 查 POI 分类并静默替换徽标 emoji（如酒店 🏨），不带动画避免二次弹跳；
+  // 期间若又点了别处，标记已被重建则放弃
   if (m && poiId != null) {
     getPoiEmoji(poiId)
       .then(emoji => {
-        if (marker === m) m.setContent(markerHtml(poiBadgeHtml(emoji)))
+        if (marker === m) m.setContent(markerHtml(poiBadgeHtml(emoji), false))
       })
       .catch(() => {})
   }
