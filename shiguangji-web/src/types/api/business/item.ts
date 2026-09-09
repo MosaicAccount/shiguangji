@@ -57,6 +57,9 @@ export interface SgjItem extends BaseEntity {
   longitude?: number
   bestSeason?: string
   placeCategory?: string
+
+  /** 条目照片URL，多个英文逗号分隔（逗号顺序即展示顺序） */
+  photos?: string
 }
 
 /** 内容条目查询参数 */

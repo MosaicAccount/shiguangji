@@ -216,6 +216,22 @@
                     <el-descriptions-item label="最佳季节">{{ selectDictLabel(sgj_best_season, detail.bestSeason) || '-' }}</el-descriptions-item>
           <el-descriptions-item label="分类">{{ selectDictLabel(sgj_place_category, detail.placeCategory) || '-' }}</el-descriptions-item>
         </el-descriptions>
+        <!-- 地点照片：登录用户可上传/拖拽排序/删除（改动即保存），访客只读浏览 -->
+        <div class="detail-photos">
+          <div class="detail-photos-head">
+            <h3>照片</h3>
+            <span v-if="photoCount" class="detail-photos-count">{{ photoCount }} 张</span>
+          </div>
+          <image-upload
+            v-model="detail.photos"
+            :limit="0"
+            :file-size="10"
+            :disabled="!isLogin"
+            :drag="isLogin"
+            :is-show-tip="isLogin"
+            @update:model-value="savePhotos"
+          />
+        </div>
         <div v-if="detail.comment" class="detail-comment">
           <h3>我的回忆</h3>
           <p>{{ detail.comment }}</p>
@@ -249,7 +265,7 @@ import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { loadChinaMap } from '@/utils/map'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
-import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
+import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel } from '@/utils/sgj'
 import type { SgjItem } from '@/types/api/business/item'
@@ -669,6 +685,26 @@ function openDetail(item: SgjItem): void {
     detail.value = response.data || null
     detailOpen.value = true
   }).catch(() => {})
+}
+
+/** 照片张数（详情抽屉展示） */
+const photoCount = computed(() => {
+  const photos = detail.value?.photos
+  return photos ? photos.split(',').filter(Boolean).length : 0
+})
+
+/**
+ * 照片变更即保存：上传/删除/拖拽排序后 ImageUpload 都会抛出完整逗号串，
+ * 后端按 item 整体替换照片表（空串表示清空）；非本人条目由后端 canOperate 拦截
+ */
+function savePhotos(photos: string): void {
+  if (!detail.value?.itemId) return
+  updateFrontItem(detail.value.itemId, { photos }).catch(() => {
+    // 保存失败时回读详情，恢复展示与库一致（错误提示由拦截器统一弹出）
+    getFrontItem(detail.value!.itemId!).then(r => {
+      detail.value = r.data || null
+    }).catch(() => {})
+  })
 }
 
 /**
@@ -1140,6 +1176,29 @@ html.dark .detail-content .detail-icon {
     p {
       color: var(--sgj-text);
       line-height: 1.6;
+    }
+  }
+
+  /* 地点照片区：标题行与 ImageUpload 照片墙 */
+  .detail-photos {
+    margin-top: 20px;
+    text-align: left;
+
+    .detail-photos-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 8px;
+
+      h3 {
+        color: var(--sgj-text-2);
+        margin: 0;
+      }
+
+      .detail-photos-count {
+        font-size: 12px;
+        color: var(--sgj-text-4);
+      }
     }
   }
 
