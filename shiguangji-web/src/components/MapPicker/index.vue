@@ -23,7 +23,12 @@
         </ul>
         <div v-if="searchTip" class="picker-search-tip">{{ searchTip }}</div>
       </div>
-      <div ref="mapRef" class="picker-map"></div>
+      <div
+        ref="mapRef"
+        class="picker-map"
+        v-loading="locating"
+        element-loading-text="正在定位当前位置，请稍候…"
+      ></div>
     </div>
     <template #footer>
       <div class="picker-footer">
@@ -58,6 +63,8 @@ const emit = defineEmits<{
 }>()
 
 const confirming = ref(false)
+/** 首次定位进行中：地图遮罩等待，避免定位慢期间用户操作地图后视角被跳转打断 */
+const locating = ref(false)
 
 const mapRef = ref<HTMLElement | null>(null)
 const lat = ref<number | null>(null)
@@ -139,12 +146,15 @@ async function initMap(): Promise<void> {
   if (lat.value != null && lng.value != null) {
     renderMarker()
   } else {
-    // 有会话内缓存定位：直接就位（后台再刷新），不让用户对着默认视角等定位
+    // 有会话内缓存定位：直接就位（后台刷新不遮罩），不让用户对着默认视角等定位；
+    // 无缓存则遮罩等待首次定位（常含授权弹窗等待），期间不响应地图操作
     if (lastKnownLocation) {
       map.setView(wgs84ToGcj02(...lastKnownLocation), 13)
       showLocateMarker(lastKnownLocation[0], lastKnownLocation[1])
+      locateUser(false)
+    } else {
+      locateUser(true)
     }
-    locateUser()
   }
 }
 
@@ -154,10 +164,12 @@ function onUserMove(): void {
 }
 
 /** 尝试定位到用户当前位置；拒绝授权、失败或定位在国外时不处理 */
-function locateUser(): void {
+function locateUser(blockWhileLocating: boolean): void {
   if (!('geolocation' in navigator)) return
+  locating.value = blockWhileLocating
   navigator.geolocation.getCurrentPosition(
     position => {
+      locating.value = false
       const { latitude, longitude } = position.coords
       // 定位点在中国范围外不采用
       if (!map || !CHINA_BOUNDS.contains([latitude, longitude])) {
@@ -171,7 +183,9 @@ function locateUser(): void {
         map.setView(wgs84ToGcj02(latitude, longitude), 13)
       }
     },
-    () => {},
+    () => {
+      locating.value = false
+    },
     { timeout: 8000, maximumAge: 30000 }
   )
 }
@@ -197,6 +211,7 @@ function showLocateMarker(latitude: number, longitude: number): void {
 function destroyMap(): void {
   marker = null
   locateMarker = null
+  locating.value = false
   map?.remove()
   map = null
 }

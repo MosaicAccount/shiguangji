@@ -60,11 +60,22 @@ const ElDialogStub = defineComponent({
   template: '<div v-if="modelValue" class="dialog-stub"><slot /><slot name="footer" /></div>'
 })
 
+/** v-loading 桩：把绑定值写到 dataset，供断言定位等待遮罩的开关时机 */
+const loadingStub = {
+  mounted(el: HTMLElement, binding: { value: boolean }) {
+    el.dataset.loading = String(binding.value)
+  },
+  updated(el: HTMLElement, binding: { value: boolean }) {
+    el.dataset.loading = String(binding.value)
+  }
+}
+
 function mountPicker(props: Record<string, unknown> = {}) {
   return mount(MapPicker, {
     props: { modelValue: false, ...props },
     global: {
-      components: { ElDialog: ElDialogStub, ElButton, ElInput }
+      components: { ElDialog: ElDialogStub, ElButton, ElInput },
+      directives: { loading: loadingStub }
     }
   })
 }
@@ -177,7 +188,37 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('会话内缓存定位：再次打开立即就位，无需等待定位返回', async () => {
+  it('首次定位等待期间地图显示 loading 遮罩，定位返回后解除并跳转', async () => {
+    // 定位慢：10ms 后才返回，模拟授权/定位耗时
+    stubGeolocation((success) => {
+      setTimeout(() => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }), 10)
+    })
+    const wrapper = mountPicker()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    const mapEl = wrapper.find('.picker-map').element as HTMLElement
+    // 等待期间遮罩挂起，挡住拖动/缩放/点选
+    expect(mapEl.dataset.loading).toBe('true')
+    await new Promise(resolve => setTimeout(resolve, 40))
+    expect(mapEl.dataset.loading).toBe('false')
+    expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
+    wrapper.unmount()
+  })
+
+  it('定位失败（如拒绝授权）时解除等待遮罩，可正常操作地图', async () => {
+    stubGeolocation((_success, error) => setTimeout(() => error(new Error('denied')), 10))
+    const wrapper = mountPicker()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    const mapEl = wrapper.find('.picker-map').element as HTMLElement
+    expect(mapEl.dataset.loading).toBe('true')
+    await new Promise(resolve => setTimeout(resolve, 40))
+    expect(mapEl.dataset.loading).toBe('false')
+    expect(leafletMock.map.setView).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('有会话缓存定位时再次打开不挂遮罩，立即就位可操作', async () => {
     // 第一次打开：定位成功，写入会话缓存
     stubGeolocation((success) => success({ coords: { latitude: 31.2304, longitude: 121.4737 } }))
     const wrapper = await openPicker()
@@ -188,7 +229,8 @@ describe('MapPicker', () => {
     stubGeolocation(() => {})
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
-    // 视角与蓝点立即出现在缓存定位处，不依赖定位返回
+    // 视角与蓝点立即出现在缓存定位处，且地图未被遮罩挡住
+    expect(wrapper.find('.picker-map').element as HTMLElement).toMatchObject({ dataset: { loading: 'false' } })
     expect(leafletMock.map.setView).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), 13)
     expect(leafletMock.markerFactory).toHaveBeenCalledWith(wgs84ToGcj02(31.2304, 121.4737), expect.anything())
     wrapper.unmount()
