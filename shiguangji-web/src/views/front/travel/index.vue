@@ -205,62 +205,76 @@
       </template>
     </el-dialog>
 
-    <!-- 详情抽屉 -->
-    <el-drawer v-model="detailOpen" :title="detail?.title || '详情'" size="420px">
-      <div v-if="detail" class="detail-content">
-        <div class="detail-cover">
-          <img v-if="detail.coverUrl && !isCoverError(detail)" :src="detail.coverUrl" class="detail-cover-img" :alt="detail.title" @error="onCoverError(detail)" />
-          <div v-else class="detail-icon">地</div>
-        </div>
-        <!-- 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag -->
-        <div class="detail-meta">
-          <span class="detail-type-icon">📍</span>
-          <el-tag :type="detail.status === 'DONE' ? 'success' : 'warning'" size="small">
-            {{ detail.status === 'DONE' ? '去过' : '想去' }}
-          </el-tag>
-        </div>
-        <h2>{{ detail.title }}</h2>
-        <el-descriptions :column="1" border class="detail-desc">
-          <el-descriptions-item label="地址">{{ detail.address || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="城市">{{ detail.city || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="省/州">{{ detail.province || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="国家">{{ detail.country || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="经纬度">
-            {{ detail.latitude != null && detail.longitude != null
-              ? detail.latitude + ', ' + detail.longitude
-              : '-' }}
-          </el-descriptions-item>
-                    <el-descriptions-item label="最佳季节">{{ selectDictLabel(sgj_best_season, detail.bestSeason) || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="分类">{{ selectDictLabel(sgj_place_category, detail.placeCategory) || '-' }}</el-descriptions-item>
-        </el-descriptions>
-        <!-- 地点照片：扇形相册入口，登录用户可在相册中上传/删除，访客只读浏览 -->
-        <div class="detail-photos">
-          <div class="detail-photos-head">
-            <h3>照片</h3>
-            <span v-if="photosArr.length" class="detail-photos-count">{{ photosArr.length }} 张</span>
-            <el-button v-if="isLogin" link type="primary" class="detail-photos-add" @click="albumOpen = true">＋ 添加照片</el-button>
-          </div>
-          <photo-deck v-if="photosArr.length" :photos="photosArr" @open="albumOpen = true" />
-          <div v-else class="album-empty">
-            <div class="big">🖼</div>
-            还没有照片<template v-if="isLogin"><br />点击「添加照片」放上第一张旅途照片</template>
+    <!-- 详情抽屉：照片 hero + 手账风信息卡 -->
+    <el-drawer v-model="detailOpen" size="440px" :with-header="false" class="place-drawer">
+      <div v-if="detail" class="drawer-inner">
+        <!-- Hero：首图/封面铺底，标题与位置叠底 -->
+        <div class="d-hero" :class="{ 'is-empty': !heroImage }">
+          <img v-if="heroImage" class="d-hero-img" :src="heroImage" :alt="detail.title" @error="onHeroError" />
+          <span v-else class="d-hero-glyph" aria-hidden="true">地</span>
+          <div class="d-hero-mask" aria-hidden="true"></div>
+          <span class="d-status" :class="detail.status">{{ detail.status === 'DONE' ? '去过' : '想去' }}</span>
+          <button class="d-close" aria-label="关闭详情" @click="detailOpen = false">✕</button>
+          <div class="d-hero-bottom">
+            <h2>{{ detail.title }}</h2>
+            <div class="d-meta-line">
+              <span>📍 {{ locText }}</span>
+              <span v-if="detail.finishDate">{{ String(detail.finishDate).slice(0, 10) }}</span>
+            </div>
           </div>
         </div>
-        <photo-album-dialog
-          v-model="albumOpen"
-          :photos="photosArr"
-          :title="detail?.title || ''"
-          :can-manage="isLogin"
-          @update:photos="onPhotosChange"
-        />
-        <div v-if="detail.comment" class="detail-comment">
-          <h3>我的回忆</h3>
-          <p>{{ detail.comment }}</p>
-        </div>
-        <item-notes :item-id="detail.itemId" />
-        <div v-if="isLogin" class="detail-actions">
-          <el-button type="primary" round @click="openEditDetail">编辑</el-button>
-          <el-button type="danger" round @click="handleDelete(detail)">删除</el-button>
+
+        <div class="d-body">
+          <!-- 分类 / 最佳季节 -->
+          <div v-if="detail.placeCategory || detail.bestSeason" class="d-chips">
+            <span v-if="detail.placeCategory" class="chip">{{ selectDictLabel(sgj_place_category, detail.placeCategory) || detail.placeCategory }}</span>
+            <span v-if="detail.bestSeason" class="chip chip-season">🍂 {{ selectDictLabel(sgj_best_season, detail.bestSeason) || detail.bestSeason }}</span>
+          </div>
+
+          <!-- 详细地址 -->
+          <div v-if="detail.address" class="d-addr">
+            <span class="ico" aria-hidden="true">📍</span>
+            <span>{{ detail.address }}</span>
+          </div>
+
+          <!-- 我的回忆 -->
+          <div v-if="detail.comment" class="d-memory">
+            <div class="d-memory-label">MY MEMORIES · 我的回忆</div>
+            <p>{{ detail.comment }}</p>
+          </div>
+
+          <!-- 地点照片：扇形相册入口，登录用户可在相册中上传/删除，访客只读浏览 -->
+          <div class="detail-photos">
+            <div class="detail-photos-head">
+              <h3>照片</h3>
+              <span v-if="photosArr.length" class="detail-photos-count">{{ photosArr.length }} 张</span>
+              <el-button v-if="isLogin" link type="primary" class="detail-photos-add" @click="albumOpen = true">＋ 添加照片</el-button>
+            </div>
+            <photo-deck v-if="photosArr.length" :photos="photosArr" @open="albumOpen = true" />
+            <div v-else class="album-empty">
+              <div class="big">🖼</div>
+              还没有照片<template v-if="isLogin"><br />点击「添加照片」放上第一张旅途照片</template>
+            </div>
+          </div>
+          <photo-album-dialog
+            v-model="albumOpen"
+            :photos="photosArr"
+            :title="detail?.title || ''"
+            :can-manage="isLogin"
+            @update:photos="onPhotosChange"
+          />
+
+          <item-notes :item-id="detail.itemId" />
+
+          <!-- 经纬度（弱化展示，便于核对坐标） -->
+          <div v-if="detail.latitude != null && detail.longitude != null" class="d-coords">
+            经纬度 {{ detail.latitude }}, {{ detail.longitude }}
+          </div>
+
+          <div v-if="isLogin" class="d-actions">
+            <el-button type="primary" round @click="openEditDetail">编辑</el-button>
+            <el-button type="danger" plain round @click="handleDelete(detail)">删除</el-button>
+          </div>
         </div>
       </div>
     </el-drawer>
@@ -469,6 +483,29 @@ const timelinePhotos = computed<TravelPoint[]>(() => trajectory.value?.visited |
 
 /** 详情相册照片数组（顺序即展示顺序） */
 const photosArr = computed<string[]>(() => (detail.value?.photos ? detail.value.photos.split(',').filter(Boolean) : []))
+
+/** 抽屉 hero 背景：首张照片 > 封面 > 列表首图，全缺时显示字形占位 */
+const heroFailed = ref(false)
+const heroImage = computed<string>(() => {
+  if (heroFailed.value) return ''
+  const d = detail.value
+  if (!d) return ''
+  if (photosArr.value.length) return photoUrl(photosArr.value[0])
+  if (d.coverUrl) return d.coverUrl
+  if (d.photoCover) return photoUrl(d.photoCover)
+  return ''
+})
+watch(() => detail.value?.itemId, () => { heroFailed.value = false })
+function onHeroError(): void {
+  heroFailed.value = true
+}
+
+/** 位置串：城市/省州/国家去空拼接 */
+const locText = computed(() => {
+  const d = detail.value
+  if (!d) return ''
+  return [d.city, d.province, d.country].filter(Boolean).join(' · ') || '未定位'
+})
 
 /** 相册上传/删除后整体保存；失败时回读详情恢复一致 */
 function onPhotosChange(next: string[]): void {
@@ -802,10 +839,6 @@ html.dark .page-banner {
   background: var(--sgj-bg-deep);
 }
 
-html.dark .detail-content .detail-icon {
-  color: var(--sgj-primary-light);
-}
-
 .filter-bar {
   display: flex;
   align-items: center;
@@ -1089,123 +1122,236 @@ html.dark .detail-content .detail-icon {
   color: var(--sgj-text-4);
 }
 
-.detail-content {
-  text-align: center;
+/* 详情抽屉（hero + 手账信息卡）；容器由全局 .place-drawer 规则去内边距 */
+.drawer-inner {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  text-align: left;
+}
 
-  /* 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag */
-  .detail-meta {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 12px 0 4px;
+/* Hero：首图/封面铺底，标题叠底 */
+.d-hero {
+  position: relative;
+  height: 216px;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--sgj-primary-soft), var(--sgj-cover));
 
-    .detail-type-icon {
-      font-size: 20px;
-    }
-  }
-
-  .detail-cover {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .detail-cover-img {
-      max-width: 100%;
-      max-height: 320px;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(23, 27, 26, 0.18);
-    }
-  }
-
-  .detail-icon {
-    /* 无封面/封面失效占位：衬线字浅色块，与列表卡片字形占位同语言 */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 132px;
-    height: 184px;
-    border-radius: 12px;
-    background: var(--sgj-primary-soft);
-    color: var(--sgj-primary-dark);
+  &.is-empty .d-hero-glyph {
     font-family: var(--sgj-font-serif);
-    font-size: 56px;
+    font-size: 96px;
     font-weight: 700;
+    color: var(--sgj-primary-dark);
+    opacity: 0.28;
   }
+}
+
+.d-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.d-hero-glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.d-hero-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(23, 27, 26, 0.08) 0%, rgba(23, 27, 26, 0) 35%, rgba(23, 27, 26, 0.66) 100%);
+}
+
+.d-status {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  backdrop-filter: blur(4px);
+
+  &.DONE {
+    background: rgba(93, 111, 102, 0.92);
+  }
+
+  &.WANT {
+    background: rgba(192, 138, 62, 0.92);
+  }
+}
+
+.d-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--sgj-text);
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    background: #fff;
+  }
+}
+
+.d-hero-bottom {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 0 18px 14px;
 
   h2 {
+    margin: 0;
+    font: 700 24px/1.3 var(--sgj-font-serif);
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .d-meta-line {
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.94);
+  }
+}
+
+.d-body {
+  padding: 16px 18px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.d-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  .chip {
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--sgj-primary-soft);
+    color: var(--sgj-primary-dark);
+    font-size: 12px;
+  }
+
+  .chip-season {
+    background: var(--sgj-moss-soft);
+    color: var(--sgj-moss);
+  }
+}
+
+.d-addr {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sgj-text-2);
+  line-height: 1.7;
+
+  .ico {
+    flex: none;
+  }
+}
+
+/* 我的回忆：手账引言卡 */
+.d-memory {
+  padding: 13px 16px 15px;
+  background: var(--sgj-bg-card);
+  border-radius: 4px 16px 16px 16px;
+  border-left: 3px solid var(--sgj-primary);
+
+  .d-memory-label {
+    font-size: 10.5px;
+    letter-spacing: 2px;
+    color: var(--sgj-text-4);
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin: 0;
+    font-family: var(--sgj-font-serif);
+    font-size: 13.5px;
+    line-height: 1.8;
     color: var(--sgj-text);
-    margin: 8px 0;
   }
+}
 
-  .detail-desc {
-    margin-top: 16px;
-    text-align: left;
-  }
+.d-coords {
+  font-size: 11px;
+  color: var(--sgj-text-4);
+  letter-spacing: 0.5px;
+}
 
-  .detail-comment {
-    margin-top: 20px;
-    text-align: left;
+.d-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* 地点照片区：标题行与扇形相册入口 */
+.detail-photos {
+  text-align: left;
+
+  .detail-photos-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
 
     h3 {
       color: var(--sgj-text-2);
-      margin-bottom: 8px;
+      margin: 0;
     }
 
-    p {
-      color: var(--sgj-text);
-      line-height: 1.6;
-    }
-  }
-
-  /* 地点照片区：标题行与 ImageUpload 照片墙 */
-  .detail-photos {
-    margin-top: 20px;
-    text-align: left;
-
-    .detail-photos-head {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      margin-bottom: 8px;
-
-      h3 {
-        color: var(--sgj-text-2);
-        margin: 0;
-      }
-
-      .detail-photos-count {
-        font-size: 12px;
-        color: var(--sgj-text-4);
-      }
-
-      .detail-photos-add {
-        margin-left: auto;
-        font-size: 12px;
-      }
-    }
-
-    .album-empty {
-      margin-top: 12px;
-      padding: 26px 16px;
-      border: 1.5px dashed var(--sgj-border-card);
-      border-radius: 14px;
-      text-align: center;
+    .detail-photos-count {
+      font-size: 12px;
       color: var(--sgj-text-4);
-      font-size: 13px;
-      line-height: 1.8;
+    }
 
-      .big {
-        font-size: 26px;
-      }
+    .detail-photos-add {
+      margin-left: auto;
+      font-size: 12px;
     }
   }
 
-  .detail-actions {
-    margin-top: 24px;
-    display: flex;
-    justify-content: center;
-    gap: 12px;
+  .album-empty {
+    margin-top: 4px;
+    padding: 26px 16px;
+    border: 1.5px dashed var(--sgj-border-card);
+    border-radius: 14px;
+    text-align: center;
+    color: var(--sgj-text-4);
+    font-size: 13px;
+    line-height: 1.8;
+
+    .big {
+      font-size: 26px;
+    }
   }
 }
 
@@ -1241,8 +1387,22 @@ html.dark .detail-content .detail-icon {
     display: none;
   }
 
-  .detail-actions {
+  .d-hero {
+    height: 180px;
+  }
+
+  .d-actions {
     flex-wrap: wrap;
   }
 }
+</style>
+
+<style lang="scss">
+/* 详情抽屉容器（el-drawer 传送至 body，scoped 无法作用）：去内边距、限宽 */
+.place-drawer {
+  .el-drawer__body {
+    padding: 0;
+  }
+}
+
 </style>
