@@ -7,6 +7,10 @@ export interface TravelPoint {
   latitude?: number
   longitude?: number
   finishDate?: string
+  /** 关联照片数（地图聚合与时间线用） */
+  photoCount?: number
+  /** 首张照片URL（时间线缩略图/聚合牌用） */
+  cover?: string
 }
 
 /** 旅行轨迹数据 */
