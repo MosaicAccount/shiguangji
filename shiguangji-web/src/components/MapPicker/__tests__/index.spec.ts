@@ -355,13 +355,16 @@ describe('MapPicker', () => {
     const [wLat, wLng] = gcj02ToWgs84(39.916, 116.397)
     expect(wrapper.text()).toContain(`已选：故宫博物院，纬度 ${Number(wLat.toFixed(6))}`)
     expect(amapMock.state.markers).toHaveLength(1)
-    // 徽标标记：白底大圆（先显示回退 📍，POI 分类查询返回后替换为 🏨）
+    // 徽标标记：白底大圆（先显示回退 📍，POI 分类查询返回后替换为 🏨），名称标签放大显示
     const badge = amapMock.state.markers[0]
     expect(badge.opts.content).toContain('32px')
     expect(badge.opts.content).toContain('📍')
+    expect(badge.opts.content).toContain('font-size:14px')
+    expect(badge.opts.content).toContain('故宫博物院')
     await flushPromises()
     expect(badge.setContent).toHaveBeenCalledTimes(1)
     expect(String(badge.setContent.mock.calls[0][0])).toContain('🏨')
+    expect(String(badge.setContent.mock.calls[0][0])).toContain('故宫博物院')
     wrapper.unmount()
   })
 

@@ -284,14 +284,24 @@ function themeColor(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#A85F52'
 }
 
-/** 选点小圆点内容（普通点击/回显/搜索用） */
+/** 选点小圆点内容（普通点击/回显用） */
 function pickDotHtml(): string {
-  return `<span class="pick-pin" style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`
+  return `<span style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`
 }
 
 /** POI 选中徽标：白色圆底盖住底图原图标，放大的分类 emoji 呈现「图标被选中放大」效果 */
 function poiBadgeHtml(emoji: string): string {
-  return `<span class="pick-pin" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid ${themeColor('--sgj-primary')};box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:17px;line-height:1">${emoji}</span>`
+  return `<span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid ${themeColor('--sgj-primary')};box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:17px;line-height:1">${emoji}</span>`
+}
+
+/** 放大的地点名称标签：底图文字不可操作，徽标正下方挂 14px 加粗主题色胶囊 */
+function nameTagHtml(name: string): string {
+  return `<span style="position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:6px;padding:2px 10px;border-radius:999px;background:#fff;border:1px solid ${themeColor('--sgj-primary')};color:${themeColor('--sgj-primary')};font-size:14px;font-weight:600;line-height:1.4;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.18)">${name}</span>`
+}
+
+/** 选点标记整体：内层图形 + 可选的放大名称标签，pick-pop 弹跳作用在整体上 */
+function markerHtml(inner: string): string {
+  return `<span class="pick-pin" style="position:relative;display:flex;align-items:center;justify-content:center">${inner}${pickedName.value ? nameTagHtml(pickedName.value) : ''}</span>`
 }
 
 /** 选点标记；lat/lng 为表单值（WGS-84）。
@@ -305,7 +315,7 @@ function renderMarker(asPoi = false) {
   marker = new AMap.Marker({
     position: [gLng, gLat],
     anchor: 'center',
-    content: asPoi ? poiBadgeHtml('📍') : pickDotHtml()
+    content: markerHtml(asPoi ? poiBadgeHtml('📍') : pickDotHtml())
   })
   map.add(marker)
   return marker
@@ -340,7 +350,7 @@ function pickAt(latitude: number, longitude: number, poiId?: string): void {
   if (m && poiId != null) {
     getPoiEmoji(poiId)
       .then(emoji => {
-        if (marker === m) m.setContent(poiBadgeHtml(emoji))
+        if (marker === m) m.setContent(markerHtml(poiBadgeHtml(emoji)))
       })
       .catch(() => {})
   }
