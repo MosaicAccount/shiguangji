@@ -55,7 +55,7 @@
 import { ElMessage } from 'element-plus'
 import { Aim } from '@element-plus/icons-vue'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
-import { isInChina, loadChinaPolygons, loadAMap, reverseGeocode, searchPlaces } from '@/utils/map'
+import { isInChina, loadChinaPolygons, loadAMap, reverseGeocode, searchPlaces, getPoiEmoji } from '@/utils/map'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
 
 const props = defineProps<{
@@ -284,10 +284,20 @@ function themeColor(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#A85F52'
 }
 
-/** divIcon 圆点标记样式；lat/lng 为表单值（WGS-84）。
+/** 选点小圆点内容（普通点击/回显/搜索用） */
+function pickDotHtml(): string {
+  return `<span class="pick-pin" style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`
+}
+
+/** POI 选中徽标：白色圆底盖住底图原图标，放大的分类 emoji 呈现「图标被选中放大」效果 */
+function poiBadgeHtml(emoji: string): string {
+  return `<span class="pick-pin" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid ${themeColor('--sgj-primary')};box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:17px;line-height:1">${emoji}</span>`
+}
+
+/** 选点标记；lat/lng 为表单值（WGS-84）。
  *  每次落点重建标记（而非 setPosition 挪位），重放 pick-pop 弹跳动画让用户看清本次选中处 */
-function renderMarker(): void {
-  if (!map || lat.value == null || lng.value == null) return
+function renderMarker(asPoi = false) {
+  if (!map || lat.value == null || lng.value == null) return null
   const [gLat, gLng] = wgs84ToGcj02(lat.value, lng.value)
   if (marker) {
     map.remove(marker)
@@ -295,9 +305,10 @@ function renderMarker(): void {
   marker = new AMap.Marker({
     position: [gLng, gLat],
     anchor: 'center',
-    content: `<span class="pick-pin" style="display:block;width:14px;height:14px;border-radius:50%;background:${themeColor('--sgj-primary')};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>`
+    content: asPoi ? poiBadgeHtml('📍') : pickDotHtml()
   })
   map.add(marker)
+  return marker
 }
 
 /** 普通点击选点；POI 热点点击后紧随的 click 不再覆盖（坐标与名称以 POI 为准） */
@@ -307,14 +318,14 @@ function onMapClick(e: any): void {
   pickAt(e.lnglat.lat, e.lnglat.lng)
 }
 
-/** 点击底图 POI 图标（景点/酒店/医院等）：以 POI 坐标选点、标记弹跳放大并记住名称 */
+/** 点击底图 POI 图标（景点/酒店/医院等）：以 POI 坐标选点，原图标位置盖放大徽标并记住名称 */
 function onHotspotClick(e: any): void {
   lastHotspotAt = Date.now()
   pickedName.value = e.name || ''
-  pickAt(e.lnglat.lat, e.lnglat.lng)
+  pickAt(e.lnglat.lat, e.lnglat.lng, e.id)
 }
 
-function pickAt(latitude: number, longitude: number): void {
+function pickAt(latitude: number, longitude: number, poiId?: string): void {
   // 中国轮廓判定（GCJ-02 显示空间），界外（含边界矩形四角的外国领土）不允许选
   if (!isInChina(longitude, latitude)) {
     ElMessage.warning('只能选择中国范围内的地点')
@@ -324,7 +335,15 @@ function pickAt(latitude: number, longitude: number): void {
   const [wLat, wLng] = gcj02ToWgs84(latitude, longitude)
   lat.value = Number(wLat.toFixed(6))
   lng.value = Number(wLng.toFixed(6))
-  renderMarker()
+  const m = renderMarker(poiId != null)
+  // 查 POI 分类并替换徽标 emoji（如酒店 🏨）；期间若又点了别处，标记已被重建则放弃
+  if (m && poiId != null) {
+    getPoiEmoji(poiId)
+      .then(emoji => {
+        if (marker === m) m.setContent(poiBadgeHtml(emoji))
+      })
+      .catch(() => {})
+  }
 }
 
 async function search(): Promise<void> {

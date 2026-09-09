@@ -4,7 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { ElButton, ElInput } from 'element-plus'
 import MapPicker from '../index.vue'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coord'
-import { loadAMap, searchPlaces, reverseGeocode } from '@/utils/map'
+import { loadAMap, searchPlaces, reverseGeocode, getPoiEmoji } from '@/utils/map'
 
 /**
  * 高德 JS API mock：FakeMap 捕获构造参数与事件 handler，FakeMarker 记录实例；
@@ -27,6 +27,7 @@ const amapMock = vi.hoisted(() => {
   }
   class FakeMarker {
     setPosition = vi.fn()
+    setContent = vi.fn()
     constructor(public opts: any) {
       state.markers.push(this)
     }
@@ -72,7 +73,8 @@ vi.mock('@/utils/map', async importOriginal => {
     ...actual,
     loadAMap: vi.fn(async () => amapMock.AMap),
     searchPlaces: vi.fn(async () => []),
-    reverseGeocode: vi.fn(async () => ({}))
+    reverseGeocode: vi.fn(async () => ({})),
+    getPoiEmoji: vi.fn(async () => '🏨')
   }
 })
 
@@ -345,13 +347,21 @@ describe('MapPicker', () => {
     wrapper.unmount()
   })
 
-  it('点击底图 POI 图标（hotspot）：以 POI 坐标选点、显示地点名称', async () => {
+  it('点击底图 POI 图标（hotspot）：白底徽标盖住原图标并放大显示分类图标', async () => {
+    vi.mocked(getPoiEmoji).mockResolvedValueOnce('🏨')
     const wrapper = await openPicker()
-    amapMock.state.mapHandlers.hotspotclick?.({ name: '故宫博物院', lnglat: { lat: 39.916, lng: 116.397 } })
+    amapMock.state.mapHandlers.hotspotclick?.({ name: '故宫博物院', id: 'B001', lnglat: { lat: 39.916, lng: 116.397 } })
     await flushPromises()
     const [wLat, wLng] = gcj02ToWgs84(39.916, 116.397)
     expect(wrapper.text()).toContain(`已选：故宫博物院，纬度 ${Number(wLat.toFixed(6))}`)
     expect(amapMock.state.markers).toHaveLength(1)
+    // 徽标标记：白底大圆（先显示回退 📍，POI 分类查询返回后替换为 🏨）
+    const badge = amapMock.state.markers[0]
+    expect(badge.opts.content).toContain('32px')
+    expect(badge.opts.content).toContain('📍')
+    await flushPromises()
+    expect(badge.setContent).toHaveBeenCalledTimes(1)
+    expect(String(badge.setContent.mock.calls[0][0])).toContain('🏨')
     wrapper.unmount()
   })
 

@@ -9,12 +9,16 @@ const amapMock = vi.hoisted(() => {
   const state = {
     searchImpl: null as null | ((keyword: string, cb: (status: string, result: any) => void) => void),
     regeoImpl: null as null | ((lnglat: number[], cb: (status: string, result: any) => void) => void),
+    detailsImpl: null as null | ((id: string, cb: (status: string, result: any) => void) => void),
     loadCalls: [] as any[]
   }
   class FakePlaceSearch {
     constructor(public opts: any) {}
     search(keyword: string, cb: (status: string, result: any) => void) {
       state.searchImpl!(keyword, cb)
+    }
+    getDetails(id: string, cb: (status: string, result: any) => void) {
+      state.detailsImpl!(id, cb)
     }
   }
   class FakeGeocoder {
@@ -45,6 +49,7 @@ afterEach(() => {
   vi.resetModules()
   amapMock.state.searchImpl = null
   amapMock.state.regeoImpl = null
+  amapMock.state.detailsImpl = null
   amapMock.state.loadCalls = []
   vi.unstubAllGlobals()
   delete (window as any)._AMapSecurityConfig
@@ -153,6 +158,29 @@ describe('reverseGeocode 逆地理编码（高德 Geocoder）', () => {
     const mod = await loadMod()
     amapMock.state.regeoImpl = (_lnglat, cb) => cb('error', {})
     await expect(mod.reverseGeocode(30, 110)).rejects.toThrow()
+  })
+})
+
+describe('getPoiEmoji POI 分类徽标', () => {
+  it('按 POI 一级分类映射 emoji（酒店/医院）', async () => {
+    const mod = await loadMod()
+    amapMock.state.detailsImpl = (id, cb) => {
+      expect(id).toBe('B001')
+      cb('complete', { info: 'OK', poiList: { pois: [{ type: '住宿服务;星级酒店;酒店' }] } })
+    }
+    expect(await mod.getPoiEmoji('B001')).toBe('🏨')
+    amapMock.state.detailsImpl = (_id, cb) =>
+      cb('complete', { info: 'OK', poiList: { pois: [{ type: '医疗保健服务;综合医院;三级医院' }] } })
+    expect(await mod.getPoiEmoji('B002')).toBe('🏥')
+  })
+
+  it('未收录分类回退 📍，查询失败抛错', async () => {
+    const mod = await loadMod()
+    amapMock.state.detailsImpl = (_id, cb) =>
+      cb('complete', { info: 'OK', poiList: { pois: [{ type: '地名地址信息;门牌' }] } })
+    expect(await mod.getPoiEmoji('B003')).toBe('📍')
+    amapMock.state.detailsImpl = (_id, cb) => cb('error', {})
+    await expect(mod.getPoiEmoji('B004')).rejects.toThrow()
   })
 })
 

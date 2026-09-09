@@ -85,6 +85,46 @@ export async function searchPlaces(keyword: string): Promise<PlaceResult[]> {
   })
 }
 
+/** POI 一级分类 → 选中徽标 emoji（点击底图图标时的放大展示），未收录分类回退 📍 */
+const POI_CATEGORY_EMOJI: Record<string, string> = {
+  餐饮服务: '🍽️',
+  住宿服务: '🏨',
+  购物服务: '🛍️',
+  生活服务: '🏪',
+  医疗保健服务: '🏥',
+  风景名胜: '🏞️',
+  公园: '🏞️',
+  体育休闲服务: '🏟️',
+  科教文化服务: '🏛️',
+  交通设施服务: '🚉',
+  金融保险服务: '🏦',
+  政府机构及社会团体: '🏢',
+  公司企业: '🏢',
+  公共设施: '🚻',
+  汽车服务: '⛽',
+  汽车销售: '🚗',
+  汽车维修: '🔧'
+}
+
+/**
+ * 查询 POI 详情类型并映射为选中徽标 emoji（点击底图图标时用）。
+ * 查询失败抛错，调用方回退 📍。
+ */
+export async function getPoiEmoji(id: string): Promise<string> {
+  const AMap = await loadAMap()
+  return new Promise((resolve, reject) => {
+    new AMap.PlaceSearch({ pageSize: 1 }).getDetails(id, (status: string, result: any) => {
+      if (status !== 'complete' || result?.info !== 'OK') {
+        reject(new Error('poi details failed: ' + status))
+        return
+      }
+      const type: string = result?.poiList?.pois?.[0]?.type || ''
+      const category = type.split(';')[0] || ''
+      resolve(POI_CATEGORY_EMOJI[category] || '📍')
+    })
+  })
+}
+
 /**
  * 逆地理编码（高德 Geocoder）：坐标（GCJ-02）解析为名称/详细地址/城市/国家。
  * 解析失败抛错由调用方兜底只回填坐标。
