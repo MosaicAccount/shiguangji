@@ -20,6 +20,14 @@ public interface SgjItemPhotoMapper
     public List<SgjItemPhoto> selectPhotosByItemId(Long itemId);
 
     /**
+     * 批量查询多个条目的照片（按条目、排序号升序），供轨迹/列表聚合照片数与封面
+     *
+     * @param itemIds 条目ID集合
+     * @return 照片集合
+     */
+    public List<SgjItemPhoto> selectPhotosByItemIds(List<Long> itemIds);
+
+    /**
      * 批量新增条目照片
      *
      * @param photos 照片集合

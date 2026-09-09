@@ -179,6 +179,78 @@ class SgjItemPhotoApiSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 4. 轨迹与列表接口的照片统计（photoCount / cover / photoCover）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(4)
+    void trajectoryAndListExposePhotoStats() throws Exception
+    {
+        // 带坐标的地点才会进入轨迹
+        mockMvc.perform(post("/app/item")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", TITLE + "-轨迹",
+                                "itemType", "PLACE",
+                                "latitude", 30.274085,
+                                "longitude", 120.15507,
+                                "photos", "/profile/upload/tj-a.png,/profile/upload/tj-b.png"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        long itemId = findSingleItemId(TITLE + "-轨迹");
+
+        // 轨迹接口：photoCount 与 cover（排序首张）
+        JsonNode trajectory = objectMapper.readTree(mockMvc
+                .perform(get("/app/travel/trajectory")).andReturn().getResponse().getContentAsString());
+        JsonPoint point = findPoint(trajectory, itemId);
+        assertThat(point).as("轨迹中应包含夹具地点，trajectory=" + trajectory).isNotNull();
+        assertThat(point.photoCount).isEqualTo(2);
+        assertThat(point.cover).isEqualTo("/profile/upload/tj-a.png");
+
+        // 列表接口：photoCount / photoCover（徽标与封面兜底用）；前台列表以 data 数组返回
+        mockMvc.perform(get("/app/item/list")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .param("itemType", "PLACE")
+                        .param("title", TITLE + "-轨迹"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].photoCount").value(2))
+                .andExpect(jsonPath("$.data[0].photoCover").value("/profile/upload/tj-a.png"));
+    }
+
+    /** 从轨迹响应的 visited/wish 中按 itemId 找点（响应体为 { code, data: { visited, wish } }） */
+    private JsonPoint findPoint(JsonNode trajectory, long itemId)
+    {
+        JsonNode data = trajectory.path("data");
+        for (String key : new String[] { "visited", "wish" })
+        {
+            for (JsonNode p : data.path(key))
+            {
+                if (p.path("itemId").asLong() == itemId)
+                {
+                    return new JsonPoint(p.path("photoCount").asInt(), p.path("cover").asText(null));
+                }
+            }
+        }
+        return null;
+    }
+
+    private record JsonPoint(int photoCount, String cover) {}
+
+    /** 反查指定标题的唯一夹具条目 ID */
+    private long findSingleItemId(String title) throws Exception
+    {
+        JsonNode data = objectMapper.readTree(mockMvc.perform(get("/app/item/list")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .param("itemType", "PLACE")
+                        .param("title", title))
+                .andReturn().getResponse().getContentAsString()).path("data");
+        assertThat(data.isArray() && data.size() == 1).as("应恰好存在一条夹具地点：" + title).isTrue();
+        return data.get(0).path("itemId").asLong();
+    }
+
+    // ------------------------------------------------------------------
     // 辅助方法
     // ------------------------------------------------------------------
 
