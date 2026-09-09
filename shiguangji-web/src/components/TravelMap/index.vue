@@ -40,16 +40,29 @@ let map: any = null
 let infoWindow: any = null
 const overlays = ref<any[]>([])
 
-/** 聚合半径：坐标距离小于该值（千米）的地点照片聚合为一个扇牌 */
-const CLUSTER_KM = 120
+/**
+ * 缩放驱动的分层聚合：
+ * - 低缩放（<= 7.5）按省聚合，省级缺失（国外）回退国家；
+ * - 中缩放（7.5 ~ 10）按市聚合；
+ * - 高缩放（> 10）逐点显示（点少不显乱，保留地名与去过/想去标签）。
+ */
+const PROVINCE_MAX_ZOOM = 7.5
+const CITY_MAX_ZOOM = 10
 
 interface ClusterNode {
   lng: number
   lat: number
+  /** 聚合显示名（省名/市名） */
+  label: string
   points: (MapPoint & { gLng: number; gLat: number })[]
 }
 
-/** 两点间球面距离（千米） */
+/** 行政区名规范化聚合键：去掉最常见的「市/省」尾缀，避免「北京/北京市」分裂 */
+function regionKey(name?: string): string {
+  return (name || '').trim().replace(/(市|省)$/, '')
+}
+
+/** 两点间球面距离（千米），省归属判定用 */
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const rad = Math.PI / 180
   const dLat = (lat2 - lat1) * rad
@@ -58,14 +71,75 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+/** 34 个省级行政区中心（WGS-84 粗略值，聚合归属足够） */
+const PROVINCE_CENTERS: [string, number, number][] = [
+  ['北京', 39.9, 116.4], ['天津', 39.08, 117.2], ['河北', 38.04, 114.51],
+  ['山西', 37.87, 112.55], ['内蒙古', 40.82, 111.65], ['辽宁', 41.8, 123.43],
+  ['吉林', 43.88, 125.32], ['黑龙江', 45.75, 126.65], ['上海', 31.23, 121.47],
+  ['江苏', 32.06, 118.78], ['浙江', 30.27, 120.15], ['安徽', 31.86, 117.28],
+  ['福建', 26.08, 119.3], ['江西', 28.68, 115.86], ['山东', 36.65, 117.12],
+  ['河南', 34.75, 113.62], ['湖北', 30.59, 114.31], ['湖南', 28.23, 112.94],
+  ['广东', 23.13, 113.26], ['广西', 22.82, 108.32], ['海南', 20.02, 110.35],
+  ['重庆', 29.56, 106.55], ['四川', 30.57, 104.07], ['贵州', 26.65, 106.63],
+  ['云南', 25.04, 102.71], ['西藏', 29.65, 91.13], ['陕西', 34.34, 108.94],
+  ['甘肃', 36.06, 103.83], ['青海', 36.62, 101.78], ['宁夏', 38.47, 106.27],
+  ['新疆', 43.79, 87.62], ['香港', 22.32, 114.17], ['澳门', 22.2, 113.55],
+  ['台湾', 25.03, 121.57]
+]
+
+/** 距最近省中心超过该值视为境外地点 */
+const PROVINCE_MAX_KM = 1100
+
 /**
- * 贪心就近聚合：依次取点，落入已有簇心 120km 内则并入，否则自立新簇。
- * ponytail: O(n²) 逐点比对 + 簇心均值，个人足迹量级（数百点）足够；
- * 城市级聚合需求出现时再升级网格聚类。
+ * 省归属：数据带省名直接用；历史数据多为空，按最近省中心归属
+ * （ponytail: 最近中心归属在省界凹凸处可能归错省，个人游记可接受；
+ * 出现归错反馈再引入区划边界库）。
  */
-function buildClusters(): ClusterNode[] {
-  const clusters: ClusterNode[] = []
-  // 转换 GCJ-02 并附加到点（wgs84ToGcj02 返回 [纬度, 经度]），簇心均值统一用 GCJ
+function provinceOf(p: MapPoint & { gLat: number; gLng: number }): string {
+  if (p.province) return regionKey(p.province)
+  let best = ''
+  let bestD = Infinity
+  for (const [name, plat, plng] of PROVINCE_CENTERS) {
+    const d = haversineKm(p.gLat, p.gLng, plat, plng)
+    if (d < bestD) {
+      bestD = d
+      best = name
+    }
+  }
+  return bestD <= PROVINCE_MAX_KM ? best : ''
+}
+
+/**
+ * 按行政区分组（省层或市层）。
+ * 市层：市名归一为 key，缺失市名的地点各自独立。
+ */
+function groupByRegion(points: (MapPoint & { gLng: number; gLat: number })[], level: 'prov' | 'city'): ClusterNode[] {
+  const groups = new Map<string, ClusterNode>()
+  for (const p of points) {
+    let key: string
+    let label: string
+    if (level === 'prov') {
+      const prov = provinceOf(p)
+      key = prov || regionKey(p.country) || `#${p.itemId}`
+      label = p.province || prov || p.country || p.title || '地点'
+    } else {
+      key = regionKey(p.city) || `#${p.itemId}`
+      label = p.city || p.title || '地点'
+    }
+    const hit = groups.get(key)
+    if (hit) {
+      hit.points.push(p)
+      hit.lng = hit.points.reduce((s, x) => s + x.gLng, 0) / hit.points.length
+      hit.lat = hit.points.reduce((s, x) => s + x.gLat, 0) / hit.points.length
+    } else {
+      groups.set(key, { lng: p.gLng, lat: p.gLat, label, points: [p] })
+    }
+  }
+  return Array.from(groups.values())
+}
+
+/** 转换 GCJ-02 并附加到点（wgs84ToGcj02 返回 [纬度, 经度]） */
+function toMapPoints(): (MapPoint & { gLng: number; gLat: number })[] {
   const tagged: (MapPoint & { gLng: number; gLat: number })[] = []
   for (const p of [
     ...props.visited.map(p => ({ ...p, status: 'DONE' as const })),
@@ -75,17 +149,7 @@ function buildClusters(): ClusterNode[] {
     const [gLat, gLng] = wgs84ToGcj02(p.latitude, p.longitude)
     tagged.push({ ...p, gLng, gLat })
   }
-  for (const p of tagged) {
-    const hit = clusters.find(c => haversineKm(c.lat, c.lng, p.gLat, p.gLng) <= CLUSTER_KM)
-    if (hit) {
-      hit.points.push(p)
-      hit.lng = hit.points.reduce((s, x) => s + x.gLng, 0) / hit.points.length
-      hit.lat = hit.points.reduce((s, x) => s + x.gLat, 0) / hit.points.length
-    } else {
-      clusters.push({ lng: p.gLng, lat: p.gLat, points: [p] })
-    }
-  }
-  return clusters
+  return tagged
 }
 
 function clusterPhotos(points: TravelPoint[]): { count: number; covers: string[] } {
@@ -98,23 +162,17 @@ function clusterPhotos(points: TravelPoint[]): { count: number; covers: string[]
   return { count, covers }
 }
 
-/** 聚合牌标签：单地点用地名；同城用城市；跨城用「XX等N地」 */
-function clusterLabel(points: TravelPoint[]): string {
-  if (points.length === 1) return points[0].title || '地点'
-  const cities = Array.from(new Set(points.map(p => p.city).filter(Boolean))) as string[]
-  if (cities.length === 1) return cities[0]
-  return `${cities[0] || points[0].title}等${points.length}地`
-}
-
-/* 扇牌/圆点标记的 HTML（样式见 <style>，非 scoped 以作用于 marker 内容） */
-function deckHtml(points: MapPoint[]): string {
-  const { count, covers } = clusterPhotos(points)
+/* 聚合牌 HTML（样式见 <style>，非 scoped 以作用于 marker 内容）：有照片用扇牌，无照片用数字圆片 */
+function clusterHtml(cluster: ClusterNode): string {
+  const { count, covers } = clusterPhotos(cluster.points)
   const cards = covers.length
     ? `<span class="tm-deck${covers.length > 1 ? '' : ' single'}">${covers
         .map(u => `<i style="background-image:url('${u}')"></i>`)
         .join('')}</span>`
-    : `<span class="tm-plain-dot ${points.some(p => p.status === 'DONE') ? 'visited' : 'want'}"></span>`
-  const pillText = count > 0 ? `${clusterLabel(points)} · ${count}张` : `${clusterLabel(points)} · 想去`
+    : `<span class="tm-coin ${cluster.points.some(p => p.status === 'DONE') ? 'visited' : 'want'}">${cluster.points.length}</span>`
+  const pillText = count > 0
+    ? `${cluster.label} · ${cluster.points.length}地 · ${count}张`
+    : `${cluster.label} · ${cluster.points.length}地`
   return `<span class="tm-marker">${cards}<span class="tm-pill${count > 0 ? '' : ' muted'}">${pillText}</span></span>`
 }
 
@@ -132,7 +190,7 @@ function popoverDom(cluster: ClusterNode): HTMLElement {
       const extra = Math.max(0, count - 5)
       return `
         <button class="tm-pop-group" data-item="${p.itemId}">
-          <span class="tm-pop-name"><b>${p.title}</b><span>${count} 张 →</span></span>
+          <span class="tm-pop-name"><b>${p.title}<i class="tm-pop-tag ${p.status === 'DONE' ? 'done' : 'want'}">${p.status === 'DONE' ? '去过' : '想去'}</i></b><span>${count} 张 →</span></span>
           <span class="tm-pop-thumbs">
             <i style="background-image:url('${p.cover ? photoUrl(p.cover) : ''}')" aria-hidden="true"></i>
             ${extra > 0 ? `<i class="more">+${extra}</i>` : ''}
@@ -142,7 +200,7 @@ function popoverDom(cluster: ClusterNode): HTMLElement {
     .join('')
   wrap.innerHTML = `
     <div class="tm-pop-head">
-      <div><div class="tm-pop-title">${clusterLabel(cluster.points)}的照片</div><div class="tm-pop-sub">附近 ${cluster.points.length} 个地点 · 共 ${clusterPhotos(cluster.points).count} 张</div></div>
+      <div><div class="tm-pop-title">${cluster.label}的照片</div><div class="tm-pop-sub">${cluster.points.length} 个地点 · 共 ${clusterPhotos(cluster.points).count} 张</div></div>
       <button class="tm-pop-close" aria-label="关闭">✕</button>
     </div>
     ${groups}`
@@ -171,26 +229,45 @@ function addMarker(lng: number, lat: number, html: string, onClick: () => void):
   return marker
 }
 
+/** 按当前缩放层级渲染：省聚合 → 市聚合 → 逐点 */
 function renderOverlays(): void {
   overlays.value.forEach(o => map.remove(o))
   overlays.value = []
   infoWindow?.close()
 
-  // 聚合的是"照片"：有照片的簇合成扇牌；无照片的地点保持独立圆点（避免丢点）
-  for (const cluster of buildClusters()) {
-    const hasPhotos = clusterPhotos(cluster.points).count > 0
-    if (hasPhotos) {
-      addMarker(cluster.lng, cluster.lat, deckHtml(cluster.points), () => {
-        infoWindow?.setContent(popoverDom(cluster))
-        infoWindow?.open(map, [cluster.lng, cluster.lat])
-      })
-    } else {
-      for (const point of cluster.points) {
+  const points = toMapPoints()
+  const zoom = map.getZoom()
+
+  // 高缩放：逐点显示（点少，地名与去过/想去标签不乱）
+  if (zoom > CITY_MAX_ZOOM) {
+    for (const point of points) {
+      const hasPhotos = (point.photoCount || 0) > 0
+      if (hasPhotos) {
+        const cluster: ClusterNode = { lng: point.gLng, lat: point.gLat, label: point.title || '地点', points: [point] }
+        addMarker(point.gLng, point.gLat, clusterHtml(cluster), () => {
+          infoWindow?.setContent(popoverDom(cluster))
+          infoWindow?.open(map, [point.gLng, point.gLat])
+        })
+      } else {
         addMarker(point.gLng, point.gLat, dotHtml(point), () => emit('select', point.itemId!))
       }
     }
+    return
   }
 
+  // 低/中缩放：行政区聚合（照片多寡都聚合，避免满屏标签）
+  const level = zoom <= PROVINCE_MAX_ZOOM ? 'prov' : 'city'
+  for (const cluster of groupByRegion(points, level)) {
+    addMarker(cluster.lng, cluster.lat, clusterHtml(cluster), () => {
+      // 单点簇直接进详情；多点簇展开分组弹卡
+      if (cluster.points.length === 1) {
+        emit('select', cluster.points[0].itemId!)
+        return
+      }
+      infoWindow?.setContent(popoverDom(cluster))
+      infoWindow?.open(map, [cluster.lng, cluster.lat])
+    })
+  }
 }
 
 async function initMap(): Promise<void> {
@@ -204,8 +281,9 @@ async function initMap(): Promise<void> {
     zooms: [3.5, 14]
   })
   infoWindow = new AMap.InfoWindow({ isCustom: true, anchor: 'bottom-center', offset: new AMap.Pixel(0, -46) })
-  // 点击底图关闭照片弹卡
+  // 点击底图关闭照片弹卡；缩放结束后按新层级重绘聚合
   map.on('click', () => infoWindow?.close())
+  map.on('zoomend', () => renderOverlays())
   renderOverlays()
   window.addEventListener('resize', onResize)
 }
@@ -365,6 +443,28 @@ onBeforeUnmount(() => {
   }
 }
 
+.tm-coin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 6px rgba(23, 27, 26, 0.25);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+
+  &.visited {
+    background: var(--sgj-moss);
+  }
+
+  &.want {
+    background: var(--sgj-amber);
+  }
+}
+
 .tm-plain-dot {
   display: block;
   width: 13px;
@@ -478,6 +578,26 @@ onBeforeUnmount(() => {
   span {
     font-size: 11px;
     color: var(--sgj-text-4);
+  }
+}
+
+.tm-pop-tag {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 400;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: 1px;
+
+  &.done {
+    background: var(--sgj-moss-soft, #e7ece9);
+    color: var(--sgj-moss);
+  }
+
+  &.want {
+    background: rgba(192, 138, 62, 0.14);
+    color: var(--sgj-amber);
   }
 }
 

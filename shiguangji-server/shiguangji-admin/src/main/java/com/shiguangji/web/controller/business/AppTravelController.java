@@ -81,6 +81,7 @@ public class AppTravelController extends BaseController
             point.put("itemId", place.getItemId());
             point.put("title", place.getTitle());
             point.put("city", place.getCity());
+            point.put("province", place.getProvince());
             point.put("country", place.getCountry());
             point.put("latitude", place.getLatitude());
             point.put("longitude", place.getLongitude());

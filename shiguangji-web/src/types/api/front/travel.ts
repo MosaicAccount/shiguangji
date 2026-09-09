@@ -3,6 +3,7 @@ export interface TravelPoint {
   itemId?: number
   title?: string
   city?: string
+  province?: string
   country?: string
   latitude?: number
   longitude?: number
