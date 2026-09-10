@@ -54,6 +54,15 @@ const overlays = ref<any[]>([])
 const PROVINCE_MAX_ZOOM = 7.5
 const CITY_MAX_ZOOM = 10
 
+/** 当前聚合层级与缩放手势开始时的视心（层级切换后用于"跟随"找簇） */
+let currentLevel: 'prov' | 'city' | 'point' = 'prov'
+let zoomStartCenter: { lng: number; lat: number } | null = null
+
+function levelOf(zoom: number): 'prov' | 'city' | 'point' {
+  if (zoom > CITY_MAX_ZOOM) return 'point'
+  return zoom <= PROVINCE_MAX_ZOOM ? 'prov' : 'city'
+}
+
 interface ClusterNode {
   lng: number
   lat: number
@@ -242,37 +251,51 @@ function renderOverlays(): void {
 
   const points = toMapPoints()
   const zoom = map.getZoom()
+  const level = levelOf(zoom)
 
-  // 高缩放：逐点显示（点少，地名与去过/想去标签不乱）
-  if (zoom > CITY_MAX_ZOOM) {
-    for (const point of points) {
-      const hasPhotos = (point.photoCount || 0) > 0
-      if (hasPhotos) {
-        const cluster: ClusterNode = { lng: point.gLng, lat: point.gLat, label: point.title || '地点', points: [point] }
-        addMarker(point.gLng, point.gLat, clusterHtml(cluster), () => {
-          infoWindow?.setContent(popoverDom(cluster))
-          infoWindow?.open(map, [point.gLng, point.gLat])
-        })
-      } else {
-        addMarker(point.gLng, point.gLat, dotHtml(point), () => emit('select', point.itemId!))
+  // 逐点层：每个地点自成一簇；省/市层：按行政区聚合
+  const clusters: ClusterNode[] =
+    level === 'point'
+      ? points.map(p => ({ lng: p.gLng, lat: p.gLat, label: p.title || '地点', points: [p] }))
+      : groupByRegion(points, level)
+
+  for (const cluster of clusters) {
+    const single = cluster.points.length === 1
+    const hasPhotos = clusterPhotos(cluster.points).count > 0
+    if (single && !hasPhotos) {
+      const point = cluster.points[0]
+      addMarker(point.gLng, point.gLat, dotHtml(point), () => emit('select', point.itemId!))
+    } else {
+      addMarker(cluster.lng, cluster.lat, clusterHtml(cluster), () => {
+        // 单地点有照片：直接进详情；多点簇展开分组弹卡
+        if (single) {
+          emit('select', cluster.points[0].itemId!)
+          return
+        }
+        infoWindow?.setContent(popoverDom(cluster))
+        infoWindow?.open(map, [cluster.lng, cluster.lat])
+      })
+    }
+  }
+
+  // 层级切换时"跟随"：用户对着聚合牌放大，簇拆分后子点可能散落他处；
+  // 把离缩放前视心最近的簇平滑平移回视心，拆分结果始终在眼前
+  if (level !== currentLevel && zoomStartCenter) {
+    let nearest: ClusterNode | null = null
+    let bestD = Infinity
+    for (const c of clusters) {
+      const d = haversineKm(zoomStartCenter.lat, zoomStartCenter.lng, c.lat, c.lng)
+      if (d < bestD) {
+        bestD = d
+        nearest = c
       }
     }
-    return
+    if (nearest) {
+      map.panTo([nearest.lng, nearest.lat])
+    }
   }
-
-  // 低/中缩放：行政区聚合（照片多寡都聚合，避免满屏标签）
-  const level = zoom <= PROVINCE_MAX_ZOOM ? 'prov' : 'city'
-  for (const cluster of groupByRegion(points, level)) {
-    addMarker(cluster.lng, cluster.lat, clusterHtml(cluster), () => {
-      // 单点簇直接进详情；多点簇展开分组弹卡
-      if (cluster.points.length === 1) {
-        emit('select', cluster.points[0].itemId!)
-        return
-      }
-      infoWindow?.setContent(popoverDom(cluster))
-      infoWindow?.open(map, [cluster.lng, cluster.lat])
-    })
-  }
+  currentLevel = level
+  zoomStartCenter = null
 }
 
 async function initMap(): Promise<void> {
@@ -286,8 +309,12 @@ async function initMap(): Promise<void> {
     zooms: [3.5, 14]
   })
   infoWindow = new AMap.InfoWindow({ isCustom: true, anchor: 'bottom-center', offset: new AMap.Pixel(0, -46) })
-  // 点击底图关闭照片弹卡；缩放结束后按新层级重绘聚合
+  // 点击底图关闭照片弹卡；缩放开始记视心、结束后按新层级重绘（含跟随）
   map.on('click', () => infoWindow?.close())
+  map.on('zoomstart', () => {
+    const c = map.getCenter()
+    zoomStartCenter = { lng: c.lng, lat: c.lat }
+  })
   map.on('zoomend', () => renderOverlays())
   renderOverlays()
   window.addEventListener('resize', onResize)
