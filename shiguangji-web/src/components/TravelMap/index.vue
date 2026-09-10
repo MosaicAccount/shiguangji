@@ -11,10 +11,15 @@
 </template>
 
 <script setup lang="ts">
+import { useDark } from '@vueuse/core'
 import { loadAMap } from '@/utils/map'
 import { wgs84ToGcj02 } from '@/utils/coord'
 import { photoUrl } from '@/utils/sgj'
 import type { TravelPoint } from '@/types/api/front/travel'
+
+/** 夜间模式：底图切暗色瓦片，标记/弹卡保持固定高对比配色 */
+const isDark = useDark()
+const mapStyle = computed(() => (isDark.value ? 'amap://styles/dark' : 'amap://styles/whitesmoke'))
 
 const props = defineProps<{
   /** 去过地点（按时间排序） */
@@ -276,7 +281,7 @@ async function initMap(): Promise<void> {
   map = new AMap.Map(mapRef.value, {
     zoom: 4.2,
     center: [104.5, 36.5],
-    mapStyle: 'amap://styles/whitesmoke',
+    mapStyle: mapStyle.value,
     viewMode: '2D',
     zooms: [3.5, 14]
   })
@@ -291,6 +296,11 @@ async function initMap(): Promise<void> {
 function onResize(): void {
   map?.resize?.()
 }
+
+// 夜间模式切换：换底图瓦片（标记为固定高对比配色，无需重绘）
+watch(isDark, () => {
+  map?.setMapStyle(mapStyle.value)
+})
 
 watch(
   () => [props.visited, props.wish],
@@ -331,11 +341,11 @@ onBeforeUnmount(() => {
   right: 14px;
   z-index: 170;
   font-size: 12px;
-  color: var(--sgj-text-2);
-  background: rgba(255, 255, 255, 0.88);
+  color: #5c6360;
+  background: rgba(255, 255, 255, 0.92);
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid var(--sgj-border-card);
+  border: 1px solid #e0d8c8;
   pointer-events: none;
 }
 
@@ -347,11 +357,11 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 14px;
   font-size: 12px;
-  color: var(--sgj-text-2);
-  background: rgba(255, 255, 255, 0.88);
+  color: #5c6360;
+  background: rgba(255, 255, 255, 0.92);
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid var(--sgj-border-card);
+  border: 1px solid #e0d8c8;
   pointer-events: none;
 
   .legend-dot {
@@ -363,11 +373,11 @@ onBeforeUnmount(() => {
     vertical-align: 1px;
 
     &.visited {
-      background: var(--sgj-moss);
+      background: #5d6f66;
     }
 
     &.want {
-      background: var(--sgj-amber);
+      background: #c08a3e;
     }
   }
 }
@@ -488,14 +498,15 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   padding: 2px 10px;
   border-radius: 999px;
+  /* 浮在地图瓦片上，固定配色保证亮/暗瓦片下均清晰 */
   background: #fff;
-  border: 1px solid var(--sgj-primary);
-  color: var(--sgj-primary);
+  border: 1px solid #b98a80;
+  color: #a85f52;
   box-shadow: 0 2px 6px rgba(23, 27, 26, 0.12);
 
   &.muted {
-    border-color: var(--sgj-border-card);
-    color: var(--sgj-text-2);
+    border-color: #ddd4c2;
+    color: #5c6360;
     box-shadow: none;
   }
 }
@@ -508,8 +519,9 @@ onBeforeUnmount(() => {
   background: #fff;
   border-radius: 14px;
   box-shadow: 0 10px 28px rgba(23, 27, 26, 0.16);
-  border: 1px solid var(--sgj-border-card);
+  border: 1px solid #e0d8c8;
   padding: 12px;
+  color: #2e3331;
   font-family: var(--sgj-font, inherit);
 }
 
@@ -526,7 +538,7 @@ onBeforeUnmount(() => {
 
 .tm-pop-sub {
   font-size: 11px;
-  color: var(--sgj-text-4);
+  color: #97a09b;
   margin-top: 2px;
 }
 
@@ -534,7 +546,7 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  color: var(--sgj-text-2);
+  color: #5c6360;
   font-size: 14px;
   line-height: 1;
   background: none;
@@ -542,7 +554,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 
   &:hover {
-    background: var(--sgj-bg-card);
+    background: #f0ece2;
   }
 }
 
@@ -557,7 +569,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 
   &:hover {
-    background: var(--sgj-bg-card);
+    background: #f6f1e8;
   }
 
   & + & {
@@ -577,7 +589,7 @@ onBeforeUnmount(() => {
 
   span {
     font-size: 11px;
-    color: var(--sgj-text-4);
+    color: #97a09b;
   }
 }
 
@@ -591,13 +603,13 @@ onBeforeUnmount(() => {
   vertical-align: 1px;
 
   &.done {
-    background: var(--sgj-moss-soft, #e7ece9);
-    color: var(--sgj-moss);
+    background: #e7ece9;
+    color: #5d6f66;
   }
 
   &.want {
-    background: rgba(192, 138, 62, 0.14);
-    color: var(--sgj-amber);
+    background: rgba(192, 138, 62, 0.16);
+    color: #a1732e;
   }
 }
 
@@ -620,10 +632,10 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--sgj-bg-card);
-      color: var(--sgj-text-2);
+      background: #f0ece2;
+      color: #5c6360;
       font-size: 10px;
-      border: 1px dashed var(--sgj-border-card);
+      border: 1px dashed #ddd4c2;
       box-shadow: none;
       font-style: normal;
     }

@@ -91,7 +91,8 @@ const previewPhotos = computed(() => props.photos.slice(0, 4))
   right: 0;
   bottom: 4px;
   font: 600 10px/1 var(--sgj-font-serif);
-  color: var(--sgj-text-2);
+  /* 拍立得白底固定墨色（不随主题翻转） */
+  color: #5c6360;
   text-align: center;
 }
 

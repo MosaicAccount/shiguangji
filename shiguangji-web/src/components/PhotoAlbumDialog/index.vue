@@ -222,13 +222,14 @@ function onUploadError(): void {
     bottom: 6px;
     right: 26px;
     font: 600 11px/1.3 var(--sgj-font-serif);
-    color: var(--sgj-text-2);
+    /* 拍立得白底固定墨色（不随主题翻转） */
+    color: #5c6360;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 
     .no {
-      color: var(--sgj-text-4);
+      color: #97a09b;
       font-weight: 400;
       margin-right: 5px;
     }
@@ -273,7 +274,7 @@ function onUploadError(): void {
   min-height: 140px;
   border: 2px dashed var(--sgj-border-card);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--sgj-bg-card);
   color: var(--sgj-text-3);
   font-size: 12px;
   transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
