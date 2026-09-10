@@ -15,6 +15,19 @@ shiguangji:
   # 前台博客公开数据所属博主账号（匿名访客仅可见该账号的数据，）
   publicOwner: admin
 
+# 封面自动匹配配置（issue #5，豆瓣非官方 suggest 接口，接口变更时仅需调整此处）
+cover:
+  douban:
+    movie-suggest-url: https://movie.douban.com/j/subject_suggest
+    book-suggest-url: https://book.douban.com/j/subject_suggest
+    # 豆瓣 CDN 图片有防盗链，抓取必须携带豆瓣 Referer（缺省返回 418）
+    referer: https://www.douban.com/
+  # 封面来源图片域名白名单（SSRF/防盗链防护，后缀匹配，逗号分隔）
+  image-host-suffixes: doubanio.com
+  backfill:
+    # 批量补全逐条间隔毫秒数，控制对豆瓣的请求频率
+    interval-ms: 500
+
 # 文件存储配置
 sgj:
   storage:

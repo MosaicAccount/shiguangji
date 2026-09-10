@@ -27,7 +27,11 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="封面图" prop="coverUrl">
-            <el-input v-model="form.coverUrl" placeholder="图片地址（可选）" maxlength="500" />
+            <div class="cover-field">
+              <image-upload v-model="form.coverUrl" :limit="1" :file-type="['png', 'jpg', 'jpeg', 'gif', 'webp']" :drag="false" />
+              <!-- 影视/书籍支持按标题自动匹配豆瓣封面；地点无数据源不展示 -->
+              <el-button v-if="itemType !== 'PLACE'" plain size="small" icon="Picture" @click="matchOpen = true">自动匹配封面</el-button>
+            </div>
           </el-form-item>
         </el-col>
 
@@ -180,10 +184,14 @@
 
   <!-- 地图选点（地点表单经纬度自动填入） -->
   <map-picker v-model="pickerOpen" :latitude="form.latitude" :longitude="form.longitude" @confirm="onCoordPick" />
+
+  <!-- 豆瓣封面自动匹配（影视/书籍） -->
+  <cover-match-dialog v-model="matchOpen" :item-type="itemType" :title="form.title" @confirmed="onCoverMatched" />
 </template>
 
 <script setup lang="ts" name="ItemEditDialog">
 import { getFrontItem, updateFrontItem } from '@/api/front/item'
+import CoverMatchDialog from '@/components/CoverMatchDialog/index.vue'
 import MapPicker from '@/components/MapPicker/index.vue'
 import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
@@ -215,6 +223,17 @@ const submitting = ref(false)
 
 /** 地图选点弹窗 */
 const pickerOpen = ref(false)
+
+/** 封面自动匹配弹窗 */
+const matchOpen = ref(false)
+
+/** 匹配成功回填：影视/电视剧同时落豆瓣编号（编辑提交时随表单一并保存） */
+function onCoverMatched(payload: { url: string; sourceId?: string }): void {
+  form.coverUrl = payload.url
+  if (payload.sourceId && (itemType.value === 'MOVIE' || itemType.value === 'TV')) {
+    form.doubanId = payload.sourceId
+  }
+}
 
 /** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
 function onPlaceSelect(place: PlaceResult): void {
@@ -289,5 +308,11 @@ function viewNotes(): void {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+.cover-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 </style>
