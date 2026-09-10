@@ -129,6 +129,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="tags != null and tags != ''">
                 and find_in_set(#{tags}, replace(i.tags, ' ', ''))
             </if>
+            <!-- 封面批量补全用：仅取无封面条目（params.missingCover 由 service 传入） -->
+            <if test="params.missingCover != null">
+                and (i.cover_url is null or i.cover_url = '')
+            </if>
         </where>
         order by i.update_time desc, i.item_id desc
     </select>
