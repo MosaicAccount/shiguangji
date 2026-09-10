@@ -491,7 +491,7 @@ const heroImage = computed<string>(() => {
   const d = detail.value
   if (!d) return ''
   if (photosArr.value.length) return photoUrl(photosArr.value[0])
-  if (d.coverUrl) return d.coverUrl
+  if (d.coverUrl) return photoUrl(d.coverUrl)
   if (d.photoCover) return photoUrl(d.photoCover)
   return ''
 })
@@ -522,7 +522,7 @@ function onPhotosChange(next: string[]): void {
 
 /** 卡片封面：条目封面优先，缺失时回退首张照片 */
 function cardCover(item: SgjItem): string {
-  if (item.coverUrl) return item.coverUrl
+  if (item.coverUrl) return photoUrl(item.coverUrl)
   return item.photoCover ? photoUrl(item.photoCover) : ''
 }
 

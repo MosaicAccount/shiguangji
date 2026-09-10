@@ -19,7 +19,7 @@
           :class="{ active: selected && selected.sourceId === candidate.sourceId }"
           @click="selected = candidate"
         >
-          <el-image :src="resolveCoverSrc(candidate.imageUrl)" fit="cover" class="candidate-cover">
+          <el-image :src="photoUrl(candidate.imageUrl)" fit="cover" class="candidate-cover">
             <template #error>
               <span class="candidate-fallback">无图</span>
             </template>
@@ -39,6 +39,7 @@
 
 <script setup lang="ts" name="CoverMatchDialog">
 import { importItemCover, searchItemCovers } from '@/api/business/cover'
+import { photoUrl } from '@/utils/sgj'
 import type { CoverCandidate } from '@/types/api/business/item'
 
 const props = defineProps<{
@@ -67,12 +68,6 @@ const searching = ref(false)
 const importing = ref(false)
 const candidates = ref<CoverCandidate[]>([])
 const selected = ref<CoverCandidate | null>(null)
-
-const baseUrl = import.meta.env.VITE_APP_BASE_API
-/** 代理路径为相对地址，需拼 API 前缀经后端代理展示（豆瓣 CDN 有防盗链） */
-function resolveCoverSrc(imageUrl: string): string {
-  return /^https?:\/\//.test(imageUrl) ? imageUrl : baseUrl + imageUrl
-}
 
 watch(
   () => props.modelValue,

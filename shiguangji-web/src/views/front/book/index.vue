@@ -48,7 +48,7 @@
       <div v-for="(item, idx) in list" :key="item.itemId" class="book-card anim" :style="{ '--d': ((idx % 4) * 30) + 'ms' }" @click="openDetail(item)">
         <div class="card-cover" :style="coverStyle(idx)">
           <!-- ：封面加载失败兜底（隐藏 img 显示占位图标） -->
-          <img v-if="item.coverUrl && !isCoverError(item)" :src="item.coverUrl" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
+          <img v-if="item.coverUrl && !isCoverError(item)" :src="photoUrl(item.coverUrl)" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
           <template v-else>
             <span class="card-glyph">书</span>
             <span class="card-type-pill">书籍</span>
@@ -135,7 +135,7 @@
     <el-drawer v-model="detailOpen" :title="detail?.title || '详情'" size="420px">
       <div v-if="detail" class="detail-content">
         <div class="detail-cover">
-          <img v-if="detail.coverUrl && !isCoverError(detail)" :src="detail.coverUrl" class="detail-cover-img" :alt="detail.title" @error="onCoverError(detail)" />
+          <img v-if="detail.coverUrl && !isCoverError(detail)" :src="photoUrl(detail.coverUrl)" class="detail-cover-img" :alt="detail.title" @error="onCoverError(detail)" />
           <div v-else class="detail-icon">书</div>
         </div>
         <!-- 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag -->
@@ -178,7 +178,7 @@
 
 <script setup lang="ts" name="FrontBook">
 import { getToken } from '@/utils/auth'
-import { selectDictLabel } from '@/utils/sgj'
+import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'

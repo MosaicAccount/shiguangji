@@ -75,7 +75,7 @@
               <div class="timeline-card">
                 <img
                   v-if="item.coverUrl && item.itemId !== undefined && !brokenCovers[item.itemId]"
-                  :src="item.coverUrl"
+                  :src="photoUrl(item.coverUrl)"
                   class="timeline-thumb"
                   :alt="item.title"
                   loading="lazy"
@@ -136,6 +136,7 @@
 
 <script setup lang="ts" name="FrontHome">
 import { getToken } from '@/utils/auth'
+import { photoUrl } from '@/utils/sgj'
 import { getFrontHomeData, listFrontHomeTimeline } from '@/api/front/home'
 import { completeFrontItem } from '@/api/front/item'
 import type { FrontHomeData } from '@/types/api/front/home'
