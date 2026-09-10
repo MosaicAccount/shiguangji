@@ -54,10 +54,6 @@ const overlays = ref<any[]>([])
 const PROVINCE_MAX_ZOOM = 6
 const CITY_MAX_ZOOM = 9.5
 
-/** 当前聚合层级与缩放手势开始时的视心（层级切换后用于"跟随"找簇） */
-let currentLevel: 'prov' | 'city' | 'point' = 'prov'
-let zoomStartCenter: { lng: number; lat: number } | null = null
-
 function levelOf(zoom: number): 'prov' | 'city' | 'point' {
   if (zoom > CITY_MAX_ZOOM) return 'point'
   return zoom <= PROVINCE_MAX_ZOOM ? 'prov' : 'city'
@@ -278,24 +274,6 @@ function renderOverlays(): void {
     }
   }
 
-  // 层级切换时"跟随"：用户对着聚合牌放大，簇拆分后子点可能散落他处；
-  // 把离缩放前视心最近的簇平滑平移回视心，拆分结果始终在眼前
-  if (level !== currentLevel && zoomStartCenter) {
-    let nearest: ClusterNode | null = null
-    let bestD = Infinity
-    for (const c of clusters) {
-      const d = haversineKm(zoomStartCenter.lat, zoomStartCenter.lng, c.lat, c.lng)
-      if (d < bestD) {
-        bestD = d
-        nearest = c
-      }
-    }
-    if (nearest) {
-      map.panTo([nearest.lng, nearest.lat])
-    }
-  }
-  currentLevel = level
-  zoomStartCenter = null
 }
 
 async function initMap(): Promise<void> {
@@ -309,12 +287,8 @@ async function initMap(): Promise<void> {
     zooms: [3.5, 14]
   })
   infoWindow = new AMap.InfoWindow({ isCustom: true, anchor: 'bottom-center', offset: new AMap.Pixel(0, -46) })
-  // 点击底图关闭照片弹卡；缩放开始记视心、结束后按新层级重绘（含跟随）
+  // 点击底图关闭照片弹卡；缩放结束后按新层级重绘聚合
   map.on('click', () => infoWindow?.close())
-  map.on('zoomstart', () => {
-    const c = map.getCenter()
-    zoomStartCenter = { lng: c.lng, lat: c.lat }
-  })
   map.on('zoomend', () => renderOverlays())
   renderOverlays()
   window.addEventListener('resize', onResize)
