@@ -135,7 +135,8 @@ class ItemCoverApiSmokeTest
                 .andExpect(jsonPath("$.data[0].title").value(TITLE))
                 .andExpect(jsonPath("$.data[0].year").value("1994"))
                 .andExpect(jsonPath("$.data[0].imageUrl").value(
-                        org.hamcrest.Matchers.startsWith("/app/item/cover/proxy?u=")));
+                        org.hamcrest.Matchers.startsWith("/app/item/cover/proxy?u=")))
+                .andExpect(jsonPath("$.data[0].sourceUrl").value(STUB_COVER_URL));
 
         // 不支持的类型直接拒绝（地点无豆瓣数据源）
         mockMvc.perform(get("/app/item/cover/search")
@@ -325,7 +326,7 @@ class ItemCoverApiSmokeTest
         {
             if (keyword != null && keyword.startsWith(TITLE))
             {
-                return List.of(new Candidate(STUB_DOUBAN_ID, keyword, "1994", STUB_COVER_URL));
+                return List.of(new Candidate(STUB_DOUBAN_ID, keyword, "1994", STUB_COVER_URL, STUB_COVER_URL));
             }
             return List.of();
         }

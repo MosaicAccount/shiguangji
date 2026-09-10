@@ -59,12 +59,12 @@ public class ItemCoverService
     private long backfillIntervalMs;
 
     /**
-     * 搜索封面候选；imageUrl 改写为后端代理相对路径，浏览器经我方服务展示缩略图
+     * 搜索封面候选；imageUrl 改写为后端代理相对路径（展示用），sourceUrl 保留原始地址（转存用）
      */
     public List<CoverFetchClient.Candidate> search(String itemType, String keyword)
     {
         return coverClient.search(itemType, keyword).stream()
-                .map(c -> new CoverFetchClient.Candidate(c.sourceId(), c.title(), c.year(), proxyPath(c.imageUrl())))
+                .map(c -> new CoverFetchClient.Candidate(c.sourceId(), c.title(), c.year(), proxyPath(c.imageUrl()), c.imageUrl()))
                 .toList();
     }
 
@@ -121,7 +121,7 @@ public class ItemCoverService
                         skipped++;
                         continue;
                     }
-                    item.setCoverUrl(importCover(type, pick.imageUrl()));
+                    item.setCoverUrl(importCover(type, pick.sourceUrl()));
                     if (pick.sourceId() != null && !"BOOK".equals(type))
                     {
                         item.setDoubanId(pick.sourceId());

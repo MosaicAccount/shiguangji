@@ -96,8 +96,8 @@ class ItemCoverServiceTest
         item.setReleaseYear(1994);
 
         List<CoverFetchClient.Candidate> candidates = List.of(
-                new CoverFetchClient.Candidate("1", "同名电影", "2001", "https://img1.doubanio.com/a.jpg"),
-                new CoverFetchClient.Candidate("2", "肖申克的救赎", "1994", "https://img1.doubanio.com/b.jpg"));
+                new CoverFetchClient.Candidate("1", "同名电影", "2001", "https://img1.doubanio.com/a.jpg", "https://img1.doubanio.com/a.jpg"),
+                new CoverFetchClient.Candidate("2", "肖申克的救赎", "1994", "https://img1.doubanio.com/b.jpg", "https://img1.doubanio.com/b.jpg"));
 
         CoverFetchClient.Candidate pick = service.pickCandidate(candidates, item);
         assertThat(pick.sourceId()).isEqualTo("2");
@@ -110,7 +110,7 @@ class ItemCoverServiceTest
         // 条目与候选都无年份 → 接受首个
         SgjItem item = new SgjItem();
         List<CoverFetchClient.Candidate> candidates = List.of(
-                new CoverFetchClient.Candidate("1", "某书", "", "https://img1.doubanio.com/a.jpg"));
+                new CoverFetchClient.Candidate("1", "某书", "", "https://img1.doubanio.com/a.jpg", "https://img1.doubanio.com/a.jpg"));
         assertThat(service.pickCandidate(candidates, item).sourceId()).isEqualTo("1");
 
         // 条目有年份、候选无年份 → 无冲突，接受
@@ -119,7 +119,7 @@ class ItemCoverServiceTest
 
         // 候选年份与条目年份冲突 → 返回 null 计入 skipped
         List<CoverFetchClient.Candidate> conflicting = List.of(
-                new CoverFetchClient.Candidate("1", "同名作品", "1994", "https://img1.doubanio.com/a.jpg"));
+                new CoverFetchClient.Candidate("1", "同名作品", "1994", "https://img1.doubanio.com/a.jpg", "https://img1.doubanio.com/a.jpg"));
         SgjItem tvItem = new SgjItem();
         tvItem.setStartYear(2020);
         assertThat(service.pickCandidate(conflicting, tvItem)).isNull();

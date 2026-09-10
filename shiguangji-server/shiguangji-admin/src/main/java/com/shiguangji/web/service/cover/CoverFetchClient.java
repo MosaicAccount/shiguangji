@@ -28,8 +28,13 @@ public interface CoverFetchClient
      */
     Image fetch(String imageUrl);
 
-    /** 封面候选 */
-    record Candidate(String sourceId, String title, String year, String imageUrl)
+    /**
+     * 封面候选
+     *
+     * <p>客户端实现里 imageUrl 与 sourceUrl 同为来源站原始地址；
+     * 服务端对外返回时 imageUrl 改写为代理路径，sourceUrl 保留原始地址供转存调用。</p>
+     */
+    record Candidate(String sourceId, String title, String year, String imageUrl, String sourceUrl)
     {
     }
 

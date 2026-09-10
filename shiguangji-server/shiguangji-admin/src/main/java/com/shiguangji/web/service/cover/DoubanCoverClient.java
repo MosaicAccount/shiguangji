@@ -117,7 +117,7 @@ public class DoubanCoverClient implements CoverFetchClient
                 {
                     continue;
                 }
-                candidates.add(new Candidate(id, node.path("title").asText(""), node.path("year").asText(""), img));
+                candidates.add(new Candidate(id, node.path("title").asText(""), node.path("year").asText(""), img, img));
             }
         }
         catch (Exception e)
