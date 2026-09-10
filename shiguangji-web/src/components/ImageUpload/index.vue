@@ -17,7 +17,7 @@
       :headers="headers"
       :file-list="fileList"
       :on-preview="handlePictureCardPreview"
-      :class="{ hide: fileList.length >= limit }"
+      :class="{ hide: limit > 0 && fileList.length >= limit }"
     >
       <el-icon class="avatar-uploader-icon"><plus /></el-icon>
     </el-upload>
@@ -70,7 +70,7 @@ const props = defineProps({
   data: {
     type: Object
   },
-  // 图片数量限制
+  // 图片数量限制（0 表示不限制）
   limit: {
     type: Number,
     default: 5
@@ -175,6 +175,8 @@ function handleBeforeUpload(file: File): boolean {
 
 // 文件个数超出
 function handleExceed(): void {
+  // limit=0 表示不限制，理论上不会触发，防御性兜底
+  if (props.limit <= 0) return
   proxy.$modal.msgError(`上传文件数量不能超过 ${props.limit} 个!`)
 }
 

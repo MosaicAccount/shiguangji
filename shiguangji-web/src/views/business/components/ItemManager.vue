@@ -111,7 +111,7 @@
               <image-upload
                 v-else-if="field.type === 'image'"
                 v-model="form[field.key]"
-                :limit="1"
+                :limit="field.limit ?? 1"
                 :file-type="['png', 'jpg', 'jpeg', 'gif', 'webp']"
               />
               <el-select
@@ -269,6 +269,8 @@ interface FieldConfig {
   dictType?: string
   allowCreate?: boolean
   filterable?: boolean
+  /** 图片数量限制（仅 image 类型；0 表示不限制，默认 1） */
+  limit?: number
 }
 
 const formFields = computed<FieldConfig[]>(() => {
@@ -324,7 +326,8 @@ const formFields = computed<FieldConfig[]>(() => {
       { key: 'country', label: '国家', type: 'input', maxlength: 100 },
       { key: 'coord', label: '经纬度', type: 'coord', span: 24 },
       { key: 'bestSeason', label: '最佳季节', type: 'select', dictType: 'sgj_best_season' },
-      { key: 'placeCategory', label: '地点分类', type: 'select', dictType: 'sgj_place_category', allowCreate: true, filterable: true }
+      { key: 'placeCategory', label: '地点分类', type: 'select', dictType: 'sgj_place_category', allowCreate: true, filterable: true },
+      { key: 'photos', label: '照片', type: 'image', span: 24, limit: 0 }
     ]
   }
 
@@ -418,7 +421,8 @@ function reset() {
     startDate: undefined,
     finishDate: undefined,
     comment: undefined,
-    remark: undefined
+    remark: undefined,
+    photos: undefined
   }
   proxy.resetForm('formRef')
 }

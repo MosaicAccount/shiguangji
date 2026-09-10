@@ -127,6 +127,15 @@ public class SgjItem extends BaseEntity
     /** 地点：地点分类 */
     private String placeCategory;
 
+    /** 条目照片URL，多个英文逗号分隔（逗号顺序即展示顺序；虚拟字段，实际存 sgj_item_photo 表） */
+    private String photos;
+
+    /** 关联照片数量（列表徽标/轨迹聚合用，虚拟字段） */
+    private Long photoCount;
+
+    /** 首张照片URL（无封面时的封面兜底，虚拟字段） */
+    private String photoCover;
+
     public Long getItemId()
     {
         return itemId;
@@ -485,5 +494,35 @@ public class SgjItem extends BaseEntity
     public void setPlaceCategory(String placeCategory)
     {
         this.placeCategory = placeCategory;
+    }
+
+    public String getPhotos()
+    {
+        return photos;
+    }
+
+    public void setPhotos(String photos)
+    {
+        this.photos = photos;
+    }
+
+    public Long getPhotoCount()
+    {
+        return photoCount;
+    }
+
+    public void setPhotoCount(Long photoCount)
+    {
+        this.photoCount = photoCount;
+    }
+
+    public String getPhotoCover()
+    {
+        return photoCover;
+    }
+
+    public void setPhotoCover(String photoCover)
+    {
+        this.photoCover = photoCover;
     }
 }

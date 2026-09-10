@@ -228,3 +228,10 @@ export function getNormalPath(p: string): string {
 export function blobValidate(data: Blob): boolean {
   return data.type !== 'application/json'
 }
+
+/** 照片/封面地址转可展示 URL：外链原样，站内相对路径（/profile/...）补 baseURL 前缀 */
+export function photoUrl(url?: string): string {
+  if (!url) return ''
+  if (/^(https?:|data:|blob:)/i.test(url)) return url
+  return import.meta.env.VITE_APP_BASE_API + url
+}

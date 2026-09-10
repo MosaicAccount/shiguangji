@@ -1,11 +1,13 @@
 package com.shiguangji.web.controller.business;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.shiguangji.business.domain.SgjItem;
+import com.shiguangji.business.domain.SgjItemPhoto;
+import com.shiguangji.business.mapper.SgjItemPhotoMapper;
 import com.shiguangji.business.service.ISgjItemService;
 import com.shiguangji.common.annotation.Anonymous;
 import com.shiguangji.common.core.controller.BaseController;
@@ -35,8 +39,12 @@ public class AppTravelController extends BaseController
     @Autowired
     private AppScopeHelper appScopeHelper;
 
+    @Autowired
+    private SgjItemPhotoMapper sgjItemPhotoMapper;
+
     /**
-     * 获取旅行轨迹数据（去过地点按时间排序 + 想去地点，按可见范围过滤 ）
+     * 获取旅行轨迹数据（去过地点按时间排序 + 想去地点，按可见范围过滤；
+     * 附带每点的照片数与首张照片 URL，供地图照片聚合与旅行时间线使用）
      */
     @Anonymous
     @GetMapping("/trajectory")
@@ -48,6 +56,15 @@ public class AppTravelController extends BaseController
         query.setCreateBy(appScopeHelper.resolveCreateBy());
         List<SgjItem> places = sgjItemService.selectSgjItemList(query);
 
+        // 先收集有坐标的点，再一次性批量取照片，避免逐点查库
+        List<Long> itemIds = places.stream()
+                .filter(p -> p.getLatitude() != null && p.getLongitude() != null)
+                .map(SgjItem::getItemId)
+                .collect(Collectors.toList());
+        Map<Long, List<SgjItemPhoto>> photosByItem = itemIds.isEmpty() ? Collections.emptyMap()
+                : sgjItemPhotoMapper.selectPhotosByItemIds(itemIds).stream()
+                        .collect(Collectors.groupingBy(SgjItemPhoto::getItemId));
+
         List<Map<String, Object>> visited = new ArrayList<>();
         List<Map<String, Object>> wish = new ArrayList<>();
 
@@ -58,15 +75,20 @@ public class AppTravelController extends BaseController
                 continue;
             }
 
+            List<SgjItemPhoto> photos = photosByItem.getOrDefault(place.getItemId(), Collections.emptyList());
+
             Map<String, Object> point = new HashMap<>();
             point.put("itemId", place.getItemId());
             point.put("title", place.getTitle());
             point.put("city", place.getCity());
+            point.put("province", place.getProvince());
             point.put("country", place.getCountry());
             point.put("latitude", place.getLatitude());
             point.put("longitude", place.getLongitude());
             point.put("finishDate", place.getFinishDate());
             point.put("updateTime", place.getUpdateTime());
+            point.put("photoCount", photos.size());
+            point.put("cover", photos.isEmpty() ? null : photos.get(0).getUrl());
 
             if ("DONE".equals(place.getStatus()))
             {

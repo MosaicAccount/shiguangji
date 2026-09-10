@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguangji.business.mapper.SgjItemPhotoMapper">
+
+    <resultMap type="SgjItemPhoto" id="SgjItemPhotoResult">
+        <id     property="photoId"    column="photo_id"    />
+        <result property="itemId"     column="item_id"     />
+        <result property="url"        column="url"         />
+        <result property="sortOrder"  column="sort_order"  />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <select id="selectPhotosByItemId" parameterType="Long" resultMap="SgjItemPhotoResult">
+        select photo_id, item_id, url, sort_order, create_by, create_time
+        from sgj_item_photo
+        where item_id = #{itemId}
+        order by sort_order, photo_id
+    </select>
+
+    <select id="selectPhotosByItemIds" resultMap="SgjItemPhotoResult">
+        select photo_id, item_id, url, sort_order, create_by, create_time
+        from sgj_item_photo
+        where item_id in
+        <foreach item="itemId" collection="list" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+        order by item_id, sort_order, photo_id
+    </select>
+
+    <insert id="insertPhotos" parameterType="java.util.List">
+        insert into sgj_item_photo (item_id, url, sort_order, create_by, create_time) values
+        <foreach item="photo" collection="list" separator=",">
+            (#{photo.itemId}, #{photo.url}, #{photo.sortOrder}, #{photo.createBy}, sysdate())
+        </foreach>
+    </insert>
+
+    <delete id="deletePhotosByItemId" parameterType="Long">
+        delete from sgj_item_photo where item_id = #{itemId}
+    </delete>
+
+</mapper>
