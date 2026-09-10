@@ -46,16 +46,24 @@ let infoWindow: any = null
 const overlays = ref<any[]>([])
 
 /**
- * 缩放驱动的分层聚合（阈值与视野匹配：zoom 6 ≈ 数省视野，zoom 9.5 ≈ 单市视野）：
+ * 缩放驱动的分层聚合（阈值与视野匹配：zoom 6 ≈ 数省视野，9.5 ≈ 单市视野，11.5 ≈ 城区视野）：
  * - 低缩放（<= 6）按省聚合，省级缺失（国外）回退国家；
  * - 中缩放（6 ~ 9.5）按市聚合——只聚本市及邻近市，不再全省一坨；
- * - 高缩放（> 9.5）逐点显示（点少不显乱，保留地名与去过/想去标签）。
+ * - 高缩放（9.5 ~ 11.5）邻域聚合（约 8km 内为一簇，等同区县/街道粒度，
+ *   库中无区县结构化字段，用距离邻近替代）；
+ * - 更高缩放逐点显示（保留地名与去过/想去标签）。
  */
 const PROVINCE_MAX_ZOOM = 6
 const CITY_MAX_ZOOM = 9.5
+const HOOD_MAX_ZOOM = 11.5
+/** 邻域聚合半径（千米） */
+const HOOD_CLUSTER_KM = 8
 
-function levelOf(zoom: number): 'prov' | 'city' | 'point' {
-  if (zoom > CITY_MAX_ZOOM) return 'point'
+type AggLevel = 'prov' | 'city' | 'hood' | 'point'
+
+function levelOf(zoom: number): AggLevel {
+  if (zoom > HOOD_MAX_ZOOM) return 'point'
+  if (zoom > CITY_MAX_ZOOM) return 'hood'
   return zoom <= PROVINCE_MAX_ZOOM ? 'prov' : 'city'
 }
 
@@ -162,6 +170,29 @@ function toMapPoints(): (MapPoint & { gLng: number; gLat: number })[] {
   return tagged
 }
 
+/**
+ * 邻域距离聚簇：依次取点，落入已有簇心 HOOD_CLUSTER_KM 内则并入，否则自立新簇。
+ * ponytail: O(n²) 贪心 + 簇心均值，单城区内数十点足够；
+ * 跨城飞地点（如同城两机场 50km）会并入同簇，出现误聚再升级网格聚类。
+ */
+function groupByProximity(points: (MapPoint & { gLng: number; gLat: number })[]): ClusterNode[] {
+  const clusters: ClusterNode[] = []
+  for (const p of points) {
+    const hit = clusters.find(c => haversineKm(c.lat, c.lng, p.gLat, p.gLng) <= HOOD_CLUSTER_KM)
+    if (hit) {
+      hit.points.push(p)
+      hit.lng = hit.points.reduce((s, x) => s + x.gLng, 0) / hit.points.length
+      hit.lat = hit.points.reduce((s, x) => s + x.gLat, 0) / hit.points.length
+    } else {
+      clusters.push({ lng: p.gLng, lat: p.gLat, label: '', points: [p] })
+    }
+  }
+  for (const c of clusters) {
+    if (c.points.length > 1) c.label = `附近 ${c.points.length} 处`
+  }
+  return clusters
+}
+
 function clusterPhotos(points: TravelPoint[]): { count: number; covers: string[] } {
   const covers: string[] = []
   let count = 0
@@ -251,11 +282,13 @@ function renderOverlays(): void {
   const zoom = map.getZoom()
   const level = levelOf(zoom)
 
-  // 逐点层：每个地点自成一簇；省/市层：按行政区聚合
+  // 逐点层：每个地点自成一簇；省/市层：按行政区聚合；邻域层：按距离聚簇
   const clusters: ClusterNode[] =
     level === 'point'
       ? points.map(p => ({ lng: p.gLng, lat: p.gLat, label: p.title || '地点', points: [p] }))
-      : groupByRegion(points, level)
+      : level === 'hood'
+        ? groupByProximity(points)
+        : groupByRegion(points, level)
 
   for (const cluster of clusters) {
     const single = cluster.points.length === 1
