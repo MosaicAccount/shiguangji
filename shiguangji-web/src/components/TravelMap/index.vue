@@ -187,7 +187,9 @@ function clusterHtml(cluster: ClusterNode): string {
 }
 
 function dotHtml(point: MapPoint): string {
-  return `<span class="tm-marker"><span class="tm-plain-dot ${point.status === 'DONE' ? 'visited' : 'want'}"></span><span class="tm-pill muted">${point.title} · ${point.status === 'DONE' ? '去过' : '想去'}</span></span>`
+  const state = point.status === 'DONE' ? 'visited' : 'want'
+  const stateText = point.status === 'DONE' ? '去过' : '想去'
+  return `<span class="tm-marker"><span class="tm-pin ${state}" aria-hidden="true"><i></i></span><span class="tm-pill muted">${point.title} · ${stateText}</span></span>`
 }
 
 /** 分组照片弹卡内容（InfoWindow 自定义 DOM，可直接绑定点击） */
@@ -477,13 +479,17 @@ onBeforeUnmount(() => {
   }
 }
 
-.tm-plain-dot {
+/* 无照片地点：水滴大头针（城市 POI 密集处比小圆点醒目） */
+.tm-pin {
   display: block;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: 2.5px solid #fff;
-  box-shadow: 0 1px 5px rgba(23, 27, 26, 0.35);
+  width: 26px;
+  height: 26px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 3px solid var(--sgj-bg-card);
+  box-shadow: 0 3px 8px rgba(23, 27, 26, 0.35);
+  margin: 0 0 4px 0;
+  position: relative;
 
   &.visited {
     background: var(--sgj-moss);
@@ -491,6 +497,17 @@ onBeforeUnmount(() => {
 
   &.want {
     background: var(--sgj-amber);
+  }
+
+  i {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    transform: rotate(45deg);
   }
 }
 
