@@ -42,6 +42,10 @@
       <el-col :span="1.5">
         <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['sgj:item:remove']">删除</el-button>
       </el-col>
+      <!-- 批量补全缺失封面（影视/书籍，地点无豆瓣数据源） -->
+      <el-col v-if="itemType !== 'PLACE'" :span="1.5">
+        <el-button type="info" plain icon="Picture" :loading="backfillLoading" @click="handleBackfill" v-hasPermi="['sgj:item:edit']">补全封面</el-button>
+      </el-col>
       <el-col :span="1.5">
         <el-dropdown v-hasPermi="['sgj:item:list']" @command="handleExport">
           <el-button type="warning" plain icon="Download" :loading="exportLoading">
@@ -108,12 +112,15 @@
                 :placeholder="field.placeholder"
                 :maxlength="field.maxlength"
               />
-              <image-upload
-                v-else-if="field.type === 'image'"
-                v-model="form[field.key]"
-                :limit="field.limit ?? 1"
-                :file-type="['png', 'jpg', 'jpeg', 'gif', 'webp']"
-              />
+              <div v-else-if="field.type === 'image'" class="cover-field">
+                <image-upload
+                  v-model="form[field.key]"
+                  :limit="field.limit ?? 1"
+                  :file-type="['png', 'jpg', 'jpeg', 'gif', 'webp']"
+                />
+                <!-- 影视/书籍支持按标题自动匹配豆瓣封面；地点无数据源不展示 -->
+                <el-button v-if="field.autoMatch" plain size="small" icon="Picture" @click="coverMatchOpen = true">自动匹配封面</el-button>
+              </div>
               <el-select
                 v-else-if="field.type === 'select'"
                 v-model="form[field.key]"
@@ -181,13 +188,18 @@
 
     <!-- 地图选点（地点表单经纬度自动填入） -->
     <map-picker v-model="coordPickerOpen" :latitude="form.latitude" :longitude="form.longitude" @confirm="onCoordPick" />
+
+    <!-- 豆瓣封面自动匹配（影视/书籍） -->
+    <cover-match-dialog v-model="coverMatchOpen" :item-type="itemType" :title="form.title" @confirmed="onCoverMatched" />
   </div>
 </template>
 
 <script setup lang="ts" name="ItemManager">
 import { listItem, getItem, addItem, updateItem, delItem } from '@/api/business/item'
+import { backfillItemCovers } from '@/api/business/cover'
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import { useDict } from '@/utils/dict'
+import CoverMatchDialog from '@/components/CoverMatchDialog/index.vue'
 import ItemCover from '@/components/ItemCover/index.vue'
 import MapPicker from '@/components/MapPicker/index.vue'
 import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
@@ -271,6 +283,8 @@ interface FieldConfig {
   filterable?: boolean
   /** 图片数量限制（仅 image 类型；0 表示不限制，默认 1） */
   limit?: number
+  /** 是否展示豆瓣自动匹配入口（仅封面字段；地点无数据源） */
+  autoMatch?: boolean
 }
 
 const formFields = computed<FieldConfig[]>(() => {
@@ -279,7 +293,7 @@ const formFields = computed<FieldConfig[]>(() => {
     { key: 'status', label: '状态', type: 'select', options: statusOptions.value, required: true },
     { key: 'rating', label: '评分', type: 'number', min: 0, max: 10, precision: 1, step: 0.5, placeholder: '0-10' },
     { key: 'tags', label: '标签', type: 'tags' },
-    { key: 'coverUrl', label: '封面/图片', type: 'image', span: 24 },
+    { key: 'coverUrl', label: '封面/图片', type: 'image', span: 24, autoMatch: props.itemType !== 'PLACE' },
     { key: 'startDate', label: '开始日期', type: 'date', placeholder: '选择日期' },
     { key: 'finishDate', label: '完成日期', type: 'date', placeholder: '选择日期' },
     { key: 'comment', label: '短评', type: 'textarea', rows: 3, placeholder: '个人短评', span: 24 },
@@ -366,6 +380,33 @@ const { form, queryParams } = toRefs(data)
 
 /** 地图选点弹窗 */
 const coordPickerOpen = ref(false)
+
+/** 封面自动匹配弹窗 */
+const coverMatchOpen = ref(false)
+
+/** 匹配成功回填：影视/电视剧同时落豆瓣编号 */
+function onCoverMatched(payload: { url: string; sourceId?: string }) {
+  form.value.coverUrl = payload.url
+  if (payload.sourceId && (props.itemType === 'MOVIE' || props.itemType === 'TV')) {
+    form.value.doubanId = payload.sourceId
+  }
+}
+
+/** 批量补全缺失封面 */
+const backfillLoading = ref(false)
+
+function handleBackfill() {
+  proxy.$modal.confirm('将按标题为无封面的' + props.pageTitle + '自动匹配豆瓣首个候选封面，是否继续？').then(() => {
+    backfillLoading.value = true
+    return backfillItemCovers({ itemType: props.itemType })
+  }).then((response: { data: { updated: number; skipped: number; failed: number } }) => {
+    const summary = response.data
+    proxy.$modal.msgSuccess('补全完成：成功 ' + summary.updated + ' 条，未匹配 ' + summary.skipped + ' 条，失败 ' + summary.failed + ' 条')
+    getList()
+  }).catch(() => {}).finally(() => {
+    backfillLoading.value = false
+  })
+}
 
 /** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
 function onPlaceSelect(place: PlaceResult) {
@@ -581,5 +622,11 @@ getList()
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+.cover-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 </style>
