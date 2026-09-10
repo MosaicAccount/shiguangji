@@ -211,9 +211,12 @@ function clusterHtml(cluster: ClusterNode): string {
         .map(u => `<i style="background-image:url('${u}')"></i>`)
         .join('')}</span>`
     : `<span class="tm-coin ${cluster.points.some(p => p.status === 'DONE') ? 'visited' : 'want'}">${cluster.points.length}</span>`
-  const pillText = count > 0
-    ? `${cluster.label} · ${cluster.points.length}地 · ${count}张`
-    : `${cluster.label} · ${cluster.points.length}地`
+  // 邻域簇的 label 已含「附近 N 处」，不再重复地点数
+  const pillText = cluster.label.startsWith('附近')
+    ? count > 0 ? `${cluster.label} · ${count}张` : cluster.label
+    : count > 0
+      ? `${cluster.label} · ${cluster.points.length}地 · ${count}张`
+      : `${cluster.label} · ${cluster.points.length}地`
   return `<span class="tm-marker">${cards}<span class="tm-pill${count > 0 ? '' : ' muted'}">${pillText}</span></span>`
 }
 
@@ -254,6 +257,17 @@ function popoverDom(cluster: ClusterNode): HTMLElement {
       emit('select', Number(b.dataset.item))
     }))
   return wrap
+}
+
+/** 视野适配到簇成员外接范围（zoom 9.6 起逐点可见，封顶 12），让拆分后的子点全部可见 */
+function fitCluster(cluster: ClusterNode): void {
+  if (!map || cluster.points.length < 2) return
+  const lats = cluster.points.map(p => p.gLat)
+  const lngs = cluster.points.map(p => p.gLng)
+  const span = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lngs) - Math.min(...lngs)) || 0.01
+  // 由跨度估算容纳所需 zoom：2^z ≈ 360/span，封顶 12、保底跨过逐点阈值
+  const zoom = Math.min(12, Math.max(9.6, Math.floor(Math.log2(360 / span))))
+  map.setZoomAndCenter(zoom, [lngs.reduce((a, b) => a + b, 0) / lngs.length, lats.reduce((a, b) => a + b, 0) / lats.length])
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -298,11 +312,13 @@ function renderOverlays(): void {
       addMarker(point.gLng, point.gLat, dotHtml(point), () => emit('select', point.itemId!))
     } else {
       addMarker(cluster.lng, cluster.lat, clusterHtml(cluster), () => {
-        // 单地点有照片：直接进详情；多点簇展开分组弹卡
+        // 单地点有照片：直接进详情
         if (single) {
           emit('select', cluster.points[0].itemId!)
           return
         }
+        // 多点簇：先把视野适配到全部成员（解决对着簇心放大后子点散落视野外），再展开分组弹卡
+        fitCluster(cluster)
         infoWindow?.setContent(popoverDom(cluster))
         infoWindow?.open(map, [cluster.lng, cluster.lat])
       })
