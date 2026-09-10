@@ -46,13 +46,13 @@ let infoWindow: any = null
 const overlays = ref<any[]>([])
 
 /**
- * 缩放驱动的分层聚合：
- * - 低缩放（<= 7.5）按省聚合，省级缺失（国外）回退国家；
- * - 中缩放（7.5 ~ 10）按市聚合；
- * - 高缩放（> 10）逐点显示（点少不显乱，保留地名与去过/想去标签）。
+ * 缩放驱动的分层聚合（阈值与视野匹配：zoom 6 ≈ 数省视野，zoom 9.5 ≈ 单市视野）：
+ * - 低缩放（<= 6）按省聚合，省级缺失（国外）回退国家；
+ * - 中缩放（6 ~ 9.5）按市聚合——只聚本市及邻近市，不再全省一坨；
+ * - 高缩放（> 9.5）逐点显示（点少不显乱，保留地名与去过/想去标签）。
  */
-const PROVINCE_MAX_ZOOM = 7.5
-const CITY_MAX_ZOOM = 10
+const PROVINCE_MAX_ZOOM = 6
+const CITY_MAX_ZOOM = 9.5
 
 /** 当前聚合层级与缩放手势开始时的视心（层级切换后用于"跟随"找簇） */
 let currentLevel: 'prov' | 'city' | 'point' = 'prov'
