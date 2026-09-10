@@ -2,8 +2,8 @@
   <div class="travel-map">
     <div class="map-tip">📷 照片按就近区域聚合 · 点击聚合牌翻看回忆</div>
     <div class="map-legend">
-      <span><i class="legend-dot visited"></i>去过</span>
-      <span><i class="legend-dot want"></i>想去</span>
+      <span><i class="legend-pin visited" aria-hidden="true"></i>去过</span>
+      <span><i class="legend-pin want" aria-hidden="true"></i>想去</span>
       <span>🂠 照片聚合</span>
     </div>
     <div ref="mapRef" class="map-chart"></div>
@@ -400,12 +400,14 @@ onBeforeUnmount(() => {
   border: 1px solid var(--sgj-border-card);
   pointer-events: none;
 
-  .legend-dot {
+  .legend-pin {
     display: inline-block;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    margin-right: 5px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 2px solid var(--sgj-bg-card);
+    margin: 0 7px 0 2px;
     vertical-align: 1px;
 
     &.visited {
