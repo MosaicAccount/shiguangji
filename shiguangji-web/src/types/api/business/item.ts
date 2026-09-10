@@ -73,3 +73,15 @@ export interface SgjItemQueryParams extends PageDomain {
   status?: string
   tags?: string
 }
+
+/** 豆瓣封面候选（issue #5） */
+export interface CoverCandidate {
+  /** 豆瓣条目编号 */
+  sourceId: string
+  title: string
+  year: string
+  /** 封面图地址（后端代理相对路径，展示用，需拼 baseURL） */
+  imageUrl: string
+  /** 豆瓣原始图地址（转存用） */
+  sourceUrl: string
+}
