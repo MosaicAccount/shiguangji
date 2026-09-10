@@ -197,7 +197,7 @@ function popoverDom(cluster: ClusterNode): HTMLElement {
         <button class="tm-pop-group" data-item="${p.itemId}">
           <span class="tm-pop-name"><b>${p.title}<i class="tm-pop-tag ${p.status === 'DONE' ? 'done' : 'want'}">${p.status === 'DONE' ? '去过' : '想去'}</i></b><span>${count} 张 →</span></span>
           <span class="tm-pop-thumbs">
-            <i style="background-image:url('${p.cover ? photoUrl(p.cover) : ''}')" aria-hidden="true"></i>
+            <i class="${p.cover ? '' : 'empty'}" ${p.cover ? `style="background-image:url('${photoUrl(p.cover)}')"` : ''} aria-hidden="true">${p.cover ? '' : '🖼'}</i>
             ${extra > 0 ? `<i class="more">+${extra}</i>` : ''}
           </span>
         </button>`
@@ -398,6 +398,7 @@ onBeforeUnmount(() => {
   border: 0;
   cursor: pointer;
   display: block;
+  color: #2e3331;
 }
 
 .tm-marker {
@@ -567,6 +568,8 @@ onBeforeUnmount(() => {
   background: none;
   border: 0;
   cursor: pointer;
+  /* button 不继承弹卡墨色（高德暗色容器下发白），显式声明 */
+  color: #2e3331;
 
   &:hover {
     background: #f6f1e8;
@@ -638,6 +641,14 @@ onBeforeUnmount(() => {
       border: 1px dashed #ddd4c2;
       box-shadow: none;
       font-style: normal;
+    }
+
+    &.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f0ece2;
+      font-size: 14px;
     }
   }
 }
