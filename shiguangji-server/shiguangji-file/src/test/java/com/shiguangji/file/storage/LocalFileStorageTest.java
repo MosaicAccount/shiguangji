@@ -1,12 +1,16 @@
 package com.shiguangji.file.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,5 +78,40 @@ class LocalFileStorageTest
         assertThrows(Exception.class, () -> storage.getContent(key.substring(Constants.RESOURCE_PREFIX.length() + 1)));
         // 再删一次不抛异常
         storage.delete(key.substring(Constants.RESOURCE_PREFIX.length() + 1));
+    }
+
+    @Test
+    void listReturnsStoredObjectsKeyedWithoutProfilePrefix() throws Exception
+    {
+        MultipartFile file = new MockMultipartFile("file", "封面.png", "image/png", "data".getBytes(StandardCharsets.UTF_8));
+        String path = storage.upload("cover", file, MimeTypeUtils.IMAGE_EXTENSION, true);
+        // list 的 key 必须与 delete/getContent 的参数一致，否则清理任务删不到文件
+        String objectKey = path.substring(Constants.RESOURCE_PREFIX.length() + 1);
+
+        Map<String, Instant> objects = storage.list("cover");
+
+        assertEquals(Set.of(objectKey), objects.keySet());
+        assertNotNull(objects.get(objectKey), "应带最后修改时间供保护期判断");
+    }
+
+    @Test
+    void listOnlyReturnsRequestedCategory() throws Exception
+    {
+        MultipartFile file = new MockMultipartFile("file", "a.png", "image/png", "data".getBytes(StandardCharsets.UTF_8));
+        storage.upload("upload", file, MimeTypeUtils.IMAGE_EXTENSION, false);
+
+        assertTrue(storage.list("cover").isEmpty(), "不应把其他归类的文件算进本归类");
+    }
+
+    @Test
+    void listReturnsEmptyForMissingCategory() throws Exception
+    {
+        assertTrue(storage.list("avatar").isEmpty(), "归类目录不存在时应返回空集合而非报错");
+    }
+
+    @Test
+    void listRejectsPathTraversalCategory()
+    {
+        assertThrows(Exception.class, () -> storage.list("../"));
     }
 }

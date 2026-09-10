@@ -29,6 +29,25 @@
             <artifactId>shiguangji-common</artifactId>
         </dependency>
 
+        <!-- 文件存储与台账（孤儿文件清理任务使用）-->
+        <dependency>
+            <groupId>com.shiguangji</groupId>
+            <artifactId>shiguangji-file</artifactId>
+        </dependency>
+
+        <!-- 业务数据引用查询（孤儿文件清理任务使用）-->
+        <dependency>
+            <groupId>com.shiguangji</groupId>
+            <artifactId>shiguangji-business</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
 </project>

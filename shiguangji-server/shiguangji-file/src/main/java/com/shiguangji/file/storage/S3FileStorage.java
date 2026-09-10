@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.NoSuchFileException;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +22,11 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * S3 协议存储实现（sgj.storage.type=s3）
@@ -115,5 +121,30 @@ public class S3FileStorage extends AbstractFileStorage
         {
             throw new IOException("从S3存储删除失败：" + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public Map<String, Instant> list(String category) throws IOException
+    {
+        Map<String, Instant> objects = new LinkedHashMap<>();
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucket)
+                .prefix(category + "/")
+                .build();
+        try
+        {
+            for (ListObjectsV2Response page : client.listObjectsV2Paginator(request))
+            {
+                for (S3Object object : page.contents())
+                {
+                    objects.put(object.key(), object.lastModified());
+                }
+            }
+        }
+        catch (SdkException e)
+        {
+            throw new IOException("列举S3存储对象失败：" + e.getMessage(), e);
+        }
+        return objects;
     }
 }
