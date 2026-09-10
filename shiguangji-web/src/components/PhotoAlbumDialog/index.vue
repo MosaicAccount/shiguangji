@@ -178,7 +178,7 @@ function onUploadError(): void {
 
 .polaroid {
   position: relative;
-  background: #fff;
+  background: var(--sgj-bg-card);
   border-radius: 6px;
   padding: 7px 7px 26px;
   box-shadow: 0 2px 8px rgba(23, 27, 26, 0.14);
@@ -222,14 +222,13 @@ function onUploadError(): void {
     bottom: 6px;
     right: 26px;
     font: 600 11px/1.3 var(--sgj-font-serif);
-    /* 拍立得白底固定墨色（不随主题翻转） */
-    color: #5c6360;
+    color: var(--sgj-text-2);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 
     .no {
-      color: #97a09b;
+      color: var(--sgj-text-4);
       font-weight: 400;
       margin-right: 5px;
     }

@@ -1199,9 +1199,8 @@ html.dark .page-banner {
   height: 30px;
   border-radius: 50%;
   border: 0;
-  /* 悬浮在照片/浅渐变 hero 上，白底固定墨字（不随主题翻转） */
-  background: rgba(255, 255, 255, 0.88);
-  color: #2e3331;
+  background: var(--sgj-bg-card);
+  color: var(--sgj-text);
   font-size: 14px;
   cursor: pointer;
 

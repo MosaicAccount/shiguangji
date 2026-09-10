@@ -341,11 +341,11 @@ onBeforeUnmount(() => {
   right: 14px;
   z-index: 170;
   font-size: 12px;
-  color: #5c6360;
-  background: rgba(255, 255, 255, 0.92);
+  color: var(--sgj-text-2);
+  background: var(--sgj-bg-card);
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid #e0d8c8;
+  border: 1px solid var(--sgj-border-card);
   pointer-events: none;
 }
 
@@ -357,11 +357,11 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 14px;
   font-size: 12px;
-  color: #5c6360;
-  background: rgba(255, 255, 255, 0.92);
+  color: var(--sgj-text-2);
+  background: var(--sgj-bg-card);
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid #e0d8c8;
+  border: 1px solid var(--sgj-border-card);
   pointer-events: none;
 
   .legend-dot {
@@ -373,11 +373,11 @@ onBeforeUnmount(() => {
     vertical-align: 1px;
 
     &.visited {
-      background: #5d6f66;
+      background: var(--sgj-moss);
     }
 
     &.want {
-      background: #c08a3e;
+      background: var(--sgj-amber);
     }
   }
 }
@@ -427,7 +427,7 @@ onBeforeUnmount(() => {
     left: 50%;
     width: 34px;
     height: 44px;
-    border: 3px solid #fff;
+    border: 3px solid var(--sgj-bg-card);
     border-radius: 7px;
     box-shadow: 0 2px 6px rgba(23, 27, 26, 0.25);
     transform: translateX(-50%) rotate(-16deg);
@@ -499,15 +499,14 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   padding: 2px 10px;
   border-radius: 999px;
-  /* 浮在地图瓦片上，固定配色保证亮/暗瓦片下均清晰 */
-  background: #fff;
-  border: 1px solid #b98a80;
-  color: #a85f52;
+  background: var(--sgj-bg-card);
+  border: 1px solid var(--sgj-primary);
+  color: var(--sgj-primary);
   box-shadow: 0 2px 6px rgba(23, 27, 26, 0.12);
 
   &.muted {
-    border-color: #ddd4c2;
-    color: #5c6360;
+    border-color: var(--sgj-border-card);
+    color: var(--sgj-text-2);
     box-shadow: none;
   }
 }
@@ -517,12 +516,12 @@ onBeforeUnmount(() => {
   width: 268px;
   max-height: 320px;
   overflow-y: auto;
-  background: #fff;
+  background: var(--sgj-bg-card);
   border-radius: 14px;
   box-shadow: 0 10px 28px rgba(23, 27, 26, 0.16);
-  border: 1px solid #e0d8c8;
+  border: 1px solid var(--sgj-border-card);
   padding: 12px;
-  color: #2e3331;
+  color: var(--sgj-text);
   font-family: var(--sgj-font, inherit);
 }
 
@@ -539,7 +538,7 @@ onBeforeUnmount(() => {
 
 .tm-pop-sub {
   font-size: 11px;
-  color: #97a09b;
+  color: var(--sgj-text-4);
   margin-top: 2px;
 }
 
@@ -547,7 +546,7 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  color: #5c6360;
+  color: var(--sgj-text-2);
   font-size: 14px;
   line-height: 1;
   background: none;
@@ -555,7 +554,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 
   &:hover {
-    background: #f0ece2;
+    background: var(--sgj-bg-deep);
   }
 }
 
@@ -568,11 +567,11 @@ onBeforeUnmount(() => {
   background: none;
   border: 0;
   cursor: pointer;
-  /* button 不继承弹卡墨色（高德暗色容器下发白），显式声明 */
-  color: #2e3331;
+  /* button 不继承弹卡颜色，显式声明墨色（高德暗色容器下发白） */
+  color: var(--sgj-text);
 
   &:hover {
-    background: #f6f1e8;
+    background: var(--sgj-bg-deep);
   }
 
   & + & {
@@ -592,7 +591,7 @@ onBeforeUnmount(() => {
 
   span {
     font-size: 11px;
-    color: #97a09b;
+    color: var(--sgj-text-4);
   }
 }
 
@@ -606,13 +605,13 @@ onBeforeUnmount(() => {
   vertical-align: 1px;
 
   &.done {
-    background: #e7ece9;
-    color: #5d6f66;
+    background: var(--sgj-moss-soft);
+    color: var(--sgj-moss);
   }
 
   &.want {
-    background: rgba(192, 138, 62, 0.16);
-    color: #a1732e;
+    background: var(--sgj-amber-soft);
+    color: var(--sgj-amber);
   }
 }
 
@@ -635,10 +634,10 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f0ece2;
-      color: #5c6360;
+      background: var(--sgj-bg-deep);
+      color: var(--sgj-text-3);
       font-size: 10px;
-      border: 1px dashed #ddd4c2;
+      border: 1px dashed var(--sgj-border-card);
       box-shadow: none;
       font-style: normal;
     }
@@ -647,7 +646,7 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f0ece2;
+      background: var(--sgj-bg-deep);
       font-size: 14px;
     }
   }

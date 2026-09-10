@@ -61,7 +61,7 @@ const previewPhotos = computed(() => props.photos.slice(0, 4))
   left: 50%;
   width: 88px;
   height: 116px;
-  background: #fff;
+  background: var(--sgj-bg-card);
   border-radius: 10px;
   padding: 5px 5px 20px;
   box-shadow: 0 3px 10px rgba(23, 27, 26, 0.22);
@@ -91,8 +91,7 @@ const previewPhotos = computed(() => props.photos.slice(0, 4))
   right: 0;
   bottom: 4px;
   font: 600 10px/1 var(--sgj-font-serif);
-  /* 拍立得白底固定墨色（不随主题翻转） */
-  color: #5c6360;
+  color: var(--sgj-text-2);
   text-align: center;
 }
 
