@@ -12,4 +12,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         )
     </insert>
 
+    <select id="selectAllFileRecords" resultType="com.shiguangji.file.domain.SysFile">
+        select file_id, storage_key, storage_type, create_time from sys_file
+    </select>
+
+    <delete id="deleteFileRecordsByStorageKeys">
+        delete from sys_file where storage_key in
+        <foreach collection="storageKeys" item="storageKey" open="(" separator="," close=")">
+            #{storageKey}
+        </foreach>
+    </delete>
+
 </mapper>

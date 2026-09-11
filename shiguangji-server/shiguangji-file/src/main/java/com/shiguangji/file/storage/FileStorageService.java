@@ -2,6 +2,8 @@ package com.shiguangji.file.storage;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
+import java.util.Map;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -42,4 +44,12 @@ public interface FileStorageService
      * @param objectKey 去掉 /profile 前缀的对象 key
      */
     void delete(String objectKey) throws IOException;
+
+    /**
+     * 列出某归类下已存储的对象，供孤儿文件清理对账
+     *
+     * @param category 归类子目录（upload/avatar/cover 等）
+     * @return 对象 key（去掉 /profile 前缀，与 delete 的参数一致）-> 最后修改时间
+     */
+    Map<String, Instant> list(String category) throws IOException;
 }

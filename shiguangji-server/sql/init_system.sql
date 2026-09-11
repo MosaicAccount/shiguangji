@@ -595,3 +595,21 @@ create table gen_table_column (
   update_time       datetime                                   comment '更新时间',
   primary key (column_id)
 ) engine=innodb auto_increment=1 comment = '代码生成业务表字段';
+
+
+-- ----------------------------
+-- 17、文件台账表
+-- ----------------------------
+drop table if exists sys_file;
+create table sys_file (
+  file_id        bigint(20)      not null auto_increment    comment '文件ID',
+  file_name      varchar(255)    default ''                 comment '原始文件名',
+  storage_key    varchar(500)    not null                   comment '存储key（/profile前缀相对路径）',
+  storage_type   varchar(20)     not null default 'local'   comment '存储类型（local/s3）',
+  file_size      bigint(20)      default 0                  comment '文件大小（字节）',
+  content_type   varchar(100)    default ''                 comment 'MIME类型',
+  create_by      varchar(64)     default ''                 comment '上传者',
+  create_time    datetime                                   comment '上传时间',
+  primary key (file_id),
+  unique key uk_sys_file_storage_key (storage_key)
+) engine=innodb auto_increment=1 comment = '系统-文件台账表';
