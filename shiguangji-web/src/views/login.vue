@@ -191,7 +191,7 @@ getCookie()
 <style lang='scss' scoped>
 .login {
   display: flex;
-  height: 100%;
+  min-height: 100%;
   background: var(--el-bg-color);
 }
 
@@ -326,6 +326,7 @@ html.dark .login-brand {
 /* ===== 右：表单 ===== */
 .login-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,6 +335,7 @@ html.dark .login-brand {
 
 .login-form {
   width: 400px;
+  max-width: 100%;
 
   .form-title {
     font-family: var(--sgj-font-serif);
@@ -431,10 +433,16 @@ html.dark .login-brand {
   padding-left: 12px;
 }
 
-/* 窄屏：品牌面板让位，单列表单 */
-@media (max-width: 900px) {
+/* 窄屏：品牌面板让位，单列表单（品牌 760px + 表单列 480px，最窄需要 1240px） */
+@media (max-width: 1240px) {
   .login-brand {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-main {
+    padding: 24px;
   }
 }
 </style>
