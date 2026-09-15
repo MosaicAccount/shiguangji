@@ -29,6 +29,10 @@
     <!-- 右：登录表单 -->
     <main class="login-main">
       <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form">
+        <div class="mobile-brand">
+          <div class="mobile-logo">拾光记</div>
+          <div class="mobile-slogan">把日子，过成照片</div>
+        </div>
         <div class="form-title">欢迎回来</div>
         <div class="form-sub">登录拾光记管理台</div>
         <div class="form-label">账号</div>
@@ -55,14 +59,14 @@
         <el-form-item prop="code" v-if="captchaEnabled">
           <el-input
             v-model="loginForm.code"
+            class="code-input"
             size="large"
             auto-complete="off"
             placeholder="验证码"
-            style="width: 63%"
             @keyup.enter="handleLogin"
           />
           <div class="login-code">
-            <img :src="codeUrl" @click="getCode" class="login-code-img" />
+            <img :src="codeUrl" @click="getCode" class="login-code-img" alt="验证码" />
           </div>
         </el-form-item>
         <div class="form-row">
@@ -361,14 +365,34 @@ html.dark .login-brand {
     margin-bottom: 22px;
   }
 
-  .el-input__wrapper {
+  /* el-input 内部结构需要 :deep 才能命中，否则只有 EP 默认样式生效 */
+  :deep(.el-input__wrapper) {
     border-radius: 10px;
     padding: 6px 14px;
   }
 
-  .el-input__inner {
+  :deep(.el-input__inner) {
     height: 36px;
     font-size: 14px;
+  }
+
+  .code-input {
+    flex: 1;
+  }
+
+  .login-code {
+    flex-shrink: 0;
+    margin-left: 12px;
+
+    .login-code-img {
+      display: block;
+      width: 110px;
+      height: 48px;
+      border: 1px solid var(--el-border-color);
+      border-radius: 10px;
+      object-fit: cover;
+      cursor: pointer;
+    }
   }
 
   .form-row {
@@ -417,20 +441,30 @@ html.dark .login-brand {
   }
 }
 
-.login-code {
-  width: 33%;
-  height: 48px;
-  float: right;
-
-  img {
-    cursor: pointer;
-    vertical-align: middle;
-  }
+/* 单栏（≤1240px）时补一个轻量品牌头，双栏布局由左侧品牌面板承担 */
+.mobile-brand {
+  display: none;
 }
 
-.login-code-img {
-  height: 48px;
-  padding-left: 12px;
+@media (max-width: 1239px) {
+  .mobile-brand {
+    display: block;
+    margin-bottom: 36px;
+
+    .mobile-logo {
+      font-family: var(--sgj-font-serif);
+      font-weight: 700;
+      font-size: 26px;
+      color: var(--el-text-color-primary);
+    }
+
+    .mobile-slogan {
+      margin-top: 6px;
+      font-size: 13px;
+      letter-spacing: 1px;
+      color: var(--el-text-color-secondary);
+    }
+  }
 }
 
 /* 窄屏：品牌面板让位，单列表单（品牌 760px + 表单列 480px，最窄需要 1240px） */
@@ -443,6 +477,16 @@ html.dark .login-brand {
 @media (max-width: 480px) {
   .login-main {
     padding: 24px;
+  }
+
+  .login-form {
+    .form-title {
+      font-size: 26px;
+    }
+
+    .form-sub {
+      margin: 8px 0 28px;
+    }
   }
 }
 </style>
