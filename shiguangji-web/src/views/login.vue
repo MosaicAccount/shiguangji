@@ -91,7 +91,6 @@
             <span v-else>登 录 中...</span>
           </el-button>
         </el-form-item>
-        <div class="form-tip">「 拾光 · 冷雾胶片 」双主题设计规范 · v3.3</div>
       </el-form>
     </main>
   </div>
@@ -435,13 +434,6 @@ html.dark .login-brand {
     font-weight: 500;
     letter-spacing: 2px;
   }
-
-  .form-tip {
-    text-align: center;
-    font-size: 12px;
-    letter-spacing: 1px;
-    color: var(--el-text-color-placeholder);
-  }
 }
 
 /* 移动端品牌头：仅单栏布局显示，桌面由左侧品牌面板承担 */
@@ -565,10 +557,6 @@ html.dark .login-brand {
     :deep(.el-checkbox__inner) {
       background-color: rgba(255, 255, 255, 0.06);
       border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .form-tip {
-      color: rgba(255, 255, 255, 0.35);
     }
   }
 }
