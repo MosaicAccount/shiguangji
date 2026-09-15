@@ -118,7 +118,7 @@
       @pagination="getList"
     />
 
-    <el-dialog :title="title" v-model="open" width="820px" append-to-body>
+    <el-dialog :title="title" v-model="open" width="1000px" append-to-body :close-on-click-modal="false">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-row>
           <el-col :span="12">
@@ -154,7 +154,7 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="内容" prop="content">
-              <markdown-editor v-model="form.content" :rows="14" />
+              <markdown-editor v-model="form.content" height="420px" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
