@@ -1,8 +1,12 @@
 <template>
   <div class="markdown-editor">
     <div class="md-toolbar">
-      <span class="md-hint">支持 Markdown 语法，右侧实时预览</span>
-      <span class="md-count">{{ innerValue.length }} 字</span>
+      <span class="md-hint">{{ isMobile ? '支持 Markdown 语法' : '支持 Markdown 语法，右侧实时预览' }}</span>
+      <div class="md-toolbar-right">
+        <!-- 移动端无侧栏预览，收进弹窗 -->
+        <el-button v-if="isMobile" size="small" plain @click="previewOpen = true">预览</el-button>
+        <span class="md-count">{{ innerValue.length }} 字</span>
+      </div>
     </div>
     <div class="md-panes" :style="{ height: paneHeight }">
       <el-input
@@ -12,20 +16,32 @@
         :placeholder="placeholder"
         @input="emitValue"
       />
-      <div class="md-preview">
+      <div v-if="!isMobile" class="md-preview">
         <markdown-viewer :content="innerValue" />
       </div>
     </div>
+    <el-dialog
+      v-model="previewOpen"
+      title="Markdown 预览"
+      width="94%"
+      top="6vh"
+      append-to-body
+    >
+      <div class="md-preview-body">
+        <markdown-viewer :content="innerValue" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 
 const props = defineProps<{
   modelValue?: string | null
-  /** 编辑/预览面板高度（CSS 值），默认 320px */
+  /** 编辑/预览面板高度（CSS 值），默认 320px；移动端固定 55vh */
   height?: string
   placeholder?: string
 }>()
@@ -35,7 +51,11 @@ const emit = defineEmits<{
 }>()
 
 const innerValue = ref(props.modelValue || '')
-const paneHeight = ref(props.height || '320px')
+/** 移动端单栏：只展示编辑区，预览按钮弹窗打开；桌面端保持左右分栏 */
+const isMobile = useMediaQuery('(max-width: 768px)')
+const previewOpen = ref(false)
+
+const paneHeight = computed(() => (isMobile.value ? '55vh' : props.height || '320px'))
 
 watch(
   () => props.modelValue,
@@ -43,13 +63,6 @@ watch(
     if (value !== innerValue.value) {
       innerValue.value = value || ''
     }
-  }
-)
-
-watch(
-  () => props.height,
-  value => {
-    paneHeight.value = value || '320px'
   }
 )
 
@@ -69,11 +82,13 @@ function emitValue(): void {
     justify-content: space-between;
     margin-bottom: 8px;
 
-    .md-hint {
-      font-size: 12px;
-      color: #909399;
+    .md-toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
+    .md-hint,
     .md-count {
       font-size: 12px;
       color: #909399;
@@ -112,17 +127,9 @@ function emitValue(): void {
     }
   }
 
-  /* 窄屏上下堆叠，保证编辑区与预览区各自可用宽度 */
-  @media (max-width: 768px) {
-    .md-panes {
-      flex-direction: column;
-      height: auto !important;
-
-      .md-input,
-      .md-preview {
-        height: 260px;
-      }
-    }
+  .md-preview-body {
+    max-height: 70vh;
+    overflow-y: auto;
   }
 }
 </style>
