@@ -26,6 +26,7 @@
       width="94%"
       top="6vh"
       append-to-body
+      :close-on-click-modal="false"
     >
       <div class="md-preview-body">
         <markdown-viewer :content="innerValue" />
