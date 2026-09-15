@@ -7,6 +7,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="SgjNote" id="SgjNoteResult">
         <result property="noteId"      column="note_id"      />
         <result property="itemId"      column="item_id"      />
+        <result property="itemName"    column="item_name"    />
         <result property="title"       column="title"        />
         <result property="content"     column="content"      />
         <result property="tags"        column="tags"         />
@@ -18,39 +19,42 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remark"      column="remark"       />
     </resultMap>
 
+    <!-- 左联条目表带出关联条目名称（条目软删后仍回显名称） -->
     <sql id="selectSgjNoteVo">
-        select note_id, item_id, title, content, tags, is_public,
-               create_by, create_time, update_by, update_time, remark
-        from sgj_note
+        select n.note_id, n.item_id, n.title, n.content, n.tags, n.is_public,
+               n.create_by, n.create_time, n.update_by, n.update_time, n.remark,
+               i.title as item_name
+        from sgj_note n
+        left join sgj_item i on i.item_id = n.item_id
     </sql>
 
     <select id="selectSgjNoteById" parameterType="Long" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
-        where note_id = #{noteId} and del_flag = '0'
+        where n.note_id = #{noteId} and n.del_flag = '0'
     </select>
 
     <select id="selectSgjNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
         <where>
-            del_flag = '0'
+            n.del_flag = '0'
             <if test="createBy != null and createBy != ''">
-                and create_by = #{createBy}
+                and n.create_by = #{createBy}
             </if>
             <if test="itemId != null">
-                and item_id = #{itemId}
+                and n.item_id = #{itemId}
             </if>
             <if test="isPublic != null and isPublic != ''">
-                and is_public = #{isPublic}
+                and n.is_public = #{isPublic}
             </if>
             <if test="title != null and title != ''">
-                and title like concat('%', #{title}, '%')
+                and n.title like concat('%', #{title}, '%')
             </if>
             <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中；replace 兼容手输期的“逗号+空格”写法 -->
             <if test="tags != null and tags != ''">
-                and find_in_set(#{tags}, replace(tags, ' ', ''))
+                and find_in_set(#{tags}, replace(n.tags, ' ', ''))
             </if>
         </where>
-        order by update_time desc, note_id desc
+        order by n.update_time desc, n.note_id desc
     </select>
 
     <insert id="insertSgjNote" parameterType="SgjNote" useGeneratedKeys="true" keyProperty="noteId">
@@ -95,18 +99,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectRecycleNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
         <where>
-            del_flag = '2'
+            n.del_flag = '2'
             <if test="noteId != null">
-                and note_id = #{noteId}
+                and n.note_id = #{noteId}
             </if>
             <if test="createBy != null and createBy != ''">
-                and create_by = #{createBy}
+                and n.create_by = #{createBy}
             </if>
             <if test="title != null and title != ''">
-                and title like concat('%', #{title}, '%')
+                and n.title like concat('%', #{title}, '%')
             </if>
         </where>
-        order by update_time desc, note_id desc
+        order by n.update_time desc, n.note_id desc
     </select>
 
     <!-- 软删除：标记 del_flag = '2' -->

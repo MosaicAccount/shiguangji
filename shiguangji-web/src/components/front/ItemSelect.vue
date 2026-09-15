@@ -178,11 +178,15 @@ watch(modelValue, (val, old) => {
       font-size: 16px;
     }
 
-    .selected-text {
-      flex: 1;
-      font-size: 14px;
-      color: var(--sgj-text);
-    }
+      .selected-text {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 14px;
+        color: var(--sgj-text);
+      }
   }
 
   .pick-btn {

@@ -137,26 +137,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="selectRecentNotes" resultType="SgjNote">
-        select note_id as noteId,
-               item_id as itemId,
-               title,
-               content,
-               tags,
-               is_public as isPublic,
-               create_by as createBy,
-               create_time as createTime,
-               update_by as updateBy,
-               update_time as updateTime,
-               remark
-        from sgj_note
-        where del_flag = '0'
+        select n.note_id as noteId,
+               n.item_id as itemId,
+               i.title as itemName,
+               n.title,
+               n.content,
+               n.tags,
+               n.is_public as isPublic,
+               n.create_by as createBy,
+               n.create_time as createTime,
+               n.update_by as updateBy,
+               n.update_time as updateTime,
+               n.remark
+        from sgj_note n
+        left join sgj_item i on i.item_id = n.item_id
+        where n.del_flag = '0'
         <if test="createBy != null and createBy != ''">
-          and create_by = #{createBy}
+          and n.create_by = #{createBy}
         </if>
         <if test="publicOnly">
-          and is_public = '1'
+          and n.is_public = '1'
         </if>
-        order by create_time desc, note_id desc
+        order by n.create_time desc, n.note_id desc
         limit #{limit}
     </select>
 

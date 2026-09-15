@@ -123,7 +123,7 @@
           <div v-for="note in data?.recentNotes || []" :key="note.noteId" class="note-item" @click="openNoteDetail(note)">
             <div class="note-title">{{ note.title }}</div>
             <div class="note-meta">
-              {{ note.itemId ? '关联条目 #' + note.itemId : '独立笔记' }} · {{ formatDate(note.createTime) }}
+              {{ note.itemId ? '关联条目：' + (note.itemName || '#' + note.itemId) : '独立笔记' }} · {{ formatDate(note.createTime) }}
             </div>
           </div>
           <router-link v-if="data?.recentNotes?.length" to="/note" class="note-more">查看全部笔记 →</router-link>

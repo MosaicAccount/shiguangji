@@ -58,6 +58,7 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>guestResponseMasking                     —— 匿名访客响应脱敏：comment/remark 不下发；登录态不受影响</li>
  *   <li>pageSizeCappedAt100                      —— 列表 pageSize 超上限（100）被截断</li>
  *   <li>recycleSoftDeleteRestoreFlow             —— 删除 → recycle/list 可见 → restore 后回到正常列表</li>
+ *   <li>noteReturnsLinkedItemName                —— 笔记列表/详情/首页 recentNotes 带出关联条目名称 itemName</li>
  * </ol>
  *
  * <p><b>响应契约说明（重要）</b>：本系统沿用 RuoYi 的 {@code ServletUtils.renderString}，统一以
@@ -524,6 +525,56 @@ class AppApiAuthIsolationSmokeTest
         long adminTotal = adminHome.path("data").path("summary").path("noteTotal").asLong();
         assertThat(adminTotal).as("登录态 noteTotal 应含私密笔记（大于匿名公开口径）").isGreaterThan(anonPublicTotal);
         assertThat(adminTotal).as("登录态 noteTotal 应等于登录列表 total").isEqualTo(adminListTotal);
+    }
+
+    // ------------------------------------------------------------------
+    // 11. 笔记关联条目名称：列表/详情/首页 recentNotes 应下发 itemName 而非仅 itemId
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(11)
+    void noteReturnsLinkedItemName() throws Exception
+    {
+        // 创建关联 admin 条目的公开笔记
+        String linkedTitle = "qat10 关联条目笔记";
+        mockMvc.perform(post("/app/note")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", linkedTitle,
+                                "itemId", adminItemId,
+                                "tags", TAG_MAIN,
+                                "content", "qat10 内容",
+                                "isPublic", "1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        long linkedNoteId = findSingleNoteId(adminToken, linkedTitle);
+
+        // 匿名列表：笔记应带出关联条目名称（而非仅 itemId）
+        JsonNode listData = listNotesAsData(null);
+        JsonNode linked = listData.valueStream()
+                .filter(n -> n.path("noteId").asLong() == linkedNoteId)
+                .findFirst().orElseThrow();
+        assertThat(linked.path("itemId").asLong()).isEqualTo(adminItemId);
+        assertThat(linked.path("itemName").asText())
+                .as("笔记列表应带出关联条目名称").isEqualTo("qat10 admin条目");
+
+        // 详情同样带出条目名称
+        mockMvc.perform(get("/app/note/" + linkedNoteId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.itemName").value("qat10 admin条目"));
+
+        // 首页 recentNotes 同样带出条目名称
+        JsonNode homeData = bodyOf(mockMvc.perform(get("/app/home/index"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn()).path("data");
+        JsonNode recentLinked = homeData.path("recentNotes").valueStream()
+                .filter(n -> n.path("noteId").asLong() == linkedNoteId)
+                .findFirst().orElseThrow();
+        assertThat(recentLinked.path("itemName").asText())
+                .as("首页最近笔记应带出关联条目名称").isEqualTo("qat10 admin条目");
     }
 
     // ------------------------------------------------------------------
