@@ -47,6 +47,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="longitude"       column="longitude"        />
         <result property="bestSeason"      column="best_season"      />
         <result property="placeCategory"   column="place_category"   />
+        <result property="photoCount"      column="photo_count"      />
+        <result property="photoCover"      column="photo_cover"      />
     </resultMap>
 
     <sql id="selectSgjItemVo">
@@ -92,7 +94,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             p.latitude as latitude,
             p.longitude as longitude,
             p.best_season as best_season,
-            p.place_category as place_category
+            p.place_category as place_category,
+            (select count(*) from sgj_item_photo pc where pc.item_id = i.item_id) as photo_count,
+            (select pc.url from sgj_item_photo pc where pc.item_id = i.item_id order by pc.sort_order, pc.photo_id limit 1) as photo_cover
         from sgj_item i
         left join sgj_item_movie m on m.item_id = i.item_id
         left join sgj_item_tv t on t.item_id = i.item_id
@@ -121,8 +125,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null and status != ''">
                 and i.status = #{status}
             </if>
+            <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中（如“科幻”误中“硬科幻”）；replace 兼容手输期的“逗号+空格”写法 -->
             <if test="tags != null and tags != ''">
-                and i.tags like concat('%', #{tags}, '%')
+                and find_in_set(#{tags}, replace(i.tags, ' ', ''))
+            </if>
+            <!-- 封面批量补全用：仅取无封面条目（params.missingCover 由 service 传入） -->
+            <if test="params.missingCover != null">
+                and (i.cover_url is null or i.cover_url = '')
             </if>
         </where>
         order by i.update_time desc, i.item_id desc

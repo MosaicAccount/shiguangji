@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>拾光记 · 足迹 — 照片展示交互设计稿</title>
+<style>
+  /* ============ 设计令牌：取自拾光记现有设计语言 ============ */
+  :root {
+    --paper: #f6f1e8;          /* 羊皮纸底 */
+    --paper-deep: #efe7d8;
+    --ink: #2e3331;
+    --ink-2: #5c6360;
+    --ink-3: #97a09b;
+    --primary: #a85f52;        /* 陶土红（--sgj-primary） */
+    --primary-dark: #8c4a3f;
+    --primary-soft: #f2e2dd;
+    --moss: #5d6f66;           /* 苔绿（去过） */
+    --amber: #c08a3e;          /* 琥珀（想去） */
+    --card: #ffffff;
+    --border: #e7dfd0;
+    --shadow: 0 4px 16px rgba(23, 27, 26, .08);
+    --shadow-lift: 0 10px 28px rgba(23, 27, 26, .16);
+    --serif: "Noto Serif SC", "Songti SC", "STSong", serif;
+    --sans: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --r: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+
+  /* ============ 顶栏 ============ */
+  .topbar {
+    height: 52px;
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 20px;
+    background: #282e2c;
+    color: #e7ece9;
+  }
+  .topbar h1 { font: 700 16px/1 var(--serif); letter-spacing: 1px; }
+  .topbar .sub { font-size: 12px; color: #aeb8b3; }
+  .topbar .badge {
+    font-size: 11px; padding: 4px 10px;
+    border: 1px solid rgba(231, 236, 233, .35); border-radius: 999px; color: #cdd6d1;
+  }
+  /* 博主/访客视角切换 */
+  .view-toggle { margin-left: auto; display: flex; border: 1px solid rgba(231, 236, 233, .35); border-radius: 999px; overflow: hidden; }
+  .view-toggle button { padding: 4px 12px; font-size: 11px; color: #aeb8b3; }
+  .view-toggle button.on { background: #e7ece9; color: #282e2c; font-weight: 600; }
+
+  /* ============ 舞台：左地图 + 右抽屉 ============ */
+  .stage { display: flex; height: calc(100% - 52px); }
+
+  /* ---- 地图面板（模拟 ECharts 中国地图画布） ---- */
+  .map-panel { flex: 1; position: relative; padding: 20px; min-width: 0; }
+  .map-canvas {
+    position: relative; height: 100%;
+    background:
+      radial-gradient(60% 50% at 72% 30%, #f0e6d2 0%, transparent 70%),
+      radial-gradient(45% 45% at 18% 70%, #e4e9df 0%, transparent 70%),
+      radial-gradient(50% 40% at 45% 85%, #efe0d6 0%, transparent 70%),
+      var(--paper-deep);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  /* 柔化的地理意象色块 */
+  .blob { position: absolute; border-radius: 50%; filter: blur(34px); opacity: .5; pointer-events: none; }
+  .blob.b1 { width: 34%; height: 42%; left: 60%; top: 8%;  background: #dfe8d2; }
+  .blob.b2 { width: 26%; height: 36%; left: 6%;  top: 22%; background: #e9e2c8; }
+  .blob.b3 { width: 22%; height: 26%; left: 40%; top: 62%; background: #e8d8ce; }
+  .region-label {
+    position: absolute; transform: translate(-50%, -50%);
+    font: 600 13px/1 var(--serif); letter-spacing: 6px;
+    color: rgba(92, 99, 96, .38); pointer-events: none; user-select: none;
+  }
+  .route { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .map-tip {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 12px; color: var(--ink-2);
+    background: rgba(255,255,255,.85); backdrop-filter: blur(4px);
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  }
+  .map-legend {
+    position: absolute; left: 14px; bottom: 14px;
+    display: flex; gap: 14px; align-items: center;
+    font-size: 12px; color: var(--ink-2);
+    background: rgba(255,255,255,.85); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  }
+  .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+  .legend-dot.visited { background: var(--moss); }
+  .legend-dot.want { background: var(--amber); }
+
+  /* ---- 地图标记：照片聚合（迷你扑克牌扇） ---- */
+  .marker { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .marker .lift { display: block; transition: transform .18s ease; }
+  .marker:hover .lift, .marker:focus-visible .lift { transform: translateY(-4px); }
+
+  .mini-deck { position: relative; width: 46px; height: 52px; display: block; }
+  .mini-deck i {
+    position: absolute; bottom: 0; left: 50%; width: 34px; height: 44px;
+    border: 3px solid #fff; border-radius: 7px;
+    box-shadow: 0 2px 6px rgba(23,27,26,.25);
+    transform-origin: 50% 115%;
+  }
+  .mini-deck i:nth-child(1) { transform: translateX(-50%) rotate(-16deg); }
+  .mini-deck i:nth-child(2) { transform: translateX(-50%) rotate(-3deg); z-index: 1; }
+  .mini-deck i:nth-child(3) { transform: translateX(-50%) rotate(11deg); z-index: 2; }
+  .mini-deck.single i:nth-child(1) { width: 40px; height: 50px; transform: translateX(-50%) rotate(-4deg); }
+
+  /* 照片占位渐变（示意真实照片） */
+  .g0 { background: linear-gradient(160deg, #f8d8b0, #e8a37c); }
+  .g1 { background: linear-gradient(160deg, #bfe0d8, #6fa8a0); }
+  .g2 { background: linear-gradient(160deg, #cfe0c3, #8aa883); }
+  .g3 { background: linear-gradient(160deg, #d8c3e0, #9a7fb8); }
+  .g4 { background: linear-gradient(160deg, #f0e3c0, #d0b070); }
+  .g5 { background: linear-gradient(160deg, #c9d4dd, #7d93a8); }
+  .g6 { background: linear-gradient(160deg, #f2cfc5, #d98a80); }
+  .g7 { background: linear-gradient(160deg, #c5d8cf, #5f7f72); }
+
+  /* 地名标签：白底胶囊，与线上 nameTagHtml 同语言 */
+  .tag-pill {
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+    padding: 2px 10px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--primary); color: var(--primary);
+    box-shadow: 0 2px 6px rgba(23,27,26,.12);
+  }
+  .tag-pill.muted { border-color: var(--border); color: var(--ink-2); box-shadow: none; }
+
+  /* 无照片普通点（与现有散点一致） */
+  .plain-dot { display: block; width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 1px 5px rgba(23,27,26,.35); }
+  .plain-dot.visited { background: var(--moss); }
+  .plain-dot.want { background: var(--amber); }
+
+  /* ---- 聚合弹卡 ---- */
+  .cluster-pop {
+    position: absolute; z-index: 30; width: 268px;
+    background: var(--card); border-radius: 14px; box-shadow: var(--shadow-lift);
+    border: 1px solid var(--border);
+    padding: 12px; display: none;
+    animation: pop-in .18s ease;
+  }
+  .cluster-pop.open { display: block; }
+  .cluster-pop .pop-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .cluster-pop .pop-title { font: 700 14px/1.3 var(--serif); }
+  .cluster-pop .pop-sub { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+  .pop-close { width: 24px; height: 24px; border-radius: 50%; color: var(--ink-2); font-size: 14px; line-height: 1; }
+  .pop-close:hover { background: var(--paper); }
+  .pop-group { width: 100%; text-align: left; border-radius: 10px; padding: 8px; display: block; }
+  .pop-group:hover { background: var(--paper); }
+  .pop-group + .pop-group { margin-top: 2px; }
+  .pop-group .g-name { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+  .pop-group .g-name b { font-size: 13px; }
+  .pop-group .g-name span { font-size: 11px; color: var(--ink-3); }
+  .pop-thumbs { display: flex; gap: 5px; margin-top: 6px; }
+  .pop-thumbs .pt {
+    width: 34px; height: 34px; border-radius: 7px; border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(23,27,26,.2);
+  }
+  .pop-thumbs .pt.more {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--paper); color: var(--ink-2); font-size: 10px; border: 1px dashed var(--border); box-shadow: none;
+  }
+  @keyframes pop-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ---- 详情抽屉（桌面为内嵌面板，移动为全覆盖） ---- */
+  .drawer {
+    width: 380px; flex: none;
+    background: var(--card); border-left: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .drawer.hidden { display: none; }
+  .drawer-head {
+    padding: 18px 20px 14px;
+    border-bottom: 1px dashed var(--border);
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .drawer-head h2 { font: 700 22px/1.3 var(--serif); }
+  .drawer-head .meta { margin-top: 6px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); flex-wrap: wrap; }
+  .status-tag { font-size: 11px; padding: 2px 9px; border-radius: 999px; color: #fff; }
+  .status-tag.DONE { background: var(--moss); }
+  .status-tag.WANT { background: var(--amber); }
+  .drawer-close {
+    margin-left: auto; width: 30px; height: 30px; border-radius: 50%;
+    font-size: 16px; color: var(--ink-2); flex: none;
+  }
+  .drawer-close:hover { background: var(--paper); }
+  .drawer-body { padding: 18px 20px 26px; animation: rise .24s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .place-line { font-size: 13px; color: var(--ink-2); line-height: 1.7; }
+  .place-line b { color: var(--ink); font-weight: 600; }
+  .place-comment {
+    margin-top: 12px; padding: 10px 14px;
+    background: var(--primary-soft); border-radius: 12px;
+    font-size: 13px; color: var(--primary-dark); line-height: 1.7;
+  }
+
+  /* ---- 相册区 ---- */
+  .album-sec { margin-top: 20px; }
+  .album-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .album-head h3 { font: 700 15px/1 var(--serif); color: var(--ink-2); }
+  .album-head .count { font-size: 12px; color: var(--ink-3); }
+
+  /* 半展开扑克牌相册入口 */
+  .deck-wrap { display: flex; align-items: flex-end; gap: 16px; padding: 18px 4px 8px; }
+  .deck {
+    position: relative; width: 158px; height: 128px; flex: none;
+    border-radius: 12px;
+  }
+  .deck .card {
+    position: absolute; bottom: 0; left: 50%;
+    width: 88px; height: 116px;
+    background: #fff; border-radius: 10px;
+    padding: 5px 5px 20px;
+    box-shadow: 0 3px 10px rgba(23,27,26,.22);
+    transform: translateX(-50%) rotate(var(--a));
+    transform-origin: 50% 118%;
+    transition: transform .22s ease, box-shadow .22s ease;
+  }
+  .deck .card .ph { display: block; width: 100%; height: 100%; border-radius: 6px; }
+  .deck .card .cap {
+    position: absolute; left: 0; right: 0; bottom: 4px;
+    font: 600 10px/1 var(--serif); color: var(--ink-2); text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px;
+  }
+  .deck:hover .card, .deck:focus-visible .card {
+    transform: translateX(-50%) translateY(-7px) rotate(calc(var(--a) * 1.4));
+  }
+  .deck:hover { filter: drop-shadow(0 6px 10px rgba(23,27,26,.14)); }
+  .deck-count {
+    position: absolute; top: -2px; right: 2px; z-index: 9;
+    min-width: 30px; height: 30px; padding: 0 8px;
+    background: var(--primary); color: #fff;
+    border: 2.5px solid #fff; border-radius: 999px;
+    font-size: 12px; font-weight: 700; line-height: 25px; text-align: center;
+    box-shadow: 0 3px 8px rgba(140, 74, 63, .4);
+  }
+  .deck-hint { font-size: 12px; color: var(--ink-3); line-height: 1.6; padding-bottom: 10px; }
+  .deck-hint b { color: var(--primary); font-weight: 600; }
+
+  /* 空相册 */
+  .album-empty {
+    margin-top: 12px; padding: 26px 16px;
+    border: 1.5px dashed var(--border); border-radius: 14px;
+    text-align: center; color: var(--ink-3); font-size: 13px; line-height: 1.8;
+  }
+  .album-empty .big { font-size: 26px; }
+
+  /* ============ 相册弹窗 ============ */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(30, 34, 32, .55);
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .overlay.open { display: flex; }
+  .album-modal {
+    width: min(860px, 100%); max-height: min(78vh, 720px);
+    background: var(--paper); border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35);
+    display: flex; flex-direction: column; overflow: hidden;
+    animation: rise .22s ease;
+  }
+  .album-modal .m-head {
+    padding: 16px 22px 12px;
+    display: flex; align-items: baseline; gap: 10px;
+    border-bottom: 1px solid var(--border); background: var(--card);
+  }
+  .album-modal .m-head h2 { font: 700 19px/1.3 var(--serif); }
+  .album-modal .m-head .count { font-size: 12px; color: var(--ink-3); }
+  .album-modal .m-head .drawer-close { margin-left: auto; }
+  .album-scroll { overflow-y: auto; padding: 18px 22px 8px; flex: 1; }
+  .album-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 16px 14px; padding-bottom: 6px;
+  }
+  .polaroid {
+    background: #fff; border-radius: 6px;
+    padding: 7px 7px 26px; position: relative;
+    box-shadow: 0 2px 8px rgba(23,27,26,.14);
+    transition: transform .2s ease, box-shadow .2s ease;
+    display: block; width: 100%; text-align: left;
+  }
+  .polaroid:nth-child(odd)  { transform: rotate(-1.1deg); }
+  .polaroid:nth-child(even) { transform: rotate(1deg); }
+  .polaroid:hover, .polaroid:focus-visible { transform: rotate(0) translateY(-4px); box-shadow: var(--shadow-lift); z-index: 2; }
+  .polaroid .ph { display: block; width: 100%; aspect-ratio: 4 / 3.4; border-radius: 3px; }
+  .polaroid .cap {
+    position: absolute; left: 9px; bottom: 6px; right: 9px;
+    font: 600 11px/1.3 var(--serif); color: var(--ink-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .polaroid .cap .no { color: var(--ink-3); font-weight: 400; margin-right: 5px; }
+
+  /* 上传（博主视角可见，访客隐藏）；照片支持本地图（object URL 背景） */
+  .deck .card .ph, .polaroid .ph, .pt, .stage-ph, .mini-deck i { background-size: cover; background-position: center; }
+  .upload-tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    aspect-ratio: 4 / 4.3; min-height: 140px;
+    border: 2px dashed var(--border); border-radius: 6px;
+    background: rgba(255, 255, 255, .55);
+    color: var(--ink-3); font-size: 12px;
+    transition: border-color .16s ease, color .16s ease, background .16s ease;
+  }
+  .upload-tile .plus { font-size: 26px; line-height: 1; color: var(--primary); }
+  .upload-tile:hover, .upload-tile:focus-visible { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+  .album-head .add-btn {
+    margin-left: auto; font-size: 12px; color: var(--primary);
+    border: 1px solid currentColor; border-radius: 999px; padding: 3px 12px;
+  }
+  .album-head .add-btn:hover { background: var(--primary-soft); }
+  body.guest .upload-tile, body.guest .add-btn { display: none !important; }
+
+  .m-foot {
+    padding: 12px 22px 16px; text-align: center;
+    border-top: 1px solid var(--border); background: var(--card);
+  }
+  .load-more {
+    padding: 9px 30px; border-radius: 999px;
+    background: var(--primary); color: #fff; font-size: 13px; font-weight: 600;
+    transition: background .16s ease, transform .16s ease;
+  }
+  .load-more:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
+  .load-more:disabled { opacity: .65; cursor: default; }
+  .load-more .spin {
+    display: inline-block; width: 12px; height: 12px; margin-right: 6px;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%;
+    animation: spin .7s linear infinite; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .end-note, .status-line { font-size: 12px; color: var(--ink-3); }
+  .status-line { margin-top: 7px; }
+
+  /* 分页骨架 */
+  .skel { border-radius: 6px; background: linear-gradient(100deg, #eee6d8 40%, #f6f0e4 50%, #eee6d8 60%); background-size: 200% 100%; animation: shimmer 1.1s infinite; }
+  .polaroid.skel { padding: 7px 7px 26px; }
+  .polaroid.skel .ph { aspect-ratio: 4 / 3.4; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* ============ 灯箱 ============ */
+  .lightbox { flex-direction: column; gap: 14px; }
+  .lightbox .stage-ph {
+    width: min(72vw, 720px); aspect-ratio: 4 / 3;
+    border-radius: 12px; border: 8px solid #fff;
+    box-shadow: 0 24px 60px rgba(0,0,0,.4);
+  }
+  .lightbox .lb-cap { color: #f0ece2; font: 600 15px/1 var(--serif); letter-spacing: 1px; text-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .lightbox .drawer-close { position: fixed; top: 18px; right: 22px; background: rgba(255,255,255,.12); color: #fff; width: 38px; height: 38px; font-size: 18px; }
+
+  /* 角落评审提示 */
+  .review-note {
+    position: fixed; right: 16px; bottom: 16px; z-index: 40;
+    width: 218px; padding: 12px 14px;
+    background: rgba(40, 46, 44, .92); color: #d8e0db;
+    font-size: 11.5px; line-height: 1.8; border-radius: 12px;
+    box-shadow: var(--shadow-lift);
+  }
+  .review-note b { color: #f0c9a8; font-weight: 600; }
+  .review-note .rn-title { font: 700 12px/1 var(--serif); color: #fff; letter-spacing: 1px; margin-bottom: 5px; }
+
+  /* ============ 移动端 ============ */
+  @media (max-width: 860px) {
+    body { overflow: auto; }
+    .stage { flex-direction: column; height: auto; }
+    /* 纵向 flex 中 flex-basis:0 会覆盖 height，需脱离弹性分配 */
+    .map-panel { height: 58vh; padding: 12px; flex: none; }
+    .drawer {
+      position: fixed; inset: 52px 0 0 0; width: 100%; z-index: 60;
+      border-left: 0; box-shadow: 0 -10px 30px rgba(0,0,0,.2);
+    }
+    .review-note { display: none; }
+    .map-tip { top: 10px; right: 10px; font-size: 11px; }
+    .album-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px 10px; }
+    .overlay { padding: 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>拾光记 · 足迹</h1>
+  <span class="sub">照片展示交互设计稿（原型 · 示意数据）</span>
+  <div class="view-toggle" role="group" aria-label="视角切换">
+    <button id="roleBlogger" class="on">博主视角</button>
+    <button id="roleGuest">访客视角</button>
+  </div>
+  <span class="badge">Prototype</span>
+</header>
+
+<main class="stage">
+  <!-- ============ 地图模式 ============ -->
+  <section class="map-panel" aria-label="旅行地图">
+    <div class="map-canvas" id="mapCanvas">
+      <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+      <span class="region-label" style="left:70%;top:72%">江南</span>
+      <span class="region-label" style="left:20%;top:66%">青海湖畔</span>
+      <span class="region-label" style="left:14%;top:20%">河西走廊</span>
+
+      <!-- 轨迹线（示意：按时间顺序连线） -->
+      <svg class="route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M66,60 C 68,54 69,50 70,48 C 71,52 72,58 74,64 C 58,64 40,54 24,52"
+              fill="none" stroke="#a85f52" stroke-width="2"
+              stroke-dasharray="5 4" opacity=".45" vector-effect="non-scaling-stroke"/>
+      </svg>
+
+      <div class="map-tip">📷 照片按就近区域聚合，点击聚合牌翻看</div>
+      <div class="map-legend">
+        <span><i class="legend-dot visited"></i>去过</span>
+        <span><i class="legend-dot want"></i>想去</span>
+        <span>🂠 照片聚合</span>
+      </div>
+      <!-- 标记由 JS 渲染（容器便于上传后重建聚合数字） -->
+      <div id="markers"></div>
+    </div>
+  </section>
+
+  <!-- ============ 地点详情抽屉 ============ -->
+  <aside class="drawer hidden" id="drawer" aria-label="地点详情" role="region">
+    <div class="drawer-head">
+      <div>
+        <h2 id="dTitle">—</h2>
+        <div class="meta" id="dMeta"></div>
+      </div>
+      <button class="drawer-close" id="dClose" aria-label="关闭详情">✕</button>
+    </div>
+    <div class="drawer-body" id="dBody"></div>
+  </aside>
+</main>
+
+<!-- ============ 相册弹窗 ============ -->
+<div class="overlay" id="albumOverlay">
+  <div class="album-modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" id="albumModal">
+    <div class="m-head">
+      <h2 id="mTitle">—</h2>
+      <span class="count" id="mCount"></span>
+      <button class="drawer-close" id="mClose" aria-label="关闭相册">✕</button>
+    </div>
+    <div class="album-scroll">
+      <div class="album-grid" id="mGrid"></div>
+    </div>
+    <div class="m-foot">
+      <div id="mFoot"></div>
+      <div class="status-line" id="mStatus" role="status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 灯箱 ============ -->
+<div class="overlay lightbox" id="lightbox">
+  <button class="drawer-close" id="lbClose" aria-label="关闭大图">✕</button>
+  <div class="stage-ph" id="lbPh"></div>
+  <div class="lb-cap" id="lbCap"></div>
+</div>
+
+<!-- 评审要点 -->
+<aside class="review-note" aria-hidden="true">
+  <div class="rn-title">本次评审四个问题</div>
+  <b>①</b> 扑克牌相册入口：形态 / hover 展开是否足够「艺术」<br>
+  <b>②</b> 相册弹窗：拍立得网格 + 加载更多的分页节奏<br>
+  <b>③</b> 地图聚合：就近照片聚成小扇牌，点击弹出分组<br>
+  <b>④</b> 上传入口：相册末尾虚线牌（博主视角），可真实选本地图预览
+</aside>
+<!-- 真实选择本地照片用（IAB 自动化环境不支持文件选择，浏览器中手动打开可用） -->
+<input type="file" id="fileInput" multiple accept="image/png,image/jpeg,image/webp,image/gif" hidden aria-hidden="true" tabindex="-1">
+
+<script>
+/* =============== 示意数据（原型内静态） =============== */
+const CAPS = {
+  xihu:    ['晨雾','断桥','游船','苏堤','落日','荷花','远山','细雨','倒影','夜色','石舫','柳浪','莺啼','雷峰塔','白堤','曲院','平湖','秋月','灯影','鹭影','茶田','画舫','烟雨','暮色'],
+  qinghai: ['湖岸','经幡','油菜花','星空','骑行'],
+  suzhou:  ['漏窗','假山','曲径','亭影','竹林','池鱼','月门','回廊'],
+  wuzhen:  ['水阁','乌篷船','灯影'],
+  dunhuang: []
+};
+const PLACES = {
+  xihu:    { name: '西湖',     city: '杭州',   status: 'DONE', date: '2024-05', x: 74, y: 64, comment: '五月的苏堤刚落过雨，柳絮沾在伞沿上，走了三万步也不想停。' },
+  suzhou:  { name: '苏州园林', city: '苏州',   status: 'DONE', date: '2024-04', x: 70, y: 48, comment: '一步一漏窗，移步换景，古人诚不我欺。' },
+  wuzhen:  { name: '乌镇',     city: '嘉兴',   status: 'DONE', date: '2023-10', x: 66, y: 60, comment: '夜里的水阁亮起灯，乌篷船摇过，像走进旧照片。' },
+  qinghai: { name: '青海湖',   city: '海北',   status: 'DONE', date: '2024-07', x: 24, y: 52, comment: '湖和天在远处融成一条线，油菜花黄得晃眼。' },
+  dunhuang:{ name: '敦煌',     city: '酒泉',   status: 'WANT', date: null,      x: 14, y: 34, comment: '想在秋天去，看莫高窟和鸣沙山的落日。' }
+};
+// 照片渐变色按序循环，示意不同照片
+function genPhotos(id) {
+  return CAPS[id].map((cap, i) => ({ cap, g: (i * 3 + id.length) % 8 }));
+}
+for (const id in PLACES) PLACES[id].id = id, PLACES[id].photos = genPhotos(id);
+PLACES.xihu.total = 24; // 演示多页分页
+const CLUSTERS = [
+  { id: 'c1', x: 71, y: 58, label: '江南', places: ['xihu', 'suzhou', 'wuzhen'] },
+  { id: 'c2', x: 24, y: 52, label: '青海湖', places: ['qinghai'] }
+];
+const DOT_PLACES = ['dunhuang'];
+
+/* =============== 工具 =============== */
+const $ = s => document.querySelector(s);
+const mapCanvas = $('#mapCanvas'), drawer = $('#drawer');
+let lastFocus = null;
+let isGuest = false;        // 访客视角：隐藏上传入口
+let currentPlaceId = null;  // 抽屉当前展示的地点
+
+// 照片可能是本地选择的图（object URL）或渐变占位：前者用内联背景
+const imgStyle = ph => (ph && ph.img) ? ` style="background-image:url('${ph.img}')"` : '';
+
+function statusTag(p) {
+  return `<span class="status-tag ${p.status}">${p.status === 'DONE' ? '去过' : '想去'}</span>`;
+}
+
+/* =============== 地图标记渲染 =============== */
+function photoTotal(ids) { return ids.reduce((s, id) => s + PLACES[id].photos.length, 0); }
+
+function renderMarkers() {
+  const wrap = $('#markers');
+  wrap.innerHTML = '';
+  CLUSTERS.forEach(c => {
+    const total = photoTotal(c.places);
+    const many = c.places.length > 1 || PLACES[c.places[0]].photos.length > 1;
+    const btn = document.createElement('button');
+    btn.className = 'marker';
+    btn.style.left = c.x + '%'; btn.style.top = c.y + '%';
+    btn.setAttribute('aria-label', `${c.label}区域 ${c.places.length} 个地点 共 ${total} 张照片，点击查看`);
+    btn.innerHTML = `
+      <span class="lift">
+        <span class="mini-deck ${many ? '' : 'single'}" aria-hidden="true">
+          ${c.places.slice(0, 3).map(pid => {
+            const ph = PLACES[pid].photos[0];
+            return `<i class="${ph && ph.img ? '' : 'g' + (ph?.g ?? 0)}"${imgStyle(ph)}></i>`;
+          }).join('')}
+        </span>
+      </span>
+      <span class="tag-pill">${c.label} · ${total}张</span>`;
+    btn.addEventListener('click', e => { e.stopPropagation(); openClusterPop(c, btn); });
+    wrap.appendChild(btn);
+  });
+  DOT_PLACES.forEach(pid => {
+    const p = PLACES[pid];
+    const btn = document.createElement('button');
+    btn.className = 'marker';
+    btn.style.left = p.x + '%'; btn.style.top = p.y + '%';
+    if (p.photos.length) {
+      // 上传后从「想去圆点」升级为照片标记（形态与聚合牌一致）
+      const n = Math.min(3, p.photos.length);
+      btn.setAttribute('aria-label', `${p.name}，${p.photos.length} 张照片，点击查看`);
+      btn.innerHTML = `
+        <span class="lift">
+          <span class="mini-deck ${p.photos.length > 1 ? '' : 'single'}" aria-hidden="true">
+            ${p.photos.slice(0, n).map(ph => `<i class="${ph.img ? '' : 'g' + ph.g}"${imgStyle(ph)}></i>`).join('')}
+          </span>
+        </span>
+        <span class="tag-pill">${p.name} · ${p.photos.length}张</span>`;
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openClusterPop({ x: p.x, y: p.y, label: p.name, places: [pid] }, btn);
+      });
+    } else {
+      btn.setAttribute('aria-label', `${p.name}，${p.status === 'DONE' ? '去过' : '想去'}，暂无照片，点击查看详情`);
+      btn.innerHTML = `
+        <span class="lift"><span class="plain-dot ${p.status === 'DONE' ? 'visited' : 'want'}"></span></span>
+        <span class="tag-pill muted">${p.name} · ${p.status === 'DONE' ? '去过' : '想去'}</span>`;
+      btn.addEventListener('click', () => showPlace(pid, btn));
+    }
+    wrap.appendChild(btn);
+  });
+}
+
+/* =============== 聚合弹卡 =============== */
+let popEl = null, popTrigger = null;
+function closeClusterPop() {
+  if (popEl) { popEl.remove(); popEl = null; if (popTrigger) { popTrigger.focus(); popTrigger = null; } }
+}
+function openClusterPop(cluster, trigger) {
+  if (popEl && popTrigger === trigger) { closeClusterPop(); return; }
+  closeClusterPop(); closeAlbum();
+  popTrigger = trigger;
+  popEl = document.createElement('div');
+  popEl.className = 'cluster-pop open';
+  const flip = cluster.x > 60;
+  popEl.style.left = `calc(${cluster.x}% + ${flip ? -282 : 28}px)`;
+  popEl.style.top = `calc(${cluster.y}% - 30px)`;
+  const groups = cluster.places.map(pid => {
+    const p = PLACES[pid], th = p.photos.slice(0, 5), more = p.photos.length - th.length;
+    return `
+      <button class="pop-group" data-place="${pid}" aria-label="查看${p.name}的相册，共${p.photos.length}张">
+        <span class="g-name"><b>${p.name} <small style="color:var(--ink-3);font-weight:400">· ${p.city}</small></b><span>${p.photos.length} 张 →</span></span>
+        <span class="pop-thumbs">
+          ${th.map(ph => `<i class="pt${ph.img ? '' : ' g' + ph.g}"${imgStyle(ph)} aria-hidden="true"></i>`).join('')}
+          ${more > 0 ? `<i class="pt more">+${more}</i>` : ''}
+        </span>
+      </button>`;
+  }).join('');
+  popEl.innerHTML = `
+    <div class="pop-head">
+      <div><div class="pop-title">${cluster.label}的照片</div><div class="pop-sub">附近 ${cluster.places.length} 个地点 · 共 ${photoTotal(cluster.places)} 张</div></div>
+      <button class="pop-close" aria-label="关闭">✕</button>
+    </div>
+    ${groups}`;
+  popEl.querySelector('.pop-close').addEventListener('click', closeClusterPop);
+  popEl.querySelectorAll('.pop-group').forEach(g =>
+    g.addEventListener('click', () => { closeClusterPop(); showPlace(g.dataset.place); }));
+  mapCanvas.appendChild(popEl);
+  popEl.querySelector('.pop-close').focus();
+}
+mapCanvas.addEventListener('click', e => { if (popEl && !popEl.contains(e.target)) closeClusterPop(); });
+
+/* =============== 详情抽屉 =============== */
+function showPlace(pid, trigger) {
+  if (trigger) lastFocus = trigger;
+  currentPlaceId = pid;
+  const p = PLACES[pid];
+  $('#dTitle').textContent = p.name;
+  $('#dMeta').innerHTML = `${statusTag(p)}
+    <span>${p.city}</span>
+    ${p.date ? `<span>· ${p.date} 到访</span>` : ''}`;
+  const n = p.photos.length;
+  let albumHtml;
+  if (!n) {
+    albumHtml = `
+      <div class="album-empty">
+        <div class="big">🖼</div>
+        还没有照片<br><span style="font-size:12px">${isGuest ? '登录后可在地点详情上传旅途照片' : '把旅途的第一张照片放进来吧'}</span>
+        ${isGuest ? '' : '<button class="load-more" id="emptyUploadBtn" style="margin-top:12px">＋ 上传照片</button>'}
+      </div>`;
+  } else {
+    const cards = p.photos.slice(0, 4);
+    const angles = [-16, -6, 5, 15];
+    albumHtml = `
+      <div class="deck-wrap">
+        <button class="deck" id="deckBtn" aria-label="打开${p.name}相册，共 ${n} 张照片">
+          ${cards.map((ph, i) => `
+            <span class="card" style="--a:${angles[i]}deg; z-index:${i}" aria-hidden="true">
+              <span class="ph${ph.img ? '' : ' g' + ph.g}"${imgStyle(ph)}></span><span class="cap">${ph.cap}</span>
+            </span>`).join('')}
+          <span class="deck-count" aria-hidden="true">${n}</span>
+        </button>
+        <p class="deck-hint">一叠旅途的牌<br><b>点击展开相册</b>，逐页翻看</p>
+      </div>`;
+  }
+  $('#dBody').innerHTML = `
+    <p class="place-line"><b>${p.city}</b> · ${p.status === 'DONE' ? `${p.date} 到访` : '计划中'}</p>
+    ${p.comment ? `<div class="place-comment">「${p.comment}」</div>` : ''}
+    <section class="album-sec">
+      <div class="album-head"><h3>照片</h3><span class="count">${n ? n + ' 张' : ''}</span>${n && !isGuest ? '<button class="add-btn" id="addPhotosBtn">＋ 添加照片</button>' : ''}</div>
+      ${albumHtml}
+    </section>`;
+  drawer.classList.remove('hidden');
+  $('#dBody').scrollTop = 0;
+  const deckBtn = $('#deckBtn');
+  if (deckBtn) deckBtn.addEventListener('click', () => openAlbum(pid));
+  const addBtn = $('#addPhotosBtn');
+  if (addBtn) addBtn.addEventListener('click', () => triggerUpload(pid));
+  const emptyBtn = $('#emptyUploadBtn');
+  if (emptyBtn) emptyBtn.addEventListener('click', () => triggerUpload(pid));
+  $('#dClose').focus();
+}
+$('#dClose').addEventListener('click', () => {
+  drawer.classList.add('hidden');
+  if (lastFocus) { lastFocus.focus(); lastFocus = null; }
+});
+
+/* =============== 相册弹窗（分页加载） =============== */
+const PAGE = 8;
+const albumOverlay = $('#albumOverlay');
+let album = null; // { pid, shown }
+
+/* 相册末尾的「添加照片」牌（博主视角），始终保持在网格末尾 */
+const uploadTile = document.createElement('button');
+uploadTile.className = 'polaroid upload-tile';
+uploadTile.setAttribute('aria-label', '添加照片');
+uploadTile.innerHTML = `<span class="plus" aria-hidden="true">＋</span>添加照片`;
+uploadTile.addEventListener('click', () => triggerUpload(album ? album.pid : currentPlaceId));
+
+function openAlbum(pid) {
+  const p = PLACES[pid];
+  album = { pid, shown: 0 };
+  $('#mTitle').textContent = `${p.name} · 相册`;
+  $('#mCount').textContent = `共 ${p.photos.length} 张`;
+  $('#mGrid').innerHTML = '';
+  $('#mFoot').innerHTML = '';
+  $('#mStatus').textContent = '';
+  albumOverlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  loadMore();
+  $('#mClose').focus();
+}
+function closeAlbum() {
+  if (!albumOverlay.classList.contains('open')) return;
+  albumOverlay.classList.remove('open');
+  document.body.style.overflow = '';
+  album = null;
+  // 上传可能发生在相册打开期间：关闭时刷新抽屉，避免徽标/照片陈旧
+  if (currentPlaceId && !drawer.classList.contains('hidden')) showPlace(currentPlaceId);
+  const d = $('#deckBtn');
+  if (d && !drawer.classList.contains('hidden')) d.focus();
+}
+
+/** 相册网格追加 [start, start+n) 的拍立得（含本地图渲染） */
+function appendPolaroids(pid, start, n) {
+  const p = PLACES[pid];
+  const frag = document.createDocumentFragment();
+  for (let i = start; i < start + n; i++) {
+    const ph = p.photos[i];
+    const idx = i;
+    const b = document.createElement('button');
+    b.className = 'polaroid';
+    b.setAttribute('aria-label', `查看照片：${ph.cap}`);
+    b.innerHTML = `<span class="ph${ph.img ? '' : ' g' + ph.g}"${imgStyle(ph)}></span>
+      <span class="cap"><span class="no">${String(idx + 1).padStart(2, '0')}</span>${ph.cap}</span>`;
+    b.addEventListener('click', () => openLightbox(p, idx));
+    frag.appendChild(b);
+  }
+  album.shown += n;
+  $('#mGrid').appendChild(frag);
+  if (!isGuest) $('#mGrid').appendChild(uploadTile);
+}
+
+/** 根据 shown/total 刷新相册底部按钮与状态行 */
+function refreshAlbumFoot() {
+  const p = PLACES[album.pid];
+  $('#mCount').textContent = `共 ${p.photos.length} 张`;
+  $('#mStatus').textContent = `已显示 ${album.shown} / ${p.photos.length} 张`;
+  const foot = $('#mFoot');
+  if (album.shown < p.photos.length) {
+    foot.innerHTML = `<button class="load-more" id="lmBtn">加载更多照片</button>`;
+    $('#lmBtn').addEventListener('click', loadMore);
+  } else {
+    foot.innerHTML = `<div class="end-note">— 已经到底啦 · 共 ${p.photos.length} 张 —</div>`;
+  }
+  if (!isGuest) $('#mGrid').appendChild(uploadTile);
+}
+
+function loadMore() {
+  const p = PLACES[album.pid];
+  const foot = $('#mFoot');
+  foot.innerHTML = `<button class="load-more" id="lmBtn" disabled><span class="spin"></span>正在装载照片…</button>`;
+  $('#mStatus').textContent = `已显示 ${album.shown} / ${p.photos.length} 张`;
+  // 加载中骨架占位（示意真实网络分页）
+  const grid = $('#mGrid');
+  const skels = [];
+  for (let i = 0; i < Math.min(PAGE, p.photos.length - album.shown); i++) {
+    const s = document.createElement('span');
+    s.className = 'polaroid skel';
+    s.innerHTML = `<span class="ph"></span>`;
+    grid.appendChild(s);
+    skels.push(s);
+  }
+  if (!isGuest) grid.appendChild(uploadTile);
+  // 原型：模拟网络分页延迟；真实实现接入 GET /app/item/{id}/photos?pageNum&pageSize
+  setTimeout(() => {
+    if (!album) return;
+    const start = album.shown;
+    const n = Math.min(PAGE, p.photos.length - album.shown);
+    skels.forEach(el => el.remove());
+    appendPolaroids(album.pid, start, n);
+    refreshAlbumFoot();
+  }, 650);
+}
+
+/* =============== 灯箱 =============== */
+const lightbox = $('#lightbox');
+function openLightbox(place, idx) {
+  const ph = place.photos[idx];
+  const lb = $('#lbPh');
+  if (ph.img) { lb.className = 'stage-ph'; lb.style.backgroundImage = `url('${ph.img}')`; }
+  else { lb.className = 'stage-ph g' + ph.g; lb.style.backgroundImage = ''; }
+  $('#lbCap').textContent = `${place.name} · ${ph.cap}（${idx + 1}/${place.photos.length}）`;
+  lightbox.classList.add('open');
+  $('#lbClose').focus();
+}
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  const m = $('#albumModal'); if (m) m.focus?.();
+  const first = albumOverlay.querySelector('.polaroid:not(.skel)');
+  if (albumOverlay.classList.contains('open') && first) first.focus();
+}
+$('#lbClose').addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+
+/* =============== 上传照片（博主视角，访客隐藏入口） =============== */
+const fileInput = $('#fileInput');
+let uploadTargetId = null;
+function triggerUpload(pid) {
+  uploadTargetId = pid;
+  fileInput.value = '';
+  fileInput.click();
+}
+fileInput.addEventListener('change', () => {
+  const files = [...fileInput.files].slice(0, 30);
+  if (!files.length || !uploadTargetId) return;
+  // 真实实现：逐张 POST /common/upload 得到 /profile 相对路径，再并入该地点照片
+  addPhotos(uploadTargetId, files.map(f => ({ cap: '新照片', img: URL.createObjectURL(f) })), true);
+});
+
+/** 加入照片并同步地图聚合数字、抽屉扑克牌、打开中的相册网格（simulate：短暂上传占位） */
+function addPhotos(pid, photos, simulate = false) {
+  const p = PLACES[pid];
+  const start = p.photos.length;
+  p.photos.push(...photos);
+  closeClusterPop();
+  renderMarkers(); // 聚合数字更新
+  const modalForPid = album && album.pid === pid && albumOverlay.classList.contains('open');
+  if (modalForPid) {
+    const grid = $('#mGrid');
+    const skels = photos.map(() => {
+      const s = document.createElement('span');
+      s.className = 'polaroid skel';
+      s.innerHTML = '<span class="ph"></span>';
+      return s;
+    });
+    if (simulate) skels.forEach(s => grid.appendChild(s));
+    setTimeout(() => {
+      skels.forEach(s => s.remove());
+      appendPolaroids(pid, start, photos.length);
+      refreshAlbumFoot();
+    }, simulate ? 600 : 0);
+  } else if (currentPlaceId === pid && !drawer.classList.contains('hidden')) {
+    // 抽屉正展示该地点：重渲染扑克牌/空相册（敦煌 0→N 也走这里）
+    showPlace(pid);
+  }
+}
+
+/* =============== 视角切换（博主/访客） =============== */
+function setRole(guest) {
+  isGuest = guest;
+  document.body.classList.toggle('guest', guest);
+  $('#roleBlogger').classList.toggle('on', !guest);
+  $('#roleGuest').classList.toggle('on', guest);
+  if (currentPlaceId && !drawer.classList.contains('hidden')) showPlace(currentPlaceId);
+}
+$('#roleBlogger').addEventListener('click', () => setRole(false));
+$('#roleGuest').addEventListener('click', () => setRole(true));
+
+/* =============== 键盘与焦点 =============== */
+$('#mClose').addEventListener('click', closeAlbum);
+albumOverlay.addEventListener('click', e => { if (e.target === albumOverlay) closeAlbum(); });
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (lightbox.classList.contains('open')) return closeLightbox();
+    if (albumOverlay.classList.contains('open')) return closeAlbum();
+    if (popEl) return closeClusterPop();
+    if (!drawer.classList.contains('hidden') && window.innerWidth <= 860) {
+      drawer.classList.add('hidden');
+      if (lastFocus) { lastFocus.focus(); lastFocus = null; }
+    }
+  }
+  // 焦点圈定在打开的弹层内
+  if (e.key === 'Tab') {
+    const top = lightbox.classList.contains('open') ? lightbox
+      : albumOverlay.classList.contains('open') ? albumModal : null;
+    if (!top) return;
+    const focusables = top.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+    else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+  }
+});
+
+/* =============== 启动 =============== */
+renderMarkers();
+// 桌面默认打开信息最丰富的地点，方便评审两个区域
+if (window.innerWidth > 860) showPlace('xihu');
+// 原型演示钩子：控制台可用 PLACES / addPhotos('qinghai', [{cap:'晨曦', g:1}]) 模拟数据变化
+window.PLACES = PLACES;
+window.addPhotos = addPhotos;
+</script>
+</body>
+</html>

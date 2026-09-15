@@ -111,7 +111,24 @@ create table sgj_item_place (
 ) engine=innodb comment = '拾光记-地点扩展表';
 
 -- ----------------------------
--- 6、学习笔记表
+-- 6、条目照片表
+-- 保存策略为整体替换（按 item_id 删后按顺序重插）；随 sgj_item 物理删除由外键级联清理
+-- ----------------------------
+drop table if exists sgj_item_photo;
+create table sgj_item_photo (
+  photo_id     bigint(20)      not null auto_increment    comment '照片ID',
+  item_id      bigint(20)      not null                   comment '关联条目ID',
+  url          varchar(500)    not null                   comment '照片URL（/profile前缀相对路径）',
+  sort_order   int(4)          default 0                  comment '排序号（小在前）',
+  create_by    varchar(64)     default ''                 comment '创建者',
+  create_time  datetime                                   comment '创建时间',
+  primary key (photo_id),
+  key idx_sgj_photo_item (item_id),
+  constraint fk_sgj_photo_item foreign key (item_id) references sgj_item (item_id) on delete cascade
+) engine=innodb auto_increment=1 comment = '拾光记-条目照片表';
+
+-- ----------------------------
+-- 7、学习笔记表
 -- item_id 为空表示独立笔记；不为空表示关联到某个条目
 -- ----------------------------
 drop table if exists sgj_note;
@@ -135,7 +152,7 @@ create table sgj_note (
 ) engine=innodb auto_increment=1 comment = '拾光记-学习笔记表';
 
 -- ----------------------------
--- 7、菜单初始化
+-- 8、菜单初始化
 -- 权限标识：sgj:item:*、sgj:note:* 和 sgj:recycle:list
 -- ----------------------------
 insert into sys_menu values('2000', '拾光记', '0', '4', 'sgj',             null, '', '', 1, 0, 'M', '0', '0', '',             'education', 'admin', sysdate(), '', null, '拾光记目录');

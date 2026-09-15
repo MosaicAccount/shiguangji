@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguangji.file.mapper.SysFileMapper">
+
+    <insert id="insertSysFile" parameterType="com.shiguangji.file.domain.SysFile" useGeneratedKeys="true" keyProperty="fileId">
+        insert into sys_file (
+            file_name, storage_key, storage_type, file_size, content_type, create_by, create_time
+        ) values (
+            #{fileName}, #{storageKey}, #{storageType}, #{fileSize}, #{contentType}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <select id="selectAllFileRecords" resultType="com.shiguangji.file.domain.SysFile">
+        select file_id, storage_key, storage_type, create_time from sys_file
+    </select>
+
+    <delete id="deleteFileRecordsByStorageKeys">
+        delete from sys_file where storage_key in
+        <foreach collection="storageKeys" item="storageKey" open="(" separator="," close=")">
+            #{storageKey}
+        </foreach>
+    </delete>
+
+</mapper>

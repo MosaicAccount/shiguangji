@@ -36,6 +36,9 @@
       </el-input>
     </div>
 
+    <!-- 标签筛选：豆瓣式标签行（BOOK 模块），点击选中、再点取消 -->
+    <tag-pills v-model="searchTag" module="BOOK" @update:model-value="loadData" />
+
     <div v-loading="loading" class="card-grid">
       <el-empty v-if="!loading && !list.length && !loadError" description="暂无数据" />
       <div v-if="loadError" class="load-error">
@@ -45,7 +48,7 @@
       <div v-for="(item, idx) in list" :key="item.itemId" class="book-card anim" :style="{ '--d': ((idx % 4) * 30) + 'ms' }" @click="openDetail(item)">
         <div class="card-cover" :style="coverStyle(idx)">
           <!-- ：封面加载失败兜底（隐藏 img 显示占位图标） -->
-          <img v-if="item.coverUrl && !isCoverError(item)" :src="item.coverUrl" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
+          <img v-if="item.coverUrl && !isCoverError(item)" :src="photoUrl(item.coverUrl)" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
           <template v-else>
             <span class="card-glyph">书</span>
             <span class="card-type-pill">书籍</span>
@@ -98,6 +101,10 @@
             <el-option v-for="g in sgj_book_genre" :key="g.value" :label="g.label" :value="g.value" />
           </el-select>
         </el-form-item>
+        <el-form-item label="标签">
+          <!-- 标签来自后台标签管理（BOOK 模块），禁止自由输入 -->
+          <tag-select v-model="addForm.tags" module="BOOK" placeholder="选择标签（可选）" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -124,41 +131,30 @@
       </template>
     </el-dialog>
 
-    <!-- 详情抽屉 -->
-    <el-drawer v-model="detailOpen" :title="detail?.title || '详情'" size="420px">
-      <div v-if="detail" class="detail-content">
-        <div class="detail-cover">
-          <img v-if="detail.coverUrl && !isCoverError(detail)" :src="detail.coverUrl" class="detail-cover-img" :alt="detail.title" @error="onCoverError(detail)" />
-          <div v-else class="detail-icon">书</div>
-        </div>
-        <!-- 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag -->
-        <div class="detail-meta">
-          <span class="detail-type-icon">📖</span>
-          <el-tag :type="detail.status === 'DONE' ? 'success' : 'warning'" size="small">
-            {{ detail.status === 'DONE' ? '已读' : '想读' }}
-          </el-tag>
-        </div>
-        <h2>{{ detail.title }}</h2>
-        <div v-if="detail.rating" class="detail-rating">⭐ {{ detail.rating }}</div>
-        <el-descriptions :column="1" border class="detail-desc">
-          <el-descriptions-item label="作者">{{ detail.author || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="出版社">{{ detail.publisher || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="出版日期">{{ detail.publishDate || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="ISBN">{{ detail.isbn || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="页数">{{ detail.pages || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="分类">{{ selectDictLabel(sgj_book_genre, detail.genre) || '-' }}</el-descriptions-item>
-        </el-descriptions>
-        <div v-if="detail.comment" class="detail-comment">
-          <h3>我的读后感</h3>
-          <p>{{ detail.comment }}</p>
-        </div>
-        <item-notes :item-id="detail.itemId" />
-        <div v-if="isLogin" class="detail-actions">
-          <el-button type="primary" round @click="openEditDetail">编辑</el-button>
-          <el-button type="danger" round @click="handleDelete(detail)">删除</el-button>
+    <!-- 详情抽屉：封面铺底 hero + 手账风信息卡（与足迹页同风格） -->
+    <media-detail-drawer
+      v-model="detailOpen"
+      :item="detail"
+      glyph="书"
+      done-label="已读"
+      want-label="想读"
+      :hero-meta="heroMeta"
+      memory-label="MY THOUGHTS · 我的读后感"
+      :can-operate="isLogin"
+      @edit="openEditDetail"
+      @delete="handleDelete(detail!)"
+    >
+      <div v-if="chipList.length" class="md-chips">
+        <span v-for="chip in chipList" :key="chip" class="md-chip">{{ chip }}</span>
+      </div>
+      <div v-if="infoRows.length" class="md-rows">
+        <div v-for="row in infoRows" :key="row.label" class="md-row">
+          <span class="md-ico" aria-hidden="true">{{ row.ico }}</span>
+          <span class="md-label">{{ row.label }}</span>
+          <span>{{ row.value }}</span>
         </div>
       </div>
-    </el-drawer>
+    </media-detail-drawer>
 
     <!-- 编辑条目 -->
     <item-edit-dialog
@@ -171,10 +167,12 @@
 
 <script setup lang="ts" name="FrontBook">
 import { getToken } from '@/utils/auth'
-import { selectDictLabel } from '@/utils/sgj'
+import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
-import ItemNotes from '@/components/ItemNotes/index.vue'
+import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
+import TagPills from '@/components/TagPills/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import type { SgjItem } from '@/types/api/business/item'
 
@@ -189,6 +187,8 @@ const isLogin = computed(() => !!getToken())
 
 const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
+/** 标签筛选（选择即查询） */
+const searchTag = ref('')
 const list = ref<SgjItem[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -213,7 +213,8 @@ const addForm = reactive({
   publisher: undefined,
   publishDate: undefined,
   isbn: undefined,
-  genre: undefined
+  genre: undefined,
+  tags: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -242,6 +243,28 @@ function coverStyle(index: number): Record<string, string> {
   return { background: soft[i], color: ink[i] }
 }
 
+/** 详情抽屉 hero meta：评分之外追加作者 */
+const heroMeta = computed<string[]>(() => (detail.value?.author ? [detail.value.author] : []))
+
+/** 详情抽屉分类 chips（script 内调用需手动解包字典 ref） */
+const chipList = computed<string[]>(() => {
+  const d = detail.value
+  if (!d) return []
+  return [selectDictLabel(sgj_book_genre.value, d.genre)].filter((v): v is string => !!v)
+})
+
+/** 详情抽屉信息行：出版信息 */
+const infoRows = computed<{ ico: string; label: string; value: string }[]>(() => {
+  const d = detail.value
+  if (!d) return []
+  const rows: { ico: string; label: string; value: string }[] = []
+  if (d.publisher) rows.push({ ico: '🏛', label: '出版社', value: d.publisher })
+  if (d.publishDate) rows.push({ ico: '📅', label: '出版日期', value: String(d.publishDate).slice(0, 10) })
+  if (d.isbn) rows.push({ ico: '🔖', label: 'ISBN', value: d.isbn })
+  if (d.pages) rows.push({ ico: '📃', label: '页数', value: d.pages + ' 页' })
+  return rows
+})
+
 const completeForm = reactive({
   finishDate: undefined,
   rating: undefined,
@@ -260,6 +283,7 @@ function loadData(): Promise<void> {
     itemType: 'BOOK',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -281,6 +305,7 @@ function loadMore(): void {
     itemType: 'BOOK',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -300,7 +325,8 @@ function openAdd(): void {
     publisher: undefined,
     publishDate: undefined,
     isbn: undefined,
-    genre: undefined
+    genre: undefined,
+    tags: undefined
   })
   addOpen.value = true
 }
@@ -522,9 +548,6 @@ html.dark .page-banner {
   background: var(--sgj-bg-deep);
 }
 
-html.dark .detail-content .detail-icon {
-  color: var(--sgj-primary-light);
-}
 
 .filter-bar {
   display: flex;
@@ -683,89 +706,6 @@ html.dark .detail-content .detail-icon {
   }
 }
 
-.detail-content {
-  text-align: center;
-
-  /* 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag */
-  .detail-meta {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 12px 0 4px;
-
-    .detail-type-icon {
-      font-size: 20px;
-    }
-  }
-
-  .detail-cover {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .detail-cover-img {
-      max-width: 100%;
-      max-height: 320px;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(166, 83, 54, 0.18);
-    }
-  }
-
-  .detail-icon {
-    /* 无封面/封面失效占位：衬线字浅色块，与列表卡片字形占位同语言 */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 132px;
-    height: 184px;
-    border-radius: 12px;
-    background: var(--sgj-primary-soft);
-    color: var(--sgj-primary-dark);
-    font-family: var(--sgj-font-serif);
-    font-size: 56px;
-    font-weight: 700;
-  }
-
-  h2 {
-    color: var(--sgj-text);
-    margin: 8px 0;
-    font-family: var(--sgj-font-serif);
-  }
-
-  .detail-rating {
-    color: var(--sgj-amber);
-    font-size: 18px;
-    margin-bottom: 16px;
-  }
-
-  .detail-desc {
-    margin-top: 16px;
-    text-align: left;
-  }
-
-  .detail-comment {
-    margin-top: 20px;
-    text-align: left;
-
-    h3 {
-      color: var(--sgj-text-2);
-      margin-bottom: 8px;
-    }
-
-    p {
-      color: var(--sgj-text);
-      line-height: 1.6;
-    }
-  }
-
-  .detail-actions {
-    margin-top: 24px;
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-  }
-}
 
 /* 移动端最小适配：筛选换行、搜索框占满整行、卡片操作按钮可换行 */
 @media (max-width: 768px) {
@@ -794,8 +734,5 @@ html.dark .detail-content .detail-icon {
     }
   }
 
-  .detail-actions {
-    flex-wrap: wrap;
-  }
 }
 </style>

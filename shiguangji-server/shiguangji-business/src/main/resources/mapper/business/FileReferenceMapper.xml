@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguangji.business.mapper.FileReferenceMapper">
+
+    <!--
+      上传文件的全部业务引用来源。新增引用列时必须同步补充，否则对应文件会被误判为孤儿。
+      /profile/ 字面量对应 Constants.RESOURCE_PREFIX，与 sys_file.storage_key 及业务列的
+      保存格式一致；用 like 同时排除了空串、NULL 与外部图片地址。
+    -->
+    <select id="selectReferencedStorageKeys" resultType="java.lang.String">
+        select cover_url from sgj_item where cover_url like '/profile/%'
+        union
+        select url from sgj_item_photo where url like '/profile/%'
+        union
+        select avatar from sys_user where avatar like '/profile/%'
+    </select>
+
+</mapper>

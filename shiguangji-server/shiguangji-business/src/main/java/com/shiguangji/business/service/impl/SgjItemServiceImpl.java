@@ -1,16 +1,20 @@
 package com.shiguangji.business.service.impl;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.shiguangji.business.domain.SgjItem;
+import com.shiguangji.business.domain.SgjItemPhoto;
 import com.shiguangji.business.mapper.SgjItemMapper;
+import com.shiguangji.business.mapper.SgjItemPhotoMapper;
 import com.shiguangji.business.service.ISgjItemService;
 import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.StringUtils;
@@ -29,6 +33,9 @@ public class SgjItemServiceImpl implements ISgjItemService
     /** 长文本字段最大长度 */
     private static final int TEXT_MAX_LENGTH = 500;
 
+    /** 单张照片URL最大长度（与 sgj_item_photo.url varchar(500) 一致） */
+    private static final int PHOTO_URL_MAX_LENGTH = 500;
+
     /** 允许的条目类型 */
     private static final java.util.List<String> ITEM_TYPES = Arrays.asList("MOVIE", "TV", "BOOK", "PLACE");
 
@@ -38,10 +45,15 @@ public class SgjItemServiceImpl implements ISgjItemService
     @Autowired
     private SgjItemMapper sgjItemMapper;
 
+    @Autowired
+    private SgjItemPhotoMapper sgjItemPhotoMapper;
+
     @Override
     public SgjItem selectSgjItemById(Long itemId)
     {
-        return sgjItemMapper.selectSgjItemById(itemId);
+        SgjItem item = sgjItemMapper.selectSgjItemById(itemId);
+        attachPhotos(item);
+        return item;
     }
 
     @Override
@@ -67,6 +79,7 @@ public class SgjItemServiceImpl implements ISgjItemService
         }
         int rows = sgjItemMapper.insertSgjItem(sgjItem);
         sgjItemMapper.insertSgjItemExt(sgjItem);
+        syncPhotos(sgjItem);
         return rows;
     }
 
@@ -88,8 +101,14 @@ public class SgjItemServiceImpl implements ISgjItemService
         {
             throw new ServiceException("不允许修改条目类型");
         }
+        attachPhotos(oldItem);
         int rows = sgjItemMapper.updateSgjItem(sgjItem);
         sgjItemMapper.updateSgjItemExt(sgjItem);
+        // 仅当照片串变化时才整体替换，避免 complete/uncomplete 等复用更新的链路反复重写照片表
+        if (sgjItem.getPhotos() != null && !sgjItem.getPhotos().equals(oldItem.getPhotos()))
+        {
+            syncPhotos(sgjItem);
+        }
         return rows;
     }
 
@@ -117,7 +136,8 @@ public class SgjItemServiceImpl implements ISgjItemService
      * @param sgjItem      条目
      * @param titleRequired 新增时标题必填；编辑时允许不传标题（部分更新）
      */
-    private void validateItem(SgjItem sgjItem, boolean titleRequired)
+    // 包内可见便于照片校验单测直调（与 parsePhotoUrls 同策略）
+    void validateItem(SgjItem sgjItem, boolean titleRequired)
     {
         if (StringUtils.isEmpty(sgjItem.getItemType()))
         {
@@ -153,6 +173,13 @@ public class SgjItemServiceImpl implements ISgjItemService
         validateTextLength(sgjItem.getTags(), "标签", TEXT_MAX_LENGTH);
         validateTextLength(sgjItem.getCoverUrl(), "封面地址", TEXT_MAX_LENGTH);
         validateTextLength(sgjItem.getRemark(), "备注", TEXT_MAX_LENGTH);
+        for (String url : parsePhotoUrls(sgjItem.getPhotos()))
+        {
+            if (url.length() > PHOTO_URL_MAX_LENGTH)
+            {
+                throw new ServiceException("单张照片地址长度不能超过" + PHOTO_URL_MAX_LENGTH + "个字符");
+            }
+        }
         validateDateOrder(sgjItem.getStartDate(), sgjItem.getFinishDate());
     }
 
@@ -176,5 +203,66 @@ public class SgjItemServiceImpl implements ISgjItemService
         {
             throw new ServiceException("完成日期不能早于开始日期");
         }
+    }
+
+    /**
+     * 回填条目照片串（逗号顺序即展示顺序）
+     */
+    private void attachPhotos(SgjItem item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+        String photos = sgjItemPhotoMapper.selectPhotosByItemId(item.getItemId())
+                .stream().map(SgjItemPhoto::getUrl).collect(Collectors.joining(","));
+        item.setPhotos(photos);
+    }
+
+    /**
+     * 整体替换保存条目照片：ponytail: 删后重插会重建 photo_id/create_time；
+     * 照片无独立元数据，可接受。升级路径：照片需要备注/拍摄时间时改为逐条 diff 更新
+     */
+    private void syncPhotos(SgjItem item)
+    {
+        List<String> urls = parsePhotoUrls(item.getPhotos());
+        sgjItemPhotoMapper.deletePhotosByItemId(item.getItemId());
+        if (urls.isEmpty())
+        {
+            return;
+        }
+        String operator = StringUtils.isNotEmpty(item.getUpdateBy()) ? item.getUpdateBy() : item.getCreateBy();
+        List<SgjItemPhoto> photos = new ArrayList<>();
+        for (int i = 0; i < urls.size(); i++)
+        {
+            SgjItemPhoto photo = new SgjItemPhoto();
+            photo.setItemId(item.getItemId());
+            photo.setUrl(urls.get(i));
+            photo.setSortOrder(i);
+            photo.setCreateBy(operator);
+            photos.add(photo);
+        }
+        sgjItemPhotoMapper.insertPhotos(photos);
+    }
+
+    /**
+     * 解析照片URL串：按英文逗号切分，去首尾空白，跳过空段（包内可见便于单测）
+     */
+    static List<String> parsePhotoUrls(String photos)
+    {
+        List<String> urls = new ArrayList<>();
+        if (photos == null || photos.isEmpty())
+        {
+            return urls;
+        }
+        for (String url : photos.split(","))
+        {
+            String trimmed = url.trim();
+            if (!trimmed.isEmpty())
+            {
+                urls.add(trimmed);
+            }
+        }
+        return urls;
     }
 }

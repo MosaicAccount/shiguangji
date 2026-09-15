@@ -57,6 +57,13 @@ export interface SgjItem extends BaseEntity {
   longitude?: number
   bestSeason?: string
   placeCategory?: string
+
+  /** 条目照片URL，多个英文逗号分隔（逗号顺序即展示顺序） */
+  photos?: string
+  /** 关联照片数量（列表查询返回，徽标用） */
+  photoCount?: number
+  /** 首张照片URL（列表查询返回，无封面时兜底） */
+  photoCover?: string
 }
 
 /** 内容条目查询参数 */
@@ -65,4 +72,16 @@ export interface SgjItemQueryParams extends PageDomain {
   title?: string
   status?: string
   tags?: string
+}
+
+/** 豆瓣封面候选（issue #5） */
+export interface CoverCandidate {
+  /** 豆瓣条目编号 */
+  sourceId: string
+  title: string
+  year: string
+  /** 封面图地址（后端代理相对路径，展示用，需拼 baseURL） */
+  imageUrl: string
+  /** 豆瓣原始图地址（转存用） */
+  sourceUrl: string
 }

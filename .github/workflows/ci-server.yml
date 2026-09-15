@@ -69,6 +69,11 @@ jobs:
           mysql --protocol=TCP -h 127.0.0.1 -P 13306 -u root shiguangji < sql/init_system.sql
           mysql --protocol=TCP -h 127.0.0.1 -P 13306 -u root shiguangji < sql/quartz.sql
           mysql --protocol=TCP -h 127.0.0.1 -P 13306 -u root shiguangji < sql/init_business.sql
+          # 依次执行 sql/update/ 下的增量脚本（按文件名顺序），保证 CI 库结构与最新功能一致
+          for f in sql/update/*.sql; do
+            echo "应用增量脚本: $f"
+            mysql --protocol=TCP -h 127.0.0.1 -P 13306 -u root shiguangji < "$f"
+          done
 
       - name: 执行后端测试
         env:

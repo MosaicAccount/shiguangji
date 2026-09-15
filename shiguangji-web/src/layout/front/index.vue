@@ -71,12 +71,12 @@ const navLinks = [
   { to: '/note', label: '笔记' }
 ]
 
-/** 移动端底部导航（设计稿 04：首页 / 影单 / 足迹 / 我的） */
+/** 移动端底部导航（设计稿 04：首页 / 影单 / 足迹 / 笔记） */
 const mobileTabs = [
   { to: '/home', label: '首页' },
   { to: '/movie', label: '影单' },
   { to: '/travel', label: '足迹' },
-  { to: '/note', label: '我的' }
+  { to: '/note', label: '笔记' }
 ]
 </script>
 
@@ -295,6 +295,8 @@ const mobileTabs = [
 
   .front-footer {
     padding: 18px 14px;
+    /* 底部留出固定标签栏的高度，避免页脚（登录后台等）被遮挡 */
+    padding-bottom: 76px;
   }
 }
 
@@ -346,10 +348,6 @@ const mobileTabs = [
         }
       }
     }
-  }
-
-  .front-main {
-    padding-bottom: 76px;
   }
 }
 

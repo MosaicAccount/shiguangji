@@ -4,7 +4,14 @@
       <el-row>
         <el-col :span="12">
           <el-form-item :label="titleLabel" prop="title">
-            <el-input v-model="form.title" :placeholder="'请输入' + titleLabel" maxlength="200" />
+            <!-- 地点支持名称搜索回填；其他类型普通输入 -->
+            <place-search-input
+              v-if="itemType === 'PLACE'"
+              v-model="form.title"
+              :placeholder="'输入名称搜索地点，或直接填写'"
+              @select="onPlaceSelect"
+            />
+            <el-input v-else v-model="form.title" :placeholder="'请输入' + titleLabel" maxlength="200" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -14,12 +21,17 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="标签" prop="tags">
-            <el-input v-model="form.tags" placeholder="多个用英文逗号分隔" maxlength="500" />
+            <!-- 标签来自后台标签管理，按条目类型区分，禁止自由输入 -->
+            <tag-select v-model="form.tags" :module="itemType" placeholder="选择标签（可选）" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="封面图" prop="coverUrl">
-            <el-input v-model="form.coverUrl" placeholder="图片地址（可选）" maxlength="500" />
+            <div class="cover-field">
+              <image-upload v-model="form.coverUrl" :limit="1" :file-type="['png', 'jpg', 'jpeg', 'gif', 'webp']" :drag="false" />
+              <!-- 影视/书籍支持按标题自动匹配豆瓣封面；地点无数据源不展示 -->
+              <el-button v-if="itemType !== 'PLACE'" plain size="small" icon="Picture" @click="matchOpen = true">自动匹配封面</el-button>
+            </div>
           </el-form-item>
         </el-col>
 
@@ -134,14 +146,14 @@
               <el-input v-model="form.country" placeholder="国家（可选）" maxlength="100" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="纬度" prop="latitude">
-              <el-input-number v-model="form.latitude" :min="-90" :max="90" :precision="6" :controls="false" placeholder="纬度" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="经度" prop="longitude">
-              <el-input-number v-model="form.longitude" :min="-180" :max="180" :precision="6" :controls="false" placeholder="经度" style="width: 100%" />
+          <el-col :span="24">
+            <el-form-item label="经纬度">
+              <!-- 手动输入或地图选点自动填入 -->
+              <div class="coord-row">
+                <el-input-number v-model="form.latitude" :min="-90" :max="90" :precision="6" :controls="false" placeholder="纬度" style="width: 130px" />
+                <el-input-number v-model="form.longitude" :min="-180" :max="180" :precision="6" :controls="false" placeholder="经度" style="width: 130px" />
+                <el-button type="primary" plain size="small" @click="pickerOpen = true">🗺 地图选点</el-button>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -169,10 +181,21 @@
       <el-button @click="dialogVisible = false">取 消</el-button>
     </template>
   </el-dialog>
+
+  <!-- 地图选点（地点表单经纬度自动填入） -->
+  <map-picker v-model="pickerOpen" :latitude="form.latitude" :longitude="form.longitude" @confirm="onCoordPick" />
+
+  <!-- 豆瓣封面自动匹配（影视/书籍） -->
+  <cover-match-dialog v-model="matchOpen" :item-type="itemType" :title="form.title" @confirmed="onCoverMatched" />
 </template>
 
 <script setup lang="ts" name="ItemEditDialog">
 import { getFrontItem, updateFrontItem } from '@/api/front/item'
+import CoverMatchDialog from '@/components/CoverMatchDialog/index.vue'
+import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 
 const props = defineProps<{
@@ -197,6 +220,40 @@ const dialogVisible = computed({
 
 const itemType = ref<'MOVIE' | 'TV' | 'BOOK' | 'PLACE'>('MOVIE')
 const submitting = ref(false)
+
+/** 地图选点弹窗 */
+const pickerOpen = ref(false)
+
+/** 封面自动匹配弹窗 */
+const matchOpen = ref(false)
+
+/** 匹配成功回填：影视/电视剧同时落豆瓣编号（编辑提交时随表单一并保存） */
+function onCoverMatched(payload: { url: string; sourceId?: string }): void {
+  form.coverUrl = payload.url
+  if (payload.sourceId && (itemType.value === 'MOVIE' || itemType.value === 'TV')) {
+    form.doubanId = payload.sourceId
+  }
+}
+
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult): void {
+  form.title = place.title
+  form.address = place.address
+  form.city = place.city
+  form.country = place.country
+  form.latitude = place.latitude
+  form.longitude = place.longitude
+}
+
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
+function onCoordPick(place: PickedPlace): void {
+  form.latitude = place.latitude
+  form.longitude = place.longitude
+  form.title = place.title || form.title
+  form.address = place.address || form.address
+  form.city = place.city || form.city
+  form.country = place.country || form.country
+}
 
 const form = reactive<Record<string, any>>({})
 const editFormRef = ref()
@@ -244,3 +301,18 @@ function viewNotes(): void {
   router.push({ path: props.notesPath || '/note', query: { itemId: String(props.itemId) } })
 }
 </script>
+
+<style scoped lang="scss">
+.coord-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cover-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+</style>

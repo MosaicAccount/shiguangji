@@ -26,6 +26,9 @@
       </el-input>
     </div>
 
+    <!-- 标签筛选：豆瓣式标签行（NOTE 模块），点击选中、再点取消 -->
+    <tag-pills v-model="searchTag" module="NOTE" @update:model-value="loadData" />
+
     <div v-if="filterItemId" class="filter-tip">
       <span>正在查看条目 #{{ filterItemId }} 的关联笔记</span>
       <el-button link type="primary" size="small" @click="clearFilter">查看全部笔记</el-button>
@@ -66,35 +69,6 @@
       <el-button :loading="loadingMore" round @click="loadMore">加载更多</el-button>
     </div>
 
-    <!-- 新增/编辑笔记 -->
-    <el-dialog v-model="editOpen" :title="form.noteId ? '编辑笔记' : '写笔记'" width="720px" append-to-body>
-      <el-form ref="editFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入笔记标题" maxlength="200" />
-        </el-form-item>
-        <el-form-item label="关联条目">
-          <item-select v-model="form.itemId" :key="form.noteId || 'new'" />
-        </el-form-item>
-        <el-form-item label="标签">
-          <el-input v-model="form.tags" placeholder="多个用英文逗号分隔" maxlength="500" />
-        </el-form-item>
-        <!-- 公开/私密：默认私密，公开后访客可见 -->
-        <el-form-item label="公开状态">
-          <el-radio-group v-model="form.isPublic">
-            <el-radio-button value="0">私密</el-radio-button>
-            <el-radio-button value="1">公开</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="内容">
-          <markdown-editor v-model="form.content" :rows="12" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="primary" @click="submitForm">确 定</el-button>
-        <el-button @click="editOpen = false">取 消</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 详情抽屉 -->
     <el-drawer v-model="detailOpen" :title="detail?.title || '笔记详情'" size="520px">
       <div v-if="detail" class="detail-content">
@@ -124,10 +98,9 @@
 
 <script setup lang="ts" name="FrontNote">
 import { getToken } from '@/utils/auth'
-import MarkdownEditor from '@/components/MarkdownEditor/index.vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
-import ItemSelect from '@/components/front/ItemSelect.vue'
-import { listFrontNote, getFrontNote, addFrontNote, updateFrontNote, delFrontNote } from '@/api/front/note'
+import TagPills from '@/components/TagPills/index.vue'
+import { listFrontNote, getFrontNote, delFrontNote } from '@/api/front/note'
 import type { SgjNote } from '@/types/api/business/note'
 
 const { proxy } = getCurrentInstance() as { proxy: any }
@@ -142,6 +115,8 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
 const searchTitle = ref('')
+/** 标签筛选（TagPills 点击选中、再点取消后触发 loadData） */
+const searchTag = ref('')
 /** 分页 */
 const pageNum = ref(1)
 const pageSize = 10
@@ -150,22 +125,8 @@ const hasMore = computed(() => list.value.length < total.value)
 /** B-03：按关联条目过滤展示（从条目编辑弹窗"查看关联笔记"跳转而来） */
 const filterItemId = ref<number | undefined>(undefined)
 
-const editOpen = ref(false)
 const detailOpen = ref(false)
 const detail = ref<SgjNote | null>(null)
-
-const form = reactive<SgjNote>({
-  noteId: undefined,
-  itemId: undefined,
-  title: undefined,
-  content: undefined,
-  tags: undefined,
-  isPublic: '0'
-})
-
-const rules = {
-  title: [{ required: true, message: '请输入笔记标题', trigger: 'blur' }]
-}
 
 function loadData(): void {
   loading.value = true
@@ -173,6 +134,7 @@ function loadData(): void {
   pageNum.value = 1
   listFrontNote({
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     itemId: filterItemId.value,
     pageNum: pageNum.value,
     pageSize: pageSize
@@ -193,6 +155,7 @@ function loadMore(): void {
   pageNum.value += 1
   listFrontNote({
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     itemId: filterItemId.value,
     pageNum: pageNum.value,
     pageSize: pageSize
@@ -217,25 +180,12 @@ function formatTime(time?: string): string {
   return time.replace('T', ' ').slice(0, 16)
 }
 
-function resetForm(): void {
-  Object.assign(form, {
-    noteId: undefined,
-    itemId: undefined,
-    title: undefined,
-    content: undefined,
-    tags: undefined,
-    isPublic: '0'
-  })
-}
-
+/** 跳转独立编辑页（新增/编辑共用，验收：单独的 markdown 编辑页面） */
 function openAdd(): void {
-  resetForm()
-  editOpen.value = true
-}
-
-/**
+  router.push('/note/edit')
+}/**
  * B-03/：处理路由参数
- * - /note?itemId=x&write=1：条目页"去写笔记"跳转，自动打开新增弹窗并预填关联条目
+ * - /note?itemId=x&write=1：条目页"去写笔记"跳转，转独立编辑页并预填关联条目
  * - /note?itemId=x：条目编辑弹窗"查看关联笔记"跳转，列表按该条目过滤展示
  * - /note?noteId=x：首页最近笔记跳转，自动打开对应笔记详情抽屉
  */
@@ -257,11 +207,10 @@ function handleRouteQuery(): void {
   const itemId = Number(raw)
   if (!itemId) return
   if (route.query.write === '1') {
-    // 写笔记语义：仅登录用户自动打开新增弹窗，预填的关联条目可被用户修改（选择器）
+    // 写笔记语义：仅登录用户跳转独立编辑页，预填关联条目
     if (isLogin.value) {
-      resetForm()
-      form.itemId = itemId
-      editOpen.value = true
+      router.replace({ path: '/note/edit', query: { itemId: String(itemId) } })
+      return
     }
   } else {
     // 查看语义：按条目过滤笔记列表
@@ -277,22 +226,8 @@ watch(
 )
 
 function openEdit(note: SgjNote): void {
-  Object.assign(form, note)
-  // 公开状态归一化：仅接受 '0'/'1'，空值按私密处理（存量数据兜底）
-  form.isPublic = note.isPublic === '1' ? '1' : '0'
-  editOpen.value = true
-}
-
-function submitForm(): void {
-  proxy.$refs['editFormRef'].validate((valid: boolean) => {
-    if (!valid) return
-    const request = form.noteId ? updateFrontNote(form) : addFrontNote(form)
-    request.then(() => {
-      proxy.$modal.msgSuccess(form.noteId ? '修改成功' : '新增成功')
-      editOpen.value = false
-      loadData()
-    }).catch(() => {})
-  })
+  if (!note.noteId) return
+  router.push({ path: '/note/edit', query: { noteId: String(note.noteId) } })
 }
 
 function openDetail(note: SgjNote): void {

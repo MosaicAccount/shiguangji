@@ -7,13 +7,18 @@
         <h1>足迹</h1>
         <p>记录你去过和想去的地方。</p>
       </div>
+      <div class="banner-stats">
+        <span class="stat-chip">去过<b>{{ bannerStats.cities }}</b>城</span>
+        <span class="stat-chip">留下<b>{{ bannerStats.total }}</b>张照片</span>
+        <span v-if="bannerStats.latest" class="stat-chip">最近<b>{{ bannerStats.latest.title }}</b></span>
+      </div>
       <el-button v-if="isLogin" type="primary" class="banner-add" @click="openAdd">＋ 添加想去</el-button>
     </div>
 
     <div class="filter-bar">
       <div class="filter-group">
         <button class="filter-pill" :class="{ active: mode === 'card' }" @click="switchMode('card')">卡片模式</button>
-        <button class="filter-pill" :class="{ active: mode === 'map' }" @click="switchMode('map')">路线图模式</button>
+        <button class="filter-pill" :class="{ active: mode === 'map' }" @click="switchMode('map')">地图模式</button>
       </div>
       <div v-if="isLogin && mode === 'card'" class="filter-group">
         <button
@@ -40,6 +45,9 @@
       </el-input>
     </div>
 
+    <!-- 标签筛选：豆瓣式标签行（PLACE 模块，仅卡片模式），点击选中、再点取消 -->
+    <tag-pills v-if="mode === 'card'" v-model="searchTag" module="PLACE" @update:model-value="loadData" />
+
     <!-- 卡片模式 -->
     <template v-if="mode === 'card'">
       <div v-loading="loading" class="card-grid">
@@ -50,12 +58,13 @@
         </div>
         <div v-for="(item, idx) in list" :key="item.itemId" class="place-card anim" :style="{ '--d': ((idx % 4) * 30) + 'ms' }" @click="openDetail(item)">
           <div class="card-cover" :style="coverStyle(idx)">
-            <!-- ：封面加载失败兜底（隐藏 img 显示占位图标） -->
-            <img v-if="item.coverUrl && !isCoverError(item)" :src="item.coverUrl" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
+            <!-- ：封面优先用条目封面，无封面回退首张照片；加载失败兜底（隐藏 img 显示占位图标） -->
+            <img v-if="cardCover(item) && !isCoverError(item)" :src="cardCover(item)" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
             <template v-else>
               <span class="card-glyph">地</span>
               <span class="card-type-pill">地点</span>
             </template>
+            <span v-if="item.photoCount" class="photo-badge">📷 {{ item.photoCount }}</span>
           </div>
           <div class="card-body">
             <div class="card-title">{{ item.title }}</div>
@@ -82,24 +91,35 @@
       </div>
     </template>
 
-    <!-- 路线图模式 -->
+    <!-- 地图模式：高德地图 + 照片就近聚合 + 旅行时间线 -->
     <div v-else class="map-mode">
-      <div class="map-toolbar">
-        <el-select v-model="mapLimit" style="width: 160px" @change="initMapChart">
-          <el-option label="最近20个足迹" :value="20" />
-          <el-option label="最近50个足迹" :value="50" />
-          <el-option label="全部足迹" :value="0" />
-        </el-select>
-        <span class="map-tip">绿色为去过地点，按时间顺序连线</span>
-      </div>
       <div v-loading="mapLoading" class="map-container">
         <div v-if="mapError" class="map-error">{{ mapError }}</div>
-        <div v-else ref="mapRef" class="map-chart"></div>
+        <travel-map
+          v-else
+          :visited="trajectory?.visited || []"
+          :wish="trajectory?.wish || []"
+          @select="openDetailById"
+        />
       </div>
-      <div class="map-legend">
-        <span><i class="legend-dot visited"></i> 去过</span>
-        <span><i class="legend-dot wish"></i> 想去</span>
-        <span class="legend-line">—— 旅行轨迹</span>
+      <!-- 旅行时间线：按到访年份串联去过的地方，点击回看详情 -->
+      <div class="timeline">
+        <div class="tl-title">旅行时间线 <span class="tl-sub">按到访年份 · 点击回看</span></div>
+        <div class="tl-track">
+          <button
+            v-for="p in timelinePhotos"
+            :key="p.itemId"
+            class="tl-item"
+            :aria-label="`回看 ${p.title}`"
+            @click="openDetailById(p.itemId!)"
+          >
+            <img v-if="p.cover" class="thumb" :src="photoUrl(p.cover)" :alt="p.title" loading="lazy" />
+            <span v-else class="thumb thumb-fallback" aria-hidden="true">📍</span>
+            <span class="tl-name">{{ p.title }}</span>
+            <span class="tl-date">{{ p.finishDate ? String(p.finishDate).slice(0, 10) : '—' }}</span>
+          </button>
+          <div v-if="!timelinePhotos.length" class="tl-empty">去过的地方会按年份串在这里</div>
+        </div>
       </div>
     </div>
 
@@ -107,7 +127,8 @@
     <el-dialog v-model="addOpen" title="添加想去" width="560px" append-to-body>
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="90px">
         <el-form-item label="地点名称" prop="title">
-          <el-input v-model="addForm.title" placeholder="请输入地点名称" maxlength="200" />
+          <!-- 支持名称搜索自动补全，选中直接回填地址/城市/国家与坐标 -->
+          <place-search-input v-model="addForm.title" placeholder="输入名称搜索地点，或直接填写" @select="onPlaceSelect" />
         </el-form-item>
         <el-form-item label="详细地址">
           <el-input v-model="addForm.address" placeholder="详细地址（可选）" maxlength="300" />
@@ -154,6 +175,10 @@
               <el-option v-for="c in sgj_place_category" :key="c.value" :label="c.label" :value="c.value" />
             </el-select>
           </el-form-item>
+          <el-form-item label="标签">
+            <!-- 标签来自后台标签管理（PLACE 模块），禁止自由输入 -->
+            <tag-select v-model="addForm.tags" module="PLACE" placeholder="选择标签（可选）" />
+          </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -162,22 +187,7 @@
     </el-dialog>
 
     <!-- 地图选点 -->
-    <el-dialog v-model="pickerOpen" title="地图选点" width="640px" append-to-body>
-      <div v-loading="pickerLoading" class="picker-container">
-        <div v-if="pickerError" class="map-error">{{ pickerError }}</div>
-        <div v-else ref="pickerRef" class="picker-chart"></div>
-      </div>
-      <div class="picker-footer">
-        <span class="picker-coord">
-          {{ pickerLat != null && pickerLng != null
-            ? `已选：纬度 ${pickerLat}，经度 ${pickerLng}`
-            : '点击地图选择地点' }}
-        </span>
-        <el-button type="primary" :disabled="pickerLat == null || pickerLng == null" @click="confirmPick">
-          确认选择
-        </el-button>
-      </div>
-    </el-dialog>
+    <map-picker v-model="pickerOpen" :latitude="addForm.latitude" :longitude="addForm.longitude" @confirm="confirmPick" />
 
     <!-- 标记去过 -->
     <el-dialog v-model="completeOpen" :title="'标记去过：' + (currentItem?.title || '')" width="520px" append-to-body>
@@ -195,42 +205,76 @@
       </template>
     </el-dialog>
 
-    <!-- 详情抽屉 -->
-    <el-drawer v-model="detailOpen" :title="detail?.title || '详情'" size="420px">
-      <div v-if="detail" class="detail-content">
-        <div class="detail-cover">
-          <img v-if="detail.coverUrl && !isCoverError(detail)" :src="detail.coverUrl" class="detail-cover-img" :alt="detail.title" @error="onCoverError(detail)" />
-          <div v-else class="detail-icon">地</div>
+    <!-- 详情抽屉：照片 hero + 手账风信息卡 -->
+    <el-drawer v-model="detailOpen" size="440px" :with-header="false" class="place-drawer">
+      <div v-if="detail" class="drawer-inner">
+        <!-- Hero：首图/封面铺底，标题与位置叠底 -->
+        <div class="d-hero" :class="{ 'is-empty': !heroImage }">
+          <img v-if="heroImage" class="d-hero-img" :src="heroImage" :alt="detail.title" @error="onHeroError" />
+          <span v-else class="d-hero-glyph" aria-hidden="true">地</span>
+          <div class="d-hero-mask" aria-hidden="true"></div>
+          <span class="d-status" :class="detail.status">{{ detail.status === 'DONE' ? '去过' : '想去' }}</span>
+          <button class="d-close" aria-label="关闭详情" @click="detailOpen = false">✕</button>
+          <div class="d-hero-bottom">
+            <h2>{{ detail.title }}</h2>
+            <div class="d-meta-line">
+              <span>📍 {{ locText }}</span>
+              <span v-if="detail.finishDate">{{ String(detail.finishDate).slice(0, 10) }}</span>
+            </div>
+          </div>
         </div>
-        <!-- 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag -->
-        <div class="detail-meta">
-          <span class="detail-type-icon">📍</span>
-          <el-tag :type="detail.status === 'DONE' ? 'success' : 'warning'" size="small">
-            {{ detail.status === 'DONE' ? '去过' : '想去' }}
-          </el-tag>
-        </div>
-        <h2>{{ detail.title }}</h2>
-        <el-descriptions :column="1" border class="detail-desc">
-          <el-descriptions-item label="地址">{{ detail.address || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="城市">{{ detail.city || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="省/州">{{ detail.province || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="国家">{{ detail.country || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="经纬度">
-            {{ detail.latitude != null && detail.longitude != null
-              ? detail.latitude + ', ' + detail.longitude
-              : '-' }}
-          </el-descriptions-item>
-                    <el-descriptions-item label="最佳季节">{{ selectDictLabel(sgj_best_season, detail.bestSeason) || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="分类">{{ selectDictLabel(sgj_place_category, detail.placeCategory) || '-' }}</el-descriptions-item>
-        </el-descriptions>
-        <div v-if="detail.comment" class="detail-comment">
-          <h3>我的回忆</h3>
-          <p>{{ detail.comment }}</p>
-        </div>
-        <item-notes :item-id="detail.itemId" />
-        <div v-if="isLogin" class="detail-actions">
-          <el-button type="primary" round @click="openEditDetail">编辑</el-button>
-          <el-button type="danger" round @click="handleDelete(detail)">删除</el-button>
+
+        <div class="d-body">
+          <!-- 分类 / 最佳季节 -->
+          <div v-if="detail.placeCategory || detail.bestSeason" class="d-chips">
+            <span v-if="detail.placeCategory" class="chip">{{ selectDictLabel(sgj_place_category, detail.placeCategory) || detail.placeCategory }}</span>
+            <span v-if="detail.bestSeason" class="chip chip-season">🍂 {{ selectDictLabel(sgj_best_season, detail.bestSeason) || detail.bestSeason }}</span>
+          </div>
+
+          <!-- 详细地址 -->
+          <div v-if="detail.address" class="d-addr">
+            <span class="ico" aria-hidden="true">📍</span>
+            <span>{{ detail.address }}</span>
+          </div>
+
+          <!-- 我的回忆 -->
+          <div v-if="detail.comment" class="d-memory">
+            <div class="d-memory-label">MY MEMORIES · 我的回忆</div>
+            <p>{{ detail.comment }}</p>
+          </div>
+
+          <!-- 地点照片：扇形相册入口，登录用户可在相册中上传/删除，访客只读浏览 -->
+          <div class="detail-photos">
+            <div class="detail-photos-head">
+              <h3>照片</h3>
+              <span v-if="photosArr.length" class="detail-photos-count">{{ photosArr.length }} 张</span>
+              <el-button v-if="isLogin" link type="primary" class="detail-photos-add" @click="albumOpen = true">＋ 添加照片</el-button>
+            </div>
+            <photo-deck v-if="photosArr.length" :photos="photosArr" @open="albumOpen = true" />
+            <div v-else class="album-empty">
+              <div class="big">🖼</div>
+              还没有照片<template v-if="isLogin"><br />点击「添加照片」放上第一张旅途照片</template>
+            </div>
+          </div>
+          <photo-album-dialog
+            v-model="albumOpen"
+            :photos="photosArr"
+            :title="detail?.title || ''"
+            :can-manage="isLogin"
+            @update:photos="onPhotosChange"
+          />
+
+          <item-notes :item-id="detail.itemId" />
+
+          <!-- 经纬度（弱化展示，便于核对坐标） -->
+          <div v-if="detail.latitude != null && detail.longitude != null" class="d-coords">
+            经纬度 {{ detail.latitude }}, {{ detail.longitude }}
+          </div>
+
+          <div v-if="isLogin" class="d-actions">
+            <el-button type="primary" round @click="openEditDetail">编辑</el-button>
+            <el-button type="danger" plain round @click="handleDelete(detail)">删除</el-button>
+          </div>
         </div>
       </div>
     </el-drawer>
@@ -245,14 +289,21 @@
 </template>
 
 <script setup lang="ts" name="FrontTravel">
-import * as echarts from 'echarts'
 import { getToken } from '@/utils/auth'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemNotes from '@/components/ItemNotes/index.vue'
-import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
+import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
+import TagPills from '@/components/TagPills/index.vue'
+import TravelMap from '@/components/TravelMap/index.vue'
+import PhotoDeck from '@/components/PhotoDeck/index.vue'
+import PhotoAlbumDialog from '@/components/PhotoAlbumDialog/index.vue'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
+import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
-import { selectDictLabel } from '@/utils/sgj'
+import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import type { SgjItem } from '@/types/api/business/item'
 import type { TravelPoint, TravelTrajectory } from '@/types/api/front/travel'
 
@@ -269,6 +320,8 @@ const mode = ref<'card' | 'map'>('card')
 /** 访客默认只看已完成内容 */
 const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
+/** 标签筛选（选择即查询，仅卡片模式） */
+const searchTag = ref('')
 const list = ref<SgjItem[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -279,12 +332,10 @@ const pageSize = 10
 const total = ref(0)
 const hasMore = computed(() => list.value.length < total.value)
 
-const mapRef = ref<HTMLElement | null>(null)
 const mapLoading = ref(false)
 const mapError = ref('')
-const mapLimit = ref<number>(50)
 const trajectory = ref<TravelTrajectory | null>(null)
-let mapChart: any = null
+const albumOpen = ref(false)
 
 const addOpen = ref(false)
 const completeOpen = ref(false)
@@ -295,12 +346,6 @@ const currentItem = ref<SgjItem | null>(null)
 const detail = ref<SgjItem | null>(null)
 
 const pickerOpen = ref(false)
-const pickerLoading = ref(false)
-const pickerError = ref('')
-const pickerRef = ref<HTMLElement | null>(null)
-const pickerLat = ref<number | null>(null)
-const pickerLng = ref<number | null>(null)
-let pickerChart: any = null
 
 const addForm = reactive({
   title: undefined as string | undefined,
@@ -310,7 +355,8 @@ const addForm = reactive({
   latitude: undefined as number | undefined,
   longitude: undefined as number | undefined,
   bestSeason: undefined as string | undefined,
-  placeCategory: undefined as string | undefined
+  placeCategory: undefined as string | undefined,
+  tags: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -368,6 +414,7 @@ function loadData(): Promise<void> {
     itemType: 'PLACE',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -389,6 +436,7 @@ function loadMore(): void {
     itemType: 'PLACE',
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -402,7 +450,7 @@ function loadMore(): void {
 }
 
 async function handleModeChange(): Promise<void> {
-  if (mode.value === 'map') {
+  if (mode.value === 'map' && !trajectory.value) {
     await loadMapData()
   }
 }
@@ -413,192 +461,69 @@ async function loadMapData(): Promise<void> {
   try {
     const response = await getTravelTrajectory()
     trajectory.value = response.data || null
-    // 轨迹接口不含短评/评分，异步按 itemId 拉取详情缓存供 tooltip 使用（失败静默降级）
-    preloadPointDetails()
-    await nextTick()
-    const loaded = await loadChinaMap()
-    if (!loaded) {
-      mapError.value = '中国地图加载失败，请检查网络或稍后重试'
-      return
-    }
-    if (mapRef.value) {
-      initMapChart()
-    }
+  } catch {
+    mapError.value = '地图数据加载失败，请稍后重试'
   } finally {
     mapLoading.value = false
   }
 }
 
-/** ：轨迹点详情缓存（itemId -> SgjItem，供 tooltip 显示短评摘要与评分） */
-const pointDetailCache = ref<Map<number, SgjItem>>(new Map())
-
-function preloadPointDetails(): void {
-  const points = [...(trajectory.value?.visited || []), ...(trajectory.value?.wish || [])]
-  const ids = Array.from(new Set(points.map(p => p.itemId).filter((id): id is number => id != null)))
-  if (!ids.length) return
-  Promise.allSettled(ids.map(id => getFrontItem(id))).then(results => {
-    const cache = new Map(pointDetailCache.value)
-    results.forEach((r, i) => {
-      if (r.status === 'fulfilled' && r.value.data?.itemId != null) {
-        cache.set(r.value.data.itemId, r.value.data)
-      }
-    })
-    pointDetailCache.value = cache
-  })
-}
-
-async function loadChinaMap(): Promise<boolean> {
-  // 本地 public/map/china.json 优先
-  try {
-    const localRes = await fetch('/map/china.json')
-    if (localRes.ok) {
-      const geoJson = await localRes.json()
-      echarts.registerMap('china', geoJson)
-      return true
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  // CDN 兜底
-  try {
-    const res = await fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
-    if (!res.ok) return false
-    const geoJson = await res.json()
-    echarts.registerMap('china', geoJson)
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
-function initMapChart(): void {
-  if (!mapRef.value) return
+/** 横幅统计：去过城市数（去重）/ 照片总数 / 最近到访地点 */
+const bannerStats = computed(() => {
   const visited = trajectory.value?.visited || []
-  const wish = trajectory.value?.wish || []
-  const displayVisited = mapLimit.value ? visited.slice(-mapLimit.value) : visited
+  const total = [...visited, ...(trajectory.value?.wish || [])].reduce((s, p) => s + (p.photoCount || 0), 0)
+  const cities = new Set(visited.map(p => p.city || p.title || '').filter(Boolean))
+  // 轨迹接口已按到访时间升序排序，末位即最近
+  const latest = visited.length ? visited[visited.length - 1] : null
+  return { cities: cities.size, total, latest }
+})
 
-  mapChart?.dispose()
-  mapChart = echarts.init(mapRef.value)
+/** 旅行时间线数据（轨迹接口按到访时间升序） */
+const timelinePhotos = computed<TravelPoint[]>(() => trajectory.value?.visited || [])
 
-  const visitedData = displayVisited.map((p: TravelPoint) => ({
-    name: p.title,
-    value: [p.longitude, p.latitude, p.finishDate || '', p.itemId]
-  }))
-  const wishData = wish.map((p: TravelPoint) => ({
-    name: p.title,
-    value: [p.longitude, p.latitude, '', p.itemId]
-  }))
-  const lineCoords = displayVisited
-    .filter((p: TravelPoint) => p.longitude != null && p.latitude != null)
-    .map((p: TravelPoint) => [p.longitude, p.latitude])
+/** 详情相册照片数组（顺序即展示顺序） */
+const photosArr = computed<string[]>(() => (detail.value?.photos ? detail.value.photos.split(',').filter(Boolean) : []))
 
-  mapChart.setOption({
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        if (params.seriesType === 'lines') return '旅行轨迹'
-        const name = params.name || ''
-        const value = params.value || []
-        const date = value[2] || ''
-        // tooltip 增强——评分 + 短评摘要（截断 50 字）
-        const itemId = value[3]
-        const cached = itemId != null ? pointDetailCache.value.get(Number(itemId)) : undefined
-        const lines = [`<b>${name}</b>`]
-        if (date) lines.push(date)
-        if (cached?.rating != null) lines.push(`⭐ ${cached.rating}`)
-        if (cached?.comment) {
-          const summary = cached.comment.length > 50 ? cached.comment.slice(0, 50) + '…' : cached.comment
-          lines.push(summary)
-        }
-        return lines.join('<br/>')
-      }
-    },
-    geo: {
-      map: 'china',
-      roam: true,
-      zoom: 1.2,
-      scaleLimit: {
-        min: 1,
-        max: 10
-      },
-      label: { show: false },
-      itemStyle: {
-        areaColor: themeColor('--sgj-primary-soft'),
-        borderColor: themeColor('--sgj-primary')
-      },
-      emphasis: {
-        itemStyle: { areaColor: themeColor('--sgj-primary-soft') }
-      }
-    },
-    series: [
-      {
-        name: '去过',
-        type: 'effectScatter',
-        coordinateSystem: 'geo',
-        data: visitedData,
-        symbolSize: 10,
-        itemStyle: { color: themeColor('--sgj-moss') },
-        label: {
-          show: true,
-          position: 'right',
-          formatter: '{b}',
-          color: themeColor('--sgj-text'),
-          fontSize: 12
-        }
-      },
-      {
-        name: '想去',
-        type: 'scatter',
-        coordinateSystem: 'geo',
-        data: isLogin.value ? wishData : [],
-        symbolSize: 8,
-        itemStyle: { color: themeColor('--sgj-amber') },
-        label: {
-          show: true,
-          position: 'right',
-          formatter: '{b}',
-          color: themeColor('--sgj-text'),
-          fontSize: 12
-        }
-      },
-      {
-        name: '轨迹',
-        type: 'lines',
-        coordinateSystem: 'geo',
-        polyline: true,
-        data: lineCoords.length > 1 ? [{ coords: lineCoords }] : [],
-        lineStyle: {
-          color: themeColor('--sgj-primary'),
-          width: 2,
-          curveness: 0.2
-        },
-        effect: {
-          show: true,
-          period: 6,
-          trailLength: 0.2,
-          symbol: 'arrow',
-          symbolSize: 6,
-          color: themeColor('--sgj-primary')
-        }
-      }
-    ]
-  })
+/** 抽屉 hero 背景：首张照片 > 封面 > 列表首图，全缺时显示字形占位 */
+const heroFailed = ref(false)
+const heroImage = computed<string>(() => {
+  if (heroFailed.value) return ''
+  const d = detail.value
+  if (!d) return ''
+  if (photosArr.value.length) return photoUrl(photosArr.value[0])
+  if (d.coverUrl) return photoUrl(d.coverUrl)
+  if (d.photoCover) return photoUrl(d.photoCover)
+  return ''
+})
+watch(() => detail.value?.itemId, () => { heroFailed.value = false })
+function onHeroError(): void {
+  heroFailed.value = true
+}
 
-  mapChart.on('click', (params: any) => {
-    if (params.seriesType !== 'effectScatter' && params.seriesType !== 'scatter') return
-    const value = params.value || []
-    const itemId = value[3] ?? value[2]
-    if (!itemId) return
-    getFrontItem(itemId).then(response => {
-      detail.value = response.data || null
-      detailOpen.value = true
-    })
+/** 位置串：城市/省州/国家去空拼接 */
+const locText = computed(() => {
+  const d = detail.value
+  if (!d) return ''
+  return [d.city, d.province, d.country].filter(Boolean).join(' · ') || '未定位'
+})
+
+/** 相册上传/删除后整体保存；失败时回读详情恢复一致 */
+function onPhotosChange(next: string[]): void {
+  if (!detail.value?.itemId) return
+  const joined = next.join(',')
+  updateFrontItem(detail.value.itemId, { photos: joined }).then(() => {
+    if (detail.value) detail.value.photos = joined
+  }).catch(() => {
+    getFrontItem(detail.value!.itemId!).then(r => {
+      detail.value = r.data || null
+    }).catch(() => {})
   })
 }
 
-function handleResize(): void {
-  mapChart?.resize()
+/** 卡片封面：条目封面优先，缺失时回退首张照片 */
+function cardCover(item: SgjItem): string {
+  if (item.coverUrl) return photoUrl(item.coverUrl)
+  return item.photoCover ? photoUrl(item.photoCover) : ''
 }
 
 function openAdd(): void {
@@ -610,100 +535,34 @@ function openAdd(): void {
     latitude: undefined,
     longitude: undefined,
     bestSeason: undefined,
-    placeCategory: undefined
+    placeCategory: undefined,
+    tags: undefined
   })
   addOpen.value = true
 }
 
-async function openMapPicker(): Promise<void> {
+function openMapPicker(): void {
   pickerOpen.value = true
-  pickerLat.value = addForm.latitude ?? null
-  pickerLng.value = addForm.longitude ?? null
-  pickerLoading.value = true
-  pickerError.value = ''
-  try {
-    const loaded = await loadChinaMap()
-    if (!loaded) {
-      pickerError.value = '地图加载失败，请检查网络或稍后重试，也可以手动输入经纬度'
-      return
-    }
-    await nextTick()
-    initPickerChart()
-  } finally {
-    pickerLoading.value = false
-  }
 }
 
-function initPickerChart(): void {
-  if (!pickerRef.value) return
-  pickerChart?.dispose()
-  pickerChart = echarts.init(pickerRef.value)
-
-  const selectedData = pickerLat.value != null && pickerLng.value != null
-    ? [{ name: '已选', value: [pickerLng.value, pickerLat.value] }]
-    : []
-
-  pickerChart.setOption({
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        if (params.seriesType === 'scatter' && params.value) {
-          return `纬度：${params.value[1]}<br/>经度：${params.value[0]}`
-        }
-        return params.name || ''
-      }
-    },
-    geo: {
-      map: 'china',
-      roam: true,
-      zoom: 1.2,
-      scaleLimit: { min: 1, max: 10 },
-      label: { show: false },
-      itemStyle: {
-        areaColor: themeColor('--sgj-primary-soft'),
-        borderColor: themeColor('--sgj-primary')
-      },
-      emphasis: {
-        itemStyle: { areaColor: themeColor('--sgj-primary-soft') }
-      }
-    },
-    series: [
-      {
-        name: '选点',
-        type: 'scatter',
-        coordinateSystem: 'geo',
-        data: selectedData,
-        symbolSize: 12,
-        itemStyle: { color: themeColor('--sgj-primary') },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{b}',
-          color: themeColor('--sgj-primary'),
-          fontSize: 12
-        }
-      }
-    ]
-  })
-
-  pickerChart.on('click', (params: any) => {
-    if (params.componentType !== 'geo' && params.componentType !== 'series') return
-    if (params.componentType === 'series' && !params.value) return
-    const value = params.value
-    if (Array.isArray(value) && value.length >= 2) {
-      pickerLng.value = Number(value[0])
-      pickerLat.value = Number(value[1])
-      initPickerChart()
-    }
-  })
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult): void {
+  addForm.title = place.title
+  addForm.address = place.address
+  addForm.city = place.city
+  addForm.country = place.country
+  addForm.latitude = place.latitude
+  addForm.longitude = place.longitude
 }
 
-function confirmPick(): void {
-  if (pickerLat.value != null && pickerLng.value != null) {
-    addForm.latitude = pickerLat.value
-    addForm.longitude = pickerLng.value
-    pickerOpen.value = false
-  }
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
+function confirmPick(place: PickedPlace): void {
+  addForm.latitude = place.latitude
+  addForm.longitude = place.longitude
+  addForm.title = place.title || addForm.title
+  addForm.address = place.address || addForm.address
+  addForm.city = place.city || addForm.city
+  addForm.country = place.country || addForm.country
 }
 
 function submitAdd(): void {
@@ -762,6 +621,26 @@ function openDetail(item: SgjItem): void {
     detail.value = response.data || null
     detailOpen.value = true
   }).catch(() => {})
+}
+
+/** 照片张数（详情抽屉展示） */
+const photoCount = computed(() => {
+  const photos = detail.value?.photos
+  return photos ? photos.split(',').filter(Boolean).length : 0
+})
+
+/**
+ * 照片变更即保存：上传/删除/拖拽排序后 ImageUpload 都会抛出完整逗号串，
+ * 后端按 item 整体替换照片表（空串表示清空）；非本人条目由后端 canOperate 拦截
+ */
+function savePhotos(photos: string): void {
+  if (!detail.value?.itemId) return
+  updateFrontItem(detail.value.itemId, { photos }).catch(() => {
+    // 保存失败时回读详情，恢复展示与库一致（错误提示由拦截器统一弹出）
+    getFrontItem(detail.value!.itemId!).then(r => {
+      detail.value = r.data || null
+    }).catch(() => {})
+  })
 }
 
 /**
@@ -835,13 +714,9 @@ function handleDelete(item?: SgjItem): void {
 
 onMounted(() => {
   loadData()
+  // 横幅统计与时间线常驻需要轨迹数据；地图组件由模式切换时挂载
+  loadMapData()
   handleRouteQuery()
-  window.addEventListener('resize', handleResize)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize)
-  mapChart?.dispose()
 })
 </script>
 
@@ -932,14 +807,36 @@ onBeforeUnmount(() => {
     letter-spacing: 1px;
   }
 
+  .banner-stats {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-width: 240px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+
+    .stat-chip {
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: rgba(231, 236, 233, 0.1);
+      border: 1px solid rgba(231, 236, 233, 0.22);
+      font-size: 12.5px;
+      color: #d8e0db;
+
+      b {
+        color: #f0c9a8;
+        font-family: var(--sgj-font-serif);
+        font-size: 15px;
+        margin: 0 3px;
+      }
+    }
+  }
 }
 
 html.dark .page-banner {
   background: var(--sgj-bg-deep);
-}
-
-html.dark .detail-content .detail-icon {
-  color: var(--sgj-primary-light);
 }
 
 .filter-bar {
@@ -1035,6 +932,17 @@ html.dark .detail-content .detail-icon {
       color: var(--sgj-text-2);
       font-size: 11px;
     }
+
+    .photo-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: rgba(40, 46, 44, 0.78);
+      color: #f0ece2;
+      font-size: 11px;
+    }
   }
 
   .card-body {
@@ -1091,17 +999,10 @@ html.dark .detail-content .detail-icon {
 
 .map-mode {
   .map-container {
-    height: 560px;
-    background: var(--sgj-bg-card);
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(23, 27, 26, 0.06);
-    overflow: hidden;
+    min-height: 420px;
     position: relative;
-
-    .map-chart {
-      width: 100%;
-      height: 100%;
-    }
+    border-radius: 16px;
+    overflow: hidden;
 
     .map-error {
       position: absolute;
@@ -1110,47 +1011,101 @@ html.dark .detail-content .detail-icon {
       align-items: center;
       justify-content: center;
       color: var(--sgj-text-4);
+      z-index: 180;
+      background: var(--sgj-bg-card);
     }
   }
+}
 
-  .map-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+/* 旅行时间线：圆形照片珠按年份串在虚线上 */
+.timeline {
+  margin-top: 18px;
+
+  .tl-title {
+    font: 700 15px/1 var(--sgj-font-serif);
+    color: var(--sgj-text-2);
     margin-bottom: 12px;
 
-    .map-tip {
-      font-size: 13px;
-      color: var(--sgj-text-3);
+    .tl-sub {
+      font: 400 12px/1 var(--sgj-font);
+      color: var(--sgj-text-4);
+      margin-left: 8px;
     }
   }
 
-  .map-legend {
+  .tl-track {
+    position: relative;
     display: flex;
-    gap: 20px;
-    margin-top: 12px;
-    font-size: 13px;
-    color: var(--sgj-text-2);
+    gap: 26px;
+    overflow-x: auto;
+    padding: 6px 4px 14px;
 
-    .legend-dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
+    &::before {
+      content: '';
+      position: absolute;
+      left: 30px;
+      right: 30px;
+      top: 34px;
+      border-top: 2px dashed rgba(168, 95, 82, 0.35);
+    }
+  }
+
+  .tl-item {
+    position: relative;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 92px;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    .thumb {
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      margin-right: 4px;
-
-      &.visited {
-        background: var(--sgj-moss);
-      }
-
-      &.wish {
-        background: var(--sgj-amber);
-      }
+      border: 3px solid #fff;
+      box-shadow: 0 3px 10px rgba(23, 27, 26, 0.2);
+      object-fit: cover;
+      background: var(--sgj-bg-card);
+      transition: transform 0.18s ease;
     }
 
-    .legend-line {
-      color: var(--sgj-primary);
+    .thumb-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
     }
+
+    &:hover .thumb {
+      transform: translateY(-3px) scale(1.05);
+    }
+
+    .tl-name {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--sgj-text);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tl-date {
+      font-size: 11px;
+      color: var(--sgj-text-4);
+      font-family: var(--sgj-font-serif);
+    }
+  }
+
+  .tl-empty {
+    color: var(--sgj-text-4);
+    font-size: 13px;
+    padding: 12px 0;
   }
 }
 
@@ -1167,114 +1122,236 @@ html.dark .detail-content .detail-icon {
   color: var(--sgj-text-4);
 }
 
-.picker-container {
-  height: 420px;
-  background: var(--sgj-bg-card);
-  border-radius: 12px;
-  overflow: hidden;
+/* 详情抽屉（hero + 手账信息卡）；容器由全局 .place-drawer 规则去内边距 */
+.drawer-inner {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  text-align: left;
+}
+
+/* Hero：首图/封面铺底，标题叠底 */
+.d-hero {
   position: relative;
+  height: 216px;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--sgj-primary-soft), var(--sgj-cover));
 
-  .picker-chart {
-    width: 100%;
-    height: 100%;
-  }
-
-  .map-error {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--sgj-text-4);
+  &.is-empty .d-hero-glyph {
+    font-family: var(--sgj-font-serif);
+    font-size: 96px;
+    font-weight: 700;
+    color: var(--sgj-primary-dark);
+    opacity: 0.28;
   }
 }
 
-.picker-footer {
+.d-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.d-hero-glyph {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
+  justify-content: center;
+}
 
-  .picker-coord {
-    font-size: 13px;
-    color: var(--sgj-text-2);
+.d-hero-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(23, 27, 26, 0.08) 0%, rgba(23, 27, 26, 0) 35%, rgba(23, 27, 26, 0.66) 100%);
+}
+
+.d-status {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  backdrop-filter: blur(4px);
+
+  &.DONE {
+    background: rgba(93, 111, 102, 0.92);
+  }
+
+  &.WANT {
+    background: rgba(192, 138, 62, 0.92);
   }
 }
 
-.detail-content {
-  text-align: center;
+.d-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--sgj-bg-card);
+  color: var(--sgj-text);
+  font-size: 14px;
+  cursor: pointer;
 
-  /* 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag */
-  .detail-meta {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 12px 0 4px;
-
-    .detail-type-icon {
-      font-size: 20px;
-    }
+  &:hover {
+    background: #fff;
   }
+}
 
-  .detail-cover {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .detail-cover-img {
-      max-width: 100%;
-      max-height: 320px;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(23, 27, 26, 0.18);
-    }
-  }
-
-  .detail-icon {
-    /* 无封面/封面失效占位：衬线字浅色块，与列表卡片字形占位同语言 */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 132px;
-    height: 184px;
-    border-radius: 12px;
-    background: var(--sgj-primary-soft);
-    color: var(--sgj-primary-dark);
-    font-family: var(--sgj-font-serif);
-    font-size: 56px;
-    font-weight: 700;
-  }
+.d-hero-bottom {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 0 18px 14px;
 
   h2 {
+    margin: 0;
+    font: 700 24px/1.3 var(--sgj-font-serif);
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .d-meta-line {
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.94);
+  }
+}
+
+.d-body {
+  padding: 16px 18px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.d-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  .chip {
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--sgj-primary-soft);
+    color: var(--sgj-primary-dark);
+    font-size: 12px;
+  }
+
+  .chip-season {
+    background: var(--sgj-moss-soft);
+    color: var(--sgj-moss);
+  }
+}
+
+.d-addr {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sgj-text-2);
+  line-height: 1.7;
+
+  .ico {
+    flex: none;
+  }
+}
+
+/* 我的回忆：手账引言卡 */
+.d-memory {
+  padding: 13px 16px 15px;
+  background: var(--sgj-bg-card);
+  border-radius: 4px 16px 16px 16px;
+  border-left: 3px solid var(--sgj-primary);
+
+  .d-memory-label {
+    font-size: 10.5px;
+    letter-spacing: 2px;
+    color: var(--sgj-text-4);
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin: 0;
+    font-family: var(--sgj-font-serif);
+    font-size: 13.5px;
+    line-height: 1.8;
     color: var(--sgj-text);
-    margin: 8px 0;
   }
+}
 
-  .detail-desc {
-    margin-top: 16px;
-    text-align: left;
-  }
+.d-coords {
+  font-size: 11px;
+  color: var(--sgj-text-4);
+  letter-spacing: 0.5px;
+}
 
-  .detail-comment {
-    margin-top: 20px;
-    text-align: left;
+.d-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* 地点照片区：标题行与扇形相册入口 */
+.detail-photos {
+  text-align: left;
+
+  .detail-photos-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
 
     h3 {
       color: var(--sgj-text-2);
-      margin-bottom: 8px;
+      margin: 0;
     }
 
-    p {
-      color: var(--sgj-text);
-      line-height: 1.6;
+    .detail-photos-count {
+      font-size: 12px;
+      color: var(--sgj-text-4);
+    }
+
+    .detail-photos-add {
+      margin-left: auto;
+      font-size: 12px;
     }
   }
 
-  .detail-actions {
-    margin-top: 24px;
-    display: flex;
-    justify-content: center;
-    gap: 12px;
+  .album-empty {
+    margin-top: 4px;
+    padding: 26px 16px;
+    border: 1.5px dashed var(--sgj-border-card);
+    border-radius: 14px;
+    text-align: center;
+    color: var(--sgj-text-4);
+    font-size: 13px;
+    line-height: 1.8;
+
+    .big {
+      font-size: 26px;
+    }
   }
 }
 
@@ -1305,17 +1382,27 @@ html.dark .detail-content .detail-icon {
     }
   }
 
-  .map-toolbar {
-    flex-wrap: wrap;
-    gap: 8px;
+  /* 地图高度收敛由 TravelMap 组件内部处理 */
+  .timeline {
+    display: none;
   }
 
-  .map-container {
-    height: 420px;
+  .d-hero {
+    height: 180px;
   }
 
-  .detail-actions {
+  .d-actions {
     flex-wrap: wrap;
   }
 }
+</style>
+
+<style lang="scss">
+/* 详情抽屉容器（el-drawer 传送至 body，scoped 无法作用）：去内边距、限宽 */
+.place-drawer {
+  .el-drawer__body {
+    padding: 0;
+  }
+}
+
 </style>

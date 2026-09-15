@@ -15,14 +15,15 @@
           <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </el-form-item>
-      <!-- ：暴露 tags 搜索（后端 SgjItemMapper 已支持 tags 模糊查询） -->
+      <!-- 标签筛选：选项来自标签管理（按模块区分），FIND_IN_SET 精确匹配 -->
       <el-form-item label="标签" prop="tags">
-        <el-input
+        <tag-select
           v-model="queryParams.tags"
-          placeholder="标签关键字"
-          clearable
+          :module="itemType"
+          :multiple="false"
+          placeholder="选择标签"
           style="width: 200px"
-          @keyup.enter="handleQuery"
+          @update:model-value="handleQuery"
         />
       </el-form-item>
       <el-form-item>
@@ -40,6 +41,10 @@
       </el-col>
       <el-col :span="1.5">
         <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['sgj:item:remove']">删除</el-button>
+      </el-col>
+      <!-- 批量补全缺失封面（影视/书籍，地点无豆瓣数据源） -->
+      <el-col v-if="itemType !== 'PLACE'" :span="1.5">
+        <el-button type="info" plain icon="Picture" :loading="backfillLoading" @click="handleBackfill" v-hasPermi="['sgj:item:edit']">补全封面</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-dropdown v-hasPermi="['sgj:item:list']" @command="handleExport">
@@ -107,12 +112,15 @@
                 :placeholder="field.placeholder"
                 :maxlength="field.maxlength"
               />
-              <image-upload
-                v-else-if="field.type === 'image'"
-                v-model="form[field.key]"
-                :limit="1"
-                :file-type="['png', 'jpg', 'jpeg', 'gif', 'webp']"
-              />
+              <div v-else-if="field.type === 'image'" class="cover-field">
+                <image-upload
+                  v-model="form[field.key]"
+                  :limit="field.limit ?? 1"
+                  :file-type="['png', 'jpg', 'jpeg', 'gif', 'webp']"
+                />
+                <!-- 影视/书籍支持按标题自动匹配豆瓣封面；地点无数据源不展示 -->
+                <el-button v-if="field.autoMatch" plain size="small" icon="Picture" @click="coverMatchOpen = true">自动匹配封面</el-button>
+              </div>
               <el-select
                 v-else-if="field.type === 'select'"
                 v-model="form[field.key]"
@@ -124,6 +132,12 @@
               >
                 <el-option v-for="opt in field.dictType ? (dictMap[field.dictType] || []) : (field.options || [])" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
+              <tag-select
+                v-else-if="field.type === 'tags'"
+                v-model="form[field.key]"
+                :module="itemType"
+                placeholder="选择标签（可选）"
+              />
               <el-input-number
                 v-else-if="field.type === 'number'"
                 v-model="form[field.key]"
@@ -133,6 +147,18 @@
                 :step="field.step || 1"
                 style="width: 100%"
               />
+              <!-- 地点名称带搜索：选中候选自动回填地址/城市/国家与坐标 -->
+              <place-search-input
+                v-else-if="field.type === 'placeTitle'"
+                v-model="form[field.key]"
+                @select="onPlaceSelect"
+              />
+              <!-- 经纬度组合控件：手动输入或地图选点自动填入 -->
+              <div v-else-if="field.type === 'coord'" class="coord-row">
+                <el-input-number v-model="form.latitude" :min="-90" :max="90" :precision="6" :controls="false" placeholder="纬度" style="width: 130px" />
+                <el-input-number v-model="form.longitude" :min="-180" :max="180" :precision="6" :controls="false" placeholder="经度" style="width: 130px" />
+                <el-button type="primary" plain size="small" @click="coordPickerOpen = true">🗺 地图选点</el-button>
+              </div>
               <el-date-picker
                 v-else-if="field.type === 'date'"
                 v-model="form[field.key]"
@@ -159,14 +185,26 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 地图选点（地点表单经纬度自动填入） -->
+    <map-picker v-model="coordPickerOpen" :latitude="form.latitude" :longitude="form.longitude" @confirm="onCoordPick" />
+
+    <!-- 豆瓣封面自动匹配（影视/书籍） -->
+    <cover-match-dialog v-model="coverMatchOpen" :item-type="itemType" :title="form.title" @confirmed="onCoverMatched" />
   </div>
 </template>
 
 <script setup lang="ts" name="ItemManager">
 import { listItem, getItem, addItem, updateItem, delItem } from '@/api/business/item'
+import { backfillItemCovers } from '@/api/business/cover'
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import { useDict } from '@/utils/dict'
+import CoverMatchDialog from '@/components/CoverMatchDialog/index.vue'
 import ItemCover from '@/components/ItemCover/index.vue'
+import MapPicker from '@/components/MapPicker/index.vue'
+import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
+import type { PickedPlace, PlaceResult } from '@/utils/map'
 import type { SgjItem } from '@/types/api/business/item'
 import { parseTime } from '@/utils/sgj'
 
@@ -229,7 +267,7 @@ const statusOptions = computed(() => {
 interface FieldConfig {
   key: string
   label: string
-  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image'
+  type: 'input' | 'select' | 'number' | 'date' | 'textarea' | 'image' | 'tags' | 'coord' | 'placeTitle'
   placeholder?: string
   required?: boolean
   span?: number
@@ -243,6 +281,10 @@ interface FieldConfig {
   dictType?: string
   allowCreate?: boolean
   filterable?: boolean
+  /** 图片数量限制（仅 image 类型；0 表示不限制，默认 1） */
+  limit?: number
+  /** 是否展示豆瓣自动匹配入口（仅封面字段；地点无数据源） */
+  autoMatch?: boolean
 }
 
 const formFields = computed<FieldConfig[]>(() => {
@@ -250,8 +292,8 @@ const formFields = computed<FieldConfig[]>(() => {
     { key: 'title', label: titleLabel.value, type: 'input', placeholder: '请输入' + titleLabel.value, required: true, maxlength: 200 },
     { key: 'status', label: '状态', type: 'select', options: statusOptions.value, required: true },
     { key: 'rating', label: '评分', type: 'number', min: 0, max: 10, precision: 1, step: 0.5, placeholder: '0-10' },
-    { key: 'tags', label: '标签', type: 'input', placeholder: '多个用英文逗号分隔', maxlength: 500 },
-    { key: 'coverUrl', label: '封面/图片', type: 'image', span: 24 },
+    { key: 'tags', label: '标签', type: 'tags' },
+    { key: 'coverUrl', label: '封面/图片', type: 'image', span: 24, autoMatch: props.itemType !== 'PLACE' },
     { key: 'startDate', label: '开始日期', type: 'date', placeholder: '选择日期' },
     { key: 'finishDate', label: '完成日期', type: 'date', placeholder: '选择日期' },
     { key: 'comment', label: '短评', type: 'textarea', rows: 3, placeholder: '个人短评', span: 24 },
@@ -296,14 +338,17 @@ const formFields = computed<FieldConfig[]>(() => {
       { key: 'city', label: '城市', type: 'input', maxlength: 100 },
       { key: 'province', label: '省/州', type: 'input', maxlength: 100 },
       { key: 'country', label: '国家', type: 'input', maxlength: 100 },
-      { key: 'latitude', label: '纬度', type: 'number', min: -90, max: 90, precision: 6, step: 0.000001 },
-      { key: 'longitude', label: '经度', type: 'number', min: -180, max: 180, precision: 6, step: 0.000001 },
+      { key: 'coord', label: '经纬度', type: 'coord', span: 24 },
       { key: 'bestSeason', label: '最佳季节', type: 'select', dictType: 'sgj_best_season' },
-      { key: 'placeCategory', label: '地点分类', type: 'select', dictType: 'sgj_place_category', allowCreate: true, filterable: true }
+      { key: 'placeCategory', label: '地点分类', type: 'select', dictType: 'sgj_place_category', allowCreate: true, filterable: true },
+      { key: 'photos', label: '照片', type: 'image', span: 24, limit: 0 }
     ]
   }
 
-  return [...common, ...(typeFields[props.itemType] || [])]
+  // 地点表单的名称字段带搜索：选中候选自动回填地址/城市/国家与坐标
+  const fields = [...common, ...(typeFields[props.itemType] || [])]
+  if (props.itemType !== 'PLACE') return fields
+  return fields.map(f => (f.key === 'title' ? { ...f, type: 'placeTitle' as const } : f))
 })
 
 const rules = computed(() => {
@@ -332,6 +377,56 @@ const data = reactive({
 })
 
 const { form, queryParams } = toRefs(data)
+
+/** 地图选点弹窗 */
+const coordPickerOpen = ref(false)
+
+/** 封面自动匹配弹窗 */
+const coverMatchOpen = ref(false)
+
+/** 匹配成功回填：影视/电视剧同时落豆瓣编号 */
+function onCoverMatched(payload: { url: string; sourceId?: string }) {
+  form.value.coverUrl = payload.url
+  if (payload.sourceId && (props.itemType === 'MOVIE' || props.itemType === 'TV')) {
+    form.value.doubanId = payload.sourceId
+  }
+}
+
+/** 批量补全缺失封面 */
+const backfillLoading = ref(false)
+
+function handleBackfill() {
+  proxy.$modal.confirm('将按标题为无封面的' + props.pageTitle + '自动匹配豆瓣首个候选封面，是否继续？').then(() => {
+    backfillLoading.value = true
+    return backfillItemCovers({ itemType: props.itemType })
+  }).then((response: { data: { updated: number; skipped: number; failed: number } }) => {
+    const summary = response.data
+    proxy.$modal.msgSuccess('补全完成：成功 ' + summary.updated + ' 条，未匹配 ' + summary.skipped + ' 条，失败 ' + summary.failed + ' 条')
+    getList()
+  }).catch(() => {}).finally(() => {
+    backfillLoading.value = false
+  })
+}
+
+/** 名称搜索选中地点：直接回填名称/地址/城市/国家与坐标，无需地图选点 */
+function onPlaceSelect(place: PlaceResult) {
+  form.value.title = place.title
+  form.value.address = place.address
+  form.value.city = place.city
+  form.value.country = place.country
+  form.value.latitude = place.latitude
+  form.value.longitude = place.longitude
+}
+
+/** 地图选点确认后回填：以新选地点为准覆盖；逆地理失败缺字段时保留原值 */
+function onCoordPick(place: PickedPlace) {
+  form.value.latitude = place.latitude
+  form.value.longitude = place.longitude
+  form.value.title = place.title || form.value.title
+  form.value.address = place.address || form.value.address
+  form.value.city = place.city || form.value.city
+  form.value.country = place.country || form.value.country
+}
 
 /** 查询列表 */
 function getList() {
@@ -367,7 +462,8 @@ function reset() {
     startDate: undefined,
     finishDate: undefined,
     comment: undefined,
-    remark: undefined
+    remark: undefined,
+    photos: undefined
   }
   proxy.resetForm('formRef')
 }
@@ -519,3 +615,18 @@ function handleExport(command: string) {
 
 getList()
 </script>
+
+<style scoped lang="scss">
+.coord-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cover-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+</style>

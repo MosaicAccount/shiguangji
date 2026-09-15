@@ -45,8 +45,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="title != null and title != ''">
                 and title like concat('%', #{title}, '%')
             </if>
+            <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中；replace 兼容手输期的“逗号+空格”写法 -->
             <if test="tags != null and tags != ''">
-                and tags like concat('%', #{tags}, '%')
+                and find_in_set(#{tags}, replace(tags, ' ', ''))
             </if>
         </where>
         order by update_time desc, note_id desc

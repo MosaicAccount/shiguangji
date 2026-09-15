@@ -1,8 +1,8 @@
 <template>
   <el-image
     v-if="src"
-    :src="src"
-    :preview-src-list="[src]"
+    :src="displaySrc"
+    :preview-src-list="[displaySrc]"
     preview-teleported
     fit="cover"
     :style="boxStyle"
@@ -15,6 +15,8 @@
 </template>
 
 <script setup lang="ts">
+import { photoUrl } from '@/utils/sgj'
+
 /** 条目封面统一展示：有图显示图片，无图或加载失败时回退类型衬线字色块（影/剧/书/地，与前台占位一致） */
 const props = defineProps<{
   src?: string
@@ -25,6 +27,9 @@ const props = defineProps<{
 
 const glyphs: Record<string, string> = { MOVIE: '影', TV: '剧', BOOK: '书', PLACE: '地' }
 const glyph = computed(() => (props.itemType && glyphs[props.itemType]) || '拾')
+
+/** 站内相对路径（/profile/...）需补 API 前缀，外链原样 */
+const displaySrc = computed(() => photoUrl(props.src))
 
 const boxStyle = computed(() => ({
   width: (props.width ?? 48) + 'px',

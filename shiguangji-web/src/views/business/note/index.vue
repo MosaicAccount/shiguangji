@@ -20,6 +20,17 @@
         />
       </el-form-item>
       <!-- ：公开筛选（后端 SgjNoteMapper 已支持 isPublic 精确查询） -->
+      <!-- 标签筛选：选项来自标签管理（NOTE 模块），FIND_IN_SET 精确匹配 -->
+      <el-form-item label="标签" prop="tags">
+        <tag-select
+          v-model="queryParams.tags"
+          module="NOTE"
+          :multiple="false"
+          placeholder="选择标签"
+          style="width: 200px"
+          @update:model-value="handleQuery"
+        />
+      </el-form-item>
       <el-form-item label="公开" prop="isPublic">
         <el-select v-model="queryParams.isPublic" placeholder="公开状态" clearable style="width: 200px">
           <el-option label="公开" value="1" />
@@ -107,7 +118,7 @@
       @pagination="getList"
     />
 
-    <el-dialog :title="title" v-model="open" width="820px" append-to-body>
+    <el-dialog :title="title" v-model="open" width="1000px" append-to-body :close-on-click-modal="false">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-row>
           <el-col :span="12">
@@ -137,12 +148,13 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="标签" prop="tags">
-              <el-input v-model="form.tags" placeholder="多个用英文逗号分隔" maxlength="500" />
+              <!-- 标签来自后台标签管理（NOTE 模块），禁止自由输入 -->
+              <tag-select v-model="form.tags" module="NOTE" placeholder="选择标签（可选）" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
             <el-form-item label="内容" prop="content">
-              <markdown-editor v-model="form.content" :rows="14" />
+              <markdown-editor v-model="form.content" height="420px" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -164,6 +176,7 @@
 
 <script setup lang="ts" name="Note">
 import MarkdownEditor from '@/components/MarkdownEditor/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
 import { listNote, getNote, addNote, updateNote, delNote } from '@/api/business/note'
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import type { SgjNote } from '@/types/api/business/note'
@@ -252,6 +265,7 @@ function resetQuery() {
   proxy.resetForm('queryRef')
   queryParams.value.itemId = undefined
   queryParams.value.isPublic = undefined
+  queryParams.value.tags = undefined
   handleQuery()
 }
 

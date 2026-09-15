@@ -46,6 +46,9 @@
       </el-input>
     </div>
 
+    <!-- 标签筛选：豆瓣式标签行（模块跟随当前类型），点击选中、再点取消 -->
+    <tag-pills v-model="searchTag" :module="activeType" @update:model-value="loadData" />
+
     <div v-loading="loading" class="card-grid">
       <el-empty v-if="!loading && !list.length && !loadError" description="暂无数据" />
       <div v-if="loadError" class="load-error">
@@ -54,7 +57,7 @@
       </div>
       <div v-for="(item, idx) in list" :key="item.itemId" class="movie-card anim" :style="{ '--d': ((idx % 4) * 30) + 'ms' }" @click="openDetail(item)">
         <div class="card-cover" :style="coverStyle(idx)">
-          <img v-if="item.coverUrl && !isCoverError(item)" :src="item.coverUrl" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
+          <img v-if="item.coverUrl && !isCoverError(item)" :src="photoUrl(item.coverUrl)" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
           <template v-else>
             <span class="card-glyph">{{ coverGlyph }}</span>
           </template>
@@ -119,6 +122,10 @@
             <el-option v-for="g in sgj_movie_genre" :key="g.value" :label="g.label" :value="g.value" />
           </el-select>
         </el-form-item>
+        <el-form-item label="标签">
+          <!-- 标签来自后台标签管理，按条目类型区分，禁止自由输入 -->
+          <tag-select v-model="addForm.tags" :module="activeType" placeholder="选择标签（可选）" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -145,49 +152,30 @@
       </template>
     </el-dialog>
 
-    <!-- 详情抽屉 -->
-    <el-drawer v-model="detailOpen" :title="detail?.title || '详情'" size="420px">
-      <div v-if="detail" class="detail-content">
-        <div class="detail-cover">
-          <img v-if="detail.coverUrl && !isCoverError(detail)" :src="detail.coverUrl" class="detail-cover-img" :alt="detail.title" @error="onCoverError(detail)" />
-          <div v-else class="detail-icon">{{ coverGlyph }}</div>
-        </div>
-        <!-- 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag -->
-        <div class="detail-meta">
-          <span class="detail-type-icon">{{ activeType === 'MOVIE' ? '🎬' : '📺' }}</span>
-          <el-tag :type="detail.status === 'DONE' ? 'success' : 'warning'" size="small">
-            {{ detail.status === 'DONE' ? '看过' : '想看' }}
-          </el-tag>
-        </div>
-        <h2>{{ detail.title }}</h2>
-        <div v-if="detail.rating" class="detail-rating">⭐ {{ detail.rating }}</div>
-        <el-descriptions :column="1" border class="detail-desc">
-          <el-descriptions-item label="导演">{{ detail.director || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="主演">{{ detail.actors || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="类型">{{ selectDictLabel(sgj_movie_genre, detail.genre) || '-' }}</el-descriptions-item>
-          <template v-if="activeType === 'MOVIE'">
-            <el-descriptions-item label="上映年份">{{ detail.releaseYear || '-' }}</el-descriptions-item>
-          </template>
-          <template v-else>
-            <el-descriptions-item label="开播年份">{{ detail.startYear || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="完结年份">{{ detail.endYear || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="季数">{{ detail.seasonCount ? detail.seasonCount + ' 季' : '-' }}</el-descriptions-item>
-            <el-descriptions-item label="总集数">{{ detail.episodeCount ? detail.episodeCount + ' 集' : '-' }}</el-descriptions-item>
-          </template>
-          <el-descriptions-item label="地区">{{ selectDictLabel(sgj_region, detail.region) || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="语言">{{ selectDictLabel(sgj_language, detail.language) || '-' }}</el-descriptions-item>
-        </el-descriptions>
-        <div v-if="detail.comment" class="detail-comment">
-          <h3>我的短评</h3>
-          <p>{{ detail.comment }}</p>
-        </div>
-        <item-notes :item-id="detail.itemId" />
-        <div v-if="isLogin" class="detail-actions">
-          <el-button type="primary" round @click="openEditDetail">编辑</el-button>
-          <el-button type="danger" round @click="handleDelete(detail)">删除</el-button>
+    <!-- 详情抽屉：封面铺底 hero + 手账风信息卡（与足迹页同风格） -->
+    <media-detail-drawer
+      v-model="detailOpen"
+      :item="detail"
+      :glyph="activeType === 'MOVIE' ? '影' : '剧'"
+      done-label="看过"
+      want-label="想看"
+      :hero-meta="heroMeta"
+      memory-label="MY THOUGHTS · 我的短评"
+      :can-operate="isLogin"
+      @edit="openEditDetail"
+      @delete="handleDelete(detail!)"
+    >
+      <div v-if="chipList.length" class="md-chips">
+        <span v-for="chip in chipList" :key="chip" class="md-chip">{{ chip }}</span>
+      </div>
+      <div v-if="infoRows.length" class="md-rows">
+        <div v-for="row in infoRows" :key="row.label" class="md-row">
+          <span class="md-ico" aria-hidden="true">{{ row.ico }}</span>
+          <span class="md-label">{{ row.label }}</span>
+          <span>{{ row.value }}</span>
         </div>
       </div>
-    </el-drawer>
+    </media-detail-drawer>
 
     <!-- 编辑条目 -->
     <item-edit-dialog
@@ -200,10 +188,12 @@
 
 <script setup lang="ts" name="FrontMovie">
 import { getToken } from '@/utils/auth'
-import { selectDictLabel } from '@/utils/sgj'
+import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
-import ItemNotes from '@/components/ItemNotes/index.vue'
+import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
+import TagSelect from '@/components/TagSelect/index.vue'
+import TagPills from '@/components/TagPills/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, updateFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import type { SgjItem } from '@/types/api/business/item'
 
@@ -223,6 +213,8 @@ const activeType = ref<'MOVIE' | 'TV'>('MOVIE')
 /** 访客默认只看已完成内容 */
 const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
+/** 标签筛选（选择即查询；切换类型时由 switchType 清空并随列表刷新） */
+const searchTag = ref('')
 const list = ref<SgjItem[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -250,7 +242,8 @@ const addForm = reactive({
   endYear: undefined,
   seasonCount: undefined,
   episodeCount: undefined,
-  genre: undefined
+  genre: undefined,
+  tags: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -282,6 +275,7 @@ function loadData(): Promise<void> {
     itemType: activeType.value,
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -303,6 +297,7 @@ function loadMore(): void {
     itemType: activeType.value,
     status: activeStatus.value,
     title: searchTitle.value || undefined,
+    tags: searchTag.value || undefined,
     pageNum: pageNum.value,
     pageSize: pageSize
   }).then(response => {
@@ -316,8 +311,9 @@ function loadMore(): void {
 }
 
 function handleTypeChange(): void {
-  // 访客只浏览已完成内容，登录用户切换类型回到"想看"
+  // 访客只浏览已完成内容，登录用户切换类型回到"想看"；标签跟随模块切换需重选
   activeStatus.value = isLogin.value ? 'WANT' : 'DONE'
+  searchTag.value = ''
   loadData()
 }
 
@@ -337,6 +333,43 @@ function switchStatus(status: 'WANT' | 'DONE'): void {
 
 /** 封面占位衬线字 */
 const coverGlyph = computed(() => (activeType.value === 'MOVIE' ? '影' : '剧'))
+
+/** 详情抽屉 hero meta：评分之外追加年份信息 */
+const heroMeta = computed<string[]>(() => {
+  const d = detail.value
+  if (!d) return []
+  if (activeType.value === 'MOVIE') {
+    return d.releaseYear ? [`${d.releaseYear} 年上映`] : []
+  }
+  const span = [d.startYear, d.endYear].filter(Boolean).join('-')
+  return span ? [`${span} 年`] : []
+})
+
+/** 详情抽屉分类 chips：类型/地区/语言（script 内调用需手动解包字典 ref） */
+const chipList = computed<string[]>(() => {
+  const d = detail.value
+  if (!d) return []
+  return [selectDictLabel(sgj_movie_genre.value, d.genre), selectDictLabel(sgj_region.value, d.region), selectDictLabel(sgj_language.value, d.language)]
+    .filter((v): v is string => !!v)
+})
+
+/** 详情抽屉信息行：导演/主演与剧集信息 */
+const infoRows = computed<{ ico: string; label: string; value: string }[]>(() => {
+  const d = detail.value
+  if (!d) return []
+  const rows: { ico: string; label: string; value: string }[] = []
+  if (d.director) rows.push({ ico: '🎬', label: '导演', value: d.director })
+  if (d.actors) rows.push({ ico: '👥', label: '主演', value: d.actors })
+  if (activeType.value === 'MOVIE') {
+    if (d.releaseYear) rows.push({ ico: '📅', label: '上映年份', value: String(d.releaseYear) })
+  } else {
+    if (d.startYear) rows.push({ ico: '📅', label: '开播年份', value: String(d.startYear) })
+    if (d.endYear) rows.push({ ico: '🏁', label: '完结年份', value: String(d.endYear) })
+    if (d.seasonCount) rows.push({ ico: '📚', label: '季数', value: d.seasonCount + ' 季' })
+    if (d.episodeCount) rows.push({ ico: '🎞', label: '总集数', value: d.episodeCount + ' 集' })
+  }
+  return rows
+})
 
 /** 卡片封面占位色块：按索引轮换灰陶浅/鼠尾草浅/灰铜浅/中性 */
 function coverStyle(index: number): Record<string, string> {
@@ -365,7 +398,8 @@ function openAdd(): void {
     endYear: undefined,
     seasonCount: undefined,
     episodeCount: undefined,
-    genre: undefined
+    genre: undefined,
+    tags: undefined
   })
   addOpen.value = true
 }
@@ -590,10 +624,6 @@ html.dark .page-banner {
   background: var(--sgj-bg-deep);
 }
 
-html.dark .detail-content .detail-icon {
-  color: var(--sgj-primary-light);
-}
-
 /* ===== 筛选胶囊（radius 17） ===== */
 .filter-bar {
   display: flex;
@@ -768,89 +798,6 @@ html.dark .detail-content .detail-icon {
   }
 }
 
-.detail-content {
-  text-align: center;
-
-  /* 6.2 详情抽屉头部 meta 行：类型图标 + 状态 tag */
-  .detail-meta {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 12px 0 4px;
-
-    .detail-type-icon {
-      font-size: 20px;
-    }
-  }
-
-  .detail-cover {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .detail-cover-img {
-      max-width: 100%;
-      max-height: 320px;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(23, 27, 26, 0.18);
-    }
-  }
-
-  .detail-icon {
-    /* 无封面/封面失效占位：衬线字浅色块，与列表卡片字形占位同语言 */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 132px;
-    height: 184px;
-    border-radius: 12px;
-    background: var(--sgj-primary-soft);
-    color: var(--sgj-primary-dark);
-    font-family: var(--sgj-font-serif);
-    font-size: 56px;
-    font-weight: 700;
-  }
-
-  h2 {
-    color: var(--sgj-text);
-    margin: 8px 0;
-    font-family: var(--sgj-font-serif);
-  }
-
-  .detail-rating {
-    color: var(--sgj-amber);
-    font-size: 18px;
-    margin-bottom: 16px;
-  }
-
-  .detail-desc {
-    margin-top: 16px;
-    text-align: left;
-  }
-
-  .detail-comment {
-    margin-top: 20px;
-    text-align: left;
-
-    h3 {
-      color: var(--sgj-text-2);
-      margin-bottom: 8px;
-    }
-
-    p {
-      color: var(--sgj-text);
-      line-height: 1.6;
-    }
-  }
-
-  .detail-actions {
-    margin-top: 24px;
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-  }
-}
 
 /* 移动端最小适配：筛选换行、搜索框占满整行、卡片操作按钮可换行 */
 @media (max-width: 768px) {
@@ -877,10 +824,6 @@ html.dark .detail-content .detail-icon {
     .el-button + .el-button {
       margin-left: 0;
     }
-  }
-
-  .detail-actions {
-    flex-wrap: wrap;
   }
 }
 </style>

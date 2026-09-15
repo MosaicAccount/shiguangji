@@ -386,5 +386,10 @@ public class AppItemController extends BaseController
         {
             item.setPlaceCategory(request.getPlaceCategory());
         }
+        // 照片串（逗号分隔，空串表示清空），由 service 整体替换到 sgj_item_photo 表
+        if (request.getPhotos() != null)
+        {
+            item.setPhotos(request.getPhotos());
+        }
     }
 }

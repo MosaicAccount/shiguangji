@@ -73,6 +73,12 @@
             <artifactId>shiguangji-business</artifactId>
         </dependency>
 
+        <!-- 文件存储模块-->
+        <dependency>
+            <groupId>com.shiguangji</groupId>
+            <artifactId>shiguangji-file</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

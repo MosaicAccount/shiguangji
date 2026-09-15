@@ -30,6 +30,7 @@
         <jwt.version>0.9.1</jwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>3.0.2</springdoc.version>
+        <aws.sdk.version>2.54.13</aws.sdk.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -134,6 +135,15 @@
                 <version>${kaptcha.version}</version>
             </dependency>
 
+            <!-- AWS SDK v2（S3兼容存储，shiguangji-file 使用）-->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- 定时任务-->
             <dependency>
                 <groupId>com.shiguangji</groupId>
@@ -176,6 +186,13 @@
                 <version>${shiguangji.version}</version>
             </dependency>
 
+            <!-- 文件存储模块-->
+            <dependency>
+                <groupId>com.shiguangji</groupId>
+                <artifactId>shiguangji-file</artifactId>
+                <version>${shiguangji.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -187,6 +204,7 @@
         <module>shiguangji-generator</module>
         <module>shiguangji-common</module>
 		<module>shiguangji-business</module>
+        <module>shiguangji-file</module>
     </modules>
     <packaging>pom</packaging>
 
