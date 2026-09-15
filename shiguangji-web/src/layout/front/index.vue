@@ -295,6 +295,8 @@ const mobileTabs = [
 
   .front-footer {
     padding: 18px 14px;
+    /* 底部留出固定标签栏的高度，避免页脚（登录后台等）被遮挡 */
+    padding-bottom: 76px;
   }
 }
 
@@ -346,10 +348,6 @@ const mobileTabs = [
         }
       }
     }
-  }
-
-  .front-main {
-    padding-bottom: 76px;
   }
 }
 
