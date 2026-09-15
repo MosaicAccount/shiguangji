@@ -61,18 +61,18 @@ function emitValue(): void {
 
     .md-hint {
       font-size: 12px;
-      color: #909399;
+      color: var(--sgj-text-4);
     }
   }
 
   .md-preview {
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--sgj-border-card);
     border-radius: 4px;
     padding: 12px 14px;
     min-height: 120px;
     max-height: 480px;
     overflow-y: auto;
-    background: #fff;
+    background: var(--sgj-bg-card);
   }
 }
 </style>
