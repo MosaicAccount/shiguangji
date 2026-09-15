@@ -92,7 +92,7 @@ function emitValue(): void {
     .md-hint,
     .md-count {
       font-size: 12px;
-      color: #909399;
+      color: var(--sgj-text-4);
     }
   }
 
@@ -119,11 +119,11 @@ function emitValue(): void {
     }
 
     .md-preview {
-      border: 1px solid var(--sgj-border-card, #dcdfe6);
+      border: 1px solid var(--sgj-border-card);
       border-radius: 4px;
       padding: 5px 14px;
       overflow-y: auto;
-      background: var(--sgj-bg-card, #fff);
+      background: var(--sgj-bg-card);
       box-sizing: border-box;
     }
   }
