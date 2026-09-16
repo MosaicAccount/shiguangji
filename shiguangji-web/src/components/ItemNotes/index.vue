@@ -17,33 +17,20 @@
         </div>
       </li>
     </ul>
-
-    <!-- 笔记详情 -->
-    <el-dialog v-model="detailOpen" :title="noteDetail?.title || '笔记详情'" width="640px" append-to-body>
-      <div v-if="noteDetail" class="note-detail">
-        <div v-if="noteDetail.tags" class="note-detail-tags">🏷 {{ noteDetail.tags }}</div>
-        <div class="note-detail-body">
-          <markdown-viewer :content="noteDetail.content" />
-        </div>
-        <div class="note-detail-time">{{ formatTime(noteDetail.updateTime || noteDetail.createTime) }}</div>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" name="ItemNotes">
-import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
-import { listFrontNote, getFrontNote } from '@/api/front/note'
+import { listFrontNote } from '@/api/front/note'
 import type { SgjNote } from '@/types/api/business/note'
 
 const props = defineProps<{
   itemId?: number
 }>()
 
+const router = useRouter()
 const notes = ref<SgjNote[]>([])
 const loading = ref(false)
-const detailOpen = ref(false)
-const noteDetail = ref<SgjNote | null>(null)
 
 function loadNotes(): void {
   if (!props.itemId) {
@@ -60,12 +47,10 @@ function loadNotes(): void {
   })
 }
 
+/** 跳转独立笔记详情页（与笔记列表一致，不再弹窗展示） */
 function openNote(note: SgjNote): void {
   if (!note.noteId) return
-  getFrontNote(note.noteId).then(response => {
-    noteDetail.value = response.data || note
-    detailOpen.value = true
-  }).catch(() => {})
+  router.push({ path: '/note/detail', query: { noteId: String(note.noteId) } })
 }
 
 function formatTime(time?: string): string {
@@ -88,7 +73,6 @@ function noteSummary(content?: string): string {
 watch(
   () => props.itemId,
   () => {
-    detailOpen.value = false
     loadNotes()
   },
   { immediate: true }
@@ -174,29 +158,6 @@ watch(
         }
       }
     }
-  }
-}
-
-.note-detail {
-  .note-detail-tags {
-    font-size: 13px;
-    color: var(--sgj-amber);
-    margin-bottom: 8px;
-  }
-
-  .note-detail-body {
-    max-height: 480px;
-    overflow-y: auto;
-    background: var(--sgj-bg);
-    border-radius: 12px;
-    padding: 14px 16px;
-  }
-
-  .note-detail-time {
-    margin-top: 12px;
-    font-size: 12px;
-    color: var(--sgj-text-4);
-    text-align: right;
   }
 }
 </style>
