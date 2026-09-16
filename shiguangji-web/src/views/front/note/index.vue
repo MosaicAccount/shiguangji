@@ -30,7 +30,7 @@
     <tag-pills v-model="searchTag" module="NOTE" @update:model-value="loadData" />
 
     <div v-if="filterItemId" class="filter-tip">
-      <span>正在查看条目 #{{ filterItemId }} 的关联笔记</span>
+      <span>正在查看条目「{{ filterItemName || '#' + filterItemId }}」的关联笔记</span>
       <el-button link type="primary" size="small" @click="clearFilter">查看全部笔记</el-button>
     </div>
 
@@ -57,7 +57,7 @@
         </div>
         <div class="note-meta">
           <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
-          <span v-if="note.itemId" class="note-link">🔗 关联条目 #{{ note.itemId }}</span>
+          <span v-if="note.itemId" class="note-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
           <span v-else class="note-link">📝 独立笔记</span>
           <span v-if="note.tags" class="note-tags">{{ note.tags }}</span>
           <span class="note-time">{{ formatTime(note.updateTime || note.createTime) }}</span>
@@ -73,7 +73,7 @@
     <el-drawer v-model="detailOpen" :title="detail?.title || '笔记详情'" size="520px">
       <div v-if="detail" class="detail-content">
         <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
-        <div v-if="detail.itemId" class="detail-link">🔗 关联条目 #{{ detail.itemId }}</div>
+        <div v-if="detail.itemId" class="detail-link">🔗 关联条目：{{ detail.itemName || '#' + detail.itemId }}</div>
         <div v-else class="detail-link">📝 独立笔记</div>
         <!-- 公开状态仅登录态展示 -->
         <div v-if="isLogin" class="detail-public">
@@ -101,6 +101,7 @@ import { getToken } from '@/utils/auth'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, getFrontNote, delFrontNote } from '@/api/front/note'
+import { getFrontItem } from '@/api/front/item'
 import type { SgjNote } from '@/types/api/business/note'
 
 const { proxy } = getCurrentInstance() as { proxy: any }
@@ -124,6 +125,8 @@ const total = ref(0)
 const hasMore = computed(() => list.value.length < total.value)
 /** B-03：按关联条目过滤展示（从条目编辑弹窗"查看关联笔记"跳转而来） */
 const filterItemId = ref<number | undefined>(undefined)
+/** 过滤条目的名称（展示用，取不到时回退 #id） */
+const filterItemName = ref('')
 
 const detailOpen = ref(false)
 const detail = ref<SgjNote | null>(null)
@@ -172,7 +175,17 @@ function loadMore(): void {
 /** 清除条目过滤，恢复全部笔记 */
 function clearFilter(): void {
   filterItemId.value = undefined
+  filterItemName.value = ''
   loadData()
+}
+
+/** 按条目过滤时回查条目名称用于展示 */
+function fetchFilterItemName(itemId: number): void {
+  getFrontItem(itemId).then(response => {
+    filterItemName.value = response.data?.title || ''
+  }).catch(() => {
+    filterItemName.value = ''
+  })
 }
 
 function formatTime(time?: string): string {
@@ -215,6 +228,7 @@ function handleRouteQuery(): void {
   } else {
     // 查看语义：按条目过滤笔记列表
     filterItemId.value = itemId
+    fetchFilterItemName(itemId)
     loadData()
   }
   router.replace({ path: '/note', query: {} })

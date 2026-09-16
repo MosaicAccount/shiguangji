@@ -5,6 +5,8 @@ export interface SgjNote extends BaseEntity {
   noteId?: number
   /** 关联条目ID，空为独立笔记 */
   itemId?: number
+  /** 关联条目名称（后端联表带出，展示用） */
+  itemName?: string
   /** 笔记标题 */
   title?: string
   /** 笔记内容（Markdown） */

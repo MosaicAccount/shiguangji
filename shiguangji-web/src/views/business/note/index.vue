@@ -10,14 +10,8 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="关联ID" prop="itemId">
-        <el-input-number
-          v-model="queryParams.itemId"
-          placeholder="关联条目ID"
-          :min="1"
-          :controls="false"
-          style="width: 200px"
-        />
+      <el-form-item label="关联条目" prop="itemId">
+        <item-select v-model="queryParams.itemId" style="width: 220px" />
       </el-form-item>
       <!-- ：公开筛选（后端 SgjNoteMapper 已支持 isPublic 精确查询） -->
       <!-- 标签筛选：选项来自标签管理（NOTE 模块），FIND_IN_SET 精确匹配 -->
@@ -79,9 +73,9 @@
           <span class="note-summary">{{ noteSummary(scope.row.content) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="关联条目ID" align="center" prop="itemId" width="110">
+      <el-table-column label="关联条目" align="center" min-width="140" :show-overflow-tooltip="true">
         <template #default="scope">
-          <span>{{ scope.row.itemId ?? '独立笔记' }}</span>
+          <span>{{ scope.row.itemName || (scope.row.itemId != null ? '#' + scope.row.itemId : '独立笔记') }}</span>
         </template>
       </el-table-column>
       <el-table-column label="标签" align="center" prop="tags" :show-overflow-tooltip="true" min-width="140" />
@@ -127,14 +121,9 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="关联条目ID" prop="itemId">
-              <el-input-number
-                v-model="form.itemId"
-                placeholder="可选，留空为独立笔记"
-                :min="1"
-                :controls="false"
-                style="width: 100%"
-              />
+            <el-form-item label="关联条目" prop="itemId">
+              <!-- 按名称选择关联条目，可取消关联 -->
+              <item-select v-model="form.itemId" :key="form.noteId || 'new'" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -177,6 +166,7 @@
 <script setup lang="ts" name="Note">
 import MarkdownEditor from '@/components/MarkdownEditor/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
+import ItemSelect from '@/components/front/ItemSelect.vue'
 import { listNote, getNote, addNote, updateNote, delNote } from '@/api/business/note'
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import type { SgjNote } from '@/types/api/business/note'
@@ -343,7 +333,7 @@ const exportLoading = ref<boolean>(false)
 /** 笔记 CSV 导出列（JSON 导出为完整对象数组；CSV 取以下常用字段） */
 const noteExportColumns = [
   { label: '笔记ID', key: 'noteId' },
-  { label: '关联条目ID', key: 'itemId' },
+  { label: '关联条目', key: 'itemName' },
   { label: '标题', key: 'title' },
   { label: '标签', key: 'tags' },
   { label: '内容', key: 'content' },

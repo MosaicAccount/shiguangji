@@ -17,6 +17,9 @@ public class SgjNote extends BaseEntity
     /** 关联条目ID，空为独立笔记 */
     private Long itemId;
 
+    /** 关联条目名称（联表查询展示用，非表字段） */
+    private String itemName;
+
     /** 笔记标题 */
     private String title;
 
@@ -47,6 +50,16 @@ public class SgjNote extends BaseEntity
     public void setItemId(Long itemId)
     {
         this.itemId = itemId;
+    }
+
+    public String getItemName()
+    {
+        return itemName;
+    }
+
+    public void setItemName(String itemName)
+    {
+        this.itemName = itemName;
     }
 
     public String getTitle()
