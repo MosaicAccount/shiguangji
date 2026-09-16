@@ -29,6 +29,13 @@
     <!-- 右：登录表单 -->
     <main class="login-main">
       <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form">
+        <div class="mobile-brand" aria-hidden="true">
+          <div class="film-strip">
+            <span v-for="i in 10" :key="i" class="perf" />
+          </div>
+          <div class="mobile-logo">拾光记</div>
+          <div class="mobile-logo-en">S H I G U A N G J I · C O N S O L E</div>
+        </div>
         <div class="form-title">欢迎回来</div>
         <div class="form-sub">登录拾光记管理台</div>
         <div class="form-label">账号</div>
@@ -55,14 +62,14 @@
         <el-form-item prop="code" v-if="captchaEnabled">
           <el-input
             v-model="loginForm.code"
+            class="code-input"
             size="large"
             auto-complete="off"
             placeholder="验证码"
-            style="width: 63%"
             @keyup.enter="handleLogin"
           />
           <div class="login-code">
-            <img :src="codeUrl" @click="getCode" class="login-code-img" />
+            <img :src="codeUrl" @click="getCode" class="login-code-img" alt="验证码" />
           </div>
         </el-form-item>
         <div class="form-row">
@@ -84,7 +91,6 @@
             <span v-else>登 录 中...</span>
           </el-button>
         </el-form-item>
-        <div class="form-tip">「 拾光 · 冷雾胶片 」双主题设计规范 · v3.3</div>
       </el-form>
     </main>
   </div>
@@ -191,7 +197,7 @@ getCookie()
 <style lang='scss' scoped>
 .login {
   display: flex;
-  height: 100%;
+  min-height: 100%;
   background: var(--el-bg-color);
 }
 
@@ -326,6 +332,7 @@ html.dark .login-brand {
 /* ===== 右：表单 ===== */
 .login-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,6 +341,7 @@ html.dark .login-brand {
 
 .login-form {
   width: 400px;
+  max-width: 100%;
 
   .form-title {
     font-family: var(--sgj-font-serif);
@@ -359,14 +367,34 @@ html.dark .login-brand {
     margin-bottom: 22px;
   }
 
-  .el-input__wrapper {
+  /* el-input 内部结构需要 :deep 才能命中，否则只有 EP 默认样式生效 */
+  :deep(.el-input__wrapper) {
     border-radius: 10px;
     padding: 6px 14px;
   }
 
-  .el-input__inner {
+  :deep(.el-input__inner) {
     height: 36px;
     font-size: 14px;
+  }
+
+  .code-input {
+    flex: 1;
+  }
+
+  .login-code {
+    flex-shrink: 0;
+    margin-left: 12px;
+
+    .login-code-img {
+      display: block;
+      width: 110px;
+      height: 48px;
+      border: 1px solid var(--el-border-color);
+      border-radius: 10px;
+      object-fit: cover;
+      cursor: pointer;
+    }
   }
 
   .form-row {
@@ -406,35 +434,146 @@ html.dark .login-brand {
     font-weight: 500;
     letter-spacing: 2px;
   }
-
-  .form-tip {
-    text-align: center;
-    font-size: 12px;
-    letter-spacing: 1px;
-    color: var(--el-text-color-placeholder);
-  }
 }
 
-.login-code {
-  width: 33%;
-  height: 48px;
-  float: right;
-
-  img {
-    cursor: pointer;
-    vertical-align: middle;
-  }
+/* 移动端品牌头：仅单栏布局显示，桌面由左侧品牌面板承担 */
+.mobile-brand {
+  display: none;
 }
 
-.login-code-img {
-  height: 48px;
-  padding-left: 12px;
-}
-
-/* 窄屏：品牌面板让位，单列表单 */
-@media (max-width: 900px) {
+/* 单栏（≤1240px）时品牌面板隐藏，整页沿用它的冷炭灰胶片视觉 */
+@media (max-width: 1240px) {
   .login-brand {
     display: none;
+  }
+
+  .login {
+    background: #282e2c;
+  }
+
+  .login-main {
+    position: relative;
+    overflow: hidden;
+    padding: 48px 32px;
+
+    /* 与品牌面板同款的装饰圆 */
+    &::before {
+      content: '';
+      position: absolute;
+      right: -80px;
+      top: -60px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(168, 95, 82, 0.22);
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: -90px;
+      bottom: -80px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: rgba(93, 111, 102, 0.25);
+    }
+
+    .login-form {
+      position: relative;
+      z-index: 1;
+    }
+  }
+
+  .mobile-brand {
+    display: block;
+    margin-bottom: 32px;
+
+    .film-strip {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+
+      .perf {
+        width: 22px;
+        height: 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+    }
+
+    .mobile-logo {
+      font-family: var(--sgj-font-serif);
+      font-weight: 700;
+      font-size: 30px;
+      line-height: 1.3;
+      color: #e7ece9;
+    }
+
+    .mobile-logo-en {
+      margin-top: 6px;
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: #aeb8b3;
+    }
+  }
+
+  /* 画布常暗，表单文字固定奶油色系，不随日夜主题翻转 */
+  .login-form {
+    .form-title {
+      color: #e7ece9;
+    }
+
+    .form-sub {
+      color: #aeb8b3;
+    }
+
+    .form-label {
+      color: #c7d0cb;
+    }
+
+    :deep(.el-input__wrapper) {
+      background-color: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+    }
+
+    :deep(.el-input__wrapper.is-focus) {
+      box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+    }
+
+    :deep(.el-input__inner) {
+      color: #e7ece9;
+      caret-color: #e7ece9;
+    }
+
+    :deep(.el-input__inner::placeholder) {
+      color: rgba(231, 236, 233, 0.38);
+    }
+
+    :deep(.el-checkbox__label) {
+      color: #aeb8b3;
+    }
+
+    :deep(.el-checkbox__inner) {
+      background-color: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .login-main {
+    padding: 40px 24px;
+  }
+
+  .login-form {
+    .form-title {
+      font-size: 26px;
+    }
+
+    .form-sub {
+      margin: 8px 0 28px;
+    }
   }
 }
 </style>
