@@ -15,10 +15,11 @@ NProgress.configure({ showSpinner: false })
 /**
  * 免登录白名单：
  * - /login /register：认证页
- * - 前台公开路由（/home /movie /book /travel /note）：博客式公开只读，访客可直接浏览
+ * - 前台公开路由（/home /movie /book /travel /note /note/detail）：博客式公开只读，访客可直接浏览
+ *   （/note/edit 需登录写笔记，不在白名单）
  *   后台管理路由（/index /admin /system 等）不在此列，未登录访问将跳转登录页
  */
-const whiteList = ['/login', '/register', '/home', '/movie', '/book', '/travel', '/note']
+const whiteList = ['/login', '/register', '/home', '/movie', '/book', '/travel', '/note', '/note/detail']
 
 const isWhiteList = (path: string): boolean => {
   return whiteList.some((pattern: string) => isPathMatch(pattern, path))

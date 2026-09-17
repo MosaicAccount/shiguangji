@@ -127,6 +127,12 @@ export const constantRoutes = [
         component: () => import('@/views/front/note/edit.vue'),
         name: 'FrontNoteEdit',
         meta: { title: '写笔记', noCache: true }
+      },
+      {
+        path: 'detail',
+        component: () => import('@/views/front/note/detail.vue'),
+        name: 'FrontNoteDetail',
+        meta: { title: '笔记详情', noCache: true }
       }
     ]
   },

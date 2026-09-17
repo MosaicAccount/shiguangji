@@ -248,10 +248,10 @@ function openItemDetail(item: SgjItem): void {
   router.push({ path, query: { itemId: String(item.itemId) } })
 }
 
-/**  最近笔记点击 → 跳转笔记页并携带 ?noteId= 自动打开详情抽屉 */
+/**  最近笔记点击 → 跳转独立笔记详情页 */
 function openNoteDetail(note: SgjNote): void {
   if (!note.noteId) return
-  router.push({ path: '/note', query: { noteId: String(note.noteId) } })
+  router.push({ path: '/note/detail', query: { noteId: String(note.noteId) } })
 }
 
 /**  旅行足迹地图入口卡：直达 /travel?mode=map */

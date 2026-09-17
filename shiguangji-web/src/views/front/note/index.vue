@@ -47,13 +47,19 @@
             <!-- 公开标识仅登录态展示 -->
             <el-tag v-if="isLogin && note.isPublic === '1'" size="small" type="success" class="public-tag">公开</el-tag>
           </div>
-          <div class="note-actions" @click.stop>
-            <el-button v-if="isLogin" link type="primary" size="small" @click="openEdit(note)">编辑</el-button>
-            <el-button v-if="isLogin" link type="danger" size="small" @click="handleDelete(note)">删除</el-button>
-          </div>
+          <!-- 删除角标与标题首行对齐；编辑入口统一在详情页 -->
+          <el-button
+            v-if="isLogin"
+            class="note-delete"
+            circle
+            size="small"
+            :icon="Delete"
+            title="删除"
+            @click.stop="handleDelete(note)"
+          />
         </div>
         <div v-if="note.content" class="note-preview">
-          <markdown-viewer :content="note.content" />
+          <markdown-viewer :content="previewContent(note)" />
         </div>
         <div class="note-meta">
           <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
@@ -68,39 +74,15 @@
     <div v-if="hasMore" class="load-more-wrap">
       <el-button :loading="loadingMore" round @click="loadMore">加载更多</el-button>
     </div>
-
-    <!-- 详情抽屉 -->
-    <el-drawer v-model="detailOpen" :title="detail?.title || '笔记详情'" size="520px">
-      <div v-if="detail" class="detail-content">
-        <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
-        <div v-if="detail.itemId" class="detail-link">🔗 关联条目：{{ detail.itemName || '#' + detail.itemId }}</div>
-        <div v-else class="detail-link">📝 独立笔记</div>
-        <!-- 公开状态仅登录态展示 -->
-        <div v-if="isLogin" class="detail-public">
-          <el-tag :type="detail.isPublic === '1' ? 'success' : 'info'" size="small">
-            {{ detail.isPublic === '1' ? '公开' : '私密' }}
-          </el-tag>
-        </div>
-        <div v-if="detail.tags" class="detail-tags">🏷 {{ detail.tags }}</div>
-        <div class="detail-body">
-          <markdown-viewer :content="detail.content" />
-        </div>
-        <!--  ①：详情抽屉补编辑/删除（登录态），与列表操作对齐 -->
-        <div v-if="isLogin" class="detail-actions">
-          <el-button type="primary" round size="small" @click="openEdit(detail)">编辑</el-button>
-          <el-button type="danger" round size="small" @click="handleDelete(detail)">删除</el-button>
-        </div>
-        <div class="detail-time">{{ formatTime(detail.updateTime || detail.createTime) }}</div>
-      </div>
-    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts" name="FrontNote">
 import { getToken } from '@/utils/auth'
+import { Delete } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
-import { listFrontNote, getFrontNote, delFrontNote } from '@/api/front/note'
+import { listFrontNote, delFrontNote } from '@/api/front/note'
 import { getFrontItem } from '@/api/front/item'
 import type { SgjNote } from '@/types/api/business/note'
 
@@ -127,9 +109,6 @@ const hasMore = computed(() => list.value.length < total.value)
 const filterItemId = ref<number | undefined>(undefined)
 /** 过滤条目的名称（展示用，取不到时回退 #id） */
 const filterItemName = ref('')
-
-const detailOpen = ref(false)
-const detail = ref<SgjNote | null>(null)
 
 function loadData(): void {
   loading.value = true
@@ -193,6 +172,14 @@ function formatTime(time?: string): string {
   return time.replace('T', ' ').slice(0, 16)
 }
 
+/** 预览正文：与标题相同的首个一级标题去重，避免卡片标题与预览重复 */
+function previewContent(note: SgjNote): string {
+  const content = note.content || ''
+  if (!note.title) return content
+  const escaped = note.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return content.replace(new RegExp(`^\\s*#\\s*${escaped}\\s*\\r?\\n`), '')
+}
+
 /** 跳转独立编辑页（新增/编辑共用，验收：单独的 markdown 编辑页面） */
 function openAdd(): void {
   router.push('/note/edit')
@@ -200,19 +187,13 @@ function openAdd(): void {
  * B-03/：处理路由参数
  * - /note?itemId=x&write=1：条目页"去写笔记"跳转，转独立编辑页并预填关联条目
  * - /note?itemId=x：条目编辑弹窗"查看关联笔记"跳转，列表按该条目过滤展示
- * - /note?noteId=x：首页最近笔记跳转，自动打开对应笔记详情抽屉
+ * - /note?noteId=x：旧版详情链接（首页最近笔记曾用），重定向到独立详情页
  */
 function handleRouteQuery(): void {
   const rawNoteId = route.query.noteId
   if (rawNoteId) {
     const noteId = Number(rawNoteId)
-    if (noteId) {
-      getFrontNote(noteId).then(response => {
-        detail.value = response.data || null
-        detailOpen.value = true
-      }).catch(() => {})
-    }
-    router.replace({ path: '/note', query: {} })
+    router.replace(noteId ? { path: '/note/detail', query: { noteId: String(noteId) } } : { path: '/note', query: {} })
     return
   }
   const raw = route.query.itemId
@@ -239,17 +220,10 @@ watch(
   () => handleRouteQuery()
 )
 
-function openEdit(note: SgjNote): void {
-  if (!note.noteId) return
-  router.push({ path: '/note/edit', query: { noteId: String(note.noteId) } })
-}
-
+/** 跳转独立详情页（验收：笔记内容单独页面展示，不再用抽屉） */
 function openDetail(note: SgjNote): void {
   if (!note.noteId) return
-  getFrontNote(note.noteId).then(response => {
-    detail.value = response.data || null
-    detailOpen.value = true
-  }).catch(() => {})
+  router.push({ path: '/note/detail', query: { noteId: String(note.noteId) } })
 }
 
 function handleDelete(note: SgjNote): void {
@@ -405,19 +379,37 @@ html.dark .page-banner {
 
   .note-header {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    gap: 8px;
+    gap: 10px;
 
     .note-title {
+      flex: 1;
+      min-width: 0;
       font-family: var(--sgj-font-serif);
       font-weight: 500;
       font-size: 16px;
+      line-height: 24px;
       color: var(--sgj-text);
+      word-break: break-word;
 
       .public-tag {
         margin-left: 8px;
         font-weight: 400;
+      }
+    }
+
+    /* 删除角标：与标题首行垂直居中对齐，不随长标题换行 */
+    .note-delete {
+      flex-shrink: 0;
+      margin-top: 0;
+      border-color: var(--sgj-border-card);
+      background: var(--sgj-bg);
+      color: var(--sgj-text-3);
+
+      &:hover {
+        border-color: var(--sgj-danger);
+        background: var(--sgj-bg-card);
+        color: var(--sgj-danger);
       }
     }
   }
@@ -457,45 +449,6 @@ html.dark .page-banner {
   }
 }
 
-.detail-content {
-  .detail-public {
-    margin-bottom: 8px;
-  }
-
-  .detail-link,
-  .detail-tags {
-    font-size: 13px;
-    color: var(--sgj-primary-light);
-    margin-bottom: 8px;
-  }
-
-  .detail-body {
-    background: var(--sgj-bg);
-    border-radius: var(--sgj-radius-md);
-    padding: 16px;
-    line-height: 1.7;
-    font-size: var(--sgj-font-base);
-    color: var(--sgj-text);
-    max-height: 560px;
-    overflow-y: auto;
-  }
-
-  /*  ①：抽屉内操作区 */
-  .detail-actions {
-    margin-top: 16px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-
-  .detail-time {
-    margin-top: 16px;
-    font-size: var(--sgj-font-xs);
-    color: var(--sgj-text-4);
-    text-align: right;
-  }
-}
-
 /* 移动端最小适配：搜索框占满整行、过滤提示与卡片标题行可换行 */
 @media (max-width: 768px) {
   .toolbar {
@@ -507,11 +460,6 @@ html.dark .page-banner {
   }
 
   .filter-tip {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .note-header {
     flex-wrap: wrap;
     gap: 6px;
   }
