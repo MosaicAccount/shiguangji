@@ -31,8 +31,29 @@
               </div>
             </header>
 
-            <!-- 正文：文章排版，行宽与行距为长文阅读优化 -->
+            <!-- 正文：文章排版，行宽与行距为长文阅读优化；顶部内嵌可折叠目录（移动端主要导航，桌面端隐藏走侧栏） -->
             <div ref="bodyRef" class="article-body">
+              <div v-if="headings.length" class="outline-inline">
+                <button class="outline-toggle" @click="outlineOpen = !outlineOpen">
+                  <el-icon><List /></el-icon>
+                  <span class="toggle-title">目录</span>
+                  <span class="toggle-count">{{ headings.length }} 个标题</span>
+                  <span v-if="!outlineOpen && activeItem" class="toggle-current">{{ activeItem.text }}</span>
+                  <el-icon class="toggle-arrow" :class="{ 'is-open': outlineOpen }"><ArrowDown /></el-icon>
+                </button>
+                <ul v-show="outlineOpen" class="outline-list inline-list">
+                  <li v-for="item in headings" :key="item.id">
+                    <a
+                      :class="['outline-item', { 'is-active': activeId === item.id, 'is-sub': item.level > 2 }]"
+                      :href="`#${item.id}`"
+                      @click.prevent="jumpTo(item)"
+                    >
+                      <span v-if="item.no" class="item-index">{{ String(item.no).padStart(2, '0') }}</span>
+                      <span class="item-text">{{ item.text }}</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
               <markdown-viewer :content="bodyContent" />
               <div class="article-end" aria-hidden="true">· 完 ·</div>
             </div>
@@ -60,35 +81,37 @@
       </aside>
     </div>
 
-    <!-- 移动端大纲：胶囊按钮 + 底部弹层 -->
-    <button v-if="headings.length" class="outline-fab" @click="outlineOpen = true">
-      <el-icon><List /></el-icon>
-      <span>大纲</span>
-    </button>
-    <el-drawer v-model="outlineOpen" direction="btt" size="62%" :with-header="false" append-to-body class="outline-sheet">
-      <div class="sheet-grabber" aria-hidden="true"></div>
-      <div class="sheet-header">
-        <span class="sheet-title">大纲</span>
-        <span class="sheet-count">{{ headings.length }} 个标题</span>
+    <!-- 移动端浮动目录：内嵌目录滚出视野后出现，点开紧凑面板跳转（桌面端隐藏走侧栏） -->
+    <template v-if="headings.length">
+      <div v-show="panelOpen" class="panel-mask" @click="panelOpen = false"></div>
+      <button v-show="!tocVisible" :class="['outline-fab', { 'is-open': panelOpen }]" @click="panelOpen = !panelOpen">
+        <el-icon><List /></el-icon>
+        <span>{{ panelOpen ? '收起' : '目录' }}</span>
+      </button>
+      <div v-show="panelOpen" class="outline-panel">
+        <div class="panel-header">
+          <span class="panel-title">目录</span>
+          <span class="panel-count">{{ headings.length }} 个标题</span>
+        </div>
+        <ul class="outline-list panel-list">
+          <li v-for="item in headings" :key="item.id">
+            <a
+              :class="['outline-item', { 'is-active': activeId === item.id, 'is-sub': item.level > 2 }]"
+              :href="`#${item.id}`"
+              @click.prevent="jumpTo(item)"
+            >
+              <span v-if="item.no" class="item-index">{{ String(item.no).padStart(2, '0') }}</span>
+              <span class="item-text">{{ item.text }}</span>
+            </a>
+          </li>
+        </ul>
       </div>
-      <ul class="outline-list sheet-list">
-        <li v-for="item in headings" :key="item.id">
-          <a
-            :class="['outline-item', { 'is-active': activeId === item.id, 'is-sub': item.level > 2 }]"
-            :href="`#${item.id}`"
-            @click.prevent="jumpTo(item)"
-          >
-            <span v-if="item.no" class="item-index">{{ String(item.no).padStart(2, '0') }}</span>
-            <span class="item-text">{{ item.text }}</span>
-          </a>
-        </li>
-      </ul>
-    </el-drawer>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts" name="FrontNoteDetail">
-import { ArrowLeft, Delete, EditPen, List } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowLeft, Delete, EditPen, List } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import { getFrontNote, delFrontNote } from '@/api/front/note'
 import type { SgjNote } from '@/types/api/business/note'
@@ -127,9 +150,15 @@ interface OutlineItem {
 }
 const bodyRef = ref<HTMLElement | null>(null)
 const headings = ref<OutlineItem[]>([])
+/** 内嵌目录展开状态（移动端；桌面端走侧栏不受影响） */
 const outlineOpen = ref(false)
+/** 浮动目录面板：内嵌目录滚出视野后可用 */
+const panelOpen = ref(false)
+/** 内嵌目录是否在视口内（滚出后显示浮动入口） */
+const tocVisible = ref(true)
 /** 当前滚动所在章节（大纲高亮） */
 const activeId = ref('')
+const activeItem = computed(() => headings.value.find(item => item.id === activeId.value) || null)
 
 watch(note, () => {
   nextTick(() => {
@@ -149,18 +178,26 @@ watch(note, () => {
   })
 })
 
-/** 点击大纲：滚动到对应标题（顶部让出 72px 吸顶导航 + 余量），并立即高亮 */
+/** 点击目录：滚动到对应标题（顶部让出 72px 吸顶导航 + 余量），并立即高亮 */
 const OUTLINE_TOP_OFFSET = 90
 function jumpTo(item: OutlineItem): void {
   const el = document.getElementById(item.id)
   if (!el) return
-  const top = el.getBoundingClientRect().top + window.scrollY - OUTLINE_TOP_OFFSET
-  window.scrollTo({ top, behavior: 'smooth' })
+  const max = Math.max(document.documentElement.scrollHeight - window.innerHeight, 0)
+  const target = Math.min(el.getBoundingClientRect().top + window.scrollY - OUTLINE_TOP_OFFSET, max)
+  const startY = window.scrollY
+  window.scrollTo({ top: target, behavior: 'smooth' })
+  // 兜底：部分内嵌 webview 帧调度暂停导致 smooth 动画不推进，150ms 未起步则瞬时跳转
+  window.setTimeout(() => {
+    if (Math.abs(window.scrollY - startY) < 1 && Math.abs(target - startY) >= 1) {
+      window.scrollTo(0, target)
+    }
+  }, 150)
   activeId.value = item.id
-  outlineOpen.value = false
+  panelOpen.value = false
 }
 
-/** 滚动高亮：取视口上部（导航下方）最后越线的标题；触底时高亮最后一项 */
+/** 滚动高亮：取视口上部（导航下方）最后越线的标题；触底时高亮最后一项；同时跟踪内嵌目录可见性 */
 function updateActive(): void {
   if (!headings.value.length) return
   let current = ''
@@ -171,6 +208,9 @@ function updateActive(): void {
   const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
   if (atBottom) current = headings.value[headings.value.length - 1].id
   activeId.value = current
+  const tocEl = bodyRef.value?.querySelector('.outline-inline')
+  const rect = tocEl?.getBoundingClientRect()
+  tocVisible.value = !rect || (rect.bottom > 0 && rect.top < window.innerHeight)
 }
 
 onMounted(() => window.addEventListener('scroll', updateActive, { passive: true }))
@@ -489,56 +529,85 @@ html.dark .article-hero {
   }
 }
 
-/* 移动端大纲弹层 */
-.sheet-grabber {
-  width: 36px;
-  height: 4px;
-  border-radius: var(--sgj-radius-pill);
-  background: var(--sgj-border);
-  margin: 10px auto 2px;
+/* 内嵌目录（移动端）：正文开头的可折叠块，全宽无遮挡；桌面端隐藏走侧栏 */
+.outline-inline {
+  margin-bottom: 24px;
+  background: var(--sgj-bg);
+  border: 1px solid var(--sgj-border-card);
+  border-radius: var(--sgj-radius-lg);
+  overflow: hidden;
 }
 
-.sheet-header {
+.outline-toggle {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  padding: 8px 20px 12px;
-  border-bottom: 1px solid var(--sgj-border-card);
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  color: var(--sgj-text);
+  font-size: 14px;
+  cursor: pointer;
 
-  .sheet-title {
-    font-family: var(--sgj-font-serif);
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--sgj-text);
+  .toggle-title {
+    font-weight: 600;
   }
 
-  .sheet-count {
+  .toggle-count {
     font-size: 12px;
     color: var(--sgj-text-4);
   }
+
+  .toggle-current {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    font-size: 12px;
+    color: var(--sgj-primary);
+  }
+
+  .toggle-arrow {
+    flex-shrink: 0;
+    color: var(--sgj-text-3);
+    transition: transform 0.2s;
+
+    &.is-open {
+      transform: rotate(180deg);
+    }
+  }
 }
 
-.sheet-list {
-  max-height: 52vh;
+.inline-list {
+  max-height: 46vh;
   overflow: auto;
-  padding: 10px 14px calc(16px + env(safe-area-inset-bottom));
+  padding: 4px 8px 10px;
+  border-top: 1px solid var(--sgj-border-card);
 }
 
-/* 弹层本体：底部圆角面板（teleport 到 body，需全局选择器） */
-:global(.outline-sheet) {
-  border-radius: 20px 20px 0 0;
+/* 桌面端隐藏内嵌目录（侧栏已提供） */
+@media (min-width: 1200px) {
+  .outline-inline {
+    display: none;
+  }
 }
 
-:global(.outline-sheet .el-drawer__body) {
-  padding: 0;
+/* 移动端浮动目录：内嵌目录滚出视野后的入口 + 紧凑面板（不整屏遮挡） */
+.panel-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  background: rgba(23, 27, 26, 0.2);
 }
 
-/* 移动端大纲入口：胶片色胶囊按钮（桌面端隐藏，走侧栏） */
 .outline-fab {
   position: fixed;
   right: 16px;
-  bottom: 76px;
-  z-index: 90;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 99;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -564,6 +633,51 @@ html.dark .article-hero {
 
 html.dark .outline-fab {
   background: var(--sgj-bg-deep);
+}
+
+.outline-panel {
+  position: fixed;
+  right: 16px;
+  bottom: calc(124px + env(safe-area-inset-bottom));
+  z-index: 99;
+  display: flex;
+  flex-direction: column;
+  width: min(320px, calc(100vw - 32px));
+  max-height: 52vh;
+  background: var(--sgj-bg-card);
+  border: 1px solid var(--sgj-border-card);
+  border-radius: var(--sgj-radius-lg);
+  box-shadow: var(--sgj-shadow-hover);
+  overflow: hidden;
+
+  @media (min-width: 1200px) {
+    display: none;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--sgj-border-card);
+
+    .panel-title {
+      font-family: var(--sgj-font-serif);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--sgj-text);
+    }
+
+    .panel-count {
+      font-size: 12px;
+      color: var(--sgj-text-4);
+    }
+  }
+
+  .panel-list {
+    overflow: auto;
+    padding: 6px 8px 10px;
+  }
 }
 
 /* 移动端最小适配：收窄内边距、标题降级 */
