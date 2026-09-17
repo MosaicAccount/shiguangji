@@ -48,7 +48,7 @@
             <el-tag v-if="isLogin && note.isPublic === '1'" size="small" type="success" class="public-tag">公开</el-tag>
           </div>
           <div class="note-actions" @click.stop>
-            <el-button v-if="isLogin" link type="primary" size="small" @click="openEdit(note)">编辑</el-button>
+            <!-- 编辑入口统一在详情页（长标题时列表按钮易被挤压） -->
             <el-button v-if="isLogin" link type="danger" size="small" @click="handleDelete(note)">删除</el-button>
           </div>
         </div>
@@ -204,11 +204,6 @@ watch(
   () => route.query.itemId,
   () => handleRouteQuery()
 )
-
-function openEdit(note: SgjNote): void {
-  if (!note.noteId) return
-  router.push({ path: '/note/edit', query: { noteId: String(note.noteId) } })
-}
 
 /** 跳转独立详情页（验收：笔记内容单独页面展示，不再用抽屉） */
 function openDetail(note: SgjNote): void {
@@ -374,15 +369,22 @@ html.dark .page-banner {
     gap: 8px;
 
     .note-title {
+      /* 长标题换行占位，不挤压右侧操作列 */
+      min-width: 0;
       font-family: var(--sgj-font-serif);
       font-weight: 500;
       font-size: 16px;
       color: var(--sgj-text);
+      word-break: break-word;
 
       .public-tag {
         margin-left: 8px;
         font-weight: 400;
       }
+    }
+
+    .note-actions {
+      flex-shrink: 0;
     }
   }
 
