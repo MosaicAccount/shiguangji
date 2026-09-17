@@ -1,48 +1,82 @@
 <template>
   <div class="note-detail-page">
-    <!-- 顶栏：返回 + 登录态操作 -->
-    <div class="detail-toolbar">
-      <el-button class="back-btn" circle :icon="ArrowLeft" @click="goBack" />
-      <div v-if="note && isLogin" class="toolbar-actions">
-        <el-button type="primary" round size="small" @click="openEdit">编辑</el-button>
-        <el-button type="danger" round size="small" @click="handleDelete">删除</el-button>
-      </div>
-    </div>
-
-    <div v-loading="loading" class="article-card">
-      <template v-if="note">
-        <!-- 文章头：冷炭灰胶片带，与笔记列表页 banner 同视觉语言 -->
-        <header class="article-hero">
-          <span class="hero-blob" aria-hidden="true"></span>
-          <span class="hero-blob2" aria-hidden="true"></span>
-          <div v-if="tagList.length" class="hero-tags">
-            <span v-for="tag in tagList" :key="tag" class="hero-tag">{{ tag }}</span>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <!-- 顶栏：返回 + 登录态操作 -->
+        <div class="detail-toolbar">
+          <el-button class="back-btn" circle :icon="ArrowLeft" @click="goBack" />
+          <div v-if="note && isLogin" class="toolbar-actions">
+            <el-button type="primary" round size="small" @click="openEdit">编辑</el-button>
+            <el-button type="danger" round size="small" @click="handleDelete">删除</el-button>
           </div>
-          <h1 class="hero-title">{{ note.title }}</h1>
-          <div class="hero-meta">
-            <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
-            <span v-if="note.itemId" class="hero-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
-            <span v-else class="hero-link">📝 独立笔记</span>
-            <!-- 公开状态仅登录态展示 -->
-            <el-tag v-if="isLogin" :type="note.isPublic === '1' ? 'success' : 'info'" size="small" effect="plain">
-              {{ note.isPublic === '1' ? '公开' : '私密' }}
-            </el-tag>
-            <span class="hero-time">{{ formatTime(note.updateTime || note.createTime) }}</span>
-          </div>
-        </header>
-
-        <!-- 正文：文章排版，行宽与行距为长文阅读优化 -->
-        <div class="article-body">
-          <markdown-viewer :content="bodyContent" />
-          <div class="article-end" aria-hidden="true">· 完 ·</div>
         </div>
-      </template>
+
+        <div v-loading="loading" class="article-card">
+          <template v-if="note">
+            <!-- 文章头：冷炭灰胶片带，与笔记列表页 banner 同视觉语言 -->
+            <header class="article-hero">
+              <span class="hero-blob" aria-hidden="true"></span>
+              <span class="hero-blob2" aria-hidden="true"></span>
+              <div v-if="tagList.length" class="hero-tags">
+                <span v-for="tag in tagList" :key="tag" class="hero-tag">{{ tag }}</span>
+              </div>
+              <h1 class="hero-title">{{ note.title }}</h1>
+              <div class="hero-meta">
+                <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
+                <span v-if="note.itemId" class="hero-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
+                <span v-else class="hero-link">📝 独立笔记</span>
+                <!-- 公开状态仅登录态展示 -->
+                <el-tag v-if="isLogin" :type="note.isPublic === '1' ? 'success' : 'info'" size="small" effect="plain">
+                  {{ note.isPublic === '1' ? '公开' : '私密' }}
+                </el-tag>
+                <span class="hero-time">{{ formatTime(note.updateTime || note.createTime) }}</span>
+              </div>
+            </header>
+
+            <!-- 正文：文章排版，行宽与行距为长文阅读优化 -->
+            <div ref="bodyRef" class="article-body">
+              <markdown-viewer :content="bodyContent" />
+              <div class="article-end" aria-hidden="true">· 完 ·</div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 桌面端大纲：文章右侧 sticky 跟随 -->
+      <aside v-if="headings.length" class="detail-aside">
+        <div class="outline-card">
+          <div class="outline-title">大纲</div>
+          <ul class="outline-list">
+            <li v-for="item in headings" :key="item.id">
+              <a
+                :class="['outline-item', { 'is-active': activeId === item.id, 'is-sub': item.level > 2 }]"
+                :href="`#${item.id}`"
+                @click.prevent="jumpTo(item)"
+              >{{ item.text }}</a>
+            </li>
+          </ul>
+        </div>
+      </aside>
     </div>
+
+    <!-- 移动端大纲：浮动按钮 + 抽屉 -->
+    <el-button v-if="headings.length" class="outline-fab" circle :icon="List" @click="outlineOpen = true" />
+    <el-drawer v-model="outlineOpen" title="大纲" size="280px" append-to-body>
+      <ul class="outline-list outline-drawer-body">
+        <li v-for="item in headings" :key="item.id">
+          <a
+            :class="['outline-item', { 'is-active': activeId === item.id, 'is-sub': item.level > 2 }]"
+            :href="`#${item.id}`"
+            @click.prevent="jumpTo(item)"
+          >{{ item.text }}</a>
+        </li>
+      </ul>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts" name="FrontNoteDetail">
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, List } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import { getFrontNote, delFrontNote } from '@/api/front/note'
 import type { SgjNote } from '@/types/api/business/note'
@@ -57,6 +91,62 @@ const isLogin = computed(() => !!getToken())
 
 const loading = ref(false)
 const note = ref<SgjNote | null>(null)
+
+/** 大纲（issue #26）：渲染完成后从正文 DOM 提取 h1-h3 并回填锚点 id */
+interface OutlineItem {
+  id: string
+  text: string
+  level: number
+}
+const bodyRef = ref<HTMLElement | null>(null)
+const headings = ref<OutlineItem[]>([])
+const outlineOpen = ref(false)
+/** 当前滚动所在章节（大纲高亮） */
+const activeId = ref('')
+
+watch(note, () => {
+  nextTick(() => {
+    const root = bodyRef.value
+    if (!root) {
+      headings.value = []
+      return
+    }
+    headings.value = Array.from(root.querySelectorAll('h1, h2, h3'))
+      .map((el, index) => {
+        el.id = `note-h-${index}`
+        return { id: el.id, text: (el.textContent || '').trim(), level: Number(el.tagName.slice(1)) }
+      })
+      .filter(item => item.text)
+  })
+})
+
+/** 点击大纲：滚动到对应标题（顶部让出 72px 吸顶导航 + 余量），并立即高亮 */
+const OUTLINE_TOP_OFFSET = 90
+function jumpTo(item: OutlineItem): void {
+  const el = document.getElementById(item.id)
+  if (!el) return
+  const top = el.getBoundingClientRect().top + window.scrollY - OUTLINE_TOP_OFFSET
+  window.scrollTo({ top, behavior: 'smooth' })
+  activeId.value = item.id
+  outlineOpen.value = false
+}
+
+/** 滚动高亮：取视口上部（导航下方）最后越线的标题；触底时高亮最后一项 */
+function updateActive(): void {
+  if (!headings.value.length) return
+  let current = ''
+  for (const item of headings.value) {
+    const el = document.getElementById(item.id)
+    if (el && el.getBoundingClientRect().top <= OUTLINE_TOP_OFFSET + 10) current = item.id
+  }
+  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
+  if (atBottom) current = headings.value[headings.value.length - 1].id
+  activeId.value = current
+}
+
+onMounted(() => window.addEventListener('scroll', updateActive, { passive: true }))
+onBeforeUnmount(() => window.removeEventListener('scroll', updateActive))
+watch(headings, () => nextTick(updateActive))
 
 /** 逗号拼接标签拆成胶囊展示 */
 const tagList = computed(() =>
@@ -126,9 +216,116 @@ function formatTime(time?: string): string {
 
 <style scoped lang="scss">
 .note-detail-page {
-  max-width: 860px;
   margin: 0 auto;
   color: var(--sgj-text);
+}
+
+.detail-main {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* 大纲侧栏：仅桌面端（≥1200px）与文章并排，sticky 跟随滚动 */
+.detail-aside {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .detail-layout {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .detail-main {
+    flex: 0 1 860px;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .detail-aside {
+    display: block;
+    width: 200px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 96px;
+  }
+}
+
+/* 大纲列表：桌面侧栏与移动端抽屉共用 */
+.outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.outline-item {
+  display: block;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-left: 2px solid transparent;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sgj-text-3);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.16s, border-color 0.16s;
+
+  &:hover {
+    color: var(--sgj-text);
+  }
+
+  &.is-active {
+    color: var(--sgj-primary);
+    border-left-color: var(--sgj-primary);
+    font-weight: 500;
+  }
+
+  &.is-sub {
+    padding-left: 26px;
+  }
+}
+
+.outline-card {
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  background: var(--sgj-bg-card);
+  border: 1px solid var(--sgj-border-card);
+  border-radius: var(--sgj-radius-lg);
+  padding: 14px 12px 14px 16px;
+
+  .outline-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--sgj-text-3);
+    margin-bottom: 8px;
+  }
+}
+
+.outline-drawer-body {
+  padding: 4px 4px 4px 12px;
+}
+
+/* 移动端大纲浮动按钮（桌面端隐藏，走侧栏） */
+.outline-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 76px;
+  z-index: 90;
+  width: 42px;
+  height: 42px;
+  border-color: var(--sgj-border-card);
+  background: var(--sgj-bg-card);
+  color: var(--sgj-text-2);
+  box-shadow: var(--sgj-shadow-hover);
+
+  @media (min-width: 1200px) {
+    display: none;
+  }
 }
 
 .detail-toolbar {
