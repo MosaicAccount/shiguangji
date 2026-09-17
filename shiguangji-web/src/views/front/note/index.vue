@@ -41,15 +41,21 @@
         <el-button size="small" round @click="loadData">重试</el-button>
       </div>
       <div v-for="note in list" :key="note.noteId" class="note-card" @click="openDetail(note)">
+        <!-- 删除为卡片角标图标按钮；编辑入口统一在详情页 -->
+        <el-button
+          v-if="isLogin"
+          class="note-delete"
+          circle
+          size="small"
+          :icon="Delete"
+          title="删除"
+          @click.stop="handleDelete(note)"
+        />
         <div class="note-header">
           <div class="note-title">
             {{ note.title }}
             <!-- 公开标识仅登录态展示 -->
             <el-tag v-if="isLogin && note.isPublic === '1'" size="small" type="success" class="public-tag">公开</el-tag>
-          </div>
-          <div class="note-actions" @click.stop>
-            <!-- 编辑入口统一在详情页（长标题时列表按钮易被挤压） -->
-            <el-button v-if="isLogin" link type="danger" size="small" @click="handleDelete(note)">删除</el-button>
           </div>
         </div>
         <div v-if="note.content" class="note-preview">
@@ -73,6 +79,7 @@
 
 <script setup lang="ts" name="FrontNote">
 import { getToken } from '@/utils/auth'
+import { Delete } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, delFrontNote } from '@/api/front/note'
@@ -349,6 +356,7 @@ html.dark .page-banner {
 }
 
 .note-card {
+  position: relative;
   background: var(--sgj-bg-card);
   border: 1px solid var(--sgj-border-card);
   border-radius: 16px;
@@ -362,14 +370,27 @@ html.dark .page-banner {
     box-shadow: var(--sgj-shadow-hover);
   }
 
+  /* 删除角标：右上角图标圆钮，不参与标题换行布局 */
+  .note-delete {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    border-color: var(--sgj-border-card);
+    background: var(--sgj-bg);
+    color: var(--sgj-text-3);
+
+    &:hover {
+      border-color: var(--sgj-danger);
+      background: var(--sgj-bg-card);
+      color: var(--sgj-danger);
+    }
+  }
+
   .note-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
+    /* 右侧留出角标位置，长标题自然换行 */
+    padding-right: 40px;
 
     .note-title {
-      /* 长标题换行占位，不挤压右侧操作列 */
       min-width: 0;
       font-family: var(--sgj-font-serif);
       font-weight: 500;
@@ -381,10 +402,6 @@ html.dark .page-banner {
         margin-left: 8px;
         font-weight: 400;
       }
-    }
-
-    .note-actions {
-      flex-shrink: 0;
     }
   }
 
@@ -434,11 +451,6 @@ html.dark .page-banner {
   }
 
   .filter-tip {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .note-header {
     flex-wrap: wrap;
     gap: 6px;
   }
