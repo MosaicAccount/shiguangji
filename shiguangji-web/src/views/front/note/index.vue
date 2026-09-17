@@ -41,25 +41,25 @@
         <el-button size="small" round @click="loadData">重试</el-button>
       </div>
       <div v-for="note in list" :key="note.noteId" class="note-card" @click="openDetail(note)">
-        <!-- 删除为卡片角标图标按钮；编辑入口统一在详情页 -->
-        <el-button
-          v-if="isLogin"
-          class="note-delete"
-          circle
-          size="small"
-          :icon="Delete"
-          title="删除"
-          @click.stop="handleDelete(note)"
-        />
         <div class="note-header">
           <div class="note-title">
             {{ note.title }}
             <!-- 公开标识仅登录态展示 -->
             <el-tag v-if="isLogin && note.isPublic === '1'" size="small" type="success" class="public-tag">公开</el-tag>
           </div>
+          <!-- 删除角标与标题首行对齐；编辑入口统一在详情页 -->
+          <el-button
+            v-if="isLogin"
+            class="note-delete"
+            circle
+            size="small"
+            :icon="Delete"
+            title="删除"
+            @click.stop="handleDelete(note)"
+          />
         </div>
         <div v-if="note.content" class="note-preview">
-          <markdown-viewer :content="note.content" />
+          <markdown-viewer :content="previewContent(note)" />
         </div>
         <div class="note-meta">
           <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
@@ -170,6 +170,14 @@ function fetchFilterItemName(itemId: number): void {
 function formatTime(time?: string): string {
   if (!time) return ''
   return time.replace('T', ' ').slice(0, 16)
+}
+
+/** 预览正文：与标题相同的首个一级标题去重，避免卡片标题与预览重复 */
+function previewContent(note: SgjNote): string {
+  const content = note.content || ''
+  if (!note.title) return content
+  const escaped = note.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return content.replace(new RegExp(`^\\s*#\\s*${escaped}\\s*\\r?\\n`), '')
 }
 
 /** 跳转独立编辑页（新增/编辑共用，验收：单独的 markdown 编辑页面） */
@@ -356,7 +364,6 @@ html.dark .page-banner {
 }
 
 .note-card {
-  position: relative;
   background: var(--sgj-bg-card);
   border: 1px solid var(--sgj-border-card);
   border-radius: 16px;
@@ -370,37 +377,39 @@ html.dark .page-banner {
     box-shadow: var(--sgj-shadow-hover);
   }
 
-  /* 删除角标：右上角图标圆钮，不参与标题换行布局 */
-  .note-delete {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    border-color: var(--sgj-border-card);
-    background: var(--sgj-bg);
-    color: var(--sgj-text-3);
-
-    &:hover {
-      border-color: var(--sgj-danger);
-      background: var(--sgj-bg-card);
-      color: var(--sgj-danger);
-    }
-  }
-
   .note-header {
-    /* 右侧留出角标位置，长标题自然换行 */
-    padding-right: 40px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
 
     .note-title {
+      flex: 1;
       min-width: 0;
       font-family: var(--sgj-font-serif);
       font-weight: 500;
       font-size: 16px;
+      line-height: 24px;
       color: var(--sgj-text);
       word-break: break-word;
 
       .public-tag {
         margin-left: 8px;
         font-weight: 400;
+      }
+    }
+
+    /* 删除角标：与标题首行垂直居中对齐，不随长标题换行 */
+    .note-delete {
+      flex-shrink: 0;
+      margin-top: 0;
+      border-color: var(--sgj-border-card);
+      background: var(--sgj-bg);
+      color: var(--sgj-text-3);
+
+      &:hover {
+        border-color: var(--sgj-danger);
+        background: var(--sgj-bg-card);
+        color: var(--sgj-danger);
       }
     }
   }
