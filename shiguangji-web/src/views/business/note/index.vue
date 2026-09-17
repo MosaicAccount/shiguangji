@@ -1,10 +1,10 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="标题" prop="title">
+      <el-form-item label="关键词" prop="keyword">
         <el-input
-          v-model="queryParams.title"
-          placeholder="请输入笔记标题"
+          v-model="queryParams.keyword"
+          placeholder="请输入关键词（标题与正文）"
           clearable
           style="width: 200px"
           @keyup.enter="handleQuery"
@@ -189,7 +189,7 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    title: undefined,
+    keyword: undefined,
     itemId: undefined,
     tags: undefined,
     isPublic: undefined

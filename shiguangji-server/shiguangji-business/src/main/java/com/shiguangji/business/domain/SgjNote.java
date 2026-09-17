@@ -20,6 +20,9 @@ public class SgjNote extends BaseEntity
     /** 关联条目名称（联表查询展示用，非表字段） */
     private String itemName;
 
+    /** 检索关键词（标题或正文模糊匹配，非表字段；title 仍为“仅标题”语义） */
+    private String keyword;
+
     /** 笔记标题 */
     private String title;
 
@@ -60,6 +63,16 @@ public class SgjNote extends BaseEntity
     public void setItemName(String itemName)
     {
         this.itemName = itemName;
+    }
+
+    public String getKeyword()
+    {
+        return keyword;
+    }
+
+    public void setKeyword(String keyword)
+    {
+        this.keyword = keyword;
     }
 
     public String getTitle()

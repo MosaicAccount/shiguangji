@@ -20,6 +20,9 @@ export interface SgjNote extends BaseEntity {
 /** 学习笔记查询参数 */
 export interface SgjNoteQueryParams extends PageDomain {
   itemId?: number
+  /** 关键词：标题或正文模糊匹配 */
+  keyword?: string
+  /** 仅标题匹配（新增/编辑表单语义，与 keyword 区分） */
   title?: string
   tags?: string
   /** 公开筛选（'0'私密 '1'公开，空为全部；后端 SgjNoteMapper 已支持，） */

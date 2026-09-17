@@ -12,7 +12,7 @@
 
     <div class="filter-bar">
       <el-input
-        v-model="searchTitle"
+        v-model="searchKeyword"
         placeholder="搜索笔记标题"
         clearable
         class="search-input"
@@ -97,7 +97,7 @@ const list = ref<SgjNote[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
-const searchTitle = ref('')
+const searchKeyword = ref('')
 /** 标签筛选（TagPills 点击选中、再点取消后触发 loadData） */
 const searchTag = ref('')
 /** 分页 */
@@ -115,7 +115,7 @@ function loadData(): void {
   loadError.value = false
   pageNum.value = 1
   listFrontNote({
-    title: searchTitle.value || undefined,
+    keyword: searchKeyword.value || undefined,
     tags: searchTag.value || undefined,
     itemId: filterItemId.value,
     pageNum: pageNum.value,
@@ -136,7 +136,7 @@ function loadMore(): void {
   loadingMore.value = true
   pageNum.value += 1
   listFrontNote({
-    title: searchTitle.value || undefined,
+    keyword: searchKeyword.value || undefined,
     tags: searchTag.value || undefined,
     itemId: filterItemId.value,
     pageNum: pageNum.value,

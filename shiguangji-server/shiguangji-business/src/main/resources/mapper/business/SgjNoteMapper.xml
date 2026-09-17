@@ -49,6 +49,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="title != null and title != ''">
                 and n.title like concat('%', #{title}, '%')
             </if>
+            <!-- 括号是安全边界，不是代码风格：where 段全为 AND 串联，缺括号会让 content 命中短路
+                 del_flag / create_by / is_public，匿名访客可搜到私密笔记与回收站笔记 -->
+            <if test="keyword != null and keyword != ''">
+                and (n.title like concat('%', #{keyword}, '%') or n.content like concat('%', #{keyword}, '%'))
+            </if>
             <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中；replace 兼容手输期的“逗号+空格”写法 -->
             <if test="tags != null and tags != ''">
                 and find_in_set(#{tags}, replace(n.tags, ' ', ''))
