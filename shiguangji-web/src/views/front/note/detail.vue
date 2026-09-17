@@ -631,8 +631,10 @@ html.dark .article-hero {
   }
 }
 
+/* 夜间模式：页面深灰与胶片色胶囊几乎同色，改用亮色胶囊反色保证可辨识 */
 html.dark .outline-fab {
-  background: var(--sgj-bg-deep);
+  background: var(--sgj-text);
+  color: var(--sgj-bg);
 }
 
 .outline-panel {
