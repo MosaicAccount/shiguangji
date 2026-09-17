@@ -586,6 +586,18 @@ html.dark .article-hero {
   border-top: 1px solid var(--sgj-border-card);
 }
 
+/* 目录滚动区隐藏滚动条（保留滚动能力），观感更干净 */
+.inline-list,
+.panel-list,
+.outline-card {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* 桌面端隐藏内嵌目录（侧栏已提供） */
 @media (min-width: 1200px) {
   .outline-inline {
