@@ -84,7 +84,7 @@
     <!-- 移动端浮动目录：内嵌目录滚出视野后出现，点开紧凑面板跳转（桌面端隐藏走侧栏） -->
     <template v-if="headings.length">
       <div v-show="panelOpen" class="panel-mask" @click="panelOpen = false"></div>
-      <button v-show="fabVisible" :class="['outline-fab', { 'is-open': panelOpen }]" @click="panelOpen = !panelOpen">
+      <button v-show="!tocVisible" :class="['outline-fab', { 'is-open': panelOpen }]" @click="panelOpen = !panelOpen">
         <el-icon><List /></el-icon>
         <span>{{ panelOpen ? '收起' : '目录' }}</span>
       </button>
@@ -154,8 +154,8 @@ const headings = ref<OutlineItem[]>([])
 const outlineOpen = ref(false)
 /** 浮动目录面板展开状态 */
 const panelOpen = ref(false)
-/** 浮动目录入口：滚动越过文章头后常驻显示，任何位置都可跳转 */
-const fabVisible = ref(false)
+/** 内嵌目录是否在视口内：在视野中时隐藏浮动入口，避免两份目录同时出现 */
+const tocVisible = ref(true)
 /** 当前滚动所在章节（大纲高亮） */
 const activeId = ref('')
 const activeItem = computed(() => headings.value.find(item => item.id === activeId.value) || null)
@@ -197,7 +197,7 @@ function jumpTo(item: OutlineItem): void {
   panelOpen.value = false
 }
 
-/** 滚动高亮：取视口上部（导航下方）最后越线的标题；触底时高亮最后一项；越过文章头后常驻浮动入口 */
+/** 滚动高亮：取视口上部（导航下方）最后越线的标题；触底时高亮最后一项；同步内嵌目录可见性 */
 function updateActive(): void {
   if (!headings.value.length) return
   let current = ''
@@ -208,7 +208,8 @@ function updateActive(): void {
   const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
   if (atBottom) current = headings.value[headings.value.length - 1].id
   activeId.value = current
-  fabVisible.value = window.scrollY > 160
+  const tocRect = bodyRef.value?.querySelector('.outline-inline')?.getBoundingClientRect()
+  tocVisible.value = !tocRect || (tocRect.bottom > 0 && tocRect.top < window.innerHeight)
 }
 
 onMounted(() => window.addEventListener('scroll', updateActive, { passive: true }))
