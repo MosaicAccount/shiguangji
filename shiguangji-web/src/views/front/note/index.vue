@@ -76,8 +76,8 @@
             </template>
           </p>
         </div>
-        <!-- 多于 1 处命中时提示，全部命中进详情页查看 -->
-        <span v-if="note.hitTotal && note.hitTotal > 1" class="hit-count">⌕ 共 {{ note.hitTotal }} 处命中</span>
+        <!-- 多于 1 处出现时提示；大数字不可行动，统一弱化为「多次」 -->
+        <span v-if="note.hitTotal && note.hitTotal > 1" class="hit-count">{{ hitCountText(note.hitTotal) }}</span>
         <div class="note-meta">
           <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
           <span v-if="note.itemId" class="note-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
@@ -211,6 +211,15 @@ function excerptSegments(note: SgjNote) {
 
 function titleSegments(note: SgjNote) {
   return splitByKeyword(note.title, appliedKeyword.value)
+}
+
+/**
+ * 出现次数提示：2-9 次给出具体数字（相关性信号——反复讲到该词的笔记更对题）；
+ * 10 次以上统一为「多次」，具体大数字对读者不可行动
+ */
+function hitCountText(hitTotal?: number): string {
+  if (!hitTotal || hitTotal < 2) return ''
+  return hitTotal <= 9 ? `文中出现 ${hitTotal} 次` : '文中多次出现'
 }
 
 /** 渐隐仅在摘要真的溢出时显示（渲染与窗口尺寸变化后测量） */
