@@ -148,6 +148,8 @@ create table sgj_note (
   primary key (note_id),
   key idx_sgj_note_item (item_id),
   key idx_sgj_note_title (title),
+  -- 全文检索（issue #30）：标题 + 正文复合索引，ngram 分词（中文按 2 字切 token，单字搜不到）
+  fulltext key ft_note_title_content (title, content) with parser ngram,
   constraint fk_sgj_note_item foreign key (item_id) references sgj_item (item_id) on delete cascade
 ) engine=innodb auto_increment=1 comment = '拾光记-学习笔记表';
 

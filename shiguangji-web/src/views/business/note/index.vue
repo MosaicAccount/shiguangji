@@ -1,10 +1,11 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="标题" prop="title">
+      <!-- ：keyword 同时检索标题与正文（MySQL FULLTEXT），label 由「标题」改为「关键词」 -->
+      <el-form-item label="关键词" prop="keyword">
         <el-input
-          v-model="queryParams.title"
-          placeholder="请输入笔记标题"
+          v-model="queryParams.keyword"
+          placeholder="搜索标题或正文"
           clearable
           style="width: 200px"
           @keyup.enter="handleQuery"
@@ -189,7 +190,7 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    title: undefined,
+    keyword: undefined,
     itemId: undefined,
     tags: undefined,
     isPublic: undefined
@@ -246,6 +247,12 @@ function reset() {
 
 /** 搜索按钮操作 */
 function handleQuery() {
+  // ngram_token_size=2，单字切不出 token 搜不到；不足 2 字提示后不发起检索
+  const keyword = (queryParams.value.keyword || '').trim()
+  if (keyword && keyword.length < 2) {
+    proxy.$modal.msgWarning('关键词请至少输入 2 个字')
+    return
+  }
   queryParams.value.pageNum = 1
   getList()
 }

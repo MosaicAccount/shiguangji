@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,9 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>pageSizeCappedAt100                      —— 列表 pageSize 超上限（100）被截断</li>
  *   <li>recycleSoftDeleteRestoreFlow             —— 删除 → recycle/list 可见 → restore 后回到正常列表</li>
  *   <li>noteReturnsLinkedItemName                —— 笔记列表/详情/首页 recentNotes 带出关联条目名称 itemName</li>
+ *   <li>noteKeywordSearchScope                   —— keyword 全文检索（标题+正文）：正文独有词命中；
+ *       匿名/越权不可经 keyword 命中私密与回收站笔记（or 短路防线）；title 仍仅标题；
+ *       布尔模式（mysql 不命中只含 sql）；布尔运算符剔除；回收站不纳入 keyword</li>
  * </ol>
  *
  * <p><b>响应契约说明（重要）</b>：本系统沿用 RuoYi 的 {@code ServletUtils.renderString}，统一以
@@ -94,6 +98,14 @@ class AppApiAuthIsolationSmokeTest
     /** 回收站用例的夹具 tag / 标题（回收站列表仅支持 title 过滤，故 title 也用唯一值） */
     private static final String TAG_RECYCLE = "qat10-recycle";
     private static final String TITLE_RECYCLE = "qat10-recycle-title-唯一标识";
+
+    /** 关键词检索夹具：独有标记词只出现在正文、标题不含（带 qat10 前缀保证不与真实数据撞词） */
+    private static final String KW_PUBLIC_TITLE = "qat10 检索公开笔记";
+    private static final String KW_PUBLIC_MARKER = "qat10雾胶修复指南";
+    private static final String KW_PRIVATE_TITLE = "qat10 检索私密笔记";
+    private static final String KW_PRIVATE_MARKER = "qat10石榴晶体培养";
+    /** 布尔模式用例：正文含 sql 但不含 mysql（keyword=mysql 不得命中它） */
+    private static final String KW_SQL_TITLE = "qat10 sql字面笔记";
 
     /** 公开博主账号（application.yml shiguangji.public-owner） */
     private static final String PUBLIC_OWNER = "admin";
@@ -578,6 +590,91 @@ class AppApiAuthIsolationSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 12. keyword 全文检索（标题+正文）：命中、隔离、布尔模式、运算符剔除、回收站不纳入
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(12)
+    void noteKeywordSearchScope() throws Exception
+    {
+        // 夹具：公开笔记（关联条目，正文含独有标记）、私密笔记（正文含另一独有标记）、只含 sql 的笔记
+        createNoteWithContent(adminToken, KW_PUBLIC_TITLE, "1", "正文独有标记 " + KW_PUBLIC_MARKER + " 备忘", adminItemId);
+        long kwPublicId = findSingleNoteId(adminToken, KW_PUBLIC_TITLE);
+        createNoteWithContent(adminToken, KW_PRIVATE_TITLE, "0", "正文独有标记 " + KW_PRIVATE_MARKER + " 备忘", null);
+        createNoteWithContent(adminToken, KW_SQL_TITLE, "1", "sql 手册摘抄", null);
+        long kwSqlId = findSingleNoteId(adminToken, KW_SQL_TITLE);
+
+        // 本人：正文独有词命中（标题不含该词——本需求的核心价值）
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .contains(kwPublicId);
+
+        // 匿名：公开笔记正文命中（全文检索对匿名可用，但只允许公开范围）
+        assertThat(extractIds(listNotesBody(null, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .contains(kwPublicId);
+
+        // 匿名：keyword 命中私密笔记正文 → 0 命中（正文条件不得短路 is_public 过滤）
+        JsonNode anonPrivate = listNotesBody(null, TAG_MAIN, KW_PRIVATE_MARKER);
+        assertThat(extractIds(anonPrivate.path("data"), "noteId")).isEmpty();
+        assertThat(anonPrivate.path("total").asLong()).as("匿名不得经 keyword 命中私密笔记正文").isZero();
+
+        // 非博主登录用户：keyword 命中他人笔记 → 0 命中（不得短路 create_by 过滤）
+        assertThat(extractIds(listNotesBody(otherToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .isEmpty();
+
+        // title 参数保持「仅标题」原义：不匹配正文，仍能按标题命中
+        assertThat(extractIds(listNotesByTitle(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .as("title 不得匹配正文").doesNotContain(kwPublicId);
+        assertThat(extractIds(listNotesByTitle(adminToken, TAG_MAIN, KW_PUBLIC_TITLE).path("data"), "noteId"))
+                .contains(kwPublicId);
+
+        // keyword 与 tags / itemId / 分页叠加（三者同时满足）
+        assertThat(extractIds(listNotesBody(adminToken, "qat10-not-exist-tag", KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .isEmpty();
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER, otherUserItemId).path("data"), "noteId"))
+                .isEmpty();
+        JsonNode paged = listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER, adminItemId, 1, 1);
+        assertThat(paged.path("data").size()).as("keyword+分页 应正常截断").isEqualTo(1);
+        assertThat(paged.path("total").asLong()).isEqualTo(1);
+
+        // 布尔模式：mysql 不命中只含 sql 的笔记（自然语言模式会误命中）
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "mysql").path("data"), "noteId"))
+                .as("布尔模式下 mysql 不得命中只含 sql 的笔记").doesNotContain(kwSqlId);
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "sql").path("data"), "noteId"))
+                .contains(kwSqlId);
+
+        // 布尔运算符剔除：前导 - 与纯运算符输入不报错、不产生空结果
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "-" + KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .as("前导 - 被剔除后应正常命中").contains(kwPublicId);
+        assertThat(listNotesBody(adminToken, TAG_MAIN, "++").path("data").size())
+                .as("纯运算符输入视为未输入关键词，不参与过滤").isPositive();
+
+        // ngram_token_size=2：单个汉字切不出 token，返回 0 行（前端以最小长度提示承接）
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "雾").path("data"), "noteId")).isEmpty();
+
+        // 软删除后不从 keyword 漏出
+        mockMvc.perform(delete("/app/note/" + kwPublicId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .as("回收站笔记不得被 keyword 命中").isEmpty();
+
+        // 回收站不纳入 keyword：title 命中 + keyword 指向该行正文不含的词，行仍返回
+        // （若 keyword 被错误纳入过滤，交集为空查不到），即回收站只按 title 过滤
+        JsonNode recycleIgnoreKeyword = listNotesRecycle(adminToken, KW_PUBLIC_TITLE, KW_PRIVATE_MARKER);
+        assertThat(extractIds(recycleIgnoreKeyword.path("data"), "noteId"))
+                .as("回收站检索不得纳入 keyword").contains(kwPublicId);
+
+        // 恢复后重新可被 keyword 命中
+        mockMvc.perform(post("/app/note/recycle/restore/" + kwPublicId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .contains(kwPublicId);
+    }
+
+    // ------------------------------------------------------------------
     // 辅助方法
     // ------------------------------------------------------------------
 
@@ -638,6 +735,94 @@ class AppApiAuthIsolationSmokeTest
                                 "remark", remark))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+    }
+
+    /** 经接口创建笔记（自定义正文与关联条目，供关键词检索用例；itemId 可空） */
+    private void createNoteWithContent(String token, String title, String isPublic, String content, Long itemId) throws Exception
+    {
+        Map<String, Object> body = new HashMap<>();
+        body.put("title", title);
+        body.put("tags", TAG_MAIN);
+        body.put("content", content);
+        body.put("isPublic", isPublic);
+        if (itemId != null)
+        {
+            body.put("itemId", itemId);
+        }
+        mockMvc.perform(post("/app/note")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    /** 以指定登录态（null=匿名）按 keyword 查询笔记列表，返回完整响应体（data + total） */
+    private JsonNode listNotesBody(String token, String tags, String keyword) throws Exception
+    {
+        return listNotesBody(token, tags, keyword, null, null, null);
+    }
+
+    private JsonNode listNotesBody(String token, String tags, String keyword, Long itemId) throws Exception
+    {
+        return listNotesBody(token, tags, keyword, itemId, null, null);
+    }
+
+    private JsonNode listNotesBody(String token, String tags, String keyword, Long itemId, Integer pageNum, Integer pageSize) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = get("/app/note/list");
+        if (tags != null)
+        {
+            builder.param("tags", tags);
+        }
+        if (keyword != null)
+        {
+            builder.param("keyword", keyword);
+        }
+        if (itemId != null)
+        {
+            builder.param("itemId", String.valueOf(itemId));
+        }
+        if (pageNum != null && pageSize != null)
+        {
+            builder.param("pageNum", String.valueOf(pageNum)).param("pageSize", String.valueOf(pageSize));
+        }
+        if (token != null)
+        {
+            builder.header(HttpHeaders.AUTHORIZATION, bearer(token));
+        }
+        return bodyOf(mockMvc.perform(builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+    }
+
+    /** 以指定登录态按 title 查询笔记列表（title 保持仅标题语义） */
+    private JsonNode listNotesByTitle(String token, String tags, String title) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = get("/app/note/list").param("tags", tags).param("title", title);
+        if (token != null)
+        {
+            builder.header(HttpHeaders.AUTHORIZATION, bearer(token));
+        }
+        return bodyOf(mockMvc.perform(builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+    }
+
+    /** 查询回收站笔记列表（title + keyword 组合，用于验证 keyword 不参与回收站过滤） */
+    private JsonNode listNotesRecycle(String token, String title, String keyword) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = get("/app/note/recycle/list").param("title", title).param("keyword", keyword);
+        if (token != null)
+        {
+            builder.header(HttpHeaders.AUTHORIZATION, bearer(token));
+        }
+        return bodyOf(mockMvc.perform(builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
     }
 
     /** POST 不回传主键，通过唯一 tags(+title) 从列表接口定位条目夹具 ID */

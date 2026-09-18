@@ -20,7 +20,8 @@ export interface SgjNote extends BaseEntity {
 /** 学习笔记查询参数 */
 export interface SgjNoteQueryParams extends PageDomain {
   itemId?: number
-  title?: string
+  /** 检索关键词（标题+正文全文匹配；单个汉字切不出 token 搜不到） */
+  keyword?: string
   tags?: string
   /** 公开筛选（'0'私密 '1'公开，空为全部；后端 SgjNoteMapper 已支持，） */
   isPublic?: string

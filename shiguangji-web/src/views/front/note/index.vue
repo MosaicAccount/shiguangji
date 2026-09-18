@@ -12,8 +12,8 @@
 
     <div class="filter-bar">
       <el-input
-        v-model="searchTitle"
-        placeholder="搜索笔记标题"
+        v-model="searchKeyword"
+        placeholder="搜索标题与正文"
         clearable
         class="search-input"
         @keyup.enter="loadData"
@@ -97,7 +97,7 @@ const list = ref<SgjNote[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
-const searchTitle = ref('')
+const searchKeyword = ref('')
 /** 标签筛选（TagPills 点击选中、再点取消后触发 loadData） */
 const searchTag = ref('')
 /** 分页 */
@@ -110,17 +110,29 @@ const filterItemId = ref<number | undefined>(undefined)
 /** 过滤条目的名称（展示用，取不到时回退 #id） */
 const filterItemName = ref('')
 
-function loadData(): void {
-  loading.value = true
-  loadError.value = false
-  pageNum.value = 1
-  listFrontNote({
-    title: searchTitle.value || undefined,
+/** 组装列表查询参数；关键词不足 2 字时提示并中止（ngram_token_size=2，单字切不出 token 搜不到） */
+function buildQuery() {
+  const keyword = searchKeyword.value.trim()
+  if (keyword && keyword.length < 2) {
+    proxy.$modal.msgWarning('关键词请至少输入 2 个字')
+    return null
+  }
+  return {
+    keyword: keyword || undefined,
     tags: searchTag.value || undefined,
     itemId: filterItemId.value,
     pageNum: pageNum.value,
     pageSize: pageSize
-  }).then(response => {
+  }
+}
+
+function loadData(): void {
+  const query = buildQuery()
+  if (!query) return
+  loading.value = true
+  loadError.value = false
+  pageNum.value = 1
+  listFrontNote(query).then(response => {
     list.value = response.data || []
     total.value = (response as any).total || 0
   }).catch(() => {
@@ -133,15 +145,14 @@ function loadData(): void {
 /** 加载更多 */
 function loadMore(): void {
   if (loadingMore.value || !hasMore.value) return
-  loadingMore.value = true
   pageNum.value += 1
-  listFrontNote({
-    title: searchTitle.value || undefined,
-    tags: searchTag.value || undefined,
-    itemId: filterItemId.value,
-    pageNum: pageNum.value,
-    pageSize: pageSize
-  }).then(response => {
+  const query = buildQuery()
+  if (!query) {
+    pageNum.value -= 1
+    return
+  }
+  loadingMore.value = true
+  listFrontNote(query).then(response => {
     list.value = list.value.concat(response.data || [])
     total.value = (response as any).total || 0
   }).catch(() => {

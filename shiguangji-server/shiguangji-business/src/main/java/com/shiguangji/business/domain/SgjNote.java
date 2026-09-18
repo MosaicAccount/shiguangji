@@ -32,6 +32,9 @@ public class SgjNote extends BaseEntity
     /** 是否公开（0私密 1公开，访客仅可见公开笔记） */
     private String isPublic;
 
+    /** 检索关键词（标题+正文全文匹配，列表查询入参，非表字段；title 保留仅标题原义） */
+    private String keyword;
+
     public Long getNoteId()
     {
         return noteId;
@@ -100,5 +103,15 @@ public class SgjNote extends BaseEntity
     public void setIsPublic(String isPublic)
     {
         this.isPublic = isPublic;
+    }
+
+    public String getKeyword()
+    {
+        return keyword;
+    }
+
+    public void setKeyword(String keyword)
+    {
+        this.keyword = keyword;
     }
 }
