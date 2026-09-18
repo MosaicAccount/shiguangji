@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 索引 — 拾光记</title>
+<style>
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sgj-bg);color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:15px;line-height:1.7}
+a{color:var(--sgj-primary);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1080px;margin:0 auto;padding:44px 20px 70px}
+.banner{position:relative;background:#282e2c;color:#e7ece9;border-radius:24px;padding:34px 40px;overflow:hidden;margin-bottom:26px}
+.banner .blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:140px;bottom:-100px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .in{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.3}
+.banner p{margin:12px 0 0;font-size:14px;color:#aeb8b3;letter-spacing:.4px;max-width:640px}
+h2{font-family:var(--sgj-font-serif);font-size:19px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--sgj-border)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px 20px;
+  box-shadow:var(--sgj-shadow-sm);display:block;color:inherit}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px);transition:box-shadow .16s,transform .16s;text-decoration:none}
+.card h3{margin:0 0 6px;font-family:var(--sgj-font-serif);font-size:17px}
+.card .route{font-size:12px;color:var(--sgj-text-4);font-family:ui-monospace,Menlo,monospace}
+.card p{margin:8px 0 0;font-size:13px;color:var(--sgj-text-2)}
+.card ul{margin:8px 0 0;padding-left:20px;font-size:12.5px;color:var(--sgj-text-3)}
+.card li{margin:3px 0}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.tag.new{background:var(--sgj-primary-soft);color:var(--sgj-primary)}
+.tag.chg{background:var(--sgj-amber-soft);color:var(--sgj-amber)}
+.box{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 20px}
+.box ul{margin:0;padding-left:20px}
+.box li{margin:5px 0;font-size:14px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--sgj-bg-deep);border-radius:4px;padding:1px 5px;color:var(--sgj-primary)}
+.note{font-size:12.5px;color:var(--sgj-text-4);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner">
+    <div class="blob"></div><div class="blob2"></div>
+    <div class="in">
+      <h1>0.0.2 设计图 · 收口笔记</h1>
+      <p>笔记从「能写」变成「写不丢、找得回」。本组图只覆盖本版<b>新增与改动</b>的界面，不是全站重设计。</p>
+    </div>
+  </div>
+
+  <h2>怎么用</h2>
+  <div class="box">
+    <ul>
+      <li>每屏一页，页内用顶部工具条切换：<b>状态</b>（本版的各个分支）、<b>深色模式</b>、<b>桌面 / 移动端</b>、<b>标注</b>。</li>
+      <li>橙色数字气泡与本页底部的「本屏标注」一一对应；关掉「标注」可看无打扰的真实观感。</li>
+      <li>设备框是<b>可滚动的真视口</b>：顶栏与移动端底部标签栏会像真机一样吸住，可以据此判断遮挡与留白。</li>
+      <li>视觉基线取自 <code>shiguangji-web/src/assets/styles/front-tokens.scss</code>（冷雾胶片 v3.3）；后台页沿用既有 admin 主题，不另创一套。</li>
+    </ul>
+    <p class="note">本组图是<b>静态保真</b>，不连接真实接口：表单可聚焦、开关可切换、弹窗可关闭，但保存 / 上传 / 检索均为示意。这些是刻意的边界，不是缺失。</p>
+  </div>
+
+  <h2>五屏</h2>
+  <div class="grid">
+    <a class="card" href="note-list.html">
+      <h3>笔记列表</h3>
+      <span class="route">/note</span>
+      <p><span class="tag new">新增</span>草稿入口条、导入 md 入口<br><span class="tag chg">改动</span>摘要不再渲染 Markdown、搜索改为标题 + 正文</p>
+      <ul><li>状态：默认 / 关键词命中 / 无结果 / 加载失败 / 访客</li></ul>
+    </a>
+    <a class="card" href="note-draft.html">
+      <h3>草稿箱</h3>
+      <span class="route">/note/draft</span>
+      <p><span class="tag new">新增</span>整页；配额提示、硬删除确认</p>
+      <ul><li>状态：有草稿 / 空态 / 满 20 份 / 删除确认</li></ul>
+    </a>
+    <a class="card" href="note-edit.html">
+      <h3>编辑笔记</h3>
+      <span class="route">/note/edit</span>
+      <p><span class="tag new">新增</span>同步三态状态条、恢复草稿条、离开确认、导入预填</p>
+      <ul><li>状态：已同步 / 恢复草稿 / 仅本地 / 同步失败 / 离开确认 / 导入预填 / 保存中</li></ul>
+    </a>
+    <a class="card" href="note-detail.html">
+      <h3>笔记详情</h3>
+      <span class="route">/note/detail</span>
+      <p><span class="tag new">新增</span>代码块语法高亮</p>
+      <ul><li>状态：代码高亮 / 无标注与未知语言 / 移动端大纲浮层</li></ul>
+    </a>
+    <a class="card" href="admin-note.html">
+      <h3>后台笔记管理</h3>
+      <span class="route">业务管理 / 笔记管理</span>
+      <p><span class="tag chg">改动</span>检索 label 改「关键词」<br><span class="tag new">新增</span>下载原件、导出 Markdown</p>
+      <ul><li>状态：关键词命中正文 / 无结果</li></ul>
+    </a>
+  </div>
+
+  <h2>出图口径</h2>
+  <div class="box">
+    <ul>
+      <li><b>覆盖</b>：需求 §3.4 的界面清单 + 后台新增的两个动作。条目详情的关联笔记列表沿用列表页的摘要样式，不单独出图。</li>
+      <li><b>每屏都有</b>移动端（≤768px）与深色模式两个变体——页内切换，不另存文件。</li>
+      <li><b>深色单独出</b>的原因：代码块在两种主题下都保持深色（底色固定 <code>#282c34</code>），需要确认它在浅色页面里的对比是否协调。</li>
+      <li><b>移动端单独出</b>的原因：本版有三处只在移动端成立的差异——底部标签栏遮挡、关闭页面不承诺 <code>beforeunload</code>、编辑页预览走弹窗。</li>
+      <li><b>本组图不含</b>：Word / docx 相关界面（本版只做 md）、批量导入导出、前台下载入口（出口只在后台）、草稿的自动过期（不做）。</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

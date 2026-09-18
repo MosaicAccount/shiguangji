@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 编辑笔记 — 拾光记</title>
+<style>
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+.fh{height:72px;display:flex;align-items:center;gap:26px;padding:0 36px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;color:var(--sgj-text-3)}
+.page{padding:36px}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:76px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-xl);padding:24px 28px}
+.chead{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.back{width:34px;height:34px;border-radius:50%;border:1px solid var(--sgj-border-card);background:var(--sgj-bg);color:var(--sgj-text-2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.ctitle{flex:1;margin:0;font-family:var(--sgj-font-serif);font-size:22px;font-weight:700}
+.hacts{display:flex;gap:10px}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 18px;height:36px;background:var(--sgj-primary);color:#fff;font-size:13px}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.btn.sm{height:30px;padding:0 13px;font-size:12px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* 状态条 */
+.stripe{display:flex;align-items:center;gap:10px;border-radius:12px;padding:9px 14px;margin-bottom:14px;font-size:13px;border:1px solid transparent}
+.stripe .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.stripe .x{margin-left:auto;color:var(--sgj-text-4);cursor:pointer;font-size:14px}
+.stripe.restored{background:var(--sgj-primary-soft);color:var(--sgj-text-2);border-color:var(--sgj-border-card)}
+.stripe.restored .dot{background:var(--sgj-primary)}
+.stripe.restored .act{color:var(--sgj-primary);font-weight:600;cursor:pointer;text-decoration:underline}
+.stripe.ok{background:var(--sgj-moss-soft);color:var(--sgj-text-2)}
+.stripe.ok .dot{background:var(--sgj-moss)}
+.stripe.local{background:var(--sgj-amber-soft);color:var(--sgj-text-2)}
+.stripe.local .dot{background:var(--sgj-amber)}
+.stripe.fail{background:#F3E3E1;color:var(--sgj-text-2)}
+html.dark .stripe.fail{background:#3A2624}
+.stripe.fail .dot{background:var(--sgj-brick)}
+.stripe.fail .act{color:var(--sgj-brick);font-weight:600;cursor:pointer;text-decoration:underline}
+
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;color:var(--sgj-text-2);margin-bottom:6px}
+.inp{border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);background:var(--sgj-bg-card);padding:8px 12px;color:var(--sgj-text);font:inherit;max-width:560px}
+.inp.short{max-width:none;width:auto;display:inline-block}
+.metarow{display:flex;flex-wrap:wrap;gap:14px 28px;margin-bottom:14px}
+.ctl{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);padding:7px 12px;font-size:13px;color:var(--sgj-text-2);background:var(--sgj-bg-card)}
+.ctl .ph{color:var(--sgj-text-4)}
+.seg2{display:inline-flex;border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);overflow:hidden}
+.seg2 span{padding:6px 16px;font-size:13px;color:var(--sgj-text-2)}
+.seg2 span.on{background:var(--sgj-primary);color:#fff}
+body[data-vp=mobile] .metarow{flex-direction:column;gap:12px;align-items:flex-start}
+body[data-vp=mobile] .inp{max-width:none;width:100%}
+
+/* Markdown 编辑器 */
+.mde{border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);overflow:hidden;background:var(--sgj-bg-card)}
+.mde .tb{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--sgj-border-card);font-size:12px;color:var(--sgj-text-4)}
+.mde .panes{display:flex}
+.mde .src,.mde .pv{flex:1;min-width:0;padding:12px 14px;height:300px;overflow:auto}
+.mde .src{border-right:1px solid var(--sgj-border-card);font-family:var(--sgj-font-mono);font-size:12.5px;line-height:1.75;color:var(--sgj-text-2);white-space:pre-wrap}
+.mde .pv{font-size:13.5px;line-height:1.75;color:var(--sgj-text-2)}
+.mde .pv h2{font-size:16px;color:var(--sgj-text);margin:0 0 8px;font-family:var(--sgj-font-serif)}
+.mde .pv p{margin:8px 0}
+.mde .pv pre{background:#282c34;color:#abb2bf;border-radius:10px;padding:12px 14px;font-family:var(--sgj-font-mono);font-size:12px;line-height:1.6;margin:10px 0;overflow:auto}
+.mde .pv code{font-family:var(--sgj-font-mono)}
+.mde .pv .k{color:#c678dd}.mde .pv .s{color:#98c379}.mde .pv .f{color:#61afef}.mde .pv .c{color:#5c6370;font-style:italic}
+body[data-vp=mobile] .mde .panes{flex-direction:column}
+body[data-vp=mobile] .mde .src{height:52vh;border-right:0}
+body[data-vp=mobile] .mde .pv{display:none}
+
+/* 弹窗 */
+.mask{position:fixed;inset:0;background:rgba(23,27,26,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.dlg{background:var(--sgj-bg-card);border-radius:var(--sgj-r-lg);width:440px;max-width:100%;padding:20px 22px;box-shadow:var(--sgj-shadow-hover)}
+.dlg h3{margin:0 0 10px;font-size:16px;font-family:var(--sgj-font-serif)}
+.dlg p{margin:0 0 18px;font-size:13px;color:var(--sgj-text-2)}
+.dlg .row{display:flex;justify-content:flex-end;gap:10px}
+.toast{position:absolute;left:50%;transform:translateX(-50%);top:14px;background:var(--sgj-bg-deep);color:var(--sgj-text-2);
+  border-radius:999px;padding:6px 16px;font-size:12px;box-shadow:var(--sgj-shadow-sm);z-index:9}
+
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.2 设计图</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="note-list.html">笔记列表</a>
+      <a href="note-draft.html">草稿箱</a>
+      <a href="note-edit.html" aria-current="page">编辑</a>
+      <a href="note-detail.html">详情</a>
+      <a href="admin-note.html">后台管理</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="ok" aria-pressed="true">已同步</button>
+      <button data-state="restored" aria-pressed="false">恢复草稿</button>
+      <button data-state="local" aria-pressed="false">仅本地</button>
+      <button data-state="fail" aria-pressed="false">同步失败</button>
+      <button data-state="leave" aria-pressed="false">离开确认</button>
+      <button data-state="import" aria-pressed="false">导入预填</button>
+      <button data-state="saving" aria-pressed="false">保存中</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device" style="position:relative">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <div class="card">
+        <div class="chead">
+          <span class="back">←</span>
+          <h1 class="ctitle" id="pageTitle">编辑笔记</h1>
+          <div class="hacts">
+            <button class="btn line" onclick="goLeave()">取消</button>
+            <button class="btn" id="saveBtn">保存</button>
+          </div>
+        </div>
+
+        <div id="stripes"></div>
+
+        <div class="field">
+          <label for="t">标题</label>
+          <input id="t" class="inp" style="width:100%" value="MySQL 全文索引与 ngram 分词" readonly>
+        </div>
+
+        <div class="metarow">
+          <div>
+            <label style="display:block;font-size:13px;color:var(--sgj-text-2);margin-bottom:6px">关联条目</label>
+            <span class="ctl" id="itemCtl">📝 独立笔记 <span class="ph">（点击选择）</span></span>
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;color:var(--sgj-text-2);margin-bottom:6px">标签</label>
+            <span class="ctl" id="tagCtl">数据库, 笔记 <span class="ph">▾</span></span>
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;color:var(--sgj-text-2);margin-bottom:6px">公开状态</label>
+            <span class="seg2"><span class="on">私密</span><span>公开</span></span>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <label>内容</label>
+          <div class="mde">
+            <div class="tb">
+              <span>支持 Markdown 语法<span class="only-desktop">，右侧实时预览</span></span>
+              <span><span class="only-mobile"><button class="btn line sm">预览</button> </span><span id="count">386 字</span></span>
+            </div>
+            <div class="panes">
+              <div class="src" id="src"></div>
+              <div class="pv" id="pv"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div></nav>
+  </div>
+</main>
+
+<div class="mask" id="mask" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <h3 id="dlgTitle">离开编辑？</h3>
+    <p id="dlgBody">这篇笔记有未保存的改动。<b>你的修改已保存到草稿箱</b>，离开不会丢失；下次进入这篇笔记时会自动恢复。<span class="an" data-n="5"></span></p>
+    <div class="row">
+      <button class="btn line" onclick="closeDlg()">继续编辑</button>
+      <button class="btn">确认离开</button>
+    </div>
+  </div>
+</div>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>同步状态条三态</b>——「已同步到草稿箱」/「仅本地待同步」/「同步失败」。它是本版唯一能让人确认「写的东西已经出去了」的地方，所以状态要具体、不要只说「已保存」。</li>
+    <li><span class="new">新增</span>：<b>已恢复未保存的草稿</b> 状态条。仅在编辑已有笔记、且服务端草稿比已发布内容新时出现。<b>必须可见</b>——否则用户会把草稿内容误认为已发布的正式内容。「放弃草稿」= 删服务端草稿 + 清本地缓冲 + <b>表单回滚到服务器快照</b> + 脏标记归位。</li>
+    <li><span class="new">改动</span>：后台自动同步（每 15s、页面隐藏、网络恢复）<b>不发全局错误提示</b>——否则断网时每 15 秒弹一个红字。同时带 <code>repeatSubmit: false</code>，避免被 1 秒防重拦掉。上报失败时状态条转「仅本地待同步」，不打断输入。</li>
+    <li><span class="new">改动</span>：本地缓冲的 key 带用户身份（<code>sgj:note:buf:{username}:{editorKey}</code>）。原来的 key 在新增态恒为 <code>new</code>，同一浏览器换人登录会继承上一个人的未保存内容。</li>
+    <li><span class="new">新增</span>：<b>离开确认弹窗</b>。判据是「与打开时的服务器快照不同」——<b>不能</b>用「与草稿是否相同」，草稿总是最新的，那样写等于永不拦截。文案说明内容已存入草稿箱，而不是「修改将丢失」。<br>关闭标签页时浏览器只给通用文案（<code>beforeunload</code> 不可自定义），文案要求<b>只适用于这个弹窗</b>。</li>
+    <li><span class="new">新增</span>：<b>导入预填</b>。标题按 front-matter → 首个 H1 → 文件名取值；front-matter 里的标签只有<b>在标签表中存在</b>的才预填，其余忽略并提示（标签体系是「仅可选择不可手输」）。</li>
+    <li><span class="new">新增</span>：<b>保存时上传原件</b>。原件路径随保存写入笔记，上传失败只放弃留存、不阻断保存；未保存就离开的话没有原件。</li>
+    <li><span class="new">改动</span>：移动端隐藏右侧预览、收进「预览」弹窗（既有行为），编辑器高度固定 55vh。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实保存请求、字数统计逻辑、标签选择器与条目选择器的弹窗、Markdown 工具栏。<br><b>本屏不新增</b>：编辑器本身的结构、分屏预览、字符计数都是既有实现；本次只在它上方加了状态条。</p>
+</section>
+
+<script>
+const SRC_FULL = `## 实测结论
+
+1. 索引**自动维护**：改完正文搜旧词 0 行、搜新词 1 行，不需要重建。
+2. 事务**提交后**才可见；回滚时索引一并回滚。
+3. \`ngram_token_size=2\` 时单个汉字搜不到，搜索框要给最小长度提示。
+
+\`\`\`sql
+alter table sgj_note
+  add fulltext key ft_note (title, content) with parser ngram;
+\`\`\`
+
+> 布尔运算符（\`+ - * " \`）会被解释，前导 \`-\` 会让结果返回 0 行。`;
+
+const PV_FULL = `<h2>实测结论</h2>
+<p>1. 索引<b>自动维护</b>：改完正文搜旧词 0 行、搜新词 1 行，不需要重建。</p>
+<p>2. 事务<b>提交后</b>才可见；回滚时索引一并回滚。</p>
+<p>3. <code>ngram_token_size=2</code> 时单个汉字搜不到，搜索框要给最小长度提示。</p>
+<pre><span class="k">alter table</span> sgj_note
+  <span class="k">add fulltext key</span> ft_note (title, content) <span class="k">with parser</span> <span class="s">ngram</span>;</pre>
+<p style="border-left:4px solid var(--sgj-amber);background:var(--sgj-amber-soft);padding:8px 14px;border-radius:0 8px 8px 0">
+布尔运算符（<code>+ - * "</code>）会被解释，前导 <code>-</code> 会让结果返回 0 行。</p>`;
+
+const STRIPES = {
+  ok:   `<div class="stripe ok"><span class="dot"></span>已同步到草稿箱<span class="an" data-n="1"></span></div>`,
+  restored: `<div class="stripe restored"><span class="dot"></span>已恢复未保存的草稿 · <span class="act">放弃草稿</span><span class="an" data-n="2"></span><span class="x">✕</span></div>`,
+  local:`<div class="stripe local"><span class="dot"></span>仅本地待同步（离线）——内容已存在本机，联网后会自动上传<span class="an" data-n="3"></span></div>`,
+  fail: `<div class="stripe fail"><span class="dot"></span>同步失败 · <span class="act">重试</span><span class="x">✕</span></div>`,
+  leave:`<div class="stripe ok"><span class="dot"></span>已同步到草稿箱</div>`,
+  import:`<div class="stripe local"><span class="dot"></span>来自「MySQL 全文索引.md」· <b>2 个标签不在标签表中，已忽略</b>（前端、索引）<span class="an" data-n="6"></span><span class="x">✕</span></div>`,
+  saving:`<div class="stripe ok"><span class="dot"></span>已同步到草稿箱</div>`
+};
+const CFG = {
+  ok:{},
+  restored:{},
+  local:{},
+  fail:{},
+  leave:{dlg:1},
+  import:{title:'写笔记', tags:'', item:''},
+  saving:{pageTitle:'写笔记', saving:1}
+};
+
+let state='ok';
+function closeDlg(){ document.getElementById('mask').hidden=true; }
+function goLeave(){ document.getElementById('mask').hidden=false; }
+document.getElementById('mask').addEventListener('click',e=>{ if(e.target.id==='mask') closeDlg(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDlg(); });
+
+function render(){
+  const c = CFG[state] || {};
+  document.getElementById('stripes').innerHTML = STRIPES[state] || '';
+  document.getElementById('pageTitle').textContent = c.title || '编辑笔记';
+  document.getElementById('t').value = c.title==='写笔记' ? '' : 'MySQL 全文索引与 ngram 分词';
+  document.getElementById('tagCtl').innerHTML = c.tags!==undefined && c.tags===''
+    ? '选择标签（可选） <span class="ph">▾</span>' : '数据库, 笔记 <span class="ph">▾</span>';
+  document.getElementById('src').textContent = SRC_FULL;
+  document.getElementById('pv').innerHTML = PV_FULL;
+  const sb = document.getElementById('saveBtn');
+  sb.disabled = !!c.saving;
+  sb.textContent = c.saving ? '保存中…' : '保存';
+  document.getElementById('mask').hidden = !c.dlg;
+}
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+render();
+</script>
+</body>
+</html>

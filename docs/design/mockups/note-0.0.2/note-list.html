@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 笔记列表 — 拾光记</title>
+<style>
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;gap:0}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.hint{color:#7D8783;font-size:12px}
+
+/* ===== 设备框 ===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台布局 ===== */
+.fh{height:72px;display:flex;align-items:center;gap:26px;padding:0 36px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;display:flex;gap:12px;align-items:center;color:var(--sgj-text-3)}
+.page{padding:36px}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:76px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+/* ===== 页面头 banner ===== */
+.banner{position:relative;display:flex;align-items:center;justify-content:space-between;height:176px;padding:0 56px;
+  background:#282e2c;color:#e7ece9;border-radius:24px;overflow:hidden;margin-bottom:24px}
+html.dark .banner{background:var(--sgj-bg-deep)}
+.banner .blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:140px;bottom:-90px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .txt{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:36px;line-height:1.3}
+.banner p{margin:12px 0 0;font-size:14px;color:#aeb8b3;letter-spacing:.5px}
+.banner .acts{position:relative;z-index:1;display:flex;gap:10px}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;font-size:13px;font-weight:500;letter-spacing:.5px}
+.btn.ghost{background:transparent;color:#e7ece9;border:1px solid rgba(231,236,233,.4)}
+.btn.sm{height:30px;padding:0 14px;font-size:12px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+body[data-vp=mobile] .banner{height:auto;padding:22px 18px;flex-direction:column;align-items:flex-start;gap:16px;border-radius:18px}
+body[data-vp=mobile] .banner h1{font-size:26px}
+
+/* ===== 草稿入口条（新增）===== */
+.draftbar{display:flex;align-items:center;gap:10px;background:var(--sgj-primary-soft);border:1px solid var(--sgj-border-card);
+  border-radius:14px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--sgj-text-2)}
+html.dark .draftbar{background:var(--sgj-primary-soft)}
+.draftbar b{color:var(--sgj-primary);font-weight:600}
+.draftbar .go{margin-left:auto;color:var(--sgj-primary);font-weight:600;text-decoration:none;white-space:nowrap}
+
+/* ===== 筛选 ===== */
+.filter{display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px}
+.search{display:flex;width:260px;border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);overflow:hidden;background:var(--sgj-bg-card)}
+.search .pfx{display:flex;align-items:center;padding:0 10px;color:var(--sgj-text-4)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--sgj-text);font:inherit;padding:9px 0}
+.search .go{border:0;border-left:1px solid var(--sgj-border);background:var(--sgj-bg);color:var(--sgj-text-2);font:inherit;padding:0 14px;cursor:pointer}
+body[data-vp=mobile] .filter{justify-content:flex-start}
+body[data-vp=mobile] .search{width:100%}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pill{border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);border-radius:var(--sgj-r-pill);padding:4px 13px;font-size:12px;cursor:pointer}
+.pill.on{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+.tip{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--sgj-bg);border:1px solid var(--sgj-border);
+  border-radius:12px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--sgj-primary)}
+.tip a{font-size:12px;text-decoration:none;font-weight:600}
+
+/* ===== 卡片 ===== */
+.list{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px;
+  box-shadow:var(--sgj-shadow-sm);cursor:pointer}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px);transition:box-shadow .16s,transform .16s}
+.c-head{display:flex;align-items:flex-start;gap:10px}
+.c-title{flex:1;min-width:0;font-family:var(--sgj-font-serif);font-weight:500;font-size:16px;line-height:24px;word-break:break-word}
+.pub{margin-left:8px;font-size:11px;font-weight:400;color:var(--sgj-success);border:1px solid var(--sgj-success);border-radius:4px;padding:0 5px}
+.del{flex-shrink:0;width:26px;height:26px;border-radius:50%;border:1px solid var(--sgj-border-card);background:var(--sgj-bg);color:var(--sgj-text-3);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+/* 摘要：常显、纯文本、溢出才渐隐 */
+.c-excerpt{margin-top:8px;font-size:13px;color:var(--sgj-text-3);line-height:1.6;max-height:96px;overflow:hidden;position:relative}
+.c-excerpt.clip::after{content:'';position:absolute;left:0;right:0;bottom:0;height:32px;
+  background:linear-gradient(transparent,var(--sgj-bg-card));pointer-events:none}
+mark{background:var(--sgj-amber-soft);color:var(--sgj-amber);border-radius:3px;padding:0 2px;font-weight:600}
+.c-meta{margin-top:10px;display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sgj-text-4)}
+.c-meta .tg{color:var(--sgj-amber)}
+.more{display:flex;justify-content:center;margin:20px 0}
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 0;color:var(--sgj-text-4)}
+.empty .ic{font-size:30px;opacity:.6}
+.err{display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 0;color:var(--sgj-text-4)}
+
+/* ===== 标注 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.2 设计图</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="note-list.html" aria-current="page">笔记列表</a>
+      <a href="note-draft.html">草稿箱</a>
+      <a href="note-edit.html">编辑</a>
+      <a href="note-detail.html">详情</a>
+      <a href="admin-note.html">后台管理</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="default" aria-pressed="true">默认（含草稿条）</button>
+      <button data-state="search" aria-pressed="false">关键词命中</button>
+      <button data-state="empty" aria-pressed="false">无结果</button>
+      <button data-state="error" aria-pressed="false">加载失败</button>
+      <button data-state="guest" aria-pressed="false">访客未登录</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题">
+      <button id="themeBtn" aria-pressed="false">深色模式</button>
+    </span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注">
+      <button id="anBtn" aria-pressed="true">标注</button>
+    </span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <div class="banner">
+        <div class="blob"></div><div class="blob2"></div>
+        <div class="txt">
+          <h1>笔记</h1>
+          <p>记录你的思考与学习笔记。</p>
+        </div>
+        <div class="acts" data-show="login">
+          <button class="btn ghost import">⤒ 导入 md<span class="an" data-n="1"></span></button>
+          <button class="btn">＋ 写笔记</button>
+        </div>
+      </div>
+
+      <!-- 草稿入口条：登录且草稿数 > 0 时才渲染 -->
+      <div class="draftbar" data-show="login draft">
+        你有 <b>3</b> 份未完成的草稿<span class="an" data-n="2"></span>
+        <a class="go" href="note-draft.html">去草稿箱 →</a>
+      </div>
+
+      <div class="filter">
+        <span class="an" data-n="6" style="margin:0 8px 0 0;background:#934C47"></span>
+        <label class="search">
+          <span class="pfx">⌕</span>
+          <input id="kw" type="search" placeholder="搜索标题与正文" value="" readonly>
+          <button class="go" type="button">搜索</button>
+        </label><span class="an" data-n="3"></span>
+      </div>
+
+      <div class="pills">
+        <span class="pill on">全部</span><span class="pill">前端</span><span class="pill">数据库</span>
+        <span class="pill">读书</span><span class="pill">周复盘</span><span class="pill">迁移</span>
+      </div>
+
+      <div class="tip" data-show="itemfilter">
+        <span>正在查看条目「人类简史」的关联笔记</span>
+        <a href="#">查看全部笔记</a>
+      </div>
+
+      <div class="list" id="list"></div>
+
+      <div class="more" data-show="list">
+        <button class="btn ghost" style="background:var(--sgj-bg-card);color:var(--sgj-text-2);border:1px solid var(--sgj-border)">加载更多</button>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div>
+    </nav>
+  </div>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>导入 md</b> 入口。入口在列表页与条目页；上传后跳编辑页预填，不在列表页停留。</li>
+    <li><span class="new">新增</span>：<b>草稿入口条</b>。仅登录且草稿数 &gt; 0 时渲染；访客与失效 token 都不发这个请求（避免 401 弹「登录状态已过期」）。</li>
+    <li><span class="new">改动</span>：搜索框 placeholder 由「搜索笔记标题」改为「<b>搜索标题与正文</b>」；检索走 FULLTEXT + ngram，<b>至少输入 2 个字</b>（少于此长度给提示，不是静默空结果）。</li>
+    <li><span class="new">改动</span>：卡片摘要由「渲染整篇 Markdown」改为 <b>纯文本摘要常显</b>（无关键词取开头，有关键词以命中处为中心）；关键词高亮按字面量切片段渲染，<b>不拼 HTML、不走 <code>v-html</code></b>。</li>
+    <li><span class="new">改动</span>：底部 32px 渐隐改为<b>仅在内容真的溢出时</b>出现——摘要是定长的（约 120 字），原来那套「预览整篇必然溢出」的前提已不成立，否则渐隐会压在完整文字上像被截断。</li>
+    <li><span class="new">改动</span>：移动端筛选栏的媒体查询选择器由失效的 <code>.toolbar</code> 改为 <code>.filter-bar</code>，搜索框恢复占满整行（此前从未生效）。</li>
+  </ol>
+  <p class="scope"><b>无徽标的改动</b>：列表页不再 import <code>MarkdownViewer</code>（首屏不付高亮库体积），因此本页视觉与代码高亮无关；条目筛选提示沿用既有样式，无功能变化。<br><b>未在本屏建模</b>：真实搜索请求、分页请求、删除确认弹窗（弹窗样式见编辑页）。banner 与卡片视觉均为既有样式，未改动。</p>
+</section>
+
+<script>
+const NOTES = [
+  {t:'MySQL 全文索引与 ngram 分词', pub:1, item:null, tags:'数据库, 笔记',
+   ex:'实测结论：<mark>ngram</mark> 自然语言模式会把 mysql 命中到只含 sql 的行，必须用布尔模式；ngram_token_size=2 时单个汉字搜不到，属硬约束。', time:'2026-09-18 10:23', clip:false},
+  {t:'Obsidian 到拾光记的笔记迁移', pub:0, item:null, tags:'迁移',
+   ex:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 ngram 索引变成垃圾 token。', time:'2026-09-18 09:41', clip:false},
+  {t:'《人类简史》读书笔记', pub:1, item:'人类简史', tags:'读书',
+   ex:'印象最深的是认知革命那一章：智人靠「虚构的故事」完成大规模协作。这一点和后面的帝国、货币、宗教是同一条线的延伸，值得单独整理成一篇。', time:'2026-09-17 22:08', clip:false},
+  {t:'闭包与作用域链', pub:0, item:null, tags:'前端',
+   ex:'闭包保存的是变量的引用而不是值，所以循环里用 var 注册回调会全部拿到最后一个值。改成 let 之后每轮迭代都有独立的绑定，行为才符合直觉。', time:'2026-09-16 20:15', clip:false},
+  {t:'第 38 周复盘', pub:1, item:null, tags:'周复盘',
+   ex:'这周把笔记模块的存储形态定下来了，正文继续留在数据库，文件只做导入导出。想清楚之后反而觉得之前纠结的问题本来就不存在——数据库也是磁盘上的文件。另外把每周的孤儿文件清理任务看了一遍，顺手发现留存原件必须登记引用。', time:'2026-09-15 21:30', clip:true}
+];
+const SEARCH_NOTE = {
+  t:'MySQL 全文索引与 ngram 分词', pub:1, item:null, tags:'数据库, 笔记',
+  ex:'…全文索引随更新自动维护，旧词立即失效、新词立即可搜，不需要重建；但 <mark>ngram</mark> 有两种模式，选错了会过度匹配…', time:'2026-09-18 10:23', clip:false
+};
+
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function card(n, withAn){
+  const ex = n.clip
+    ? '<div class="c-excerpt clip">' + n.ex + '<span class="an" data-n="5"></span></div>'
+    : '<div class="c-excerpt">' + n.ex + (withAn?'<span class="an" data-n="4"></span>':'') + '</div>';
+  return `<article class="card">
+    <div class="c-head">
+      <div class="c-title">${esc(n.t)}${n.pub?'<span class="pub">公开</span>':''}</div>
+      <button class="del" title="删除" data-show="login">✕</button>
+    </div>
+    ${ex}
+    <div class="c-meta">
+      <span>${n.item?'🔗 '+esc(n.item):'📝 独立笔记'}</span>
+      <span class="tg">${esc(n.tags)}</span>
+      <span>${n.time}</span>
+    </div>
+  </article>`;
+}
+
+const STATES = {
+  default(){ return NOTES.map(n=>card(n,true)).join(''); },
+  search(){ return card(SEARCH_NOTE,true) + NOTES.slice(1,4).map(n=>card(n,false)).join(''); },
+  empty(){ return `<div class="empty"><div class="ic">⌕</div><div>没有找到匹配的笔记</div>
+    <div style="font-size:12px;color:var(--sgj-text-4)">试试更长的关键词（至少 2 个字）</div></div>`; },
+  error(){ return `<div class="err"><span>加载失败，请稍后重试</span>
+    <button class="btn sm" style="height:30px">重试</button></div>`; },
+  guest(){ return NOTES.map(n=>card(n,false)).join(''); }
+};
+const SHOW = {
+  default:{login:1,draft:1,list:1},
+  search:{login:1,list:1},
+  empty:{login:1,list:0},
+  error:{login:1,list:0},
+  guest:{login:0,draft:0,list:1}
+};
+
+let state='default';
+function render(){
+  document.getElementById('list').innerHTML = STATES[state]();
+  const show = SHOW[state] || {};
+  document.querySelectorAll('[data-show]').forEach(el=>{
+    const keys = el.dataset.show.split(' ');
+    el.style.display = keys.some(k=>show[k]) ? '' : 'none';
+  });
+  if(state==='guest'){ document.querySelector('.banner p').textContent='记录你的思考与学习笔记。'; }
+  document.getElementById('kw').value = state==='search' ? 'ngram' : '';
+  document.getElementById('kw').placeholder = state==='search' ? '搜索标题与正文' : '搜索标题与正文';
+}
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  render();
+}));
+document.querySelectorAll('[data-vp]').forEach(b=>{
+  if(b.id) return;
+  b.addEventListener('click',()=>{
+    document.body.dataset.vp=b.dataset.vp;
+    document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  });
+});
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark = document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark ? '浅色模式' : '深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off = document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+render();
+</script>
+</body>
+</html>

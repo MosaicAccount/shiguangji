@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 草稿箱 — 拾光记</title>
+<style>
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+.fh{height:72px;display:flex;align-items:center;gap:26px;padding:0 36px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;color:var(--sgj-text-3)}
+.page{padding:36px}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:76px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+/* 页面头（草稿箱用轻头，不用大 banner） */
+.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:6px}
+.head h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:26px}
+.head .sub{color:var(--sgj-text-4);font-size:13px;padding-bottom:3px}
+.backlink{display:inline-block;margin-bottom:14px;font-size:13px;color:var(--sgj-text-3);text-decoration:none}
+.quota{margin:14px 0 18px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--sgj-text-4)}
+.bar{flex:0 0 160px;height:6px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sgj-moss)}
+.bar.full i{background:var(--sgj-brick)}
+
+.dlist{display:flex;flex-direction:column;gap:12px}
+.draft{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 18px;
+  box-shadow:var(--sgj-shadow-sm);display:flex;gap:16px;align-items:center}
+.draft:hover{box-shadow:var(--sgj-shadow-hover)}
+.d-main{flex:1;min-width:0}
+.d-title{font-family:var(--sgj-font-serif);font-size:16px;font-weight:500;line-height:24px;word-break:break-word}
+.d-title .fallback{color:var(--sgj-text-2)}
+.d-sub{margin-top:6px;font-size:12px;color:var(--sgj-text-4);display:flex;flex-wrap:wrap;gap:12px}
+.d-acts{flex-shrink:0;display:flex;gap:8px}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 18px;height:36px;background:var(--sgj-primary);color:#fff;font-size:13px}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.btn.sm{height:30px;padding:0 13px;font-size:12px}
+.btn.danger{background:transparent;color:var(--sgj-danger);border:1px solid var(--sgj-border)}
+body[data-vp=mobile] .draft{flex-direction:column;align-items:stretch;gap:12px}
+body[data-vp=mobile] .d-acts{justify-content:flex-end}
+.empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:64px 0;color:var(--sgj-text-4)}
+.empty .ic{font-size:32px;opacity:.6}
+.empty a{font-size:13px}
+
+/* 弹窗 */
+.mask{position:fixed;inset:0;background:rgba(23,27,26,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.dlg{background:var(--sgj-bg-card);border-radius:var(--sgj-r-lg);width:420px;max-width:100%;padding:20px 22px;box-shadow:var(--sgj-shadow-hover)}
+.dlg h3{margin:0 0 10px;font-size:16px;font-family:var(--sgj-font-serif)}
+.dlg p{margin:0 0 18px;font-size:13px;color:var(--sgj-text-2)}
+.dlg .row{display:flex;justify-content:flex-end;gap:10px}
+
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.2 设计图</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="note-list.html">笔记列表</a>
+      <a href="note-draft.html" aria-current="page">草稿箱</a>
+      <a href="note-edit.html">编辑</a>
+      <a href="note-detail.html">详情</a>
+      <a href="admin-note.html">后台管理</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="list" aria-pressed="true">有草稿</button>
+      <button data-state="empty" aria-pressed="false">空态</button>
+      <button data-state="full" aria-pressed="false">满 20 份</button>
+      <button data-state="confirm" aria-pressed="false">删除确认</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <a class="backlink" href="note-list.html">← 返回笔记列表</a>
+      <div class="head">
+        <h1>草稿箱</h1>
+        <span class="sub">未完成的笔记，只保留新笔记的草稿<span class="an" data-n="1"></span></span>
+      </div>
+
+      <div class="quota" id="quota">
+        <span class="bar" id="bar"><i style="width:15%"></i></span>
+        <span id="quotaText">已用 3 / 20 份</span>
+        <span class="an" data-n="2"></span>
+      </div>
+
+      <div class="dlist" id="dlist"></div>
+    </div>
+
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div></nav>
+  </div>
+</main>
+
+<div class="mask" id="mask" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <h3 id="dlgTitle">删除草稿</h3>
+    <p>删除后无法恢复（草稿不进回收站）。确认删除《Obsidian 到拾光记的笔记迁移》这份草稿？<span class="an" data-n="4"></span></p>
+    <div class="row">
+      <button class="btn line">取消</button>
+      <button class="btn">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增页</span>：<code>/note/draft</code>，仅登录可进（不在免登录白名单）。入口只有笔记列表页的草稿入口条，前台导航不加项。</li>
+    <li><span class="new">新增</span>：<b>配额提示（n / 20）</b>。上限只统计<b>新笔记草稿</b>（<code>note_id</code> 为空）；编辑已有笔记产生的草稿不入箱、也不占额。</li>
+    <li><span class="new">新增</span>：<b>标题为空时用正文首行兜底</b>。取的是与列表摘要<strong>同一套</strong>剥离逻辑（去 Markdown 标记、去图片、去 front-matter），不另写一份。</li>
+    <li><span class="new">新增</span>：<b>硬删除 + 确认弹窗</b>。草稿不进回收站——避免出现第二个暂存区；删除后该行直接消失，配额立刻释放。</li>
+    <li><span class="new">改动</span>：<b>相对时间</b>（「3 分钟前」）走 <code>formatTime()</code>，但后端给的是 <code>yyyy-MM-dd HH:mm:ss</code>，必须先经解析函数转 epoch——直接喂进去会渲染成 <code>NaN月NaN日</code>。</li>
+    <li><span class="new">改动</span>：移动端底部自留 76px，不被固定标签栏遮挡（沿用 <code>detail.vue</code> 的 FAB 偏移做法）。</li>
+  </ol>
+  <p class="scope"><b>本屏不显示</b>：编辑态草稿（改了已发布笔记但没保存的改动）。它们只在进入那篇编辑页时静默恢复，不会出现在这里——这是本页最容易误解的一点。<br><b>未建模</b>：真实删除请求、「继续写」后的跳转（见编辑页）。</p>
+</section>
+
+<script>
+const DRAFTS = [
+  {title:'MySQL 全文索引与 ngram 分词', item:'', time:'3 分钟前', preview:null},
+  {title:'', preview:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 ngram 索引变成垃圾 token。', item:'', time:'2 小时前'},
+  {title:'《人类简史》读书笔记', item:'人类简史', time:'昨天 22:08', preview:null}
+];
+const FALLBACK = '导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---…';
+
+function row(d){
+  const t = d.title
+    ? d.title
+    : '<span class="fallback">' + FALLBACK + '<span class="an" data-n="3"></span></span>';
+  return `<article class="draft">
+    <div class="d-main">
+      <div class="d-title">${t}</div>
+      <div class="d-sub">
+        <span>${d.item ? '🔗 ' + d.item : '📝 独立笔记'}</span>
+        <span>${d.time}<span class="an" data-n="5"></span></span>
+      </div>
+    </div>
+    <div class="d-acts">
+      <button class="btn sm">继续写</button>
+      <button class="btn sm danger" onclick="openDlg()">删除</button>
+    </div>
+  </article>`;
+}
+
+const STATES = {
+  list(){ return DRAFTS.map(row).join(''); },
+  empty(){ return `<div class="empty"><div class="ic">🗂</div><div>草稿箱是空的</div>
+    <div style="font-size:12px">在编辑器里写一半离开，草稿就会出现在这里</div>
+    <a href="note-list.html">← 去写一篇</a></div>`; },
+  full(){ return DRAFTS.map(row).join('') + `<div class="empty" style="padding:28px 0 8px">
+    <div>已达 20 份上限</div>
+    <div style="font-size:12px">先清理几份，再新建草稿</div></div>`; },
+  confirm(){ return DRAFTS.map(row).join(''); }
+};
+const SHOW = {list:{}, empty:{quota:0}, full:{}, confirm:{}};
+
+let state='list';
+function openDlg(){ document.getElementById('mask').hidden = false; }
+function closeDlg(){ document.getElementById('mask').hidden = true; }
+document.querySelectorAll('.dlg .btn').forEach(b=>b.addEventListener('click',closeDlg));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDlg(); });
+
+function render(){
+  document.getElementById('dlist').innerHTML = STATES[state]();
+  const show = SHOW[state] || {};
+  document.getElementById('quota').style.display = ('quota' in show) ? 'none' : '';
+  if(state==='full'){
+    document.getElementById('bar').classList.add('full');
+    document.querySelector('#bar i').style.width = '100%';
+    document.getElementById('quotaText').textContent = '已用 20 / 20 份（已满）';
+  } else {
+    document.getElementById('bar').classList.remove('full');
+    document.querySelector('#bar i').style.width = '15%';
+    document.getElementById('quotaText').textContent = '已用 3 / 20 份';
+  }
+  if(state==='confirm') openDlg(); else closeDlg();
+}
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+render();
+</script>
+</body>
+</html>

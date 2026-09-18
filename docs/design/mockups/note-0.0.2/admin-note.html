@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 后台笔记管理 — 拾光记</title>
+<style>
+:root{
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  /* 后台沿用 Element Plus 中性色，不套前台「冷雾胶片」令牌 */
+  --ad-border:#DCDFE6; --ad-border-l:#EBEEF5; --ad-text:#303133; --ad-text-2:#606266; --ad-text-3:#909399;
+  --ad-bg:#FFFFFF; --ad-page:#F0F2F5; --ad-head:#F5F7FA; --ad-primary:#409EFF; --ad-danger:#F56C6C; --ad-success:#67C23A;
+}
+html.dark{
+  --ad-border:#414243; --ad-border-l:#363637; --ad-text:#E5EAF3; --ad-text-2:#CFD3DC; --ad-text-3:#A3A6AD;
+  --ad-bg:#1D1E1F; --ad-page:#0A0A0A; --ad-head:#262727; --ad-primary:#409EFF;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:#303133;font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{background:var(--ad-page);border-radius:16px;overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid #D5DCD9;margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,900px)}
+body[data-vp=mobile] .device{max-width:520px;height:780px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+.appbar{height:50px;background:var(--ad-bg);border-bottom:1px solid var(--ad-border-l);display:flex;align-items:center;gap:12px;padding:0 16px}
+.appbar .t{font-weight:600;color:var(--ad-text);font-size:14px}
+.appbar .u{margin-left:auto;color:var(--ad-text-3);font-size:12px}
+.crumb{padding:12px 20px;font-size:13px;color:var(--ad-text-3);background:var(--ad-bg);border-bottom:1px solid var(--ad-border-l)}
+.crumb b{color:var(--ad-text-2);font-weight:400}
+.wrap{padding:16px;background:var(--ad-page)}
+.panel{background:var(--ad-bg);border-radius:8px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+
+/* 查询表单 */
+.form{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;margin-bottom:14px}
+.fitem{display:flex;align-items:center;gap:8px}
+.fitem label{font-size:13px;color:var(--ad-text-2);white-space:nowrap}
+.fitem input,.fitem select{border:1px solid var(--ad-border);border-radius:4px;padding:6px 10px;font:inherit;font-size:13px;color:var(--ad-text);background:var(--ad-bg);min-width:170px}
+.hit{background:#FDF6EC;border:1px solid #F5DAB1;color:#B88230;border-radius:4px;padding:1px 6px;font-size:12px;white-space:nowrap}
+html.dark .hit{background:#3A2E1C;border-color:#5C4620;color:#E0A85C}
+.ebtn{font:inherit;font-size:13px;border-radius:4px;padding:6px 15px;cursor:pointer;border:1px solid var(--ad-border);background:var(--ad-bg);color:var(--ad-text-2)}
+.ebtn.pri{background:var(--ad-primary);border-color:var(--ad-primary);color:#fff}
+.ebtn.link{border:0;background:transparent;color:var(--ad-primary);padding:2px 6px}
+.ebtn.link[disabled]{color:var(--ad-text-3);cursor:not-allowed;opacity:.6}
+.ebtn.link.warn{color:#B88230}
+.tools{margin-left:auto;display:flex;gap:8px}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--ad-border-l);padding:10px 10px;text-align:left;vertical-align:top}
+th{background:var(--ad-head);color:var(--ad-text-2);font-weight:600;white-space:nowrap}
+td{color:var(--ad-text-2)}
+tr:hover td{background:#FAFAFA}
+html.dark tr:hover td{background:#232425}
+td .ttl{color:var(--ad-text);font-weight:500}
+td .sum{color:var(--ad-text-3);font-size:12.5px;line-height:1.6;max-width:340px}
+td .sum mark{background:#FDF6EC;color:#B88230;border-radius:2px;padding:0 2px;font-weight:600}
+html.dark td .sum mark{background:#3A2E1C;color:#E0A85C}
+.pill{display:inline-block;border-radius:4px;padding:0 6px;font-size:12px;line-height:18px;border:1px solid}
+.pill.on{color:var(--ad-success);border-color:#C2E7B0;background:#F0F9EB}
+.pill.off{color:var(--ad-text-3);border-color:var(--ad-border);background:transparent}
+html.dark .pill.on{background:#1E2B16;border-color:#3C6B27}
+.acts{white-space:nowrap;display:flex;gap:2px;flex-wrap:wrap;max-width:150px}
+.empty{padding:44px;text-align:center;color:var(--ad-text-3);font-size:13px}
+.foot{padding:12px 4px 2px;display:flex;justify-content:flex-end;gap:6px;align-items:center;font-size:13px;color:var(--ad-text-2)}
+.foot span.pg{border:1px solid var(--ad-border);border-radius:4px;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:var(--ad-bg)}
+.foot span.pg.cur{background:var(--ad-primary);color:#fff;border-color:var(--ad-primary)}
+
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.2 设计图</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="note-list.html">笔记列表</a>
+      <a href="note-draft.html">草稿箱</a>
+      <a href="note-edit.html">编辑</a>
+      <a href="note-detail.html">详情</a>
+      <a href="admin-note.html" aria-current="page">后台管理</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="hit" aria-pressed="true">关键词命中正文</button>
+      <button data-state="none" aria-pressed="false">无结果</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">窄屏</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <div class="appbar"><span class="t">拾光记 · 后台</span><span class="u">JLian</span></div>
+    <div class="crumb"><b>业务管理</b> / 笔记管理</div>
+    <div class="wrap"><div class="panel">
+
+      <div class="form">
+        <div class="fitem">
+          <label for="kw">关键词<span class="an" data-n="1"></span></label>
+          <input id="kw" value="ngram" readonly>
+          <span class="hit">命中正文</span>
+        </div>
+        <div class="fitem">
+          <label for="tag">标签</label>
+          <input id="tag" placeholder="选择标签" readonly>
+        </div>
+        <div class="fitem">
+          <label for="pub">公开状态</label>
+          <select id="pub"><option>全部</option><option>公开</option><option>私密</option></select>
+        </div>
+        <button class="ebtn pri">搜索</button>
+        <button class="ebtn">重置</button>
+        <div class="tools">
+          <button class="ebtn">导出 ▾</button>
+        </div>
+      </div>
+
+      <table>
+        <thead><tr>
+          <th style="width:56px">ID</th>
+          <th style="width:120px">关联条目</th>
+          <th style="width:200px">标题</th>
+          <th>摘要</th>
+          <th style="width:70px">公开</th>
+          <th style="width:150px">更新时间</th>
+          <th style="width:168px">操作<span class="an" data-n="2"></span></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="foot"><span>共 3 条</span><span class="pg cur">1</span></div>
+    </div></div>
+  </div>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">改动</span>：查询表单的 label 由「<b>标题</b>」改为「<b>关键词</b>」。后台与前台共用同一个 <code>keyword</code> 参数、同一条全文索引，因此后台也能搜到<b>只存在于正文</b>的命中项。<br>回收站<b>不变</b>——仍只搜标题（表格无内容列，命中理由不可见）。</li>
+    <li><span class="new">新增</span>：行内两个动作——<b>「下载原件」</b>与<b>「导出 Markdown」</b>。</li>
+    <li><span class="new">新增</span>：<b>「下载原件」</b>取回的是导入时上传的那份原始文件；<code>source_file</code> 为空（手写、或导入后未保存就离开）时该动作<b>禁用</b>，见第一行与第三行的差异。</li>
+    <li><span class="new">新增</span>：<b>「导出 Markdown」</b>用当前正文 + front-matter（含 <code>noteId</code> / title / tags / is_public）<b>现生成</b>，与「下载原件」不是一回事。</li>
+    <li><span class="new">约束</span>：<b>往返必须用「导出 Markdown」</b>。原件不含 <code>noteId</code>、也不含之后在网页上的修改，拿它重新导入会新建一篇重复笔记——这条要写进按钮的提示文案，否则用户一定会踩。</li>
+    <li><span class="new">改动</span>：后台列表与导出<b>仍带完整正文</b>（导出 CSV / JSON 的「内容」列依赖它）。本版的「列表不吃全文」只改前台。</li>
+  </ol>
+  <p class="scope"><b>视觉说明</b>：后台沿用既有 admin / Element Plus 主题，本图只标注本次改动，不重新设计表格样式。<br><b>未建模</b>：真实检索与分页、导出下拉的 CSV / JSON 选项、编辑弹窗。</p>
+</section>
+
+<script>
+const ROWS = [
+  {id:312, item:'—', ttl:'MySQL 全文索引与 ngram 分词', pub:'私密', time:'2026-09-18 10:23',
+   sum:'实测结论：<mark>ngram</mark> 自然语言模式会把 mysql 命中到只含 sql 的行，必须用布尔模式；ngram_token_size=2 时单个汉字搜不到。',
+   src:'/profile/upload/2026/09/18/a1b2c3.md'},
+  {id:311, item:'—', ttl:'Obsidian 到拾光记的笔记迁移', pub:'公开', time:'2026-09-18 09:41',
+   sum:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 <mark>ngram</mark> 索引变成垃圾 token。',
+   src:'/profile/upload/2026/09/18/d4e5f6.md'},
+  {id:308, item:'人类简史', ttl:'《人类简史》读书笔记', pub:'公开', time:'2026-09-17 22:08',
+   sum:'印象最深的是认知革命那一章：智人靠「虚构的故事」完成大规模协作。这一点和后面的帝国、货币、宗教是同一条线的延伸。',
+   src:''}
+];
+function row(r){
+  return `<tr>
+    <td>${r.id}</td>
+    <td>${r.item==='—'?'—':'🔗 '+r.item}</td>
+    <td><span class="ttl">${r.ttl}</span></td>
+    <td><div class="sum">${r.sum}</div></td>
+    <td><span class="pill ${r.pub==='公开'?'on':'off'}">${r.pub}</span></td>
+    <td>${r.time}</td>
+    <td><div class="acts">
+      <button class="ebtn link" ${r.src?'':'disabled'} title="${r.src?'下载导入时上传的原始文件':'该笔记没有留存原件（手写或导入后未保存就离开）'}">下载原件</button>
+      <button class="ebtn link warn" title="用当前内容现生成，带 noteId，可用于往返；原件不含 noteId，请勿用原件往返">导出 Markdown</button>
+    </div></td>
+  </tr>`;
+}
+const STATES = {
+  hit(){ return ROWS.map(row).join(''); },
+  none(){ return `<tr><td colspan="7"><div class="empty">没有匹配的笔记</div></td></tr>`; }
+};
+let state='hit';
+function render(){ document.getElementById('rows').innerHTML = STATES[state](); }
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+render();
+</script>
+</body>
+</html>

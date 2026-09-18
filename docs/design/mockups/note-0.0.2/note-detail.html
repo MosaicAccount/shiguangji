@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 笔记详情 — 拾光记</title>
+<style>
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s;position:relative}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,940px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+.fh{height:72px;display:flex;align-items:center;gap:26px;padding:0 36px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;color:var(--sgj-text-3)}
+.page{padding:36px}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:90px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+.hero{position:relative;background:#282e2c;color:#e7ece9;border-radius:24px;padding:30px 40px 26px;overflow:hidden;margin-bottom:22px}
+html.dark .hero{background:var(--sgj-bg-deep)}
+.hero .blob{position:absolute;right:-40px;top:-120px;width:320px;height:320px;border-radius:50%;background:rgba(168,95,82,.35)}
+.hero .blob2{position:absolute;right:150px;bottom:-110px;width:220px;height:220px;border-radius:50%;background:rgba(93,111,102,.4)}
+.hero .in{position:relative;z-index:1}
+.hero .top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.circ{width:32px;height:32px;border-radius:50%;border:1px solid rgba(231,236,233,.35);color:#dfe6e2;background:transparent;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+.hero h1{margin:0 0 12px;font-family:var(--sgj-font-serif);font-weight:700;font-size:32px;line-height:1.35}
+.hero .tp{display:flex;gap:8px;margin-bottom:12px}
+.hero .tp span{border:1px solid rgba(231,236,233,.35);border-radius:999px;padding:2px 11px;font-size:12px;color:#dfe6e2}
+.hero .meta{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#aeb8b3}
+body[data-vp=mobile] .hero{padding:20px 18px;border-radius:18px}
+body[data-vp=mobile] .hero h1{font-size:23px}
+
+.cols{display:flex;gap:28px;align-items:flex-start}
+.body{flex:1;min-width:0;background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:24px 28px}
+.body h2{font-size:18px;font-family:var(--sgj-font-serif);color:var(--sgj-text);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--sgj-border-card)}
+.body h2:first-child{margin-top:0}
+.body h3{font-size:15px;margin:16px 0 8px;color:var(--sgj-text)}
+.body p{margin:8px 0}
+.body ul,.body ol{margin:8px 0;padding-left:24px}
+.body li{margin:4px 0}
+.body code{font-family:var(--sgj-font-mono);background:var(--sgj-cover);border-radius:4px;padding:2px 5px;font-size:13px;color:var(--sgj-primary)}
+.body pre{margin:12px 0;background:#282c34;color:#abb2bf;border-radius:10px;padding:14px 16px;overflow-x:auto;line-height:1.6}
+.body pre code{background:transparent;color:inherit;padding:0;font-size:12.5px}
+.body blockquote{margin:10px 0;padding:8px 14px;border-left:4px solid var(--sgj-amber);background:var(--sgj-amber-soft);border-radius:0 8px 8px 0;color:var(--sgj-text-2)}
+.body table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+.body th,.body td{border:1px solid var(--sgj-border-card);padding:8px 12px;text-align:left}
+.body th{background:var(--sgj-amber-soft);font-weight:600}
+.end{text-align:center;color:var(--sgj-text-4);font-size:12px;margin:26px 0 4px;letter-spacing:3px}
+/* hljs atom-one-dark token 颜色 */
+.k{color:#c678dd}.s{color:#98c379}.f{color:#61afef}.c{color:#5c6370;font-style:italic}.n{color:#d19a66}.t{color:#e5c07b}
+aside{width:200px;flex-shrink:0;position:sticky;top:20px}
+aside h4{margin:0 0 10px;font-size:12px;color:var(--sgj-text-4);font-weight:500;letter-spacing:1px}
+aside ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--sgj-border-card)}
+aside li{font-size:13px;color:var(--sgj-text-3);padding:4px 0 4px 12px;cursor:pointer;line-height:1.5}
+aside li.l2{padding-left:24px;font-size:12.5px}
+aside li.on{color:var(--sgj-primary);border-left:2px solid var(--sgj-primary);margin-left:-1px;font-weight:600}
+.inline-toc{display:none;border:1px solid var(--sgj-border-card);border-radius:12px;background:var(--sgj-bg-card);margin-bottom:14px;overflow:hidden}
+.inline-toc summary{padding:10px 14px;font-size:13px;color:var(--sgj-text-2);cursor:pointer;list-style:none}
+.inline-toc summary::-webkit-details-marker{display:none}
+.inline-toc .items{padding:0 14px 12px;font-size:13px}
+.inline-toc .items div{padding:5px 0;color:var(--sgj-text-3)}
+body[data-vp=mobile] .cols{flex-direction:column;gap:0}
+body[data-vp=mobile] aside{display:none}
+body[data-vp=mobile] .inline-toc{display:block}
+body[data-vp=mobile] .body{padding:18px 16px}
+body[data-vp=mobile] .hero h1{font-size:22px}
+
+/* 移动端浮动大纲 */
+.fab{display:none}
+body[data-vp=mobile] .fab{display:flex;position:sticky;bottom:74px;margin-left:auto;margin-right:2px;width:46px;height:46px;border-radius:50%;
+  background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);box-shadow:var(--sgj-shadow-hover);align-items:center;justify-content:center;
+  color:var(--sgj-text-2);font-size:15px;z-index:7;cursor:pointer}
+.panel{position:absolute;left:0;right:0;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);
+  border-radius:16px 16px 0 0;padding:16px 18px 22px;z-index:20;box-shadow:0 -8px 24px rgba(23,27,26,.16)}
+.panel h4{margin:0 0 10px;font-size:12px;color:var(--sgj-text-4);letter-spacing:1px}
+.panel div{padding:7px 0;font-size:13.5px;color:var(--sgj-text-2);border-bottom:1px solid var(--sgj-border-card)}
+.panel div.l2{padding-left:18px;font-size:13px;color:var(--sgj-text-3)}
+.mask{position:absolute;inset:0;background:rgba(23,27,26,.35);z-index:19}
+
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.2 设计图</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="note-list.html">笔记列表</a>
+      <a href="note-draft.html">草稿箱</a>
+      <a href="note-edit.html">编辑</a>
+      <a href="note-detail.html" aria-current="page">详情</a>
+      <a href="admin-note.html">后台管理</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="hl" aria-pressed="true">代码高亮</button>
+      <button data-state="plain" aria-pressed="false">无标注 / 未知语言</button>
+      <button data-state="toc" aria-pressed="false">移动端大纲浮层</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <article class="hero">
+        <div class="blob"></div><div class="blob2"></div>
+        <div class="in">
+          <div class="top">
+            <span class="circ">←</span>
+            <span style="flex:1"></span>
+            <span class="circ">✎</span>
+            <span class="circ">✕</span>
+          </div>
+          <h1>MySQL 全文索引与 ngram 分词</h1>
+          <div class="tp"><span>数据库</span><span>笔记</span></div>
+          <div class="meta"><span>📝 独立笔记</span><span>私密</span><span>2026-09-18 10:23</span></div>
+        </div>
+      </article>
+
+      <div class="cols">
+        <div>
+          <details class="inline-toc"><summary>本文大纲 ⌄</summary>
+            <div class="items"><div>索引维护</div><div>事务可见性</div><div>分词与运算符</div></div>
+          </details>
+          <div class="body" id="body"></div>
+        </div>
+        <aside>
+          <h4>本文大纲</h4>
+          <ol>
+            <li class="on">索引维护</li>
+            <li class="l2">自动维护</li>
+            <li class="l2">事务可见性</li>
+            <li>分词与运算符</li>
+            <li class="l2">布尔运算符</li>
+            <li>落地形状</li>
+          </ol>
+        </aside>
+      </div>
+    </div>
+
+    <span class="fab">☰</span>
+    <div class="mask" id="pmask" hidden></div>
+    <div class="panel" id="panel" hidden>
+      <h4>本文大纲</h4>
+      <div>索引维护</div><div class="l2">自动维护</div><div class="l2">事务可见性</div>
+      <div>分词与运算符</div><div class="l2">布尔运算符</div><div>落地形状</div>
+    </div>
+
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>代码块语法高亮</b>。新增 <code>highlight.js</code> + <code>marked-highlight</code> 两个依赖（<code>marked</code> 12 已移除内置 <code>highlight</code> 选项）。语言白名单用 <code>highlight.js/lib/common</code>（约 35 种常用语言），不引全量。</li>
+    <li><span class="new">约束</span>：<b>只高亮显式标注且认识的语言</b>，不启用自动猜语言（长块明显变慢且易猜错）。见「无标注 / 未知语言」状态。</li>
+    <li><span class="new">约束</span>：<code>hljs</code> 生成的 <code>span.hljs-*</code> 必须活过既有的 <code>DOMPurify.sanitize</code> 管道——<code>class</code> 默认在白名单内，但要写成 spec 断言，否则哪天被过滤掉只会表现为「高亮突然没了」。</li>
+    <li><span class="new">约束</span>：高亮 CSS <b>不能新开一段不带 <code>:deep()</code> 的 scoped 规则</b>。本组件的样式全部写在 <code>&lt;style scoped&gt;</code> + <code>:deep()</code> 里；<code>v-html</code> 生成的节点没有 data-v 属性，普通 scoped 规则对它不生效——这是本版最容易踩的坑。</li>
+    <li><span class="new">改动</span>：主题用 <code>highlight.js/styles/atom-one-dark.css</code>，其底色与既有 <code>pre</code> 的固定 <code>#282c34</code> 同源，因此<b>两种主题下代码块都保持深色</b>、不随主题翻转。既有的 <code>pre code</code> 规则特异性更高，会覆盖主题对 <code>code</code> 的底色，无需改 <code>pre</code> 配色。</li>
+    <li><span class="new">改动</span>：本页与编辑页共用 <code>MarkdownViewer</code>，高亮自动同时生效；列表页不再引用该组件，所以高亮库不进首屏。右侧大纲为既有功能（#26），本次未改动。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实的大纲锚点滚动与 scroll-spy、图片与相册、评论。<br>代码块的语义配色为本图示意，取值参照 atom-one-dark；实现时以包内实际值为准。</p>
+</section>
+
+<script>
+const CODE_HL = `<pre><code><span class="c">-- 一条索引同时覆盖标题与正文</span>
+<span class="k">alter table</span> sgj_note
+  <span class="k">add fulltext key</span> ft_note_title_content (title, content)
+  <span class="k">with parser</span> <span class="t">ngram</span>;
+
+<span class="c">-- 查询：必须用布尔模式</span>
+<span class="k">select</span> note_id, title <span class="k">from</span> sgj_note
+<span class="k">where</span> <span class="f">match</span>(title, content) <span class="k">against</span>(<span class="s">'ngram'</span> <span class="k">in boolean mode</span>);</code></pre>`;
+
+const BODY_HL = `
+<h2>索引维护</h2>
+<p>改完正文不需要手动重建索引：InnoDB 的 FULLTEXT 索引随 <code>INSERT</code> / <code>UPDATE</code> / <code>DELETE</code> 一起维护，并且<b>在事务内</b>——回滚时索引一并回滚。</p>
+<p>唯一要注意的是：<b>同一事务里刚改的正文搜不到自己</b>，提交后才可见。保存后跳转到列表是新事务，所以没有影响。</p>
+<h2>事务可见性</h2>
+<table><tr><th>操作</th><th>结果</th></tr>
+<tr><td>更新后搜旧词</td><td>0 命中</td></tr>
+<tr><td>更新后搜新词</td><td>1 命中</td></tr>
+<tr><td>事务内搜新词</td><td>0 命中（提交后可见）</td></tr></table>
+<h2>分词与运算符</h2>
+${CODE_HL}
+<blockquote>布尔运算符（<code>+ - * "</code>）会被解释：前导 <code>-</code> 会让整个查询返回 0 行，而包引号屏蔽不掉。<b>实现时要在传参前剔除这些字符。</b></blockquote>
+<h3>落地形状</h3>
+<p>一条复合索引同时覆盖标题与正文，正好对应「标题 + 正文」检索。</p>
+<p class="end">· 完 ·</p>`;
+
+const BODY_PLAIN = `
+<h2>无语言标注与未知语言</h2>
+<p>只有<b>显式标注且 highlight.js 认识</b>的语言才高亮。下面两种都原样显示，不报错、也不猜语言。</p>
+<p>没有标注语言的代码块：</p>
+<pre><code>select note_id, title
+from sgj_note
+where match(title, content) against('ngram' in boolean mode);</code></pre>
+<p>标注了不认识的语言（<code>\`\`\`foobar</code>）：</p>
+<pre><code>this is not a known language
+just plain monospace text</code></pre>
+<blockquote>不启用自动识别：长代码块明显变慢，而且容易猜错——猜错比不高亮更糟。</blockquote>
+<p class="end">· 完 ·</p>`;
+
+const STATES = {hl:BODY_HL, plain:BODY_PLAIN, toc:BODY_HL};
+let state='hl';
+
+function render(){
+  document.getElementById('body').innerHTML = STATES[state];
+  const toc = state==='toc';
+  document.getElementById('panel').hidden = !toc;
+  document.getElementById('pmask').hidden = !toc;
+  if(toc) document.body.dataset.vp='mobile';
+  document.querySelectorAll('.review [data-vp]').forEach(x=>
+    x.setAttribute('aria-pressed', String(x.dataset.vp===document.body.dataset.vp)));
+}
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+}));
+document.getElementById('pmask').addEventListener('click',()=>{
+  document.getElementById('pmask').hidden=true; document.getElementById('panel').hidden=true;
+});
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+render();
+</script>
+</body>
+</html>
