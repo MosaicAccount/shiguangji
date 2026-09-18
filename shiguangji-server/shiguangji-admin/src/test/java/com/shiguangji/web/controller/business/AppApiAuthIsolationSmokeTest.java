@@ -63,6 +63,9 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>noteKeywordSearchScope                   —— keyword 全文检索（标题+正文）：正文独有词命中；
  *       匿名/越权不可经 keyword 命中私密与回收站笔记（or 短路防线）；title 仍仅标题；
  *       布尔模式（mysql 不命中只含 sql）；布尔运算符剔除；回收站不纳入 keyword</li>
+ *   <li>contentLimitAndAppListExcerpt            —— 正文上限 10 万字（2 万放行）；前台列表只回传
+ *       几百字符片段（命中窗口以命中处为中心、未命中取开头 400 字符）；首页 recentNotes 不下发
+ *       content；后台列表与详情仍回传完整正文（导出依赖）</li>
  * </ol>
  *
  * <p><b>响应契约说明（重要）</b>：本系统沿用 RuoYi 的 {@code ServletUtils.renderString}，统一以
@@ -675,11 +678,100 @@ class AppApiAuthIsolationSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 13. 正文上限 10 万字 + 前台列表/首页不回传全文（#42）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(13)
+    void contentLimitAndAppListExcerpt() throws Exception
+    {
+        // 夹具：10 万字正文（旧上限 2 万即被拒），独有标记埋在正文中部（400 字前缀之外）
+        String midMarker = "qat10琥珀深海信号站";
+        String longContent = "甲".repeat(5000) + midMarker + "乙".repeat(100000 - 5000 - midMarker.length());
+        String longTitle = "qat10 十万字长文笔记";
+        createNoteWithContent(adminToken, longTitle, "1", longContent, null);
+        long longNoteId = findSingleNoteId(adminToken, longTitle);
+
+        // 10 万字能保存成功；超过新上限仍被拒且提示语指向 100000
+        mockMvc.perform(post("/app/note")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "qat10 超限笔记",
+                                "tags", TAG_MAIN,
+                                "content", "字".repeat(100001)))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("笔记内容长度不能超过100000个字符"));
+
+        // 前台列表（无关键词）：正文只回传开头 400 字符，不再回传全文
+        JsonNode noKeywordRows = listNotesByTitle(adminToken, TAG_MAIN, longTitle).path("data");
+        assertThat(noKeywordRows.size()).isEqualTo(1);
+        assertThat(noKeywordRows.get(0).path("content").asText().length())
+                .as("前台列表正文应为开头 400 字符片段").isEqualTo(400);
+
+        // 详情仍回传完整正文
+        JsonNode detail = bodyOf(mockMvc.perform(get("/app/note/" + longNoteId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+        assertThat(detail.path("data").path("content").asText())
+                .as("详情页必须保持完整正文").isEqualTo(longContent);
+
+        // 首页 recentNotes 不下发 content（该接口从不展示正文；content 为 null 也算未下发）
+        JsonNode homeData = bodyOf(mockMvc.perform(get("/app/home/index"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn()).path("data");
+        assertThat(homeData.path("recentNotes").valueStream().anyMatch(n -> n.hasNonNull("content")))
+                .as("首页最近笔记不得下发 content").isFalse();
+
+        // 搜索只出现在正文中部的词（400 字前缀之外）：能命中，摘要以命中处为中心
+        // （窗口 = 命中点前 40 字符起的 200 字符，故命中点位于片段第 40 字符处）
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, midMarker).path("data"), "noteId"))
+                .contains(longNoteId);
+        JsonNode hitRow = listNotesBody(adminToken, TAG_MAIN, midMarker).path("data").valueStream()
+                .filter(n -> n.path("noteId").asLong() == longNoteId)
+                .findFirst().orElseThrow();
+        String hitExcerpt = hitRow.path("content").asText();
+        assertThat(hitExcerpt.length()).as("命中窗口应为 200 字符").isEqualTo(200);
+        assertThat(hitExcerpt.indexOf(midMarker)).as("命中点应位于窗口第 40 字符处").isEqualTo(40);
+
+        // 只命中标题（正文不含该词）时 locate 定位不到，摘要退化为取开头 400 字符
+        String titleOnlyKeyword = "十万字";
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data"), "noteId"))
+                .as("keyword 应命中标题").contains(longNoteId);
+        JsonNode titleOnlyRow = listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data").valueStream()
+                .filter(n -> n.path("noteId").asLong() == longNoteId)
+                .findFirst().orElseThrow();
+        assertThat(titleOnlyRow.path("content").asText().length())
+                .as("未命中正文时摘要退化为取开头 400 字符").isEqualTo(400);
+
+        // 后台列表仍回传完整正文（CSV / JSON 导出分页拉取该接口在浏览器侧生成）
+        String adminApiToken = createTokenFor(PUBLIC_OWNER, "*:*:*");
+        JsonNode adminList = bodyOf(mockMvc.perform(get("/business/note/list")
+                        .param("title", longTitle)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminApiToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+        assertThat(adminList.path("rows").size()).isEqualTo(1);
+        assertThat(adminList.path("rows").get(0).path("content").asText())
+                .as("后台列表正文必须保持完整全文（导出依赖）").isEqualTo(longContent);
+    }
+
+    // ------------------------------------------------------------------
     // 辅助方法
     // ------------------------------------------------------------------
 
     /** 为指定用户直造登录态：TokenService.createToken 与登录接口同源，绕过验证码依赖 */
     private String createTokenFor(String username)
+    {
+        return createTokenFor(username, null);
+    }
+
+    /** 带权限标记的登录态变体：/business 接口有 @PreAuthorize，需传 permission（如 *:*:*）才能访问 */
+    private String createTokenFor(String username, String permission)
     {
         // TokenService.setUserAgent 需要当前线程绑定请求；测试线程手工绑定 Mock 请求
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -691,6 +783,10 @@ class AppApiAuthIsolationSmokeTest
             SysUser user = userService.selectUserByUserName(username);
             assertThat(user).as("sys_user 中需存在用户 %s", username).isNotNull();
             Set<String> permissions = new HashSet<>();
+            if (permission != null)
+            {
+                permissions.add(permission);
+            }
             LoginUser loginUser = new LoginUser(user.getUserId(), user, permissions);
             return tokenService.createToken(loginUser);
         }

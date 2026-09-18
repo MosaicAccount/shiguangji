@@ -28,6 +28,14 @@ public interface ISgjNoteService
     public List<SgjNote> selectSgjNoteList(SgjNote sgjNote);
 
     /**
+     * 前台查询笔记列表（正文只回传几百字符片段，不回传全文；后台列表/导出走 selectSgjNoteList）
+     *
+     * @param sgjNote 笔记
+     * @return 笔记集合（content 为截取片段）
+     */
+    public List<SgjNote> selectAppNoteList(SgjNote sgjNote);
+
+    /**
      * 查询回收站笔记列表（del_flag='2'）
      *
      * @param sgjNote 笔记（支持 noteId/createBy/title 过滤）

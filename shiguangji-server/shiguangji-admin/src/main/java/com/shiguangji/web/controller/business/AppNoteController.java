@@ -53,7 +53,8 @@ public class AppNoteController extends BaseController
             sgjNote.setIsPublic("1");
         }
         startPage();
-        List<SgjNote> list = sgjNoteService.selectSgjNoteList(sgjNote);
+        // 前台列表不回传完整正文，只回传几百字符片段（后台列表与导出走 /business/note 的全文查询）
+        List<SgjNote> list = sgjNoteService.selectAppNoteList(sgjNote);
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNotesForGuest(list);
         AjaxResult result = success(list);

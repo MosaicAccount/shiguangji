@@ -25,8 +25,8 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     /** 长文本字段最大长度 */
     private static final int TEXT_MAX_LENGTH = 500;
 
-    /** 笔记内容最大长度 */
-    private static final int CONTENT_MAX_LENGTH = 20000;
+    /** 笔记内容最大长度（longtext 列无压力；上限用于拦住会拖慢编辑页预览与草稿同步的超长正文） */
+    private static final int CONTENT_MAX_LENGTH = 100000;
 
     /** 是否公开：私密（默认值） */
     private static final String IS_PUBLIC_NO = "0";
@@ -48,6 +48,13 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     {
         cleanKeyword(sgjNote);
         return sgjNoteMapper.selectSgjNoteList(sgjNote);
+    }
+
+    @Override
+    public List<SgjNote> selectAppNoteList(SgjNote sgjNote)
+    {
+        cleanKeyword(sgjNote);
+        return sgjNoteMapper.selectAppNoteList(sgjNote);
     }
 
     /**

@@ -28,6 +28,15 @@ public interface SgjNoteMapper
     public List<SgjNote> selectSgjNoteList(SgjNote sgjNote);
 
     /**
+     * 前台查询笔记列表（与 selectSgjNoteList 同过滤同排序，但正文只回传一段几百字符的
+     * 短文本：有关键词取以命中处为中心的窗口，否则取开头，不再回传全文）
+     *
+     * @param sgjNote 笔记信息
+     * @return 笔记集合（content 为截取片段）
+     */
+    public List<SgjNote> selectAppNoteList(SgjNote sgjNote);
+
+    /**
      * 查询回收站笔记列表（del_flag='2'）
      *
      * @param sgjNote 笔记信息（支持 noteId/createBy/title 过滤）
