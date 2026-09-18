@@ -6,10 +6,28 @@
 import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import hljs from 'highlight.js/lib/common'
+import { markedHighlight } from 'marked-highlight'
+import 'highlight.js/styles/atom-one-dark.css'
 
 const props = defineProps<{
   content?: string | null
 }>()
+
+// 只高亮显式标注且 hljs 认识的语言，不自动猜语言；返回原文时 marked-highlight 会按未高亮的普通代码转义输出
+marked.use(
+  markedHighlight({
+    langPrefix: 'hljs language-',
+    highlight(code, lang) {
+      if (!lang || !hljs.getLanguage(lang)) return code
+      try {
+        return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value
+      } catch {
+        return code
+      }
+    }
+  })
+)
 
 marked.setOptions({
   gfm: true,
