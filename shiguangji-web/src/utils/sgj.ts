@@ -284,3 +284,77 @@ export function splitByKeyword(text: string | undefined, keyword: string | undef
   if (pos < text.length) segments.push({ text: text.slice(pos), hit: false })
   return segments
 }
+
+/**
+ * 在已渲染的 DOM 内为检索词打高亮标记（详情页承接：列表带关键词进入时全文可导航）。
+ * 遍历文本节点，命中片段用 mark.kw-hit 包裹，返回全部标记元素（供上一处/下一处跳转）。
+ * 多词任一命中即标记；重叠区间合并；跨元素边界的词不处理（与浏览器原生查找行为一致）。
+ * 纯 DOM 操作，不产出 HTML 字符串；重复调用前会先清除旧标记
+ */
+export function applyKeywordHighlights(root: HTMLElement | null | undefined, keyword: string | undefined): HTMLElement[] {
+  if (!root) return []
+  clearKeywordHighlights(root)
+  const words = (keyword || '').trim().split(/\s+/).filter(w => w.length > 0)
+  if (words.length === 0) return []
+
+  // 先收集再改写：遍历过程中替换节点会使 TreeWalker 失效
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node: Text) => {
+      const value = node.nodeValue || ''
+      const parent = node.parentElement
+      if (!value.trim() || !parent || parent.closest('mark')) return NodeFilter.FILTER_REJECT
+      const lower = value.toLowerCase()
+      return words.some(w => lower.includes(w.toLowerCase())) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+    }
+  })
+  const targets: Text[] = []
+  while (walker.nextNode()) targets.push(walker.currentNode as Text)
+
+  const marks: HTMLElement[] = []
+  for (const node of targets) {
+    const text = node.nodeValue || ''
+    const lower = text.toLowerCase()
+    const ranges: Array<[number, number]> = []
+    for (const word of words) {
+      const lw = word.toLowerCase()
+      let index = 0
+      while ((index = lower.indexOf(lw, index)) !== -1) {
+        ranges.push([index, index + lw.length])
+        index += lw.length
+      }
+    }
+    if (ranges.length === 0) continue
+    ranges.sort((a, b) => a[0] - b[0])
+    const merged: Array<[number, number]> = []
+    for (const range of ranges) {
+      const last = merged[merged.length - 1]
+      if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1])
+      else merged.push([range[0], range[1]])
+    }
+    const frag = document.createDocumentFragment()
+    let pos = 0
+    for (const [start, end] of merged) {
+      if (start > pos) frag.appendChild(document.createTextNode(text.slice(pos, start)))
+      const mark = document.createElement('mark')
+      mark.className = 'kw-hit'
+      mark.textContent = text.slice(start, end)
+      frag.appendChild(mark)
+      marks.push(mark)
+      pos = end
+    }
+    if (pos < text.length) frag.appendChild(document.createTextNode(text.slice(pos)))
+    node.parentNode?.replaceChild(frag, node)
+  }
+  return marks
+}
+
+/** 清除 {@link applyKeywordHighlights} 产生的标记并合并相邻文本节点，恢复原文 */
+export function clearKeywordHighlights(root: HTMLElement | null | undefined): void {
+  if (!root) return
+  root.querySelectorAll('mark.kw-hit').forEach(mark => {
+    const parent = mark.parentNode
+    if (!parent) return
+    parent.replaceChild(document.createTextNode(mark.textContent || ''), mark)
+    parent.normalize()
+  })
+}

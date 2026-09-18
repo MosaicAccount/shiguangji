@@ -280,10 +280,13 @@ watch(
   () => handleRouteQuery()
 )
 
-/** 跳转独立详情页（验收：笔记内容单独页面展示，不再用抽屉） */
+/** 跳转独立详情页（验收：笔记内容单独页面展示，不再用抽屉）；带已生效检索词供详情页命中高亮 */
 function openDetail(note: SgjNote): void {
   if (!note.noteId) return
-  router.push({ path: '/note/detail', query: { noteId: String(note.noteId) } })
+  router.push({
+    path: '/note/detail',
+    query: { noteId: String(note.noteId), keyword: appliedKeyword.value || undefined }
+  })
 }
 
 function handleDelete(note: SgjNote): void {

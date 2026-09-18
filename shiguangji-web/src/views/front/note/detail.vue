@@ -107,6 +107,16 @@
         </ul>
       </div>
     </template>
+    <!-- 搜索承接（issue #31）：带关键词进入时全文高亮，工具条提供上一处/下一处跳转与关闭 -->
+    <div v-if="routeKeyword && hitTotal > 0" class="kw-toolbar">
+      <template v-if="highlightOn">
+        <button class="kw-btn" title="上一处" :disabled="hitTotal < 2" @click="gotoHit(-1)">‹</button>
+        <span class="kw-count">{{ currentIndex + 1 }}/{{ hitTotal }}</span>
+        <button class="kw-btn" title="下一处" :disabled="hitTotal < 2" @click="gotoHit(1)">›</button>
+        <button class="kw-btn kw-off" title="关闭高亮" @click="closeHighlight">✕ 关闭高亮</button>
+      </template>
+      <button v-else class="kw-btn kw-on" title="开启高亮" @click="openHighlight">⌕ 开启高亮</button>
+    </div>
   </div>
 </template>
 
@@ -114,6 +124,7 @@
 import { ArrowDown, ArrowLeft, Delete, EditPen, List } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import { getFrontNote, delFrontNote } from '@/api/front/note'
+import { applyKeywordHighlights, clearKeywordHighlights } from '@/utils/sgj'
 import type { SgjNote } from '@/types/api/business/note'
 import { getToken } from '@/utils/auth'
 
@@ -177,6 +188,59 @@ watch(note, () => {
       .map(item => (item.level > 2 ? item : { ...item, no: ++chapter }))
   })
 })
+
+/** 搜索承接（issue #31）：路由带 keyword 时全文高亮，工具条跳转与开关 */
+const routeKeyword = computed(() => String(route.query.keyword || '').trim())
+const highlightOn = ref(false)
+/** 用户手动关闭后，路由关键词不再自动拉起高亮 */
+const userClosed = ref(false)
+const hitEls = ref<HTMLElement[]>([])
+const hitTotal = ref(0)
+const currentIndex = ref(0)
+
+// 直连详情时组件可能先于路由解析完成挂载（此时 query 为空），须监听 routeKeyword 就绪后自动开启
+watch(routeKeyword, kw => {
+  if (kw && !userClosed.value) highlightOn.value = true
+}, { immediate: true })
+
+function applyHighlight(): void {
+  // 只在正文渲染区高亮：内嵌目录的条目文本与正文重复，标亮目录反而是噪音
+  const root = bodyRef.value?.querySelector('.markdown-viewer') as HTMLElement | null
+  clearKeywordHighlights(root)
+  if (!highlightOn.value) {
+    hitEls.value = []
+    return
+  }
+  const hits = applyKeywordHighlights(root, routeKeyword.value)
+  hitEls.value = hits
+  hitTotal.value = hits.length
+  currentIndex.value = 0
+  if (hits.length) {
+    hits[0].classList.add('is-current')
+    // 进入详情即到达第一处；块居中可避开吸顶导航
+    hits[0].scrollIntoView({ block: 'center' })
+  }
+}
+
+function gotoHit(delta: number): void {
+  if (!hitEls.value.length) return
+  currentIndex.value = (currentIndex.value + delta + hitEls.value.length) % hitEls.value.length
+  const el = hitEls.value[currentIndex.value]
+  hitEls.value.forEach((m, i) => m.classList.toggle('is-current', i === currentIndex.value))
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+}
+
+function closeHighlight(): void {
+  userClosed.value = true
+  highlightOn.value = false
+}
+
+function openHighlight(): void {
+  userClosed.value = false
+  highlightOn.value = true
+}
+
+watch([note, highlightOn, routeKeyword], () => nextTick(applyHighlight))
 
 /** 点击目录：滚动到对应标题（顶部让出 72px 吸顶导航 + 余量），并立即高亮 */
 const OUTLINE_TOP_OFFSET = 90
@@ -690,6 +754,104 @@ html.dark .outline-fab {
   .panel-list {
     overflow: auto;
     padding: 6px 8px 10px;
+  }
+}
+
+/* 搜索承接：全文命中标记（mark 为运行时注入，须 :deep 才能命中）；当前处用主题色反白 */
+.article-body {
+  :deep(mark.kw-hit) {
+    background: var(--sgj-amber-soft);
+    color: var(--sgj-amber);
+    border-radius: 3px;
+    padding: 0 1px;
+
+    &.is-current {
+      background: var(--sgj-primary);
+      color: #fff;
+    }
+  }
+}
+
+/* 命中导航工具条：底部居中悬浮，视觉语言与目录浮动按钮同源 */
+.kw-toolbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 38px;
+  padding: 0 8px;
+  border-radius: var(--sgj-radius-pill);
+  background: #282e2c;
+  color: #e7ece9;
+  box-shadow: var(--sgj-shadow-hover);
+
+  .kw-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    min-width: 28px;
+    padding: 0 9px;
+    border: none;
+    border-radius: var(--sgj-radius-pill);
+    background: transparent;
+    color: #e7ece9;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  .kw-count {
+    min-width: 58px;
+    text-align: center;
+    font-size: 12px;
+    color: #aeb8b3;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kw-off {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: #f2b3a6;
+  }
+
+  .kw-on {
+    gap: 4px;
+    padding: 0 14px;
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+}
+
+html.dark .kw-toolbar {
+  background: var(--sgj-text);
+  color: var(--sgj-bg);
+
+  .kw-btn {
+    color: var(--sgj-bg);
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .kw-count {
+    color: var(--sgj-text-2);
+  }
+
+  .kw-off {
+    color: var(--sgj-danger);
   }
 }
 
