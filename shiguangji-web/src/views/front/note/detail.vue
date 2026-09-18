@@ -772,7 +772,8 @@ html.dark .outline-fab {
   }
 }
 
-/* 命中导航工具条：底部居中悬浮，视觉语言与目录浮动按钮同源 */
+/* 命中导航工具条：底部居中悬浮，视觉语言与目录浮动按钮同源；两种主题下均保持深色胶囊
+   （正文/工具条都压在浅色卡片上时用深底最稳，夜间主题只加深底色并补边框区分层次） */
 .kw-toolbar {
   position: fixed;
   left: 50%;
@@ -786,6 +787,7 @@ html.dark .outline-fab {
   padding: 0 8px;
   border-radius: var(--sgj-radius-pill);
   background: #282e2c;
+  border: 1px solid rgba(231, 236, 233, 0.12);
   color: #e7ece9;
   box-shadow: var(--sgj-shadow-hover);
 
@@ -835,24 +837,8 @@ html.dark .outline-fab {
 }
 
 html.dark .kw-toolbar {
-  background: var(--sgj-text);
-  color: var(--sgj-bg);
-
-  .kw-btn {
-    color: var(--sgj-bg);
-
-    &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.1);
-    }
-  }
-
-  .kw-count {
-    color: var(--sgj-text-2);
-  }
-
-  .kw-off {
-    color: var(--sgj-danger);
-  }
+  background: var(--sgj-bg-deep);
+  border-color: var(--sgj-border);
 }
 
 /* 移动端最小适配：收窄内边距、标题降级 */
