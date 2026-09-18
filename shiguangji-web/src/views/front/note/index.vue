@@ -115,6 +115,8 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
 const searchKeyword = ref('')
+/** 已生效检索词：搜索成功返回后才更新；高亮跟随它而非输入框实时值，避免结果集与高亮错位 */
+const appliedKeyword = ref('')
 /** 标签筛选（TagPills 点击选中、再点取消后触发 loadData） */
 const searchTag = ref('')
 /** 分页 */
@@ -152,6 +154,8 @@ function loadData(): void {
   listFrontNote(query).then(response => {
     list.value = response.data || []
     total.value = (response as any).total || 0
+    // 结果落地后才更新高亮用的已生效检索词
+    appliedKeyword.value = (query.keyword || '').trim()
   }).catch(() => {
     loadError.value = true
   }).finally(() => {
@@ -200,13 +204,13 @@ function formatTime(time?: string): string {
   return time.replace('T', ' ').slice(0, 16)
 }
 
-/** 摘要/标题按检索词切片段（字面量切分，不含 HTML，模板循环渲染） */
+/** 摘要/标题按「已生效检索词」切片段（字面量切分，不含 HTML，模板循环渲染） */
 function excerptSegments(note: SgjNote) {
-  return splitByKeyword(note.excerpt, searchKeyword.value)
+  return splitByKeyword(note.excerpt, appliedKeyword.value)
 }
 
 function titleSegments(note: SgjNote) {
-  return splitByKeyword(note.title, searchKeyword.value)
+  return splitByKeyword(note.title, appliedKeyword.value)
 }
 
 /** 渐隐仅在摘要真的溢出时显示（渲染与窗口尺寸变化后测量） */
