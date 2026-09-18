@@ -18,7 +18,13 @@
               <div v-if="tagList.length" class="hero-tags">
                 <span v-for="tag in tagList" :key="tag" class="hero-tag">{{ tag }}</span>
               </div>
-              <h1 class="hero-title">{{ note.title }}</h1>
+              <h1 ref="titleRef" class="hero-title">
+                <!-- 只命中标题时标题也高亮（与列表卡片同款切段渲染，不用 DOM 注入） -->
+                <template v-for="(seg, si) in titleSegments" :key="si">
+                  <mark v-if="seg.hit" class="kw-title-hit">{{ seg.text }}</mark>
+                  <template v-else>{{ seg.text }}</template>
+                </template>
+              </h1>
               <div class="hero-meta">
                 <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
                 <span v-if="note.itemId" class="hero-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
@@ -124,7 +130,7 @@
 import { ArrowDown, ArrowLeft, Delete, EditPen, List } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import { getFrontNote, delFrontNote } from '@/api/front/note'
-import { applyKeywordHighlights, clearKeywordHighlights } from '@/utils/sgj'
+import { applyKeywordHighlights, clearKeywordHighlights, splitByKeyword } from '@/utils/sgj'
 import type { SgjNote } from '@/types/api/business/note'
 import { getToken } from '@/utils/auth'
 
@@ -197,6 +203,12 @@ const userClosed = ref(false)
 const hitEls = ref<HTMLElement[]>([])
 const hitTotal = ref(0)
 const currentIndex = ref(0)
+const titleRef = ref<HTMLElement | null>(null)
+
+/** 标题切段：高亮开启时按关键词切（与列表卡片同款字面量切分），关闭时整段原样 */
+const titleSegments = computed(() =>
+  splitByKeyword(note.value?.title, highlightOn.value ? routeKeyword.value : '')
+)
 
 // 直连详情时组件可能先于路由解析完成挂载（此时 query 为空），须监听 routeKeyword 就绪后自动开启
 watch(routeKeyword, kw => {
@@ -205,20 +217,25 @@ watch(routeKeyword, kw => {
 
 function applyHighlight(): void {
   // 只在正文渲染区高亮：内嵌目录的条目文本与正文重复，标亮目录反而是噪音
-  const root = bodyRef.value?.querySelector('.markdown-viewer') as HTMLElement | null
-  clearKeywordHighlights(root)
+  const bodyRoot = bodyRef.value?.querySelector('.markdown-viewer') as HTMLElement | null
+  clearKeywordHighlights(bodyRoot)
   if (!highlightOn.value) {
     hitEls.value = []
+    hitTotal.value = 0
     return
   }
-  const hits = applyKeywordHighlights(root, routeKeyword.value)
-  hitEls.value = hits
-  hitTotal.value = hits.length
+  const bodyHits = applyKeywordHighlights(bodyRoot, routeKeyword.value)
+  // 标题命中在前、正文在后（文档序）；标题标记由模板渲染，正文标记由 DOM 注入产生
+  const titleMarks = titleRef.value
+    ? Array.from(titleRef.value.querySelectorAll<HTMLElement>('mark.kw-title-hit'))
+    : []
+  hitEls.value = [...titleMarks, ...bodyHits]
+  hitTotal.value = hitEls.value.length
   currentIndex.value = 0
-  if (hits.length) {
-    hits[0].classList.add('is-current')
+  if (hitEls.value.length) {
+    hitEls.value[0].classList.add('is-current')
     // 进入详情即到达第一处；块居中可避开吸顶导航
-    hits[0].scrollIntoView({ block: 'center' })
+    hitEls.value[0].scrollIntoView({ block: 'center' })
   }
 }
 
@@ -472,6 +489,19 @@ function formatTime(time?: string): string {
   font-size: 30px;
   line-height: 1.4;
   word-break: break-word;
+
+  /* 深色标题带上的命中标记（琥珀半透明底，当前处主题色反白） */
+  mark.kw-title-hit {
+    background: rgba(177, 132, 88, 0.32);
+    color: #f0e0c8;
+    border-radius: 3px;
+    padding: 0 2px;
+
+    &.is-current {
+      background: var(--sgj-primary);
+      color: #fff;
+    }
+  }
 }
 
 .article-hero .hero-meta {
