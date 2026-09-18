@@ -18,7 +18,7 @@
 | [`shiguangji-web/`](shiguangji-web) | 前端：Vue 3、TypeScript、Vite、Pinia、Element Plus |
 | [`shiguangji-server/`](shiguangji-server) | 后端：Java 17、Spring Boot、MyBatis、Maven 多模块（基于 RuoYi 3.9.2 改造） |
 
-`docs/` 存放工作区级梳理文档；协作约定见 [AGENTS.md](AGENTS.md)。CI 按 `shiguangji-web/`、`shiguangji-server/` 路径变更分别触发（见 `.github/workflows/`）。
+`docs/` 存放工作区级梳理文档：`docs/requirements/` 是按版本拆分的需求（未拍板的集中在 `pending.md`），`docs/design/` 是各版本的设计方案；协作约定见 [AGENTS.md](AGENTS.md)。CI 按 `shiguangji-web/`、`shiguangji-server/` 路径变更分别触发（见 `.github/workflows/`）。
 
 ## 快速开始
 

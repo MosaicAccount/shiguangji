@@ -1,6 +1,6 @@
 # 标签管理 - 设计方案
 
-> 关联需求文档：[tag-management-requirements.md](./tag-management-requirements.md)
+> 历史设计文档（对应已完成的功能，issue #1）。原需求文档已删除，需要时可从 git 历史中找回。
 > 分支：`feature/add-tag-management`
 
 ## 1. 现状分析
