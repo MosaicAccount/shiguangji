@@ -6,10 +6,33 @@
 import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import hljs from 'highlight.js/lib/common'
+import { markedHighlight } from 'marked-highlight'
+import 'highlight.js/styles/atom-one-dark.css'
 
 const props = defineProps<{
   content?: string | null
 }>()
+
+// 只高亮显式标注且 hljs 认识的语言，不自动猜语言；返回原文时 marked-highlight 会按未高亮的普通代码转义输出。
+// 守卫标记挂在 marked 单例上：dev 下 HMR 会重复执行本模块，重复 use 会把高亮扩展叠加导致输出指数级膨胀
+const markedSingleton = marked as typeof marked & { __sgjHighlightRegistered?: boolean }
+if (!markedSingleton.__sgjHighlightRegistered) {
+  markedSingleton.__sgjHighlightRegistered = true
+  markedSingleton.use(
+    markedHighlight({
+      langPrefix: 'hljs language-',
+      highlight(code, lang) {
+        if (!lang || !hljs.getLanguage(lang)) return code
+        try {
+          return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value
+        } catch {
+          return code
+        }
+      }
+    })
+  )
+}
 
 marked.setOptions({
   gfm: true,
