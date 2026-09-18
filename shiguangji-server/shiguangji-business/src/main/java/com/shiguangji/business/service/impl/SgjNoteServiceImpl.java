@@ -46,7 +46,24 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     @Override
     public List<SgjNote> selectSgjNoteList(SgjNote sgjNote)
     {
+        cleanKeyword(sgjNote);
         return sgjNoteMapper.selectSgjNoteList(sgjNote);
+    }
+
+    /**
+     * 清洗检索关键词：剔除布尔模式的运算符字符后再传参。
+     * 运算符会被当语法解释（如前导 - 使整个查询恒为 0 行），包引号屏蔽不掉（ngram 丢符号）；
+     * ngram 分词本就忽略这些符号，剔除不损失匹配能力。清洗后为空白则视为未输入，不参与过滤
+     */
+    private void cleanKeyword(SgjNote sgjNote)
+    {
+        String keyword = sgjNote.getKeyword();
+        if (StringUtils.isEmpty(keyword))
+        {
+            return;
+        }
+        String cleaned = keyword.replaceAll("[+\\-*\"()~<>@]", " ").trim();
+        sgjNote.setKeyword(StringUtils.isEmpty(cleaned) ? null : cleaned);
     }
 
     @Override

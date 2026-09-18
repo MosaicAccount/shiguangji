@@ -49,6 +49,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="title != null and title != ''">
                 and n.title like concat('%', #{title}, '%')
             </if>
+            <!-- 标题+正文全文检索：布尔模式（自然语言模式会把 mysql 命中到只含 sql 的行）；
+                 标题与正文在同一 match 条件里，无 or，不会短路 create_by/is_public 等过滤；
+                 布尔运算符已在服务层剔除。回收站不纳入（见 selectRecycleNoteList） -->
+            <if test="keyword != null and keyword != ''">
+                and match(n.title, n.content) against(#{keyword} in boolean mode)
+            </if>
             <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中；replace 兼容手输期的“逗号+空格”写法 -->
             <if test="tags != null and tags != ''">
                 and find_in_set(#{tags}, replace(n.tags, ' ', ''))
