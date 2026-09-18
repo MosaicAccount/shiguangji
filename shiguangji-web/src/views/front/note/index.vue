@@ -213,13 +213,10 @@ function titleSegments(note: SgjNote) {
   return splitByKeyword(note.title, appliedKeyword.value)
 }
 
-/**
- * 出现次数提示：2-9 次给出具体数字（相关性信号——反复讲到该词的笔记更对题）；
- * 10 次以上统一为「多次」，具体大数字对读者不可行动
- */
+/** 出现次数提示：统一「文中出现 N 次」；仅 1 次时不展示（无信息量） */
 function hitCountText(hitTotal?: number): string {
   if (!hitTotal || hitTotal < 2) return ''
-  return hitTotal <= 9 ? `文中出现 ${hitTotal} 次` : '文中多次出现'
+  return `文中出现 ${hitTotal} 次`
 }
 
 /** 渐隐仅在摘要真的溢出时显示（渲染与窗口尺寸变化后测量） */
