@@ -235,3 +235,52 @@ export function photoUrl(url?: string): string {
   if (/^(https?:|data:|blob:)/i.test(url)) return url
   return import.meta.env.VITE_APP_BASE_API + url
 }
+
+/** 摘要高亮片段：hit 为 true 的段落用高亮样式渲染 */
+export interface KeywordSegment {
+  text: string
+  hit: boolean
+}
+
+/**
+ * 摘要按检索词切片段（供搜索结果关键词高亮）。
+ * 多词检索（空格分隔）任一词命中即标亮；大小写不敏感，与 MySQL 全文匹配行为一致；
+ * 按字面量 indexOf 切分——关键词含 ( [ * 等元字符也不会报错，不拼 RegExp、不产出 HTML，
+ * 模板里循环渲染片段即可（不要走 v-html）
+ */
+export function splitByKeyword(text: string | undefined, keyword: string | undefined): KeywordSegment[] {
+  const words = (keyword || '').trim().split(/\s+/).filter(w => w.length > 0)
+  if (!text) return []
+  if (words.length === 0) return [{ text, hit: false }]
+  const lower = text.toLowerCase()
+  const ranges: Array<[number, number]> = []
+  for (const word of words) {
+    const lw = word.toLowerCase()
+    let index = 0
+    while ((index = lower.indexOf(lw, index)) !== -1) {
+      ranges.push([index, index + lw.length])
+      index += lw.length
+    }
+  }
+  if (ranges.length === 0) return [{ text, hit: false }]
+  ranges.sort((a, b) => a[0] - b[0])
+  // 相邻/重叠命中区间合并，避免片段交叉
+  const merged: Array<[number, number]> = []
+  for (const range of ranges) {
+    const last = merged[merged.length - 1]
+    if (last && range[0] <= last[1]) {
+      last[1] = Math.max(last[1], range[1])
+    } else {
+      merged.push([range[0], range[1]])
+    }
+  }
+  const segments: KeywordSegment[] = []
+  let pos = 0
+  for (const [start, end] of merged) {
+    if (start > pos) segments.push({ text: text.slice(pos, start), hit: false })
+    segments.push({ text: text.slice(start, end), hit: true })
+    pos = end
+  }
+  if (pos < text.length) segments.push({ text: text.slice(pos), hit: false })
+  return segments
+}

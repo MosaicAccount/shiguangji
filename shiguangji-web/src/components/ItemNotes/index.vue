@@ -10,7 +10,7 @@
     <ul v-else class="notes-list">
       <li v-for="note in notes" :key="note.noteId" class="note-row" @click="openNote(note)">
         <div class="note-row-title">{{ note.title }}</div>
-        <div v-if="noteSummary(note.content)" class="note-row-summary">{{ noteSummary(note.content) }}</div>
+        <div v-if="note.excerpt" class="note-row-summary">{{ note.excerpt }}</div>
         <div class="note-row-meta">
           <span v-if="note.tags" class="note-row-tags">🏷 {{ note.tags }}</span>
           <span>{{ formatTime(note.updateTime || note.createTime) }}</span>
@@ -56,18 +56,6 @@ function openNote(note: SgjNote): void {
 function formatTime(time?: string): string {
   if (!time) return ''
   return time.replace('T', ' ').slice(0, 16)
-}
-
-/** Markdown 转纯文本摘要（B-04 多笔记列表预览） */
-function noteSummary(content?: string): string {
-  if (!content) return ''
-  return content
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/[#>*`~\-_|]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
 watch(

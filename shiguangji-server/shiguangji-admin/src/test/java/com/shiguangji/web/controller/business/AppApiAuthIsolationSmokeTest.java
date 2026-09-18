@@ -388,17 +388,20 @@ class AppApiAuthIsolationSmokeTest
                 .andExpect(jsonPath("$.data.comment").value("admin私人短评"))
                 .andExpect(jsonPath("$.data.remark").value("admin私人备注"));
 
+        // #31 起前台列表不再下发 remark 与 content（正文与私人备注只走详情接口，列表以摘要替代）
         JsonNode adminNotes = listNotesAsData(adminToken);
-        boolean sawPublicWithRemark = false;
+        boolean sawPublicNote = false;
         for (JsonNode row : adminNotes)
         {
             if (row.path("noteId").asLong() == publicNoteId)
             {
-                assertThat(row.hasNonNull("remark")).as("登录态公开笔记应保留 remark").isTrue();
-                sawPublicWithRemark = true;
+                assertThat(row.hasNonNull("remark")).as("前台列表不应下发 remark（含登录态）").isFalse();
+                assertThat(row.hasNonNull("content")).as("前台列表不应下发 content（正文只在详情接口）").isFalse();
+                assertThat(row.hasNonNull("excerpt")).as("前台列表应下发纯文本摘要").isTrue();
+                sawPublicNote = true;
             }
         }
-        assertThat(sawPublicWithRemark).as("登录态列表应包含公开笔记夹具").isTrue();
+        assertThat(sawPublicNote).as("登录态列表应包含公开笔记夹具").isTrue();
     }
 
     // ------------------------------------------------------------------
