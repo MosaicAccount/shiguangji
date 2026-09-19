@@ -7,9 +7,11 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.business.mapper.SgjNoteMapper;
+import com.shiguangji.business.service.ISgjNoteDraftService;
 import com.shiguangji.business.service.ISgjNoteService;
 import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.StringUtils;
@@ -51,6 +53,9 @@ public class SgjNoteServiceImpl implements ISgjNoteService
 
     @Autowired
     private SgjNoteMapper sgjNoteMapper;
+
+    @Autowired
+    private ISgjNoteDraftService sgjNoteDraftService;
 
     @Override
     public SgjNote selectSgjNoteById(Long noteId)
@@ -123,6 +128,7 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     }
 
     @Override
+    @Transactional
     public int insertSgjNote(SgjNote sgjNote)
     {
         validateNote(sgjNote, true);
@@ -131,10 +137,14 @@ public class SgjNoteServiceImpl implements ISgjNoteService
         {
             sgjNote.setIsPublic(IS_PUBLIC_NO);
         }
-        return sgjNoteMapper.insertSgjNote(sgjNote);
+        int rows = sgjNoteMapper.insertSgjNote(sgjNote);
+        // 保存成功与删除草稿必须在同一事务里：留着旧草稿，编辑页下次自动恢复会把它盖回刚保存好的正文
+        deleteDraftOnSave(sgjNote, sgjNote.getCreateBy());
+        return rows;
     }
 
     @Override
+    @Transactional
     public int updateSgjNote(SgjNote sgjNote)
     {
         if (sgjNote.getNoteId() == null)
@@ -142,12 +152,33 @@ public class SgjNoteServiceImpl implements ISgjNoteService
             throw new ServiceException("笔记ID不能为空");
         }
         validateNote(sgjNote, false);
-        return sgjNoteMapper.updateSgjNote(sgjNote);
+        int rows = sgjNoteMapper.updateSgjNote(sgjNote);
+        if (rows > 0)
+        {
+            String owner = StringUtils.isNotEmpty(sgjNote.getUpdateBy()) ? sgjNote.getUpdateBy() : sgjNote.getCreateBy();
+            deleteDraftOnSave(sgjNote, owner);
+        }
+        return rows;
+    }
+
+    /**
+     * 保存笔记成功后删除对应草稿：带的是他人草稿时抛错（整个请求失败，不写任何数据）。
+     * 与笔记写入同事务，不存在「笔记保存了但草稿还在」的中间状态
+     */
+    private void deleteDraftOnSave(SgjNote sgjNote, String owner)
+    {
+        if (sgjNote.getDraftId() != null)
+        {
+            sgjNoteDraftService.deleteOwnedDraft(sgjNote.getDraftId(), owner);
+        }
     }
 
     @Override
+    @Transactional
     public int deleteSgjNoteByIds(Long[] noteIds)
     {
+        // 笔记进回收站时一并清掉它的草稿：否则留下用户看不到、也清不掉的孤儿行
+        sgjNoteDraftService.deleteByNoteIds(noteIds);
         return sgjNoteMapper.deleteSgjNoteByIds(noteIds);
     }
 
@@ -158,8 +189,10 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     }
 
     @Override
+    @Transactional
     public int purgeSgjNoteByIds(Long[] noteIds)
     {
+        sgjNoteDraftService.deleteByNoteIds(noteIds);
         return sgjNoteMapper.purgeSgjNoteByIds(noteIds);
     }
 
