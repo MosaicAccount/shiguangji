@@ -22,14 +22,14 @@ import com.shiguangji.common.utils.StringUtils;
 @Service
 public class SgjNoteServiceImpl implements ISgjNoteService
 {
-    /** 笔记标题最大长度（与表结构 varchar(200) 一致） */
-    private static final int TITLE_MAX_LENGTH = 200;
+    /** 笔记标题最大长度（与表结构 varchar(200) 一致；草稿服务复用同一常量，避免两处定义漂移） */
+    static final int TITLE_MAX_LENGTH = 200;
 
     /** 长文本字段最大长度 */
-    private static final int TEXT_MAX_LENGTH = 500;
+    static final int TEXT_MAX_LENGTH = 500;
 
     /** 笔记内容最大长度（longtext 列无压力；上限用于拦住会拖慢编辑页预览与草稿同步的超长正文） */
-    private static final int CONTENT_MAX_LENGTH = 100000;
+    static final int CONTENT_MAX_LENGTH = 100000;
 
     /** 是否公开：私密（默认值） */
     private static final String IS_PUBLIC_NO = "0";
