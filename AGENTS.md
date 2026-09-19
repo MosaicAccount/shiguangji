@@ -32,6 +32,23 @@ Use prefixes such as `feat:`, `fix:`, `docs:`, `test:`, and `chore:`. Keep subje
 
 Create a Git commit for every completed change. Do not leave an implemented change only in the working tree; commit it after the required tests pass.
 
+### Branch workflow: `develop` is receive-only
+
+`develop` accepts direct commits for exactly three things:
+
+1. finalizing the version requirement docs;
+2. version bumps / version changes;
+3. **global-impact files that no single feature owns** — `AGENTS.md`, `CLAUDE.md`, `.gitignore`, and similar repo-wide config. These are not tied to one workstream, so routing them through a feature branch only splits them across branches.
+
+Everything else — design docs, code, tests, feature config — goes through a worktree branch, never a direct edit in the `develop` working tree:
+
+```bash
+git worktree add -b <type>/<topic> .worktrees/<topic> develop
+# ...work and commit inside .worktrees/<topic>...
+```
+
+Merge back with a PR. If a stray change lands in the `develop` working tree, move it onto a worktree branch before doing anything else. The worktree directory lives under `.worktrees/`, excluded locally via `.git/info/exclude` so it never shows up as untracked and `.gitignore` stays untouched.
+
 ## Security & Configuration
 
 Use environment overrides documented by `application*.yml` and `.env.*`. Never commit production database, Redis, or JWT credentials; provide secrets through environment variables such as `MYSQL_URL`, `REDIS_HOST`, and `JWT_SECRET`. 
