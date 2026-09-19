@@ -149,10 +149,20 @@ const tagList = computed(() =>
   (note.value?.tags || '').split(',').map(tag => tag.trim()).filter(Boolean)
 )
 
-/** 正文若以与标题相同的一级标题开头则去重，避免文章头与正文标题重复 */
+/** 正文预处理：前言（front-matter）整块剥离（与后端摘要规则一致，详情不渲染元数据原文）；
+ *  正文若以与标题相同的一级标题开头则去重，避免文章头与正文标题重复 */
 const bodyContent = computed(() => {
-  const content = note.value?.content
+  let content = note.value?.content || ''
   const title = note.value?.title
+  if (/^---\r?\n/.test(content)) {
+    const close = content.indexOf('\n---', 1)
+    if (close !== -1) {
+      let start = close + 4
+      if (content[start] === '\r') start += 1
+      if (content[start] === '\n') start += 1
+      content = content.slice(start)
+    }
+  }
   if (!content || !title) return content
   const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return content.replace(new RegExp(`^\\s*#\\s*${escaped}\\s*\\r?\\n`), '')
