@@ -2,7 +2,7 @@
 <html lang="zh-CN" class="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>0.0.2 设计图 · 草稿箱 — 拾光记</title>
 <style>
 :root{
@@ -29,6 +29,7 @@ html.dark{
 body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
 html.dark body{background:#0E1110}
 a{color:var(--sgj-link)}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
 html.dark .review{background:#1B211F;border-color:#2C3531}
 .review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
@@ -43,6 +44,9 @@ html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;bord
 .seg button:last-child{border-radius:0 999px 999px 0}
 .seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
 html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+/* 焦点可见：工具条与页面内所有可聚焦元素共用一套 */
+.screens a:focus-visible,.seg button:focus-visible,.btn:focus-visible,.backlink:focus-visible,
+.empty a:focus-visible,.d-title a:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:6px}
 .stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
 .device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
   box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
@@ -54,65 +58,123 @@ body[data-vp=desktop] .only-mobile{display:none !important}
 .logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
 .nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
 .nav .on{color:var(--sgj-primary);font-weight:600}
-.fh .right{margin-left:auto;color:var(--sgj-text-3)}
+.fh .right{margin-left:auto;color:var(--sgj-text-2)}
 .page{padding:36px}
 .tabbar{display:none}
 body[data-vp=mobile] .fh{height:56px;padding:0 14px}
 body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
-body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:76px}
-body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
-body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);
+  height:calc(60px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-2);font-size:12px}
 body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
 
 /* 页面头（草稿箱用轻头，不用大 banner） */
-.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:6px}
+.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:6px;flex-wrap:wrap}
 .head h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:26px}
-.head .sub{color:var(--sgj-text-4);font-size:13px;padding-bottom:3px}
-.backlink{display:inline-block;margin-bottom:14px;font-size:13px;color:var(--sgj-text-3);text-decoration:none}
-.quota{margin:14px 0 18px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--sgj-text-4)}
-.bar{flex:0 0 160px;height:6px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--sgj-moss)}
-.bar.full i{background:var(--sgj-brick)}
+.head .sub{color:var(--sgj-text-2);font-size:13px;padding-bottom:3px}
+.backlink{display:inline-block;margin-bottom:14px;font-size:13px;color:var(--sgj-text-2);text-decoration:none}
+.backlink:hover{text-decoration:underline}
 
-.dlist{display:flex;flex-direction:column;gap:12px}
+/* 配额：软上限，不到临界值不出进度条——一条一直存在的 15% 进度条只是在占地方 */
+.quota{margin:14px 0 18px;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--sgj-text-2);min-height:20px;flex-wrap:wrap}
+.quota .n{font-variant-numeric:tabular-nums}
+.bar{flex:0 0 148px;height:6px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sgj-amber)}
+.bar.is-full i{background:var(--sgj-danger)}
+.capnote{color:var(--sgj-danger);font-weight:600}
+
+.dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .draft{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 18px;
   box-shadow:var(--sgj-shadow-sm);display:flex;gap:16px;align-items:center}
 .draft:hover{box-shadow:var(--sgj-shadow-hover)}
 .d-main{flex:1;min-width:0}
-.d-title{font-family:var(--sgj-font-serif);font-size:16px;font-weight:500;line-height:24px;word-break:break-word}
-.d-title .fallback{color:var(--sgj-text-2)}
-.d-sub{margin-top:6px;font-size:12px;color:var(--sgj-text-4);display:flex;flex-wrap:wrap;gap:12px}
+.d-title{margin:0;font-family:var(--sgj-font-serif);font-size:16px;font-weight:500;line-height:24px;word-break:break-word;
+  display:flex;align-items:baseline;gap:6px}
+.d-title .t{flex:1 1 auto;min-width:0}
+.d-title .t.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--sgj-text-2)}
+.d-title .an{flex:0 0 auto;align-self:flex-start;margin-top:3px}
+.d-sub{margin:6px 0 0;font-size:12px;color:var(--sgj-text-2);display:flex;flex-wrap:wrap;gap:12px;align-items:baseline}
+.d-item{min-width:0;overflow-wrap:anywhere}
+.d-time{font-variant-numeric:tabular-nums}
 .d-acts{flex-shrink:0;display:flex;gap:8px}
 .btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 18px;height:36px;background:var(--sgj-primary);color:#fff;font-size:13px}
+.btn:hover{background:var(--sgj-primary-dark)}
+/* 深色下只有「实心」按钮才需要深色文字；带边框的次按钮/危险按钮各自的颜色必须留着，
+   否则会被这条覆盖成近黑，在深色卡片上直接看不见 */
+html.dark .btn:not(.line):not(.danger){color:#171B1A}
+html.dark .btn:hover{background:var(--sgj-primary-light)}
 .btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
-.btn.sm{height:30px;padding:0 13px;font-size:12px}
+.btn.line:hover{background:var(--sgj-bg-deep);color:var(--sgj-text)}
+.btn.sm{height:34px;padding:0 14px;font-size:12.5px}
 .btn.danger{background:transparent;color:var(--sgj-danger);border:1px solid var(--sgj-border)}
-body[data-vp=mobile] .draft{flex-direction:column;align-items:stretch;gap:12px}
-body[data-vp=mobile] .d-acts{justify-content:flex-end}
-.empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:64px 0;color:var(--sgj-text-4)}
-.empty .ic{font-size:32px;opacity:.6}
-.empty a{font-size:13px}
+.btn.danger:hover{background:var(--sgj-bg-deep);border-color:var(--sgj-danger);color:var(--sgj-danger)}
+.btn.solid-danger{background:var(--sgj-danger);color:#fff}
+.btn.solid-danger:hover{background:var(--sgj-primary-dark)}
+html.dark .btn.solid-danger{color:#171B1A}
+
+/* 空态 / 加载失败：在可见高度里居中，别把内容贴在顶栏下面留一大片空白 */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  min-height:min(48vh,400px);padding:32px 16px;text-align:center;color:var(--sgj-text-2)}
+.empty .ic{font-size:30px;opacity:.55}
+.empty .et{color:var(--sgj-text);font-family:var(--sgj-font-serif);font-size:16px}
+.empty .ed{font-size:13px}
+.err{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  min-height:min(48vh,400px);padding:32px 16px;text-align:center}
+.err .et{color:var(--sgj-text);font-family:var(--sgj-font-serif);font-size:16px}
+.err .ed{font-size:13px;color:var(--sgj-text-2);max-width:32em}
+
+/* 加载骨架 */
+.sk{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 18px;box-shadow:var(--sgj-shadow-sm)}
+.sk .l{height:14px;border-radius:6px;background:var(--sgj-bg-deep);position:relative;overflow:hidden}
+.sk .l+.l{margin-top:10px}
+.sk .l.w1{width:52%}
+.sk .l.w2{width:30%}
 
 /* 弹窗 */
 .mask{position:fixed;inset:0;background:rgba(23,27,26,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
-.dlg{background:var(--sgj-bg-card);border-radius:var(--sgj-r-lg);width:420px;max-width:100%;padding:20px 22px;box-shadow:var(--sgj-shadow-hover)}
-.dlg h3{margin:0 0 10px;font-size:16px;font-family:var(--sgj-font-serif)}
-.dlg p{margin:0 0 18px;font-size:13px;color:var(--sgj-text-2)}
+.dlg{background:var(--sgj-bg-card);border-radius:var(--sgj-r-lg);width:440px;max-width:100%;padding:20px 22px;box-shadow:var(--sgj-shadow-hover)}
+/* 容器只作焦点兜底，不画焦点环（它不可操作）；真正可操作的子元素自己带 :focus-visible */
+.dlg:focus{outline:none}
+.dlg h3{margin:0 0 8px;font-size:16px;font-family:var(--sgj-font-serif)}
+.dlg .who{margin:0 0 10px;font-size:13px;color:var(--sgj-text);overflow-wrap:anywhere}
+.dlg .note{margin:0 0 18px;font-size:13px;color:var(--sgj-text-2)}
 .dlg .row{display:flex;justify-content:flex-end;gap:10px}
 
 .an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
   border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1}
 .an::before{content:attr(data-n)}
 body.no-annotate .an{display:none}
-.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+/* 图例是评审用的说明，不是产品界面：抬到遮罩之上，弹窗打开时也读得到 */
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px;position:relative;z-index:45}
 .legend h2{font-size:15px;margin:0 0 10px}
 .legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
 html.dark .legend ol{color:#C8D0CC}
 .legend li{margin:5px 0}
 .legend .new{color:#934C47;font-weight:600}
 html.dark .legend .new{color:#D67870}
-.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
-@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+.legend .fix{color:#5D6F66;font-weight:600}
+html.dark .legend .fix{color:#7F9B8D}
+.legend .scope{margin-top:12px;font-size:12px;color:#525B58}
+html.dark .legend .scope{color:#C8D0CC}
+
+@media (pointer:coarse){
+  .btn.sm{min-height:44px;padding:0 18px}
+}
+body[data-vp=mobile] .draft{flex-direction:column;align-items:stretch;gap:14px}
+body[data-vp=mobile] .d-acts{gap:10px}
+body[data-vp=mobile] .d-acts .go{flex:1}
+body[data-vp=mobile] .btn.sm{height:44px;font-size:13px;padding:0 18px}
+body[data-vp=mobile] .dlg .row .btn{flex:1;height:44px}
+body[data-vp=mobile] .head h1{font-size:22px}
+
+@media (prefers-reduced-motion:no-preference){
+  .sk .l::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:sweep 1.5s infinite}
+  html.dark .sk .l::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent)}
+  @keyframes sweep{to{transform:translateX(100%)}}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 </style>
 </head>
 <body data-vp="desktop">
@@ -130,8 +192,11 @@ html.dark .legend .new{color:#D67870}
     </nav>
     <span class="seg" role="group" aria-label="状态">
       <button data-state="list" aria-pressed="true">有草稿</button>
+      <button data-state="near" aria-pressed="false">接近上限</button>
+      <button data-state="full" aria-pressed="false">已满 20 份</button>
+      <button data-state="loading" aria-pressed="false">加载中</button>
+      <button data-state="error" aria-pressed="false">加载失败</button>
       <button data-state="empty" aria-pressed="false">空态</button>
-      <button data-state="full" aria-pressed="false">满 20 份</button>
       <button data-state="confirm" aria-pressed="false">删除确认</button>
     </span>
     <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
@@ -140,11 +205,12 @@ html.dark .legend .new{color:#D67870}
       <button data-vp="mobile" aria-pressed="false">移动端</button>
     </span>
     <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+    <span class="seg" role="group" aria-label="数据"><button id="resetBtn" title="恢复被删掉的示例草稿">↺ 重置</button></span>
   </div>
 </div>
 
 <main class="stage">
-  <div class="device">
+  <div class="device" id="device">
     <header class="fh">
       <span class="logo">拾光记</span>
       <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
@@ -155,29 +221,26 @@ html.dark .legend .new{color:#D67870}
       <a class="backlink" href="note-list.html">← 返回笔记列表</a>
       <div class="head">
         <h1>草稿箱</h1>
-        <span class="sub">未完成的笔记，只保留新笔记的草稿<span class="an" data-n="1"></span></span>
+        <span class="sub">只放新笔记的草稿<span class="an" data-n="1" aria-hidden="true"></span></span>
       </div>
 
-      <div class="quota" id="quota">
-        <span class="bar" id="bar"><i style="width:15%"></i></span>
-        <span id="quotaText">已用 3 / 20 份</span>
-        <span class="an" data-n="2"></span>
-      </div>
-
-      <div class="dlist" id="dlist"></div>
+      <div class="quota" id="quota"></div>
+      <ul class="dlist" id="dlist"></ul>
+      <p class="sr" id="live" role="status" aria-live="polite"></p>
     </div>
 
-    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div></nav>
+    <nav class="tabbar" aria-label="前台导航"><div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div></nav>
   </div>
 </main>
 
 <div class="mask" id="mask" hidden>
-  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
-    <h3 id="dlgTitle">删除草稿</h3>
-    <p>删除后无法恢复（草稿不进回收站）。确认删除《Obsidian 到拾光记的笔记迁移》这份草稿？<span class="an" data-n="4"></span></p>
+  <div class="dlg" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgWho" tabindex="-1">
+    <h3 id="dlgTitle">删除这份草稿？</h3>
+    <p class="who" id="dlgWho"></p>
+    <p class="note">删除后无法恢复——草稿不进回收站，也不会留下副本。<span class="an" data-n="5" aria-hidden="true"></span></p>
     <div class="row">
-      <button class="btn line">取消</button>
-      <button class="btn">确认删除</button>
+      <button class="btn line" id="dlgCancel">取消</button>
+      <button class="btn solid-danger" id="dlgOk">删除草稿</button>
     </div>
   </div>
 </div>
@@ -185,95 +248,201 @@ html.dark .legend .new{color:#D67870}
 <section class="legend">
   <h2>本屏标注</h2>
   <ol>
-    <li><span class="new">新增页</span>：<code>/note/draft</code>，仅登录可进（不在免登录白名单）。入口只有笔记列表页的草稿入口条，前台导航不加项。</li>
-    <li><span class="new">新增</span>：<b>配额提示（n / 20）</b>。上限只统计<b>新笔记草稿</b>（<code>note_id</code> 为空）；编辑已有笔记产生的草稿不入箱、也不占额。</li>
-    <li><span class="new">新增</span>：<b>标题为空时用正文首行兜底</b>。取的是与列表摘要<strong>同一套</strong>剥离逻辑（去 Markdown 标记、去图片、去 front-matter），不另写一份。</li>
-    <li><span class="new">新增</span>：<b>硬删除 + 确认弹窗</b>。草稿不进回收站——避免出现第二个暂存区；删除后该行直接消失，配额立刻释放。</li>
-    <li><span class="new">改动</span>：<b>相对时间</b>（「3 分钟前」）走 <code>formatTime()</code>，但后端给的是 <code>yyyy-MM-dd HH:mm:ss</code>，必须先经解析函数转 epoch——直接喂进去会渲染成 <code>NaN月NaN日</code>。</li>
-    <li><span class="new">改动</span>：移动端底部自留 76px，不被固定标签栏遮挡（沿用 <code>detail.vue</code> 的 FAB 偏移做法）。</li>
+    <li><span class="new">新增页</span>：<code>/note/draft</code>，仅登录可进。访客不会出现在这一屏——路由守卫直接跳登录页，所以这里<b>没有</b>访客态；入口只有笔记列表页的草稿入口条，前台导航不加项。这一屏<b>只放新笔记草稿</b>（<code>note_id</code> 为空），编辑已有笔记时没保存的改动<b>不进这里</b>，只在进那篇编辑页时静默恢复——这是本页最容易被误解的一点。</li>
+    <li><span class="new">新增</span>：<b>标题为空时用正文首行兜底</b>（第 2 条草稿）。取的是与列表摘要<strong>同一套</strong>剥离逻辑（去 Markdown 标记、去图片、去 front-matter），后端直接给 <code>excerpt</code>，前端不另写一份；最多两行，超出裁掉。</li>
+    <li><span class="new">新增</span>：<b>条目查不到就显示 <code>#id</code></b>（第 3 条草稿的 <code>🔗 #12</code>，条目已被删）。与笔记列表的做法一致，不做特殊提示。</li>
+    <li><span class="new">新增</span>：<b>相对时间</b>（「3 分钟前」）走 <code>formatTime()</code>，但后端给的是 <code>yyyy-MM-dd HH:mm:ss</code>，必须先经解析函数转 epoch——直接喂进去会渲染成 <code>NaN月NaN日</code>（Safari 上 <code>new Date(str)</code> 直接是 Invalid Date）。</li>
+    <li><span class="new">新增</span>：<b>硬删除 + 确认弹窗</b>。草稿不进回收站，避免出现第二个暂存区；所以这里<b>必须</b>拦一道（不可逆操作才值得确认）。弹窗写明删的是哪一份，焦点移入弹窗、关闭后回到触发它的那个「删除」按钮。</li>
+    <li><span class="new">新增</span>：<b>配额只在接近上限时才出现进度条</b>。<b>接近上限</b>（17 / 20）起才显示进度条，<b>已满</b>（20 / 20）转危险色并说明要先清理。3 / 20 时只留一行文字——一条常年停在 15% 的进度条只是占地方，不传递任何紧张感。</li>
+    <li><span class="new">补齐</span>：<b>加载中</b>与<b>加载失败</b>两个状态（原来只有 4 个状态）。加载用骨架屏并带 <code>aria-busy</code>；失败给「重新加载」，文案说清是网络/服务的问题，并提供另一条出路。</li>
+    <li><span class="fix">修正</span>：<b>元信息文字从 <code>--sgj-text-4</code> 换成 <code>--sgj-text-2</code></b>。原来时间与条目名用的 <code>--sgj-text-4</code>（<code>#A4ADA9</code>）在卡片上只有 <b>2.2:1</b> 对比度，12px 文字远低于 4.5:1 的门槛，等于读不出来；换成 <code>--sgj-text-2</code> 后是亮色 6.8:1 / 暗色 9.6:1。<b>这个 token 在其它几屏也有同样问题</b>，建议单独做一次全组校准，本屏先不扩散。</li>
+    <li><span class="fix">修正</span>：<b>移动端触控目标</b>。每行的「继续写 / 删除」在移动端补到 44px 高，主操作「继续写」占满剩余宽度；底部自留 76px 并带上 <code>env(safe-area-inset-bottom)</code>，不被固定标签栏或 home indicator 遮住。</li>
+    <li><span class="fix">修正</span>：<b>可访问性</b>。重复出现的「继续写 / 删除」按钮带上了具体草稿名的 <code>aria-label</code>（否则读屏听到的是一串相同的「删除」）；工具条与页面内所有可聚焦元素补了统一的 <code>:focus-visible</code> 焦点环；装饰性的标注气泡标了 <code>aria-hidden</code>；删除结果通过 <code>role="status"</code> 播报。</li>
   </ol>
-  <p class="scope"><b>本屏不显示</b>：编辑态草稿（改了已发布笔记但没保存的改动）。它们只在进入那篇编辑页时静默恢复，不会出现在这里——这是本页最容易误解的一点。<br><b>未建模</b>：真实删除请求、「继续写」后的跳转（见编辑页）。</p>
+  <p class="scope"><b>本屏不显示</b>：编辑态草稿（改了已发布笔记但没保存的改动）。<br><b>未建模</b>：删除请求失败的收尾（成功路径是即时更新，删除失败沿用「加载失败」那一套口径）；「继续写」之后的跳转与恢复见编辑页。</p>
 </section>
 
 <script>
-const DRAFTS = [
-  {title:'MySQL 全文索引与 ngram 分词', item:'', time:'3 分钟前', preview:null},
-  {title:'', preview:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 ngram 索引变成垃圾 token。', item:'', time:'2 小时前'},
-  {title:'《人类简史》读书笔记', item:'人类简史', time:'昨天 22:08', preview:null}
+/* 20 条代表性草稿。前 3 条对应列表页入口条说的「3 份」，
+   并各自承担一个边缘用例：第 2 条无标题（走 excerpt 兜底）、第 3 条关联条目已删（显示 #id）。 */
+const POOL = [
+  {id:1,  t:'MySQL 全文索引与 ngram 分词', item:'拾光记', dt:'2026-09-19T17:12:00+08:00', rel:'3 分钟前',
+   ex:''},
+  {id:2,  t:'', item:'', dt:'2026-09-19T15:04:00+08:00', rel:'2 小时前',
+   ex:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: / tags: 这些键会进 ngram 索引变成垃圾 token。'},
+  {id:3,  t:'把笔记模块拆成检索、草稿箱、导入导出三条线之后，我踩到的七个坑', item:'#12', dt:'2026-09-18T22:08:00+08:00', rel:'昨天 22:08',
+   ex:''},
+  {id:4,  t:'Docker Compose 的 depends_on 不等于健康检查', item:'', dt:'2026-09-18T20:41:00+08:00', rel:'昨天 20:41', ex:''},
+  {id:5,  t:'', item:'', dt:'2026-09-18T11:26:00+08:00', rel:'昨天 11:26',
+   ex:'索引下推不是所有 where 都能吃到：函数包住列、隐式类型转换、以及 or 两边的列不一致，都会让它退化成全表扫。'},
+  {id:6,  t:'CSS 容器查询的兼容边界', item:'', dt:'2026-09-17T21:03:00+08:00', rel:'前天 21:03', ex:''},
+  {id:7,  t:'Spring 事务在哪些情况下会失效', item:'Spring 实战', dt:'2026-09-17T16:52:00+08:00', rel:'前天 16:52', ex:''},
+  {id:8,  t:'Redis 大 key 的排查路径', item:'', dt:'2026-09-16T22:31:00+08:00', rel:'9月16日 22:31', ex:''},
+  {id:9,  t:'MyBatis 一级缓存为什么会脏读', item:'', dt:'2026-09-16T09:14:00+08:00', rel:'9月16日 09:14', ex:''},
+  {id:10, t:'《人类简史》读书笔记', item:'人类简史', dt:'2026-09-15T23:47:00+08:00', rel:'9月15日 23:47', ex:''},
+  {id:11, t:'', item:'', dt:'2026-09-15T14:08:00+08:00', rel:'9月15日 14:08',
+   ex:'前端首屏包体从 1.2MB 压到 380KB，最大的一块不是依赖体积，而是列表页把整篇正文都下发下来了。'},
+  {id:12, t:'关于 ngram_token_size=2 的取舍', item:'', dt:'2026-09-14T19:22:00+08:00', rel:'9月14日 19:22', ex:''},
+  {id:13, t:'《置身事内》第三章摘抄', item:'置身事内', dt:'2026-09-13T21:15:00+08:00', rel:'9月13日 21:15', ex:''},
+  {id:14, t:'MySQL 布尔模式检索会把运算符吃掉', item:'', dt:'2026-09-13T10:02:00+08:00', rel:'9月13日 10:02', ex:''},
+  {id:15, t:'《万历十五年》读书笔记', item:'万历十五年', dt:'2026-09-12T22:40:00+08:00', rel:'9月12日 22:40', ex:''},
+  {id:16, t:'设计令牌到底该不该双写', item:'', dt:'2026-09-11T17:35:00+08:00', rel:'9月11日 17:35', ex:''},
+  {id:17, t:'', item:'', dt:'2026-09-10T20:18:00+08:00', rel:'9月10日 20:18',
+   ex:'分段锁不是银弹：段数写死之后，热点段照样排队，冷段白白占着内存。'},
+  {id:18, t:'《代码整洁之道》重读', item:'', dt:'2026-09-09T21:55:00+08:00', rel:'9月9日 21:55', ex:''},
+  {id:19, t:'Vite 生产构建为什么还是慢', item:'', dt:'2026-09-08T15:11:00+08:00', rel:'9月8日 15:11', ex:''},
+  {id:20, t:'Obsidian 到拾光记的笔记迁移', item:'', dt:'2026-09-07T18:29:00+08:00', rel:'9月7日 18:29', ex:''}
 ];
-const FALLBACK = '导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---…';
+const CAP = 20;
+const NEAR = 16;          /* 到这里才出进度条 */
+const removed = new Set();
+let state = 'list';
+
+const el = id => document.getElementById(id);
+const listFor = s => (s === 'empty' ? []
+                     : s === 'full' ? POOL.slice(0, CAP)
+                     : s === 'near' ? POOL.slice(0, 17)
+                     : POOL.slice(0, 3)).filter(d => !removed.has(d.id));
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const short = (s, n) => s.length > n ? s.slice(0, n) + '…' : s;
+const label = d => d.t || short(d.ex, 24);
 
 function row(d){
-  const t = d.title
-    ? d.title
-    : '<span class="fallback">' + FALLBACK + '<span class="an" data-n="3"></span></span>';
-  return `<article class="draft">
+  const title = d.t
+    ? '<span class="t">' + esc(d.t) + '</span>'
+    : '<span class="t clamp">' + esc(d.ex) + '</span><span class="an" data-n="2" aria-hidden="true"></span>';
+  const item = d.item
+    ? (d.item.charAt(0) === '#' ? '🔗 ' + esc(d.item) + '<span class="an" data-n="3" aria-hidden="true"></span>'
+                                : '🔗 ' + esc(d.item))
+    : '📝 独立笔记';
+  return `<li class="draft">
     <div class="d-main">
-      <div class="d-title">${t}</div>
-      <div class="d-sub">
-        <span>${d.item ? '🔗 ' + d.item : '📝 独立笔记'}</span>
-        <span>${d.time}<span class="an" data-n="5"></span></span>
-      </div>
+      <p class="d-title">${title}</p>
+      <p class="d-sub">
+        <span class="d-item">${item}</span>
+        <time class="d-time" datetime="${d.dt}">${esc(d.rel)}<span class="an" data-n="4" aria-hidden="true"></span></time>
+      </p>
     </div>
     <div class="d-acts">
-      <button class="btn sm">继续写</button>
-      <button class="btn sm danger" onclick="openDlg()">删除</button>
+      <button class="btn sm go" aria-label="继续写：${esc(label(d))}">继续写</button>
+      <button class="btn sm danger" data-del="${d.id}" aria-label="删除草稿：${esc(label(d))}">删除</button>
     </div>
-  </article>`;
+  </li>`;
 }
 
-const STATES = {
-  list(){ return DRAFTS.map(row).join(''); },
-  empty(){ return `<div class="empty"><div class="ic">🗂</div><div>草稿箱是空的</div>
-    <div style="font-size:12px">在编辑器里写一半离开，草稿就会出现在这里</div>
-    <a href="note-list.html">← 去写一篇</a></div>`; },
-  full(){ return DRAFTS.map(row).join('') + `<div class="empty" style="padding:28px 0 8px">
-    <div>已达 20 份上限</div>
-    <div style="font-size:12px">先清理几份，再新建草稿</div></div>`; },
-  confirm(){ return DRAFTS.map(row).join(''); }
-};
-const SHOW = {list:{}, empty:{quota:0}, full:{}, confirm:{}};
+function quota(n){
+  const q = el('quota');
+  if (state === 'loading' || state === 'error'){ q.innerHTML = ''; return; }
+  const full = n >= CAP, near = n >= NEAR;
+  const bar = near ? `<span class="bar${full ? ' is-full' : ''}" role="progressbar"
+      aria-valuenow="${n}" aria-valuemin="0" aria-valuemax="${CAP}"
+      aria-label="草稿配额"><i style="width:${Math.round(n / CAP * 100)}%"></i></span>` : '';
+  const txt = full
+    ? `<span class="capnote">已满 ${n} / ${CAP} 份</span>
+       <span class="capnote">· 先清理几份，再新建草稿<span class="an" data-n="6" aria-hidden="true"></span></span>`
+    : `<span class="n">已用 ${n} / ${CAP} 份</span>`
+      + (near ? '<span class="an" data-n="6" aria-hidden="true"></span>' : '');
+  q.innerHTML = bar + txt;
+}
 
-let state='list';
-function openDlg(){ document.getElementById('mask').hidden = false; }
-function closeDlg(){ document.getElementById('mask').hidden = true; }
-document.querySelectorAll('.dlg .btn').forEach(b=>b.addEventListener('click',closeDlg));
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDlg(); });
+function body(){
+  if (state === 'loading')
+    return Array.from({length:3}, () => `<li class="sk" aria-hidden="true"><div class="l w1"></div><div class="l w2"></div></li>`).join('');
+  if (state === 'error')
+    return `<li><div class="err">
+      <div class="et">草稿没能加载出来</div>
+      <div class="ed">网络不稳或者服务没响应。重新加载一次，也可以先去写别的。</div>
+      <button class="btn line" onclick="setState('list')">重新加载</button>
+    </div></li>`;
+  const rows = listFor(state).map(row).join('');
+  if (rows) return rows;
+  return `<li><div class="empty">
+    <div class="ic" aria-hidden="true">🗂</div>
+    <div class="et">草稿箱是空的</div>
+    <div class="ed">在编辑器里写一半离开，草稿就会出现在这里。</div>
+    <a href="note-edit.html">去写一篇 →</a>
+  </div></li>`;
+}
 
 function render(){
-  document.getElementById('dlist').innerHTML = STATES[state]();
-  const show = SHOW[state] || {};
-  document.getElementById('quota').style.display = ('quota' in show) ? 'none' : '';
-  if(state==='full'){
-    document.getElementById('bar').classList.add('full');
-    document.querySelector('#bar i').style.width = '100%';
-    document.getElementById('quotaText').textContent = '已用 20 / 20 份（已满）';
-  } else {
-    document.getElementById('bar').classList.remove('full');
-    document.querySelector('#bar i').style.width = '15%';
-    document.getElementById('quotaText').textContent = '已用 3 / 20 份';
-  }
-  if(state==='confirm') openDlg(); else closeDlg();
+  const list = el('dlist');
+  const n = (state === 'loading' || state === 'error') ? 0 : listFor(state).length;
+  list.innerHTML = body();
+  list.setAttribute('aria-busy', String(state === 'loading'));
+  /* 加载中 / 加载失败 / 空态都没有「用了几份」可言，配额行整体收起 */
+  if (state === 'loading' || state === 'error' || n === 0) el('quota').innerHTML = '';
+  else quota(n);
+  list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => openDlg(b)));
+  if (state === 'confirm') { openDlg(el('dlist').querySelector('[data-del]')); }
+  else closeDlg(false);
+  if (state === 'loading') el('live').textContent = '正在加载草稿';
 }
-document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
-  state=b.dataset.state;
-  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+
+/* 弹窗：焦点移入 → 困在弹窗内 → 关闭后回到触发按钮；背景 inert */
+let lastFocus = null;
+function openDlg(trigger){
+  const d = POOL.find(x => String(x.id) === trigger.dataset.del);
+  if (!d) return;
+  if (el('mask').hidden) lastFocus = trigger || document.activeElement;
+  el('dlgWho').innerHTML = d.t
+    ? '《<b>' + esc(d.t) + '</b>》'
+    : '无标题草稿 · <b>' + esc(short(d.ex, 28)) + '</b>';
+  el('dlgOk').dataset.id = d.id;
+  el('mask').hidden = false;
+  el('device').setAttribute('inert', '');
+  el('dlgCancel').focus();
+}
+function closeDlg(restore){
+  el('mask').hidden = true;
+  el('device').removeAttribute('inert');
+  if (restore !== false && lastFocus && lastFocus.isConnected) lastFocus.focus();
+}
+el('dlgCancel').addEventListener('click', () => closeDlg(true));
+el('dlgOk').addEventListener('click', () => {
+  const d = POOL.find(x => String(x.id) === el('dlgOk').dataset.id);
+  /* 触发它的那行马上就会被删掉，所以焦点不能还给它：落到下一行的主操作上，
+     列表被删空时落到空态的入口 —— 键盘用户不会丢失位置 */
+  const idx = [...el('dlist').querySelectorAll('[data-del]')].findIndex(b => b.dataset.del === String(d.id));
+  removed.add(d.id);
+  closeDlg(false);
+  setState('list');
+  const go = el('dlist').querySelectorAll('.d-acts .go');
+  const next = go[Math.min(idx, go.length - 1)] || el('dlist').querySelector('.empty a');
+  if (next) next.focus();
+  el('live').textContent = '已删除《' + (d.t || d.ex.slice(0, 20)) + '》';
+});
+el('dlg').addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const f = el('dlg').querySelectorAll('button');
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !el('mask').hidden) closeDlg(true); });
+
+function setState(s){
+  state = s;
+  document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.state === s)));
   render();
+}
+document.querySelectorAll('[data-state]').forEach(b => b.addEventListener('click', () => setState(b.dataset.state)));
+document.querySelectorAll('.review [data-vp]').forEach(b => b.addEventListener('click', () => {
+  document.body.dataset.vp = b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
 }));
-document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
-  document.body.dataset.vp=b.dataset.vp;
-  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
-}));
-document.getElementById('themeBtn').addEventListener('click',e=>{
-  const dark=document.documentElement.classList.toggle('dark');
-  document.documentElement.classList.toggle('light',!dark);
-  e.currentTarget.setAttribute('aria-pressed',String(dark));
-  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+el('themeBtn').addEventListener('click', e => {
+  const dark = document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light', !dark);
+  e.currentTarget.setAttribute('aria-pressed', String(dark));
+  e.currentTarget.textContent = dark ? '浅色模式' : '深色模式';
 });
-document.getElementById('anBtn').addEventListener('click',e=>{
-  const off=document.body.classList.toggle('no-annotate');
-  e.currentTarget.setAttribute('aria-pressed',String(!off));
+el('anBtn').addEventListener('click', e => {
+  const off = document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed', String(!off));
 });
+/* 演示里的删除是真的生效的；给评审一个复位入口（属评审工具条，不是产品界面） */
+el('resetBtn').addEventListener('click', () => { removed.clear(); setState('list'); });
 render();
 </script>
 </body>
