@@ -44,3 +44,4 @@ shiguangji-server/.env.*
 .opencode/
 .zed/
 .zcode/
+.commandcode/
