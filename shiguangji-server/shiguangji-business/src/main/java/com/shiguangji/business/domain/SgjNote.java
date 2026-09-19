@@ -50,6 +50,9 @@ public class SgjNote extends BaseEntity
     /** 全文命中次数（出参，非表字段；供「共 N 处命中」提示，仅关键词检索时有值） */
     private Long hitTotal;
 
+    /** 详情渲染用正文（已剥离 YAML 前言、去掉与标题重复的首个一级标题行，出参，非表字段） */
+    private String body;
+
     public Long getNoteId()
     {
         return noteId;
@@ -171,5 +174,16 @@ public class SgjNote extends BaseEntity
     public void setHitTotal(Long hitTotal)
     {
         this.hitTotal = hitTotal;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getBody()
+    {
+        return body;
+    }
+
+    public void setBody(String body)
+    {
+        this.body = body;
     }
 }

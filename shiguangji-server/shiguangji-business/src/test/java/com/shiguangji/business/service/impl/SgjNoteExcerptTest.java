@@ -2,16 +2,18 @@ package com.shiguangji.business.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 /**
- * 前台摘要生成单元测试（不依赖 Spring 容器与数据库）。
+ * 前台摘要与详情正文生成单元测试（不依赖 Spring 容器与数据库）。
  *
  * 覆盖 issue #31 验收：语法剥离、命中窗口居中、无命中取开头、空正文、很短的正文、
  * 命中在开头或结尾、整篇代码块、标题去重、词边界截断。
- * 前言（YAML front-matter）跳过由 SQL 负责（SgjNoteMapper.xml fmEnd 片段），不在本测试范围
+ * 前言（YAML front-matter）跳过：列表侧由 SQL 负责（SgjNoteMapper.xml fmEnd 片段），
+ * 详情侧由 {@link SgjNoteServiceImpl#buildBody} 负责——两者规则必须一致，故此处覆盖 Java 侧
  */
 class SgjNoteExcerptTest
 {
@@ -174,5 +176,70 @@ class SgjNoteExcerptTest
     {
         // 正文为空的行经 SQL concat 后可能只剩省略号占位
         assertEquals("", SgjNoteServiceImpl.buildExcerpt("…", "标题"));
+    }
+
+    // ===== buildBody：详情正文的前言剥离与标题去重（须与 SQL fmEnd 口径一致） =====
+
+    @Test
+    void bodyWithoutFrontMatterStaysUntouched()
+    {
+        assertEquals("正文内容", SgjNoteServiceImpl.buildBody("正文内容", "别的标题"));
+    }
+
+    @Test
+    void bodyStripsFrontMatterBlock()
+    {
+        String content = "---\ntitle: x\ntags: a,b\n---\n正文内容";
+        assertEquals("正文内容", SgjNoteServiceImpl.buildBody(content, "别的标题"));
+    }
+
+    @Test
+    void bodyStripsFrontMatterThenDeduplicatesTitleH1()
+    {
+        String content = "---\ntags: a\n---\n# 标题\n正文";
+        assertEquals("正文", SgjNoteServiceImpl.buildBody(content, "标题"));
+    }
+
+    @Test
+    void bodyKeepsCrlfFrontMatterResidualNewline()
+    {
+        // 镜像 SQL 的 locate(...) + 5 盲跳：CRLF 前言剥完后仍残留一个 \n，不在此处修（修它要同时改 SQL）
+        String content = "---\r\ntitle: x\r\n---\r\n正文";
+        assertEquals("\n正文", SgjNoteServiceImpl.buildBody(content, "别的标题"));
+    }
+
+    @Test
+    void bodyKeepsWholeContentWhenFrontMatterUnclosed()
+    {
+        String content = "---\ntitle: x\n正文";
+        assertEquals(content, SgjNoteServiceImpl.buildBody(content, "别的标题"));
+    }
+
+    @Test
+    void bodyDeduplicatesLeadingTitleH1()
+    {
+        assertEquals("正文", SgjNoteServiceImpl.buildBody("# 标题\n正文", "标题"));
+    }
+
+    @Test
+    void bodyKeepsLeadingH1WithDifferentText()
+    {
+        assertEquals("# 别的\n正文", SgjNoteServiceImpl.buildBody("# 别的\n正文", "标题"));
+    }
+
+    @Test
+    void bodyTitleDedupIgnoresCase()
+    {
+        // SQL 侧的等值比较走 _ci 排序规则（大小写不敏感），Java 侧用 regionMatches 对齐
+        assertEquals("正文", SgjNoteServiceImpl.buildBody("# hello\n正文", "Hello"));
+    }
+
+    @Test
+    void bodyToleratesNullAndEmptyInput()
+    {
+        assertNull(SgjNoteServiceImpl.buildBody(null, "标题"));
+        assertEquals("", SgjNoteServiceImpl.buildBody("", "标题"));
+        assertEquals("正文", SgjNoteServiceImpl.buildBody("正文", null));
+        assertEquals("正文", SgjNoteServiceImpl.buildBody("正文", ""));
     }
 }

@@ -60,7 +60,7 @@
                   </li>
                 </ul>
               </div>
-              <markdown-viewer :content="bodyContent" />
+              <markdown-viewer :content="note?.body ?? ''" />
               <div class="article-end" aria-hidden="true">· 完 ·</div>
             </div>
           </template>
@@ -149,24 +149,7 @@ const tagList = computed(() =>
   (note.value?.tags || '').split(',').map(tag => tag.trim()).filter(Boolean)
 )
 
-/** 正文预处理：前言（front-matter）整块剥离（与后端摘要规则一致，详情不渲染元数据原文）；
- *  正文若以与标题相同的一级标题开头则去重，避免文章头与正文标题重复 */
-const bodyContent = computed(() => {
-  let content = note.value?.content || ''
-  const title = note.value?.title
-  if (/^---\r?\n/.test(content)) {
-    const close = content.indexOf('\n---', 1)
-    if (close !== -1) {
-      let start = close + 4
-      if (content[start] === '\r') start += 1
-      if (content[start] === '\n') start += 1
-      content = content.slice(start)
-    }
-  }
-  if (!content || !title) return content
-  const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return content.replace(new RegExp(`^\\s*#\\s*${escaped}\\s*\\r?\\n`), '')
-})
+/** 正文预处理（前言剥离与标题去重）已由后端下发 body 字段，见 SgjNoteServiceImpl.buildBody */
 
 /** 大纲（issue #26）：渲染完成后从正文 DOM 提取 h1-h3 并回填锚点 id；no 为章节编号（仅 h1/h2） */
 interface OutlineItem {

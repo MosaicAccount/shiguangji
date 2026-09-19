@@ -19,6 +19,8 @@ export interface SgjNote extends BaseEntity {
   excerpt?: string
   /** 全文命中次数（仅关键词检索时有值；>1 时前台显示「共 N 处命中」） */
   hitTotal?: number
+  /** 详情渲染用正文（后端已剥离前言与重复标题行；仅详情接口返回，content 仍为原文） */
+  body?: string
 }
 
 /** 学习笔记查询参数 */

@@ -347,7 +347,10 @@ class AppApiAuthIsolationSmokeTest
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.noteId").value((int) privateNoteId));
+                .andExpect(jsonPath("$.data.noteId").value((int) privateNoteId))
+                // content 保持原文（编辑页往返用），body 为渲染用正文（前言剥离与标题去重见 SgjNoteServiceImpl.buildBody）
+                .andExpect(jsonPath("$.data.content").value("qat10 内容"))
+                .andExpect(jsonPath("$.data.body").value("qat10 内容"));
     }
 
     // ------------------------------------------------------------------

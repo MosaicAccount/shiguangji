@@ -59,7 +59,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <!-- YAML 前言（front-matter）结束位置：正文从其之后开始（导入的 md 普遍带前言，
          不跳过会进摘要与命中定位）。开场为单独一行三个连字符，找首个换行加三连字符作闭合；
-         找不到闭合按无前言处理。MySQL 字符串串接 '\n' 依赖反斜杠转义（默认 sql_mode） -->
+         找不到闭合按无前言处理。MySQL 字符串串接 '\n' 依赖反斜杠转义（默认 sql_mode）
+         详情页那份同款规则在 Java：SgjNoteServiceImpl.buildBody（列表不下发正文，两份须同步改） -->
     <sql id="fmEnd">
         if(left(n.content, 4) in ('---\n', '---\r'),
            coalesce(nullif(locate('\n---', n.content), 0) + 5, 1),

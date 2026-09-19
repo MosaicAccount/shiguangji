@@ -84,6 +84,8 @@ public class AppNoteController extends BaseController
         {
             return error("笔记不存在或无权访问");
         }
+        // 详情渲染用正文：剥离 YAML 前言与重复标题行后单独下发（content 保持原文，供编辑页用）
+        note.setBody(SgjNoteServiceImpl.buildBody(note.getContent(), note.getTitle()));
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNoteForGuest(note);
         return success(note);
