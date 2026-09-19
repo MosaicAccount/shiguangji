@@ -72,6 +72,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where n.note_id = #{noteId} and n.del_flag = '0'
     </select>
 
+    <!-- 草稿写入的存活校验：只回主键，不把十万字正文读出来（自动保存每 15 秒调一次） -->
+    <select id="selectAliveNoteId" parameterType="Long" resultType="Long">
+        select note_id from sgj_note where note_id = #{noteId} and del_flag = '0'
+    </select>
+
     <select id="selectSgjNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
         <include refid="listWhere"/>
