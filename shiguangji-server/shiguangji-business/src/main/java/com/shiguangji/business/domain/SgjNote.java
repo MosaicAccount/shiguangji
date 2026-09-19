@@ -1,5 +1,8 @@
 package com.shiguangji.business.domain;
 
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.shiguangji.common.core.domain.BaseEntity;
 
 /**
@@ -34,6 +37,21 @@ public class SgjNote extends BaseEntity
 
     /** 检索关键词（标题+正文全文匹配，列表查询入参，非表字段；title 保留仅标题原义） */
     private String keyword;
+
+    /** 检索词按空白切分（服务层由 keyword 派生的入参，供前台命中窗口/计数 SQL 使用，非表字段） */
+    private List<String> keywordWords;
+
+    /** 摘要原文片段（SQL 定位截出的「命中窗口/前缀」，生成 excerpt 后置空不下发，非表字段） */
+    private String excerptSrc;
+
+    /** 前台列表摘要（纯文本，非表字段；正文不再随前台列表下发） */
+    private String excerpt;
+
+    /** 全文命中次数（出参，非表字段；供「共 N 处命中」提示，仅关键词检索时有值） */
+    private Long hitTotal;
+
+    /** 详情渲染用正文（已剥离 YAML 前言、去掉与标题重复的首个一级标题行，出参，非表字段） */
+    private String body;
 
     public Long getNoteId()
     {
@@ -75,6 +93,7 @@ public class SgjNote extends BaseEntity
         this.title = title;
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String getContent()
     {
         return content;
@@ -113,5 +132,58 @@ public class SgjNote extends BaseEntity
     public void setKeyword(String keyword)
     {
         this.keyword = keyword;
+    }
+
+    public List<String> getKeywordWords()
+    {
+        return keywordWords;
+    }
+
+    public void setKeywordWords(List<String> keywordWords)
+    {
+        this.keywordWords = keywordWords;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getExcerptSrc()
+    {
+        return excerptSrc;
+    }
+
+    public void setExcerptSrc(String excerptSrc)
+    {
+        this.excerptSrc = excerptSrc;
+    }
+
+    public String getExcerpt()
+    {
+        return excerpt;
+    }
+
+    public void setExcerpt(String excerpt)
+    {
+        this.excerpt = excerpt;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public Long getHitTotal()
+    {
+        return hitTotal;
+    }
+
+    public void setHitTotal(Long hitTotal)
+    {
+        this.hitTotal = hitTotal;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getBody()
+    {
+        return body;
+    }
+
+    public void setBody(String body)
+    {
+        this.body = body;
     }
 }

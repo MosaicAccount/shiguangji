@@ -34,7 +34,7 @@
       <el-button link type="primary" size="small" @click="clearFilter">查看全部笔记</el-button>
     </div>
 
-    <div v-loading="loading" class="note-list">
+    <div ref="listRef" v-loading="loading" class="note-list">
       <el-empty v-if="!loading && !list.length && !loadError" description="暂无笔记" />
       <div v-if="loadError" class="load-error">
         <span>加载失败，请稍后重试</span>
@@ -43,7 +43,11 @@
       <div v-for="note in list" :key="note.noteId" class="note-card" @click="openDetail(note)">
         <div class="note-header">
           <div class="note-title">
-            {{ note.title }}
+            <!-- 关键词高亮：切片段循环渲染（只命中标题时标题本身高亮），不拼 HTML、不走 v-html -->
+            <template v-for="(seg, si) in titleSegments(note)" :key="si">
+              <mark v-if="seg.hit">{{ seg.text }}</mark>
+              <template v-else>{{ seg.text }}</template>
+            </template>
             <!-- 公开标识仅登录态展示 -->
             <el-tag v-if="isLogin && note.isPublic === '1'" size="small" type="success" class="public-tag">公开</el-tag>
           </div>
@@ -58,9 +62,22 @@
             @click.stop="handleDelete(note)"
           />
         </div>
-        <div v-if="note.content" class="note-preview">
-          <markdown-viewer :content="previewContent(note)" />
+        <!-- 纯文本摘要常显（后端生成）；渐隐仅在内容真的溢出时出现 -->
+        <div
+          v-if="note.excerpt"
+          class="note-preview"
+          :class="{ clip: clippedNoteIds.has(note.noteId!) }"
+          :data-note-id="note.noteId"
+        >
+          <p class="note-excerpt">
+            <template v-for="(seg, si) in excerptSegments(note)" :key="si">
+              <mark v-if="seg.hit">{{ seg.text }}</mark>
+              <template v-else>{{ seg.text }}</template>
+            </template>
+          </p>
         </div>
+        <!-- 多于 1 处出现时提示；大数字不可行动，统一弱化为「多次」 -->
+        <span v-if="note.hitTotal && note.hitTotal > 1" class="hit-count">{{ hitCountText(note.hitTotal) }}</span>
         <div class="note-meta">
           <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
           <span v-if="note.itemId" class="note-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
@@ -80,10 +97,10 @@
 <script setup lang="ts" name="FrontNote">
 import { getToken } from '@/utils/auth'
 import { Delete } from '@element-plus/icons-vue'
-import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, delFrontNote } from '@/api/front/note'
 import { getFrontItem } from '@/api/front/item'
+import { splitByKeyword } from '@/utils/sgj'
 import type { SgjNote } from '@/types/api/business/note'
 
 const { proxy } = getCurrentInstance() as { proxy: any }
@@ -98,6 +115,8 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
 const searchKeyword = ref('')
+/** 已生效检索词：搜索成功返回后才更新；高亮跟随它而非输入框实时值，避免结果集与高亮错位 */
+const appliedKeyword = ref('')
 /** 标签筛选（TagPills 点击选中、再点取消后触发 loadData） */
 const searchTag = ref('')
 /** 分页 */
@@ -135,6 +154,8 @@ function loadData(): void {
   listFrontNote(query).then(response => {
     list.value = response.data || []
     total.value = (response as any).total || 0
+    // 结果落地后才更新高亮用的已生效检索词
+    appliedKeyword.value = (query.keyword || '').trim()
   }).catch(() => {
     loadError.value = true
   }).finally(() => {
@@ -183,13 +204,38 @@ function formatTime(time?: string): string {
   return time.replace('T', ' ').slice(0, 16)
 }
 
-/** 预览正文：与标题相同的首个一级标题去重，避免卡片标题与预览重复 */
-function previewContent(note: SgjNote): string {
-  const content = note.content || ''
-  if (!note.title) return content
-  const escaped = note.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return content.replace(new RegExp(`^\\s*#\\s*${escaped}\\s*\\r?\\n`), '')
+/** 摘要/标题按「已生效检索词」切片段（字面量切分，不含 HTML，模板循环渲染） */
+function excerptSegments(note: SgjNote) {
+  return splitByKeyword(note.excerpt, appliedKeyword.value)
 }
+
+function titleSegments(note: SgjNote) {
+  return splitByKeyword(note.title, appliedKeyword.value)
+}
+
+/** 出现次数提示：统一「文中出现 N 次」；仅 1 次时不展示（无信息量） */
+function hitCountText(hitTotal?: number): string {
+  if (!hitTotal || hitTotal < 2) return ''
+  return `文中出现 ${hitTotal} 次`
+}
+
+/** 渐隐仅在摘要真的溢出时显示（渲染与窗口尺寸变化后测量） */
+const clippedNoteIds = ref<Set<number>>(new Set())
+const listRef = ref<HTMLElement | null>(null)
+
+function measureClip(): void {
+  const next = new Set<number>()
+  listRef.value?.querySelectorAll<HTMLElement>('.note-preview').forEach(el => {
+    if (el.scrollHeight > el.clientHeight + 2 && el.dataset.noteId) {
+      next.add(Number(el.dataset.noteId))
+    }
+  })
+  clippedNoteIds.value = next
+}
+
+watch(list, () => nextTick(measureClip))
+onMounted(() => window.addEventListener('resize', measureClip))
+onBeforeUnmount(() => window.removeEventListener('resize', measureClip))
 
 /** 跳转独立编辑页（新增/编辑共用，验收：单独的 markdown 编辑页面） */
 function openAdd(): void {
@@ -231,10 +277,13 @@ watch(
   () => handleRouteQuery()
 )
 
-/** 跳转独立详情页（验收：笔记内容单独页面展示，不再用抽屉） */
+/** 跳转独立详情页（验收：笔记内容单独页面展示，不再用抽屉）；带已生效检索词供详情页命中高亮 */
 function openDetail(note: SgjNote): void {
   if (!note.noteId) return
-  router.push({ path: '/note/detail', query: { noteId: String(note.noteId) } })
+  router.push({
+    path: '/note/detail',
+    query: { noteId: String(note.noteId), keyword: appliedKeyword.value || undefined }
+  })
 }
 
 function handleDelete(note: SgjNote): void {
@@ -403,6 +452,14 @@ html.dark .page-banner {
       color: var(--sgj-text);
       word-break: break-word;
 
+      mark {
+        background: var(--sgj-amber-soft);
+        color: var(--sgj-amber);
+        border-radius: 3px;
+        padding: 0 2px;
+        font-weight: 600;
+      }
+
       .public-tag {
         margin-left: 8px;
         font-weight: 400;
@@ -427,14 +484,12 @@ html.dark .page-banner {
 
   .note-preview {
     margin-top: 8px;
-    font-size: 13px;
-    color: var(--sgj-text-3);
-    line-height: 1.6;
     max-height: 96px;
     overflow: hidden;
     position: relative;
 
-    &::after {
+    /* 底部渐隐仅在内容真的溢出时出现（measureClip 测量后加 clip 类） */
+    &.clip::after {
       content: '';
       position: absolute;
       left: 0;
@@ -444,6 +499,31 @@ html.dark .page-banner {
       background: linear-gradient(transparent, var(--sgj-bg-card));
       pointer-events: none;
     }
+
+    .note-excerpt {
+      margin: 0;
+      font-size: 13px;
+      color: var(--sgj-text-3);
+      line-height: 1.6;
+      word-break: break-word;
+
+      mark {
+        background: var(--sgj-amber-soft);
+        color: var(--sgj-amber);
+        border-radius: 3px;
+        padding: 0 2px;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .hit-count {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--sgj-amber);
+    font-variant-numeric: tabular-nums;
   }
 
   .note-meta {
@@ -462,10 +542,10 @@ html.dark .page-banner {
 
 /* 移动端最小适配：搜索框占满整行、过滤提示与卡片标题行可换行 */
 @media (max-width: 768px) {
-  .toolbar {
+  .filter-bar {
     justify-content: flex-start;
 
-    .el-input {
+    .search-input {
       width: 100% !important;
     }
   }

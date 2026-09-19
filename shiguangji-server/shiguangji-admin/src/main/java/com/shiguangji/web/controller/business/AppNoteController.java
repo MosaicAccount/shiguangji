@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.github.pagehelper.Page;
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.business.service.ISgjNoteService;
+import com.shiguangji.business.service.impl.SgjNoteServiceImpl;
 import com.shiguangji.common.annotation.Anonymous;
 import com.shiguangji.common.core.controller.BaseController;
 import com.shiguangji.common.core.domain.AjaxResult;
@@ -40,7 +41,9 @@ public class AppNoteController extends BaseController
     /**
      * 查询前台笔记列表（按可见范围过滤 ；分页 ，默认第1页每页10条）
      *
-     * ：匿名访客仅可见公开笔记（is_public='1'），覆盖请求参数防止越权取到私密笔记
+     * ：匿名访客仅可见公开笔记（is_public='1'），覆盖请求参数防止越权取到私密笔记。
+     * 列表不带全文：SQL 截出摘要片段（excerpt_src）后剥离为纯文本 excerpt，
+     * 正文与 remark 均不下发（后台列表与导出仍带完整正文）
      */
     @Anonymous
     @GetMapping("/list")
@@ -53,8 +56,12 @@ public class AppNoteController extends BaseController
             sgjNote.setIsPublic("1");
         }
         startPage();
-        // 前台列表不回传完整正文，只回传几百字符片段（后台列表与导出走 /business/note 的全文查询）
-        List<SgjNote> list = sgjNoteService.selectAppNoteList(sgjNote);
+        List<SgjNote> list = sgjNoteService.selectSgjNoteFrontList(sgjNote);
+        for (SgjNote note : list)
+        {
+            note.setExcerpt(SgjNoteServiceImpl.buildExcerpt(note.getExcerptSrc(), note.getTitle()));
+            note.setExcerptSrc(null);
+        }
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNotesForGuest(list);
         AjaxResult result = success(list);
@@ -77,6 +84,8 @@ public class AppNoteController extends BaseController
         {
             return error("笔记不存在或无权访问");
         }
+        // 详情渲染用正文：剥离 YAML 前言与重复标题行后单独下发（content 保持原文，供编辑页用）
+        note.setBody(SgjNoteServiceImpl.buildBody(note.getContent(), note.getTitle()));
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNoteForGuest(note);
         return success(note);

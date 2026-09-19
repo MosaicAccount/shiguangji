@@ -15,6 +15,12 @@ export interface SgjNote extends BaseEntity {
   tags?: string
   /** 是否公开（'0'私密 '1'公开；新增默认私密，） */
   isPublic?: string
+  /** 前台列表摘要（纯文本；仅前台列表接口返回，正文不再随列表下发） */
+  excerpt?: string
+  /** 全文命中次数（仅关键词检索时有值；>1 时前台显示「共 N 处命中」） */
+  hitTotal?: number
+  /** 详情渲染用正文（后端已剥离前言与重复标题行；仅详情接口返回，content 仍为原文） */
+  body?: string
 }
 
 /** 学习笔记查询参数 */

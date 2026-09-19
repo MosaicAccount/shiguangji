@@ -63,8 +63,8 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>noteKeywordSearchScope                   —— keyword 全文检索（标题+正文）：正文独有词命中；
  *       匿名/越权不可经 keyword 命中私密与回收站笔记（or 短路防线）；title 仍仅标题；
  *       布尔模式（mysql 不命中只含 sql）；布尔运算符剔除；回收站不纳入 keyword</li>
- *   <li>contentLimitAndAppListExcerpt            —— 正文上限 10 万字（2 万放行）；前台列表只回传
- *       几百字符片段（命中窗口以命中处为中心、未命中取开头 400 字符）；首页 recentNotes 不下发
+ *   <li>contentLimitAndAppListExcerpt            —— 正文上限 10 万字（2 万放行）；前台列表不下发
+ *       content，改回传纯文本摘要 excerpt（以命中处为中心，未命中取开头）；首页 recentNotes 不下发
  *       content；后台列表与详情仍回传完整正文（导出依赖）</li>
  * </ol>
  *
@@ -350,7 +350,10 @@ class AppApiAuthIsolationSmokeTest
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.noteId").value((int) privateNoteId));
+                .andExpect(jsonPath("$.data.noteId").value((int) privateNoteId))
+                // content 保持原文（编辑页往返用），body 为渲染用正文（前言剥离与标题去重见 SgjNoteServiceImpl.buildBody）
+                .andExpect(jsonPath("$.data.content").value("qat10 内容"))
+                .andExpect(jsonPath("$.data.body").value("qat10 内容"));
     }
 
     // ------------------------------------------------------------------
@@ -391,17 +394,20 @@ class AppApiAuthIsolationSmokeTest
                 .andExpect(jsonPath("$.data.comment").value("admin私人短评"))
                 .andExpect(jsonPath("$.data.remark").value("admin私人备注"));
 
+        // #31 起前台列表不再下发 remark 与 content（正文与私人备注只走详情接口，列表以摘要替代）
         JsonNode adminNotes = listNotesAsData(adminToken);
-        boolean sawPublicWithRemark = false;
+        boolean sawPublicNote = false;
         for (JsonNode row : adminNotes)
         {
             if (row.path("noteId").asLong() == publicNoteId)
             {
-                assertThat(row.hasNonNull("remark")).as("登录态公开笔记应保留 remark").isTrue();
-                sawPublicWithRemark = true;
+                assertThat(row.hasNonNull("remark")).as("前台列表不应下发 remark（含登录态）").isFalse();
+                assertThat(row.hasNonNull("content")).as("前台列表不应下发 content（正文只在详情接口）").isFalse();
+                assertThat(row.hasNonNull("excerpt")).as("前台列表应下发纯文本摘要").isTrue();
+                sawPublicNote = true;
             }
         }
-        assertThat(sawPublicWithRemark).as("登录态列表应包含公开笔记夹具").isTrue();
+        assertThat(sawPublicNote).as("登录态列表应包含公开笔记夹具").isTrue();
     }
 
     // ------------------------------------------------------------------
@@ -704,11 +710,14 @@ class AppApiAuthIsolationSmokeTest
                 .andExpect(jsonPath("$.code").value(500))
                 .andExpect(jsonPath("$.msg").value("笔记内容长度不能超过100000个字符"));
 
-        // 前台列表（无关键词）：正文只回传开头 400 字符，不再回传全文
+        // 前台列表（无关键词）：正文不下发，改回传纯文本摘要（取正文开头约 120 字）
         JsonNode noKeywordRows = listNotesByTitle(adminToken, TAG_MAIN, longTitle).path("data");
         assertThat(noKeywordRows.size()).isEqualTo(1);
-        assertThat(noKeywordRows.get(0).path("content").asText().length())
-                .as("前台列表正文应为开头 400 字符片段").isEqualTo(400);
+        assertThat(noKeywordRows.get(0).hasNonNull("content"))
+                .as("前台列表不应下发 content（正文只在详情接口）").isFalse();
+        assertThat(noKeywordRows.get(0).path("excerpt").asText())
+                .as("无关键词时摘要取正文开头约 120 字，片段外还有正文故补省略号")
+                .isEqualTo("甲".repeat(120) + "…");
 
         // 详情仍回传完整正文
         JsonNode detail = bodyOf(mockMvc.perform(get("/app/note/" + longNoteId))
@@ -726,26 +735,26 @@ class AppApiAuthIsolationSmokeTest
         assertThat(homeData.path("recentNotes").valueStream().anyMatch(n -> n.hasNonNull("content")))
                 .as("首页最近笔记不得下发 content").isFalse();
 
-        // 搜索只出现在正文中部的词（400 字前缀之外）：能命中，摘要以命中处为中心
-        // （窗口 = 命中点前 40 字符起的 200 字符，故命中点位于片段第 40 字符处）
+        // 搜索只出现在正文中部的词（远在开头 120 字之外）：能命中，摘要以命中处为中心
         assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, midMarker).path("data"), "noteId"))
                 .contains(longNoteId);
         JsonNode hitRow = listNotesBody(adminToken, TAG_MAIN, midMarker).path("data").valueStream()
                 .filter(n -> n.path("noteId").asLong() == longNoteId)
                 .findFirst().orElseThrow();
-        String hitExcerpt = hitRow.path("content").asText();
-        assertThat(hitExcerpt.length()).as("命中窗口应为 200 字符").isEqualTo(200);
-        assertThat(hitExcerpt.indexOf(midMarker)).as("命中点应位于窗口第 40 字符处").isEqualTo(40);
+        assertThat(hitRow.path("excerpt").asText())
+                .as("命中窗口摘要应包含正文中部的命中词").contains(midMarker);
+        assertThat(hitRow.path("hitTotal").asLong())
+                .as("命中词只出现在正文一次，出现次数为 1").isEqualTo(1);
 
-        // 只命中标题（正文不含该词）时 locate 定位不到，摘要退化为取开头 400 字符
+        // 只命中标题（正文不含该词）时正文内定位不到，摘要退化为取开头
         String titleOnlyKeyword = "十万字";
         assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data"), "noteId"))
                 .as("keyword 应命中标题").contains(longNoteId);
         JsonNode titleOnlyRow = listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data").valueStream()
                 .filter(n -> n.path("noteId").asLong() == longNoteId)
                 .findFirst().orElseThrow();
-        assertThat(titleOnlyRow.path("content").asText().length())
-                .as("未命中正文时摘要退化为取开头 400 字符").isEqualTo(400);
+        assertThat(titleOnlyRow.path("excerpt").asText())
+                .as("正文无命中时摘要退化为取开头").isEqualTo("甲".repeat(120) + "…");
 
         // 后台列表仍回传完整正文（CSV / JSON 导出分页拉取该接口在浏览器侧生成）
         String adminApiToken = createTokenFor(PUBLIC_OWNER, "*:*:*");

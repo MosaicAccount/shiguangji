@@ -18,7 +18,13 @@
               <div v-if="tagList.length" class="hero-tags">
                 <span v-for="tag in tagList" :key="tag" class="hero-tag">{{ tag }}</span>
               </div>
-              <h1 class="hero-title">{{ note.title }}</h1>
+              <h1 ref="titleRef" class="hero-title">
+                <!-- 只命中标题时标题也高亮（与列表卡片同款切段渲染，不用 DOM 注入） -->
+                <template v-for="(seg, si) in titleSegments" :key="si">
+                  <mark v-if="seg.hit" class="kw-title-hit">{{ seg.text }}</mark>
+                  <template v-else>{{ seg.text }}</template>
+                </template>
+              </h1>
               <div class="hero-meta">
                 <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
                 <span v-if="note.itemId" class="hero-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
@@ -54,7 +60,7 @@
                   </li>
                 </ul>
               </div>
-              <markdown-viewer :content="bodyContent" />
+              <markdown-viewer :content="note?.body ?? ''" />
               <div class="article-end" aria-hidden="true">· 完 ·</div>
             </div>
           </template>
@@ -107,6 +113,16 @@
         </ul>
       </div>
     </template>
+    <!-- 搜索承接（issue #31）：带关键词进入时全文高亮，工具条提供上一处/下一处跳转与关闭 -->
+    <div v-if="routeKeyword && hitTotal > 0" class="kw-toolbar">
+      <template v-if="highlightOn">
+        <button class="kw-btn" title="上一处" :disabled="hitTotal < 2" @click="gotoHit(-1)">‹</button>
+        <span class="kw-count">{{ currentIndex + 1 }}/{{ hitTotal }}</span>
+        <button class="kw-btn" title="下一处" :disabled="hitTotal < 2" @click="gotoHit(1)">›</button>
+        <button class="kw-btn kw-off" title="关闭高亮" @click="closeHighlight">✕ 关闭高亮</button>
+      </template>
+      <button v-else class="kw-btn kw-on" title="开启高亮" @click="openHighlight">⌕ 开启高亮</button>
+    </div>
   </div>
 </template>
 
@@ -114,6 +130,7 @@
 import { ArrowDown, ArrowLeft, Delete, EditPen, List } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
 import { getFrontNote, delFrontNote } from '@/api/front/note'
+import { applyKeywordHighlights, clearKeywordHighlights, splitByKeyword } from '@/utils/sgj'
 import type { SgjNote } from '@/types/api/business/note'
 import { getToken } from '@/utils/auth'
 
@@ -132,14 +149,7 @@ const tagList = computed(() =>
   (note.value?.tags || '').split(',').map(tag => tag.trim()).filter(Boolean)
 )
 
-/** 正文若以与标题相同的一级标题开头则去重，避免文章头与正文标题重复 */
-const bodyContent = computed(() => {
-  const content = note.value?.content
-  const title = note.value?.title
-  if (!content || !title) return content
-  const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return content.replace(new RegExp(`^\\s*#\\s*${escaped}\\s*\\r?\\n`), '')
-})
+/** 正文预处理（前言剥离与标题去重）已由后端下发 body 字段，见 SgjNoteServiceImpl.buildBody */
 
 /** 大纲（issue #26）：渲染完成后从正文 DOM 提取 h1-h3 并回填锚点 id；no 为章节编号（仅 h1/h2） */
 interface OutlineItem {
@@ -177,6 +187,70 @@ watch(note, () => {
       .map(item => (item.level > 2 ? item : { ...item, no: ++chapter }))
   })
 })
+
+/** 搜索承接（issue #31）：路由带 keyword 时全文高亮，工具条跳转与开关 */
+const routeKeyword = computed(() => String(route.query.keyword || '').trim())
+const highlightOn = ref(false)
+/** 用户手动关闭后，路由关键词不再自动拉起高亮 */
+const userClosed = ref(false)
+const hitEls = ref<HTMLElement[]>([])
+const hitTotal = ref(0)
+const currentIndex = ref(0)
+const titleRef = ref<HTMLElement | null>(null)
+
+/** 标题切段：高亮开启时按关键词切（与列表卡片同款字面量切分），关闭时整段原样 */
+const titleSegments = computed(() =>
+  splitByKeyword(note.value?.title, highlightOn.value ? routeKeyword.value : '')
+)
+
+// 直连详情时组件可能先于路由解析完成挂载（此时 query 为空），须监听 routeKeyword 就绪后自动开启
+watch(routeKeyword, kw => {
+  if (kw && !userClosed.value) highlightOn.value = true
+}, { immediate: true })
+
+function applyHighlight(): void {
+  // 只在正文渲染区高亮：内嵌目录的条目文本与正文重复，标亮目录反而是噪音
+  const bodyRoot = bodyRef.value?.querySelector('.markdown-viewer') as HTMLElement | null
+  clearKeywordHighlights(bodyRoot)
+  if (!highlightOn.value) {
+    hitEls.value = []
+    hitTotal.value = 0
+    return
+  }
+  const bodyHits = applyKeywordHighlights(bodyRoot, routeKeyword.value)
+  // 标题命中在前、正文在后（文档序）；标题标记由模板渲染，正文标记由 DOM 注入产生
+  const titleMarks = titleRef.value
+    ? Array.from(titleRef.value.querySelectorAll<HTMLElement>('mark.kw-title-hit'))
+    : []
+  hitEls.value = [...titleMarks, ...bodyHits]
+  hitTotal.value = hitEls.value.length
+  currentIndex.value = 0
+  if (hitEls.value.length) {
+    hitEls.value[0].classList.add('is-current')
+    // 进入详情即到达第一处；块居中可避开吸顶导航
+    hitEls.value[0].scrollIntoView({ block: 'center' })
+  }
+}
+
+function gotoHit(delta: number): void {
+  if (!hitEls.value.length) return
+  currentIndex.value = (currentIndex.value + delta + hitEls.value.length) % hitEls.value.length
+  const el = hitEls.value[currentIndex.value]
+  hitEls.value.forEach((m, i) => m.classList.toggle('is-current', i === currentIndex.value))
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+}
+
+function closeHighlight(): void {
+  userClosed.value = true
+  highlightOn.value = false
+}
+
+function openHighlight(): void {
+  userClosed.value = false
+  highlightOn.value = true
+}
+
+watch([note, highlightOn, routeKeyword], () => nextTick(applyHighlight))
 
 /** 点击目录：滚动到对应标题（顶部让出 72px 吸顶导航 + 余量），并立即高亮 */
 const OUTLINE_TOP_OFFSET = 90
@@ -316,10 +390,11 @@ function formatTime(time?: string): string {
   min-height: 320px;
 }
 
-/* 文章头：冷炭灰胶片带（亮暗主题下均保持深色，做法同列表页 banner） */
+/* 文章头：冷炭灰胶片带（亮暗主题下均保持深色，做法同列表页 banner）
+   上内边距与左右两侧（40px）保持接近，否则顶部操作按钮贴边显局促 */
 .article-hero {
   position: relative;
-  padding: 22px 40px 30px;
+  padding: 32px 40px 30px;
   background: #282e2c;
   color: #e7ece9;
   overflow: hidden;
@@ -408,6 +483,19 @@ function formatTime(time?: string): string {
   font-size: 30px;
   line-height: 1.4;
   word-break: break-word;
+
+  /* 深色标题带上的命中标记（琥珀半透明底，当前处主题色反白） */
+  mark.kw-title-hit {
+    background: rgba(177, 132, 88, 0.32);
+    color: #f0e0c8;
+    border-radius: 3px;
+    padding: 0 2px;
+
+    &.is-current {
+      background: var(--sgj-primary);
+      color: #fff;
+    }
+  }
 }
 
 .article-hero .hero-meta {
@@ -691,6 +779,90 @@ html.dark .outline-fab {
     overflow: auto;
     padding: 6px 8px 10px;
   }
+}
+
+/* 搜索承接：全文命中标记（mark 为运行时注入，须 :deep 才能命中）；当前处用主题色反白 */
+.article-body {
+  :deep(mark.kw-hit) {
+    background: var(--sgj-amber-soft);
+    color: var(--sgj-amber);
+    border-radius: 3px;
+    padding: 0 1px;
+
+    &.is-current {
+      background: var(--sgj-primary);
+      color: #fff;
+    }
+  }
+}
+
+/* 命中导航工具条：底部居中悬浮，视觉语言与目录浮动按钮同源；两种主题下均保持深色胶囊
+   （正文/工具条都压在浅色卡片上时用深底最稳，夜间主题只加深底色并补边框区分层次） */
+.kw-toolbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 38px;
+  padding: 0 8px;
+  border-radius: var(--sgj-radius-pill);
+  background: #282e2c;
+  border: 1px solid rgba(231, 236, 233, 0.12);
+  color: #e7ece9;
+  box-shadow: var(--sgj-shadow-hover);
+
+  .kw-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    min-width: 28px;
+    padding: 0 9px;
+    border: none;
+    border-radius: var(--sgj-radius-pill);
+    background: transparent;
+    color: #e7ece9;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  .kw-count {
+    min-width: 58px;
+    text-align: center;
+    font-size: 12px;
+    color: #aeb8b3;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kw-off {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: #f2b3a6;
+  }
+
+  .kw-on {
+    gap: 4px;
+    padding: 0 14px;
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+}
+
+html.dark .kw-toolbar {
+  background: var(--sgj-bg-deep);
+  border-color: var(--sgj-border);
 }
 
 /* 移动端最小适配：收窄内边距、标题降级 */

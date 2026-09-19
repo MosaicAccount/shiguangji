@@ -181,12 +181,13 @@ create table sgj_note_draft (
 | `GET /business/note/list` | 新增 `keyword` 入参；响应**保持含 `content`**（后台摘要列与 CSV / JSON 导出依赖它） |
 | 回收站两个接口 | 不变（表格无内容列，命中理由不可见，故不纳入正文检索） |
 
-`SgjNote` 域对象新增三个**非表字段**（与既有的 `itemName` 同类，无需 DDL）：
+`SgjNote` 域对象新增四个**非表字段**（与既有的 `itemName` 同类，无需 DDL）：
 
 | 字段 | 用途 | 说明 |
 | --- | --- | --- |
 | `keyword` | 入参 | 标题 **OR** 正文模糊匹配；`title` 保持「仅标题」原义 |
 | `excerpt` | 出参 | 前台列表摘要，纯文本（草稿列表也用） |
+| `hitTotal` | 出参 | 出现次数，供「文中出现 N 次」小字（仅 >1 处时显示，评审结论见 §2.9：多命中不轮播）。统计口径 = 标题 + 剥离前言后的正文、并去除与标题重复的首个一级标题行——与详情页「标题 + 正文」高亮口径一致，列表次数 = 详情可跳转处数 |
 | `draftId` | 入参 | 保存笔记时携带，用于同事务删除对应草稿 |
 
 ### 2.6 摘要生成规则
@@ -223,7 +224,7 @@ create table sgj_note_draft (
 
 边界若落在英文单词中间，最多向外扩 10 字符至最近的空白或标点（中文按字符切即可）。命中定位在**剥离后的纯文本**上做，大小写不敏感。
 
-**命中位置怎么算**：`MATCH ... AGAINST` 只回答「哪一行命中」，不回答「在第几个字」——所以命中窗口仍由 `locate()` + `substring()` 在 SQL 里算（结论 32），`MATCH` 只负责筛选出行。两件事互相独立，实测可组合使用。
+**命中位置怎么算**：`MATCH ... AGAINST` 只回答「哪一行命中」，不回答「在第几个字」——所以命中窗口仍由 `locate()` + `substring()` 在 SQL 里算（结论 32），`MATCH` 只负责筛选出行。两件事互相独立，实测可组合使用。命中总数 `hitTotal` 由同一趟 `locate()` 循环向后数出，不额外查库。
 
 **列表查询取哪一段（结论 32 已定）**
 
@@ -277,6 +278,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 
 - 预览数据源由 `note.content` 改为 `note.excerpt`；
 - 卡片不再渲染 Markdown，改为纯文本摘要；关键词高亮：把摘要按关键词切成片段数组，模板里用 `span` 循环渲染。**不拼 HTML 字符串、不走 `v-html`**，因此不产生 `escapeHtml` 需求，也不新增绕过 DOMPurify 的路径；
+- **多命中轮播已评审不采用**（2026-09-18）：文字的阅读节奏与自动播放冲突，动的卡片还会干扰相邻卡片的阅读；多命中场景以摘要下方的「文中出现 N 次」小字提示（统一自然语言表述，不用「命中」这类实现术语；仅 >1 处时显示），查看全部进详情页。完整规格留档于 `docs/design/mockups/note-0.0.2/note-search-carousel.html`，落地样式见同目录 `note-search-excerpt.html`；
 - 底部渐隐改为**仅在内容溢出时**显示（需求 FR-002-2 边界 6）；
 - 搜索框 placeholder 由「搜索笔记标题」改为「搜索标题与正文」；传参由 `title` 改为 `keyword`；
 - 删除 `previewContent()`——该职责已由后端摘要承担（结论 20）；
@@ -351,7 +353,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | `views/front/note/edit.vue` | 草稿（本地缓冲 + 同步 + 静默恢复 + 三态状态条）与离开确认 |
 | `utils/sgj.ts` | 新增日期解析函数（结论 27）与按关键词切片段函数（供高亮，纯逻辑可单测） |
 | `views/business/note/index.vue` | 搜索参数改 `keyword`，label 改「关键词」 |
-| `types/api/front/note.ts` · `types/api/business/note.ts` | `keyword` 入参、`excerpt` / `draftId` 字段 |
+| `types/api/front/note.ts` · `types/api/business/note.ts` | `keyword` 入参、`excerpt` / `hitTotal` / `draftId` 字段 |
 | `components/MarkdownViewer/index.vue` | 接入 hljs + 主题 |
 | 新增 `components/MarkdownViewer/__tests__/index.spec.ts` | 高亮与消毒断言 |
 | 列表页 / 条目页导入入口、后台笔记管理页的两个下载动作（文件待定） | #14 的前端部分：导入**不新增预览界面**（跳编辑页）；后台每行加「下载原件」「导出 Markdown」（结论 39）。详细交互**待专项设计**（需求 FR-002-8） |

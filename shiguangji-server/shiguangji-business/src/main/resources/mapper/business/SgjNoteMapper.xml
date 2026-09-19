@@ -28,11 +28,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         left join sgj_item i on i.item_id = n.item_id
     </sql>
 
-    <select id="selectSgjNoteById" parameterType="Long" resultMap="SgjNoteResult">
-        <include refid="selectSgjNoteVo"/>
-        where n.note_id = #{noteId} and n.del_flag = '0'
-    </select>
-
     <!-- 列表过滤条件：前台与后台列表共用一份，改一处两边生效 -->
     <sql id="listWhere">
         <where>
@@ -62,31 +57,123 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </sql>
 
-    <!-- 后台列表 / 导出：仍回传完整正文（后台摘要列与 CSV / JSON 导出依赖它） -->
+    <!-- YAML 前言（front-matter）结束位置：正文从其之后开始（导入的 md 普遍带前言，
+         不跳过会进摘要与命中定位）。开场为单独一行三个连字符，找首个换行加三连字符作闭合；
+         找不到闭合按无前言处理。MySQL 字符串串接 '\n' 依赖反斜杠转义（默认 sql_mode）
+         详情页那份同款规则在 Java：SgjNoteServiceImpl.buildBody（列表不下发正文，两份须同步改） -->
+    <sql id="fmEnd">
+        if(left(n.content, 4) in ('---\n', '---\r'),
+           coalesce(nullif(locate('\n---', n.content), 0) + 5, 1),
+           1)
+    </sql>
+
+    <select id="selectSgjNoteById" parameterType="Long" resultMap="SgjNoteResult">
+        <include refid="selectSgjNoteVo"/>
+        where n.note_id = #{noteId} and n.del_flag = '0'
+    </select>
+
     <select id="selectSgjNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
         <include refid="listWhere"/>
         order by n.update_time desc, n.note_id desc
     </select>
 
-    <!-- 前台列表专用：正文不回传全文，只回传一段几百字符的短文本（#42）。
-         有关键词且正文命中：以命中处为中心的 200 字符窗口；否则回传开头 400 字符。
-         已知代价：命中定位用 locate 按关键词整串查找，而命中筛选用 FULLTEXT 按 ngram
-         分词匹配——命中的可能只是关键词的某个片段，或只落在标题上，此时 locate 定位不到
-         （返回 0），摘要退化为「取开头」。这是取短文本的代价。 -->
-    <select id="selectAppNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
-        select n.note_id, n.item_id, n.title,
-               case when locate(#{keyword}, n.content) > 0
-                    then substring(n.content, greatest(1, locate(#{keyword}, n.content) - 40), 200)
-                    else left(n.content, 400)
-               end as content,
-               n.tags, n.is_public,
-               n.create_by, n.create_time, n.update_by, n.update_time, n.remark,
-               i.title as item_name
+    <resultMap type="SgjNote" id="SgjNoteFrontResult">
+        <result property="noteId"      column="note_id"      />
+        <result property="itemId"      column="item_id"      />
+        <result property="itemName"    column="item_name"    />
+        <result property="title"       column="title"        />
+        <result property="tags"        column="tags"         />
+        <result property="isPublic"    column="is_public"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="excerptSrc"  column="excerpt_src"  />
+        <result property="hitTotal"    column="hit_total"    />
+    </resultMap>
+
+    <!-- 前台列表（结论 32）：不取全文，正文与 remark 均不下发。
+         摘要片段与命中总数由 selectSgjNoteExcerptFragments 按页内主键补查——
+         复杂表达式若放进本查询，PageHelper 生成 count 时的 jsqlparser 解析会灾难性回溯（实测 CPU 卡死），
+         故基础查询保持简单列清单。后台列表与导出仍走 selectSgjNoteList / selectSgjNoteVo，带完整正文 -->
+    <select id="selectSgjNoteFrontList" parameterType="SgjNote" resultMap="SgjNoteFrontResult">
+        select n.note_id, n.item_id, i.title as item_name, n.title, n.tags, n.is_public,
+               n.create_by, n.create_time, n.update_by, n.update_time
         from sgj_note n
         left join sgj_item i on i.item_id = n.item_id
         <include refid="listWhere"/>
         order by n.update_time desc, n.note_id desc
+    </select>
+
+    <resultMap type="SgjNote" id="SgjNoteExcerptResult">
+        <result property="noteId"      column="note_id"      />
+        <result property="excerptSrc"  column="excerpt_src"  />
+        <result property="hitTotal"    column="hit_total"    />
+    </resultMap>
+
+    <!-- 按页内主键补查摘要片段与命中总数（每页 ≤ pageSize 行，不经分页插件）。
+         命中总数统计口径 = 标题 + 去前言正文，并去除与标题重复的首个一级标题行——
+         与详情页「标题 + 正文」的高亮所见完全一致：列表次数 = 详情可跳转处数。
+         摘要片段：正文首个命中为中心 ±40 字取 200 字符（余量给剥离损耗，Java 再裁）；
+         只命中标题（正文内无命中）时回退正文前缀 600 字符；片段外还有正文时由 SQL 拼省略号。
+         min_loc 的 foreach 段重复三次（MyBatis 无法给表达式取别名），LEAST 尾部追加哨兵
+         2147483647 保证单检索词时也有两个参数（MySQL 的 LEAST 要求至少两参） -->
+    <select id="selectSgjNoteExcerptFragments" resultMap="SgjNoteExcerptResult">
+        select t.note_id,
+               <if test="keywordWords != null and keywordWords.size() > 0">
+               <!-- 统计口径见上方注释；h1 行仅匹配「# + 标题」的精确形式，变体（无空格等）按未重复处理 -->
+               (<foreach collection="keywordWords" item="w" separator=" + ">
+                    (char_length(t.txt) - char_length(replace(t.txt, #{w}, ''))) div char_length(#{w})
+                </foreach>) as hit_total,
+               </if>
+               t.excerpt_src
+        from (
+            select
+                   <if test="keywordWords != null and keywordWords.size() > 0">
+                   concat(n.title,
+                          if(left(substring(n.content, <include refid="fmEnd"/>),
+                                  char_length(concat('# ', n.title, char(10)))) = concat('# ', n.title, char(10)),
+                             substring(substring(n.content, <include refid="fmEnd"/>),
+                                       char_length(concat('# ', n.title, char(10))) + 1),
+                             substring(n.content, <include refid="fmEnd"/>))) as txt,
+                   case when least(
+                            <foreach collection="keywordWords" item="w" separator=",">
+                                ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
+                            </foreach>
+                            , 2147483647) = 2147483647
+                        then concat(substring(n.content, <include refid="fmEnd"/>, 600),
+                                    if(char_length(n.content) - <include refid="fmEnd"/> + 1 > 600, '…', ''))
+                        else concat(
+                            if(least(
+                                <foreach collection="keywordWords" item="w" separator=",">
+                                    ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
+                                </foreach>
+                                , 2147483647) > 41, '…', ''),
+                            substring(n.content, greatest(1, least(
+                                <foreach collection="keywordWords" item="w" separator=",">
+                                    ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
+                                </foreach>
+                                , 2147483647) - 40), 200),
+                            if(greatest(1, least(
+                                <foreach collection="keywordWords" item="w" separator=",">
+                                    ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
+                                </foreach>
+                                , 2147483647) - 40) + 200 >= char_length(n.content) + 1, '', '…'))
+                   end as excerpt_src,
+                   </if>
+                   <if test="keywordWords == null or keywordWords.size() == 0">
+                   concat(substring(n.content, <include refid="fmEnd"/>, 600),
+                          if(char_length(n.content) - <include refid="fmEnd"/> + 1 > 600, '…', '')) as excerpt_src,
+                   </if>
+                   n.note_id
+            from sgj_note n
+            where n.del_flag = '0'
+            and n.note_id in
+            <foreach collection="noteIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        ) t
     </select>
 
     <insert id="insertSgjNote" parameterType="SgjNote" useGeneratedKeys="true" keyProperty="noteId">

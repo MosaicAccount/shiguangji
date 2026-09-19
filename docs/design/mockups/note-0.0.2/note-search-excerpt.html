@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 搜索摘要与高亮（#31） — 拾光记</title>
+<style>
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3），与家族图同源 ===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens .dep{opacity:.62}
+.seg{display:flex;gap:0}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.hint{color:#7D8783;font-size:12px}
+
+/* ===== 结论条 ===== */
+.intro{max-width:1400px;margin:18px auto 0;padding:0 16px}
+.intro-in{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-left:3px solid var(--sgj-primary);
+  border-radius:var(--sgj-r-lg);padding:16px 22px;box-shadow:var(--sgj-shadow-sm)}
+.intro .q{margin:0;font-family:var(--sgj-font-serif);font-size:17px;font-weight:600;line-height:1.5}
+.intro .q small{font-family:var(--sgj-font-sans);font-weight:400;font-size:12px;color:var(--sgj-text-4);margin-left:10px}
+.intro ol{margin:12px 0 0;padding-left:20px;font-size:13px;color:var(--sgj-text-2)}
+.intro li{margin:6px 0}
+.intro li b{color:var(--sgj-text)}
+.intro .dep{color:var(--sgj-text-4)}
+
+/* ===== 工作台布局 ===== */
+.workbench{max-width:1400px;margin:16px auto 0;padding:0 16px;display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:18px;align-items:start}
+@media (max-width:1080px){.workbench{grid-template-columns:1fr}.rail{position:static !important}}
+
+/* ===== 设备框 ===== */
+.device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border)}
+body[data-vp=desktop] .device{max-width:100%;height:min(88vh,900px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px;margin:0 auto}
+
+/* ===== 前台布局 ===== */
+.fh{height:64px;display:flex;align-items:center;gap:26px;padding:0 32px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;display:flex;gap:12px;align-items:center;color:var(--sgj-text-3)}
+.page{padding:26px 32px 32px;max-width:920px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px 24px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+/* ===== banner 与搜索 ===== */
+.banner{position:relative;display:flex;align-items:center;height:120px;padding:0 40px;
+  background:#282e2c;color:#e7ece9;border-radius:20px;overflow:hidden;margin-bottom:20px}
+html.dark .banner{background:var(--sgj-bg-deep)}
+.banner .blob{position:absolute;right:-40px;top:-110px;width:280px;height:280px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:150px;bottom:-100px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .txt{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:28px;line-height:1.3}
+.banner p{margin:8px 0 0;font-size:13px;color:#aeb8b3;letter-spacing:.5px}
+body[data-vp=mobile] .banner{padding:20px 18px;height:auto;border-radius:16px}
+body[data-vp=mobile] .banner h1{font-size:22px}
+.filter{display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px}
+.search{display:flex;width:300px;border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);overflow:hidden;background:var(--sgj-bg-card)}
+.search .pfx{display:flex;align-items:center;padding:0 10px;color:var(--sgj-text-4)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--sgj-text);font:inherit;padding:9px 0}
+.search .go{border:0;border-left:1px solid var(--sgj-border);background:var(--sgj-bg);color:var(--sgj-text-2);font:inherit;padding:0 14px;cursor:pointer}
+body[data-vp=mobile] .filter{justify-content:flex-start}
+body[data-vp=mobile] .search{width:100%}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pill{border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);border-radius:var(--sgj-r-pill);padding:4px 13px;font-size:12px}
+
+/* ===== 卡片 ===== */
+.list{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 18px;
+  box-shadow:var(--sgj-shadow-sm);cursor:pointer}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px);transition:box-shadow .16s,transform .16s}
+.c-head{display:flex;align-items:flex-start;gap:10px}
+.c-title{flex:1;min-width:0;font-family:var(--sgj-font-serif);font-weight:500;font-size:16px;line-height:24px;word-break:break-word}
+.pub{margin-left:8px;font-size:11px;font-weight:400;color:var(--sgj-success);border:1px solid var(--sgj-success);border-radius:4px;padding:0 5px}
+.del{flex-shrink:0;width:26px;height:26px;border-radius:50%;border:1px solid var(--sgj-border-card);background:var(--sgj-bg);color:var(--sgj-text-3);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+/* 摘要：纯文本常显、溢出才渐隐 */
+.c-excerpt{margin-top:8px;font-size:13px;line-height:21px;color:var(--sgj-text-3);max-height:96px;overflow:hidden;position:relative}
+.c-excerpt.clip::after{content:'';position:absolute;left:0;right:0;bottom:0;height:32px;
+  background:linear-gradient(transparent,var(--sgj-bg-card));pointer-events:none}
+mark{background:var(--sgj-amber-soft);color:var(--sgj-amber);border-radius:3px;padding:0 2px;font-weight:600}
+/* 命中计数：多于一处才渲染 */
+.c-hit{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:12px;color:var(--sgj-amber);font-variant-numeric:tabular-nums}
+.c-hit::before{content:'⌕';font-weight:700}
+.c-meta{margin-top:10px;display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sgj-text-4)}
+.c-meta .tg{color:var(--sgj-amber)}
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 0;color:var(--sgj-text-4)}
+.empty .ic{font-size:30px;opacity:.6}
+
+/* ===== 规格面板 ===== */
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:70px}
+.panel{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:14px 16px;box-shadow:var(--sgj-shadow-sm)}
+.panel h3{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--sgj-text)}
+.panel ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--sgj-text-2);line-height:1.75}
+.panel li{margin:3px 0}
+.panel li b{color:var(--sgj-text)}
+.panel .note{margin:10px 0 0;font-size:12px;color:var(--sgj-text-4);line-height:1.7}
+.panel .dep a{font-weight:600}
+.panel .dep{margin:10px 0 0;padding:10px 12px;background:var(--sgj-bg);border-radius:10px;font-size:12.5px;color:var(--sgj-text-2);line-height:1.7}
+.panel .dep b{color:var(--sgj-danger)}
+html.dark .panel .dep b{color:var(--sgj-danger)}
+.panel .step{margin:10px 0 0}
+.panel .step dt{font-size:12px;font-weight:600;color:var(--sgj-text);margin:8px 0 2px}
+.panel .step dd{margin:0;font-size:12.5px;color:var(--sgj-text-2);line-height:1.75}
+
+/* ===== 标注 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:26px 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+.legend code{font-size:12px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>#31 · 搜索摘要与高亮</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="note-list.html">笔记列表</a>
+      <a href="note-search-excerpt.html" aria-current="page">摘要与高亮</a>
+      <a class="dep" href="note-search-carousel.html">命中轮播（存档·不采用）</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="hits" aria-pressed="true">多词命中</button>
+      <button data-state="default" aria-pressed="false">无关键词</button>
+      <button data-state="empty" aria-pressed="false">无结果</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题">
+      <button id="themeBtn" aria-pressed="false">深色模式</button>
+    </span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注">
+      <button id="anBtn" aria-pressed="true">标注</button>
+    </span>
+    <span class="hint">切到「移动端」可看到渐隐在窄屏生效</span>
+  </div>
+</div>
+
+<section class="intro">
+  <div class="intro-in">
+    <p class="q">「一个笔记命中多个关键词，循环播放，怎么播放？」<small>issue #31 评审追问</small></p>
+    <ol>
+      <li><b>结论：不播。</b>一张卡一段摘要——以<b>第一个命中</b>为中心、窗口内的命中全部高亮（多关键词同一样式）；其余出现以「文中出现 N 次」小字提示，看全部进详情页（大纲导航已上线）。多词检索是 OR 语义：多个关键词命中时，同一窗口内出现的词都高亮，不在同一窗口的位置由计数兜底。</li>
+      <li class="dep"><b>多命中自动轮播已评审不采用</b>：文字的阅读节奏（60 字摘要约 3–5 秒）正卡在轮播间隔上，读者被迫和计时器抢内容；动的卡片还会抢走旁边静止卡片的注意力。完整规格与理由在存档图「命中轮播」，留档备查。</li>
+    </ol>
+  </div>
+</section>
+
+<main class="workbench">
+  <div class="device">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <div class="banner">
+        <div class="blob"></div><div class="blob2"></div>
+        <div class="txt">
+          <h1>笔记</h1>
+          <p>记录你的思考与学习笔记。</p>
+        </div>
+      </div>
+
+      <div class="filter">
+        <label class="search">
+          <span class="pfx">⌕</span>
+          <input id="kw" type="search" placeholder="搜索标题与正文" value="" readonly>
+          <button class="go" type="button">搜索</button>
+        </label>
+      </div>
+
+      <div class="pills">
+        <span class="pill">全部</span><span class="pill">前端</span><span class="pill">数据库</span>
+        <span class="pill">读书</span><span class="pill">周复盘</span><span class="pill">迁移</span>
+      </div>
+
+      <div class="list" id="list"></div>
+    </div>
+
+    <nav class="tabbar">
+      <div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div>
+    </nav>
+  </div>
+
+  <aside class="rail">
+    <section class="panel">
+      <h3>决策记录 · 轮播不采用</h3>
+      <ul>
+        <li>60 字摘要要读 3–5 秒，正卡在常见轮播间隔上——读者被迫和计时器抢内容。</li>
+        <li>动的卡片天然抢注意力，干扰旁边静止卡片的阅读；列表页是「读」的场景，不是「看」的场景。</li>
+        <li>需求低频：第一处命中通常足够判断去留；遍历全部命中是详情页的活（大纲导航已上线）。</li>
+      </ul>
+      <p class="dep"><b>已评审不采用</b>：完整轮播规格在存档图 <a href="note-search-carousel.html">命中轮播</a>，留档备查。</p>
+    </section>
+
+    <section class="panel">
+      <h3>摘要两步速查（后端一处生成）</h3>
+      <dl class="step">
+        <dt>第一步 · 剥离（Markdown → 纯文本）</dt>
+        <dd>代码块整块去掉；图片去掉；链接只留文字；标题、引用、列表去前缀；front-matter 整块去掉；加粗、删除线去标记；HTML 标签去掉；连续空白折叠。</dd>
+        <dt>第二步 · 截窗</dt>
+        <dd>无关键词：取开头约 120 字。有关键词：以第一个命中为中心，前后各约 40 字，两端省略号。剥完为空（整篇代码块）：回退原文开头。正文为空：摘要为空。</dd>
+      </dl>
+      <p class="note">列表不再传整篇正文；命中计数可由同一趟 locate 循环顺带数出，不额外查库。后台列表与 CSV / JSON 导出仍带完整正文，本版不动。</p>
+    </section>
+  </aside>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">摘要常显</span>：纯文本、由后端生成；列表不再传整篇正文，卡片不再渲染 Markdown。</li>
+    <li><span class="new">命中窗口</span>：以<b>第一个命中</b>为中心，前后各约 40 字，两端省略号；定位在剥离后的纯文本上做，大小写不敏感。</li>
+    <li><span class="new">高亮</span>：窗口内每次出现都高亮；多关键词同一样式（分色是噪音且色弱不友好）；按字面量 <code>indexOf</code> 切分——关键词含 <code>(</code> <code>[</code> <code>*</code> 也不报错，不拼正则、不走 <code>v-html</code>（往返一致性卡：草稿、摘要两词同窗高亮）。</li>
+    <li><span class="new">出现次数</span>——本设计相对 issue 正文的<b>唯一增量</b>：提示其余出现的存在，多于一处才显示，统一「文中出现 N 次」；看全部进详情页（大纲导航 #25/#26 已上线）。</li>
+    <li><span class="new">只命中标题</span>：摘要取正文开头，标题本身高亮（边角情况备忘卡；仅 1 处命中，无计数小字）。</li>
+    <li><span class="new">整篇只有代码块</span>：剥离后为空，回退原文开头，不出空白卡片（sed 备忘卡）。</li>
+    <li><span class="new">摘要不与标题重复</span>：正文以同名一级标题开头时，该行在后端已去掉（周复盘的做法卡）。</li>
+    <li><span class="new">渐隐仅在溢出时</span>：摘要定长，桌面通常不溢出；切到移动端可见渐隐生效（MySQL 卡）。</li>
+  </ol>
+  <p class="scope"><b>检索语义</b>：多词是 OR（布尔模式，运算符字符已被后端剔除）；至少输入 2 个字才触发。<br>
+  <b>不动的部分</b>：后台列表与 CSV / JSON 导出仍带完整正文；回收站不纳入正文检索。<br>
+  <b>已评审不采用</b>：多命中自动轮播（存档见「命中轮播」图）——文字阅读节奏与自动播放冲突，其余出现由次数小字 + 详情页承接。</p>
+</section>
+
+<script>
+/* ===== 演示数据。kwInTitle：标题中含检索词（前端高亮）；hit：全文命中次数（>1 才显示计数行）===== */
+const KWS = ['草稿', '摘要'];
+const STATES = {
+  hits: {
+    kw: '草稿 摘要',
+    notes: [
+      { t:'0.0.2 笔记模块设计复盘', pub:1, tags:'设计', time:'2026-09-18 10:23', item:null, hit:6, an:['1','2'],
+        ex:'…列表不再传整篇正文，改传一段纯文本摘要，由后端生成：没搜关键词时取开头约 120 字；搜了关键词就以命中处为中心，前后各留约 40 字…' },
+      { t:'导入导出的往返一致性', pub:0, tags:'迁移', time:'2026-09-18 09:41', item:null, hit:3, an:['3','4'],
+        ex:'…导出的 md 带 front-matter 和草稿标记，重新导入时整块剥掉，再按纯文本重新生成摘要，保证往返之后显示一致…' },
+      { t:'草稿箱与本地缓冲的写入时机', pub:0, tags:'前端', time:'2026-09-18 09:12', item:null, hit:5, kwInTitle:1,
+        ex:'…停手 1 秒先写 localStorage，每 15 秒静默 PUT 一次；页面隐藏或路由离开时先同步写本地缓冲，再立即推一次草稿…' },
+      { t:'摘要生成的边角情况备忘', pub:1, tags:'笔记', time:'2026-09-17 22:08', item:null, hit:1, kwInTitle:1, an:['5'],
+        ex:'整篇只有代码块时剥完就空了，要退回原文开头，否则列表会出现空白卡片；截断落在英文单词中间时最多向后扩 10 个字符，切到最近的空白或标点…' },
+      { t:'迁移脚本的幂等性', pub:0, tags:'迁移', time:'2026-09-16 20:15', item:null, hit:1,
+        ex:'…升级脚本必须幂等：建表前先查 information_schema，加索引前先看 Key_exists，重复执行只报 warning 不中断，草稿表的存量回填也一样…' }
+    ]
+  },
+  default: {
+    kw: '',
+    notes: [
+      { t:'MySQL 全文索引与 ngram 分词', pub:1, tags:'数据库', time:'2026-09-18 10:23', item:null, an:['8'],
+        ex:'实测结论：ngram 自然语言模式会把 mysql 命中到只含 sql 的行，必须改用布尔模式；ngram_token_size=2 时单个汉字搜不到，这是硬约束，所以所有搜索入口都按至少 2 个字拦截；全文索引随更新自动维护，旧词立即失效、新词立即可搜，不需要重建…' },
+      { t:'sed 批量替换备忘', pub:0, tags:'前端', time:'2026-09-18 08:47', item:null, an:['6'],
+        ex:"sed -i '' 's/旧词/新词/g' *.md 批量替换前先备份；macOS 的 BSD sed 和 GNU sed 的 -i 参数行为不同，前者必须给空串，脚本跨平台跑会直接报错。" },
+      { t:'周复盘的做法', pub:0, tags:'周复盘', time:'2026-09-17 21:36', item:null, an:['7'],
+        ex:'周一列计划、周五对照复盘，这个循环坚持两个月后发现：计划列得太满时复盘必然糊弄，宁可少列几件也要留出回顾的时间。' },
+      { t:'《人类简史》读书笔记', pub:1, tags:'读书', time:'2026-09-17 22:08', item:'人类简史',
+        ex:'印象最深的是认知革命那一章：智人靠「虚构的故事」完成大规模协作。这一点和后面的帝国、货币、宗教是同一条线的延伸，值得单独整理成一篇。' }
+    ]
+  },
+  empty: { kw: '时间管理', notes: null }
+};
+
+const $ = s => document.querySelector(s);
+
+/* 与 issue 验收项同款：字面量 indexOf 切分，不拼正则 */
+function segParts(text, kws){
+  const ranges = [];
+  for(const kw of kws){
+    if(!kw) continue;
+    let i = 0;
+    while((i = text.indexOf(kw, i)) !== -1){ ranges.push([i, i + kw.length]); i += kw.length; }
+  }
+  ranges.sort((a,b) => a[0] - b[0]);
+  const merged = [];
+  for(const r of ranges){
+    const last = merged[merged.length - 1];
+    if(last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]); else merged.push([...r]);
+  }
+  const parts = []; let pos = 0;
+  for(const [s,e] of merged){
+    if(s > pos) parts.push({t: text.slice(pos, s)});
+    parts.push({m: text.slice(s, e)}); pos = e;
+  }
+  if(pos < text.length) parts.push({t: text.slice(pos)});
+  return parts;
+}
+/* 内容一律走 DOM（textNode + mark），不走 innerHTML —— 演示 issue 的「不拼 HTML」要求 */
+function paintText(el, text, kws){
+  el.textContent = '';
+  for(const p of segParts(text, kws)){
+    if(p.m !== undefined){ const m = document.createElement('mark'); m.textContent = p.m; el.appendChild(m); }
+    else el.appendChild(document.createTextNode(p.t));
+  }
+}
+function anEl(n){ const a = document.createElement('span'); a.className = 'an'; a.dataset.n = n; return a; }
+
+function buildCard(n, kws){
+  const card = document.createElement('article');
+  card.className = 'card';
+
+  const head = document.createElement('div'); head.className = 'c-head';
+  const title = document.createElement('div'); title.className = 'c-title';
+  paintText(title, n.t, kws);
+  if(n.an && n.an[0]) title.appendChild(anEl(n.an[0]));
+  if(n.pub){ const s = document.createElement('span'); s.className = 'pub'; s.textContent = '公开'; title.appendChild(s); }
+  const del = document.createElement('button'); del.className = 'del'; del.title = '删除'; del.textContent = '✕';
+  head.append(title, del); card.appendChild(head);
+
+  const ex = document.createElement('div'); ex.className = 'c-excerpt';
+  const win = document.createElement('div'); win.className = 'win';
+  paintText(win, n.ex, kws);
+  ex.appendChild(win); card.appendChild(ex);
+
+  if(n.hit > 1){
+    const hit = document.createElement('div'); hit.className = 'c-hit';
+    hit.textContent = '文中出现 ' + n.hit + ' 次';
+    if(n.an && n.an[1]) hit.appendChild(anEl(n.an[1]));
+    card.appendChild(hit);
+  }
+
+  const meta = document.createElement('div'); meta.className = 'c-meta';
+  const it = document.createElement('span'); it.textContent = n.item ? '🔗 ' + n.item : '📝 独立笔记';
+  const tg = document.createElement('span'); tg.className = 'tg'; tg.textContent = n.tags;
+  const tm = document.createElement('span'); tm.textContent = n.time;
+  meta.append(it, tg, tm); card.appendChild(meta);
+  return card;
+}
+
+function render(state){
+  const conf = STATES[state];
+  const list = $('#list'); list.innerHTML = '';
+  $('#kw').value = conf.kw;
+  if(!conf.notes){
+    list.innerHTML = '';
+    const empty = document.createElement('div'); empty.className = 'empty';
+    empty.innerHTML = '<div class="ic">⌕</div><div>没有找到匹配的笔记</div><div style="font-size:12px">试试更长的关键词（至少 2 个字）</div>';
+    list.appendChild(empty);
+    return;
+  }
+  const kws = conf.kw ? conf.kw.trim().split(/\s+/) : [];
+  for(const n of conf.notes){
+    const card = buildCard(n, kws);
+    list.appendChild(card);
+    /* 渐隐判定必须在挂载后做：脱离文档的元素没有布局 */
+    const ex = card.querySelector('.c-excerpt');
+    ex.classList.toggle('clip', ex.querySelector('.win').scrollHeight > ex.clientHeight + 2);
+  }
+}
+
+document.querySelectorAll('[data-state]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render(b.dataset.state);
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b => b.addEventListener('click', () => {
+  document.body.dataset.vp = b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render($('.seg [aria-pressed=true][data-state]').dataset.state);
+}));
+$('#themeBtn').addEventListener('click', e => {
+  const dark = document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light', !dark);
+  e.currentTarget.setAttribute('aria-pressed', String(dark));
+  e.currentTarget.textContent = dark ? '浅色模式' : '深色模式';
+});
+$('#anBtn').addEventListener('click', e => {
+  const off = document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed', String(!off));
+});
+
+if(matchMedia('(prefers-color-scheme: dark)').matches){
+  document.documentElement.classList.add('dark');
+  document.documentElement.classList.remove('light');
+  $('#themeBtn').textContent = '浅色模式';
+  $('#themeBtn').setAttribute('aria-pressed', 'true');
+}
+render('hits');
+</script>
+</body>
+</html>

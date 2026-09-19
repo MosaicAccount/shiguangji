@@ -67,7 +67,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--
     <p class="note">本组图是<b>静态保真</b>，不连接真实接口：表单可聚焦、开关可切换、弹窗可关闭，但保存 / 上传 / 检索均为示意。这些是刻意的边界，不是缺失。</p>
   </div>
 
-  <h2>五屏</h2>
+  <h2>各屏</h2>
   <div class="grid">
     <a class="card" href="note-list.html">
       <h3>笔记列表</h3>
@@ -80,6 +80,18 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--
       <span class="route">/note/draft</span>
       <p><span class="tag new">新增</span>整页；配额提示、硬删除确认</p>
       <ul><li>状态：有草稿 / 空态 / 满 20 份 / 删除确认</li></ul>
+    </a>
+    <a class="card" href="note-search-excerpt.html">
+      <h3>搜索摘要与高亮</h3>
+      <span class="route">/note · 搜索态</span>
+      <p><span class="tag chg">改动</span>命中窗口摘要、关键词高亮、共 N 处命中提示（多命中轮播已评审不采用）</p>
+      <ul><li>状态：多词命中 / 无关键词 / 无结果</li></ul>
+    </a>
+    <a class="card" href="note-search-carousel.html">
+      <h3>命中轮播（存档 · 不采用）</h3>
+      <span class="route">评审记录</span>
+      <p><span class="tag chg">存档</span>多命中自动轮播的完整规格与不采用理由</p>
+      <ul><li>仅留档，落地规则见「搜索摘要与高亮」</li></ul>
     </a>
     <a class="card" href="note-edit.html">
       <h3>编辑笔记</h3>

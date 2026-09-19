@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 搜索命中轮播（#31 追问） — 拾光记</title>
+<style>
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3），与 note-list.html 同源 ===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;gap:0}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.seg.disabled{opacity:.4;pointer-events:none}
+.hint{color:#7D8783;font-size:12px}
+
+/* ===== 结论条 ===== */
+.intro{max-width:1400px;margin:18px auto 0;padding:0 16px}
+.intro-in{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-left:3px solid var(--sgj-primary);
+  border-radius:var(--sgj-r-lg);padding:16px 22px;box-shadow:var(--sgj-shadow-sm)}
+.intro .q{margin:0;font-family:var(--sgj-font-serif);font-size:17px;font-weight:600;line-height:1.5}
+.intro .q small{font-family:var(--sgj-font-sans);font-weight:400;font-size:12px;color:var(--sgj-text-4);margin-left:10px}
+.intro ol{margin:12px 0 0;padding-left:20px;font-size:13px;color:var(--sgj-text-2)}
+.intro li{margin:6px 0}
+.intro li b{color:var(--sgj-text)}
+.intro code{font-size:12px;background:var(--sgj-bg);border:1px solid var(--sgj-border-card);border-radius:4px;padding:0 4px}
+
+/* ===== 工作台布局 ===== */
+.workbench{max-width:1400px;margin:16px auto 0;padding:0 16px;display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:18px;align-items:start}
+@media (max-width:1080px){.workbench{grid-template-columns:1fr}.rail{position:static !important}}
+
+/* ===== 设备框 ===== */
+.device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:100%;height:min(88vh,900px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px;margin:0 auto}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台布局 ===== */
+.fh{height:64px;display:flex;align-items:center;gap:26px;padding:0 32px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;display:flex;gap:12px;align-items:center;color:var(--sgj-text-3)}
+.page{padding:26px 32px 32px;max-width:920px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px 24px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+/* ===== banner 与搜索 ===== */
+.banner{position:relative;display:flex;align-items:center;height:120px;padding:0 40px;
+  background:#282e2c;color:#e7ece9;border-radius:20px;overflow:hidden;margin-bottom:20px}
+html.dark .banner{background:var(--sgj-bg-deep)}
+.banner .blob{position:absolute;right:-40px;top:-110px;width:280px;height:280px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:150px;bottom:-100px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .txt{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:28px;line-height:1.3}
+.banner p{margin:8px 0 0;font-size:13px;color:#aeb8b3;letter-spacing:.5px}
+body[data-vp=mobile] .banner{padding:20px 18px;height:auto;border-radius:16px}
+body[data-vp=mobile] .banner h1{font-size:22px}
+.filter{display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px}
+.search{display:flex;width:300px;border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);overflow:hidden;background:var(--sgj-bg-card)}
+.search .pfx{display:flex;align-items:center;padding:0 10px;color:var(--sgj-text-4)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--sgj-text);font:inherit;padding:9px 0}
+.search .go{border:0;border-left:1px solid var(--sgj-border);background:var(--sgj-bg);color:var(--sgj-text-2);font:inherit;padding:0 14px;cursor:pointer}
+body[data-vp=mobile] .filter{justify-content:flex-start}
+body[data-vp=mobile] .search{width:100%}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pill{border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);border-radius:var(--sgj-r-pill);padding:4px 13px;font-size:12px}
+
+/* ===== 卡片 ===== */
+.list{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 18px;
+  box-shadow:var(--sgj-shadow-sm);cursor:pointer}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px);transition:box-shadow .16s,transform .16s}
+.c-head{display:flex;align-items:flex-start;gap:10px}
+.c-title{flex:1;min-width:0;font-family:var(--sgj-font-serif);font-weight:500;font-size:16px;line-height:24px;word-break:break-word}
+.pub{margin-left:8px;font-size:11px;font-weight:400;color:var(--sgj-success);border:1px solid var(--sgj-success);border-radius:4px;padding:0 5px}
+.del{flex-shrink:0;width:26px;height:26px;border-radius:50%;border:1px solid var(--sgj-border-card);background:var(--sgj-bg);color:var(--sgj-text-3);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+/* 摘要：纯文本、窗口内高亮；静态卡限高 96px，轮播卡定高 3 行防切换跳动 */
+.c-excerpt{margin-top:8px;font-size:13px;line-height:21px;color:var(--sgj-text-3);max-height:96px;overflow:hidden;position:relative}
+.c-excerpt.fixed{height:63px;max-height:none}
+.c-excerpt.clip::after{content:'';position:absolute;left:0;right:0;bottom:0;height:32px;
+  background:linear-gradient(transparent,var(--sgj-bg-card));pointer-events:none}
+.c-excerpt .win.in{animation:winin .2s ease-out}
+@keyframes winin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+mark{background:var(--sgj-amber-soft);color:var(--sgj-amber);border-radius:3px;padding:0 2px;font-weight:600}
+body[data-vp=mobile] .c-excerpt.fixed{height:84px}
+.c-meta{margin-top:10px;display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sgj-text-4)}
+.c-meta .tg{color:var(--sgj-amber)}
+
+/* ===== 窗口圆点与计数（方案 B）===== */
+.c-dots{display:flex;align-items:center;gap:8px;margin-top:7px;min-height:22px}
+.dots{display:flex;align-items:center;gap:6px}
+.dot{position:relative;width:8px;height:8px;border-radius:999px;border:0;padding:0;background:var(--sgj-border);cursor:pointer;overflow:hidden;transition:width .2s}
+.dot.on{width:22px}
+.dot .fill{position:absolute;inset:0;border-radius:999px;background:var(--sgj-primary);transform-origin:left;transform:scaleX(0)}
+.dots .dot.on .fill{animation:dotfill var(--d,4000ms) linear forwards}
+.dots.paused .dot .fill{animation-play-state:paused}
+.dots.manual .dot .fill{animation:none;transform:scaleX(1)}
+@keyframes dotfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.cnt{margin-left:auto;font-size:12px;color:var(--sgj-text-4);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ===== 规格面板 ===== */
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:70px}
+.panel{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:14px 16px;box-shadow:var(--sgj-shadow-sm)}
+.panel h3{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--sgj-text);display:flex;align-items:center;gap:6px}
+.panel ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--sgj-text-2);line-height:1.75}
+.panel li{margin:3px 0}
+.panel li b{color:var(--sgj-text)}
+.panel .note{margin:10px 0 0;font-size:12px;color:var(--sgj-text-4);line-height:1.7}
+.panel pre{margin:10px 0 0;background:var(--sgj-bg);border:1px solid var(--sgj-border-card);border-radius:10px;padding:10px 12px;
+  font-size:11.5px;line-height:1.7;overflow:auto;color:var(--sgj-text-2);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.panel pre .cm{color:var(--sgj-text-4)}
+.panel .easy{margin:0;padding:10px 12px;background:var(--sgj-moss-soft);border-radius:10px;font-size:12.5px;color:var(--sgj-text-2);line-height:1.7}
+.panel .easy b{color:var(--sgj-moss)}
+
+/* ===== 切窗示意（与 A卡 联动）===== */
+.strip{position:relative;height:84px;margin-top:6px}
+.strip .bar{position:absolute;left:0;right:0;top:48px;height:6px;border-radius:3px;background:var(--sgj-bg-deep)}
+.strip .blk{position:absolute;top:30px;height:30px;border-radius:8px;background:var(--sgj-amber-soft);border:1px solid var(--sgj-amber);
+  color:var(--sgj-amber);font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.strip .blk.on{background:var(--sgj-amber);color:#fff}
+.strip .hit{position:absolute;top:45px;width:2px;height:12px;background:var(--sgj-brick);border-radius:1px}
+.strip .cap{position:absolute;left:0;right:0;top:66px;display:flex;justify-content:space-between;font-size:11px;color:var(--sgj-text-4);font-variant-numeric:tabular-nums}
+.strip.off .blk{cursor:default;opacity:.55}
+
+/* ===== 标注 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:26px 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+.legend code{font-size:12px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>#31 追问 · 命中轮播（存档 · 已评审不采用）</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="note-list.html">笔记列表</a>
+      <a href="note-search-carousel.html" aria-current="page">命中轮播</a>
+      <a href="note-search-excerpt.html">最终方案：摘要与高亮 →</a>
+    </nav>
+    <span class="hint">本图留档备查；落地规则以「摘要与高亮」图为准</span>
+    <span class="seg" role="group" aria-label="方案">
+      <button data-scheme="B" aria-pressed="true">B · 多命中轮播</button>
+      <button data-scheme="A" aria-pressed="false">A · 单窗口静态（issue 现状）</button>
+    </span>
+    <span class="seg" role="group" aria-label="轮播间隔" id="speedSeg">
+      <button data-speed="8000" aria-pressed="false">慢 8s</button>
+      <button data-speed="4000" aria-pressed="true">标准 4s</button>
+      <button data-speed="2000" aria-pressed="false">快 2s</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题">
+      <button id="themeBtn" aria-pressed="false">深色模式</button>
+    </span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注">
+      <button id="anBtn" aria-pressed="true">标注</button>
+    </span>
+    <span class="hint">方案与速度即时生效；试试悬停卡片、点圆点、滚下去再滚回来</span>
+  </div>
+</div>
+
+<section class="intro">
+  <div class="intro-in">
+    <p class="q">「一个笔记命中多个关键词，循环播放，怎么播放？」<small>issue #31 评审追问</small></p>
+    <ol>
+      <li><b>先厘清：issue 里的「循环」是渲染手法，不是播放。</b>原文指把摘要按关键词切成几段、模板里 v-for 渲染 span。按 issue 现状（下方方案 A）卡片<b>不播</b>：无论命中几个词，只有一段摘要、以第一个命中为中心，窗口内的命中全部高亮，<b>窗口外的命中不可见</b>。</li>
+      <li><b>若要多命中轮播（方案 B，本页重点）</b>：命中按<b>正文出现顺序</b>成窗（相邻命中并入同窗，最多 3 窗），每 4 秒回环推进；悬停、按住、键盘焦点、滚出视口任一即暂停；点圆点接管后停播；系统开启「减弱动态效果」时不自动播。完整规则见右侧面板。</li>
+      <li><b>推荐</b>：v1 按 issue 原样上单窗口；轮播作为独立增量，接口数据结构一次性按数组设计（<code>excerpts[≤3] + hitTotal</code>），v1 令其长度为 1。</li>
+    </ol>
+  </div>
+</section>
+
+<main class="workbench">
+  <div class="device">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <div class="banner">
+        <div class="blob"></div><div class="blob2"></div>
+        <div class="txt">
+          <h1>笔记</h1>
+          <p>记录你的思考与学习笔记。</p>
+        </div>
+      </div>
+
+      <div class="filter">
+        <label class="search">
+          <span class="pfx">⌕</span>
+          <input type="search" placeholder="搜索标题与正文" value="草稿 摘要" readonly>
+          <button class="go" type="button">搜索</button>
+        </label>
+      </div>
+
+      <div class="pills">
+        <span class="pill">全部</span><span class="pill">前端</span><span class="pill">数据库</span>
+        <span class="pill">读书</span><span class="pill">周复盘</span><span class="pill">迁移</span>
+      </div>
+
+      <div class="list" id="list"></div>
+    </div>
+
+    <nav class="tabbar">
+      <div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div>
+    </nav>
+  </div>
+
+  <aside class="rail">
+    <section class="panel">
+      <h3>播放规则（方案 B）</h3>
+      <ul>
+        <li><b>推进</b>：每 4 秒切下一窗，到尾回环（1→2→3→1）；窗口内所有命中词都高亮，不按关键词分色。</li>
+        <li><b>错峰</b>：同屏多卡依次延迟 1.2 秒启动，避免整页同翻。</li>
+        <li><b>暂停</b>：悬停 / 按住 / 键盘焦点进入 / 卡片滚出视口，任一即暂停，条件解除后从当前窗继续。</li>
+        <li><b>接管</b>：点圆点后该卡退出自动播放（重新搜索恢复）；点击卡片本体仍是打开详情，不做「点摘要切窗」。</li>
+        <li><b>动效</b>：新窗上滑淡入 200ms——列表本身纵向滚动，横向滑动易被误读为翻页手势。</li>
+        <li><b>降级</b>：系统「减弱动态效果」开启时不自动播，只留手动跳转（检测到时本页演示同样关闭自动播放）。</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h3>切窗示意 — 与「设计复盘」卡联动<span class="an" data-n="8"></span></h3>
+      <div class="strip" id="strip">
+        <span class="bar"></span>
+        <span class="cap"><span>全文开头</span><span>命中 1–6 · 按全文比例示意</span><span>全文结尾</span></span>
+      </div>
+      <p class="note">相邻命中间距 ≤ 约 20 字并入同一窗；窗口仍为命中前后各约 40 字、两端省略号，与 #31 单窗口规则一致。最多 3 窗——更多命中去详情页看（大纲导航已上线）。</p>
+    </section>
+
+    <section class="panel">
+      <h3>数据结构与后端影响</h3>
+      <pre><span class="cm">// issue #31（现状）</span>
+excerpt: string      <span class="cm">// 单窗口，首个命中居中</span>
+
+<span class="cm">// 轮播增量（方案 B）</span>
+excerpts: string[]   <span class="cm">// ≤3 窗，正文顺序</span>
+hitTotal: number     <span class="cm">// 全文命中次数</span>
+
+<span class="cm">// v1 兼容：excerpts = [excerpt]，
+// 前端按长度决定是否轮播</span></pre>
+      <p class="note">窗口定位仍在 SQL <code>locate()</code>：从上一窗尾继续向后找，最多 3 次；剥离与合并在 Java 侧复用 #31 的摘要方法循环调用。不加接口、不加表、不加参数，每卡响应只多约 200 字。</p>
+    </section>
+
+    <section class="panel">
+      <h3>更简替代</h3>
+      <p class="easy"><b>不做轮播时</b>：卡片加一行「共 N 处命中」小字即可缓解「其余命中不可见」；要看全部命中进详情页（大纲导航 #25/#26 已上线）。成本几乎为零。</p>
+    </section>
+  </aside>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">成窗</span>：6 处命中 → 3 窗。相邻命中并入同窗、按正文出现顺序排列、最多 3 窗；两个关键词（<b>草稿</b>、<b>摘要</b>，多词检索是 OR 语义）的命中混排在同一条窗口队列里。</li>
+    <li><span class="new">播放指示</span>：「1/3 · 共 6 处命中」。圆点代表<b>窗口数</b>（不是命中数），活动圆点内的进度条即本轮剩余时间；圆点可 Tab 聚焦、可点击跳转。</li>
+    <li><span class="new">高亮与定高</span>：窗口内每次出现都高亮，多关键词同一样式（分色是噪音且色弱不友好）；切分按字面量 <code>indexOf</code>、不拼正则、不走 <code>v-html</code>（issue 验收项）。摘要区固定 3 行高，窗与窗切换不跳动；底部渐隐仅真溢出时出现。</li>
+    <li><span class="new">标题命中</span>：标题与正文都命中时，标题同样高亮，命中计数含标题。</li>
+    <li><span class="new">只命中标题</span>：摘要取正文开头、标题高亮——issue 既有规则，两方案相同。</li>
+    <li><span class="new">单命中</span>：静态展示，无播放元素——issue 既有形态，两方案相同。</li>
+    <li><span class="new">视口与错峰</span>：滚出视口即暂停（把这张卡滚出去再滚回来，时间上能看出它没在播）；同屏多卡错峰 1.2 秒启动。这张卡（2 处命中 → 2 窗）是混排关键词的最小例子。</li>
+    <li><span class="new">切窗联动</span>：色块即窗口，与「设计复盘」卡实时联动；点击色块跳到对应窗口（等同接管，该卡停播）。方案 A 下不轮播，此图描述的是方案 B 的切法。</li>
+  </ol>
+  <p class="scope"><b>推荐路径</b>：v1 按 #31 原样上单窗口（切到顶部「A · 单窗口静态」即 issue 现状）；方案 B 作为独立增量按本页规格实施，<code>excerpts</code> 结构一次到位、v1 令长度为 1。<br>
+  <b>未在本屏建模</b>：真实搜索请求、分页、标签筛选与删除；窗口文本为演示数据，两方案共用同一份窗口数据。</p>
+</section>
+
+<script>
+/* ===== 演示数据：检索词「草稿 摘要」（多词 OR 语义，来自布尔模式）===== */
+const KW = ['草稿', '摘要'];
+const NOTES = [
+  { id:'a', t:'0.0.2 笔记模块设计复盘', pub:1, tags:'设计', time:'2026-09-18 10:23', item:null, hitTotal:6, an:1, an2:2, an3:3,
+    wins:[
+      '…列表不再传整篇正文，改传一段纯文本摘要，由后端生成：没搜关键词时取开头约 120 字；搜了关键词就以命中处为中心，前后各留约 40 字…',
+      '…草稿箱里点「继续写」直接进编辑器并带上 draftId，与普通新增共用同一个编辑器，草稿列表同时返回全文，省掉一个按 id 取单条草稿的接口…',
+      '…摘要不能和卡片标题重复：正文以同名一级标题开头时，先把这行去掉再生成，卡片上标题在上、摘要在下，同一段话只出现一次…']},
+  { id:'b', t:'草稿箱与本地缓冲的写入时机', pub:0, tags:'前端', time:'2026-09-18 09:41', item:null, hitTotal:5, an:4,
+    wins:[
+      '…停手 1 秒先写 localStorage，每 15 秒静默 PUT 一次；页面隐藏或路由离开时先同步写本地缓冲，再立即推一次草稿…',
+      '…本地缓冲要按 username、draftId、noteId 三者一致才参与比较，否则会把用户 A 的草稿内容错套进用户 B 的编辑器…',
+      '…草稿箱里点「删除」是硬删除该行；笔记保存成功后服务端在同一个事务里删掉对应草稿，前端同时清掉本地缓冲…']},
+  { id:'c', t:'摘要生成的边角情况备忘', pub:1, tags:'笔记', time:'2026-09-17 22:08', item:null, an:5,
+    wins:[
+      '整篇只有代码块时剥完就空了，要退回原文开头，否则列表会出现空白卡片；截断落在英文单词中间时最多向后扩 10 个字符，切到最近的空白或标点…']},
+  { id:'d', t:'迁移脚本的幂等性', pub:0, tags:'迁移', time:'2026-09-16 20:15', item:null, an:6,
+    wins:[
+      '…升级脚本必须幂等：建表前先查 information_schema，加索引前先看 Key_exists，重复执行只报 warning 不中断，草稿表的存量回填也一样…']},
+  { id:'e', t:'第 38 周复盘', pub:1, tags:'周复盘', time:'2026-09-15 21:30', item:null, hitTotal:2, an:7,
+    wins:[
+      '…这周把笔记模块的存储形态定下来了：正文留在数据库，文件只做导入导出；另外把纯文本摘要的窗口规则写成了验收清单…',
+      '…顺手把草稿箱的原型画完了，写一半的内容不再怕强杀进程；下周继续打磨恢复提示的文案和放弃按钮的确认…']}
+];
+/* 切窗示意：A卡 三窗在全文中的位置（%） */
+const STRIP = [{l:8,w:14},{l:44,w:14},{l:78,w:14}];
+const STRIP_HITS = [10,16,47,53,84];
+
+const $ = s => document.querySelector(s);
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+let scheme = 'B', speed = 4000, players = [], io = null;
+
+/* 与 issue 验收项同款：字面量 indexOf 切分，不拼正则 */
+function segParts(text, kws){
+  const ranges = [];
+  for(const kw of kws){
+    if(!kw) continue;
+    let i = 0;
+    while((i = text.indexOf(kw, i)) !== -1){ ranges.push([i, i + kw.length]); i += kw.length; }
+  }
+  ranges.sort((a,b) => a[0] - b[0]);
+  const merged = [];
+  for(const r of ranges){
+    const last = merged[merged.length - 1];
+    if(last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]); else merged.push([...r]);
+  }
+  const parts = []; let pos = 0;
+  for(const [s,e] of merged){
+    if(s > pos) parts.push({t: text.slice(pos, s)});
+    parts.push({m: text.slice(s, e)}); pos = e;
+  }
+  if(pos < text.length) parts.push({t: text.slice(pos)});
+  return parts;
+}
+/* 内容一律走 DOM（textNode + mark），不走 innerHTML —— 演示 issue 的「不拼 HTML」要求 */
+function paintText(el, text, kws){
+  el.textContent = '';
+  for(const p of segParts(text, kws)){
+    if(p.m !== undefined){ const m = document.createElement('mark'); m.textContent = p.m; el.appendChild(m); }
+    else el.appendChild(document.createTextNode(p.t));
+  }
+}
+
+function anEl(n){ const a = document.createElement('span'); a.className = 'an'; a.dataset.n = n; return a; }
+
+function buildCard(n){
+  const carousel = scheme === 'B' && n.wins.length > 1;
+  const card = document.createElement('article');
+  card.className = 'card'; card.dataset.id = n.id;
+
+  const head = document.createElement('div'); head.className = 'c-head';
+  const title = document.createElement('div'); title.className = 'c-title';
+  paintText(title, n.t, KW);
+  if(n.an) title.appendChild(anEl(n.an));
+  if(n.pub){ const s = document.createElement('span'); s.className = 'pub'; s.textContent = '公开'; title.appendChild(s); }
+  const del = document.createElement('button'); del.className = 'del'; del.title = '删除'; del.textContent = '✕';
+  head.append(title, del); card.appendChild(head);
+
+  const ex = document.createElement('div');
+  ex.className = 'c-excerpt' + (carousel ? ' fixed' : '');
+  const win = document.createElement('div'); win.className = 'win';
+  paintText(win, n.wins[0], KW);
+  ex.appendChild(win); card.appendChild(ex);
+  if(!carousel && win.scrollHeight > ex.clientHeight + 2) ex.classList.add('clip');
+
+  if(carousel){
+    const row = document.createElement('div'); row.className = 'c-dots';
+    if(n.an2) row.appendChild(anEl(n.an2));
+    const dots = document.createElement('span'); dots.className = 'dots'; dots.setAttribute('role', 'group'); dots.setAttribute('aria-label', '命中窗口');
+    n.wins.forEach((w, i) => {
+      const b = document.createElement('button'); b.className = 'dot';
+      b.setAttribute('aria-label', '第 ' + (i + 1) + ' 窗'); b.setAttribute('aria-current', 'false');
+      dots.appendChild(b);
+    });
+    row.appendChild(dots);
+    if(n.an3) row.appendChild(anEl(n.an3));
+    const cnt = document.createElement('span'); cnt.className = 'cnt';
+    row.appendChild(cnt); card.appendChild(row);
+  }
+
+  const meta = document.createElement('div'); meta.className = 'c-meta';
+  const it = document.createElement('span'); it.textContent = n.item ? '🔗 ' + n.item : '📝 独立笔记';
+  const tg = document.createElement('span'); tg.className = 'tg'; tg.textContent = n.tags;
+  const tm = document.createElement('span'); tm.textContent = n.time;
+  meta.append(it, tg, tm); card.appendChild(meta);
+  return card;
+}
+
+/* ===== 轮播引擎 ===== */
+function canAuto(p){
+  return scheme === 'B' && !p.manual && !p.hover && !p.focus && p.visible && !RM.matches;
+}
+function refreshDots(p){
+  const dotEls = [...p.card.querySelectorAll('.dot')];
+  const wrap = p.card.querySelector('.dots');
+  if(!wrap) return;
+  const frozen = !canAuto(p);
+  wrap.classList.toggle('paused', frozen && !p.manual);
+  wrap.classList.toggle('manual', p.manual);
+  dotEls.forEach((d, i) => {
+    const on = i === p.i;
+    d.classList.toggle('on', on);
+    d.setAttribute('aria-current', on ? 'true' : 'false');
+  });
+  /* 暂停时不重建进度条（保留原位冻结）；运行中重建成时长匹配的新进度条；接管后满格 */
+  if(!frozen || p.manual){
+    const cur = dotEls[p.i]; cur.innerHTML = '';
+    const f = document.createElement('span'); f.className = 'fill';
+    if(p.manual){ f.style.animation = 'none'; f.style.transform = 'scaleX(1)'; }
+    else f.style.setProperty('--d', p.wait + 'ms');
+    cur.appendChild(f);
+  }
+}
+function paint(p, anim){
+  const win = p.card.querySelector('.c-excerpt .win');
+  paintText(win, p.n.wins[p.i], KW);
+  if(anim && !RM.matches){ win.classList.remove('in'); void win.offsetWidth; win.classList.add('in'); }
+  const ex = win.parentElement;
+  ex.classList.toggle('clip', win.scrollHeight > ex.clientHeight + 2);
+  const cnt = p.card.querySelector('.cnt');
+  if(cnt) cnt.textContent = (p.i + 1) + '/' + p.n.wins.length + ' · 共 ' + p.n.hitTotal + ' 处命中';
+  refreshDots(p);
+  syncStrip(p);
+}
+function schedule(p){
+  clearTimeout(p.t);
+  if(!canAuto(p)){ p.wait = 0; refreshDots(p); return; }
+  p.wait = p.first ? speed + p.offset : speed;
+  p.first = false;
+  refreshDots(p);
+  p.t = setTimeout(() => { p.i = (p.i + 1) % p.n.wins.length; paint(p, true); schedule(p); }, p.wait);
+}
+function hold(p){ clearTimeout(p.t); refreshDots(p); }
+function goto(p, i){
+  clearTimeout(p.t);
+  p.manual = true; p.i = i;
+  paint(p, true);
+}
+function makePlayer(card, n, offset){
+  const p = { card, n, i:0, t:null, wait:speed, manual:false, hover:false, focus:false, visible:true, first:true, offset };
+  card.addEventListener('mouseenter', () => { p.hover = true; hold(p); });
+  card.addEventListener('mouseleave', () => { p.hover = false; schedule(p); });
+  card.addEventListener('focusin',  () => { p.focus = true; hold(p); });
+  card.addEventListener('focusout', () => { p.focus = false; schedule(p); });
+  card.addEventListener('pointerdown',  () => { p.hover = true; hold(p); });
+  card.addEventListener('pointerup',    () => { p.hover = false; schedule(p); });
+  card.addEventListener('pointercancel',() => { p.hover = false; schedule(p); });
+  card.querySelectorAll('.dot').forEach((d, i) => d.addEventListener('click', e => { e.stopPropagation(); goto(p, i); }));
+  paint(p, false);
+  schedule(p);
+  return p;
+}
+
+/* ===== 切窗示意 ===== */
+function buildStrip(){
+  const strip = $('#strip');
+  strip.querySelectorAll('.blk,.hit').forEach(x => x.remove());
+  STRIP.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'blk'; b.textContent = '窗' + '①②③'[i];
+    b.style.left = s.l + '%'; b.style.width = s.w + '%';
+    b.setAttribute('aria-label', '跳到第 ' + (i + 1) + ' 窗');
+    b.addEventListener('click', () => {
+      const p = players.find(x => x.n.id === 'a');
+      if(p && scheme === 'B') goto(p, i);
+    });
+    strip.appendChild(b);
+  });
+  STRIP_HITS.forEach(h => {
+    const t = document.createElement('span');
+    t.className = 'hit'; t.style.left = h + '%';
+    strip.appendChild(t);
+  });
+}
+function syncStrip(p){
+  if(p.n.id !== 'a') return;
+  document.querySelectorAll('#strip .blk').forEach((b, i) => b.classList.toggle('on', scheme === 'B' && i === p.i));
+}
+
+/* ===== 渲染与控制 ===== */
+function render(){
+  players.forEach(p => clearTimeout(p.t));
+  if(io) io.disconnect();
+  players = [];
+  const list = $('#list'); list.innerHTML = '';
+  let multi = 0;
+  for(const n of NOTES){
+    const card = buildCard(n);
+    list.appendChild(card);
+    if(scheme === 'B' && n.wins.length > 1){
+      players.push(makePlayer(card, n, multi * 1200));
+      multi++;
+    }
+  }
+  io = new IntersectionObserver(es => es.forEach(e => {
+    const p = players.find(x => x.card === e.target);
+    if(!p) return;
+    p.visible = e.isIntersecting;
+    if(p.visible && !p.hover && !p.focus) schedule(p); else hold(p);
+  }), { root: $('.device'), threshold: .25 });
+  players.forEach(p => io.observe(p.card));
+  $('#speedSeg').classList.toggle('disabled', scheme === 'A');
+  document.querySelectorAll('#strip').forEach(s => s.classList.toggle('off', scheme === 'A'));
+}
+
+document.querySelectorAll('[data-scheme]').forEach(b => b.addEventListener('click', () => {
+  scheme = b.dataset.scheme;
+  document.querySelectorAll('[data-scheme]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+}));
+document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => {
+  speed = Number(b.dataset.speed);
+  document.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  players.forEach(p => schedule(p));
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b => b.addEventListener('click', () => {
+  document.body.dataset.vp = b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+$('#themeBtn').addEventListener('click', e => {
+  const dark = document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light', !dark);
+  e.currentTarget.setAttribute('aria-pressed', String(dark));
+  e.currentTarget.textContent = dark ? '浅色模式' : '深色模式';
+});
+$('#anBtn').addEventListener('click', e => {
+  const off = document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed', String(!off));
+});
+RM.addEventListener?.('change', () => players.forEach(p => schedule(p)));
+
+if(matchMedia('(prefers-color-scheme: dark)').matches){
+  document.documentElement.classList.add('dark');
+  document.documentElement.classList.remove('light');
+  $('#themeBtn').textContent = '浅色模式';
+  $('#themeBtn').setAttribute('aria-pressed', 'true');
+}
+buildStrip();
+render();
+</script>
+</body>
+</html>
