@@ -236,6 +236,25 @@ export function photoUrl(url?: string): string {
   return import.meta.env.VITE_APP_BASE_API + url
 }
 
+/**
+ * 解析后端时间串为 epoch 毫秒（草稿箱相对时间等展示用）。
+ *
+ * 后端固定以 `yyyy-MM-dd HH:mm:ss`、GMT+8 输出（application.yml 的 `spring.jackson.time-zone`）。
+ * 不能直接 `new Date(str)`：Safari 上得到 Invalid Date；也不能把该串喂给 formatTime()——会渲染成
+ * `NaN月NaN日`。这里补上 +08:00 偏移后按标准 ISO 解析，跨时区用户看到的相对时间才不会整体偏移
+ *
+ * @param time 后端时间串（也兼容 epoch 数字/数字串）
+ * @returns epoch 毫秒；无法解析时返回 0
+ */
+export function parseServerTime(time?: string | number | null): number {
+  if (time === null || time === undefined || time === '') return 0
+  const text = String(time).trim()
+  if (/^\d+$/.test(text)) return Number(text) * (text.length === 10 ? 1000 : 1)
+  const iso = text.replace(' ', 'T')
+  const parsed = Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso + '+08:00')
+  return isNaN(parsed) ? 0 : parsed
+}
+
 /** 摘要高亮片段：hit 为 true 的段落用高亮样式渲染 */
 export interface KeywordSegment {
   text: string
