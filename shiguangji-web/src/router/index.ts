@@ -133,6 +133,13 @@ export const constantRoutes = [
         component: () => import('@/views/front/note/detail.vue'),
         name: 'FrontNoteDetail',
         meta: { title: '笔记详情', noCache: true }
+      },
+      {
+        // 草稿箱：需登录（不在免登录白名单，未登录由路由守卫跳登录页）
+        path: 'draft',
+        component: () => import('@/views/front/note/draft.vue'),
+        name: 'FrontNoteDraft',
+        meta: { title: '草稿箱', noCache: true }
       }
     ]
   },
