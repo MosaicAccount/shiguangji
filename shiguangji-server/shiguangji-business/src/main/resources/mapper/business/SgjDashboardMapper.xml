@@ -141,7 +141,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                n.item_id as itemId,
                i.title as itemName,
                n.title,
-               n.content,
                n.tags,
                n.is_public as isPublic,
                n.create_by as createBy,
