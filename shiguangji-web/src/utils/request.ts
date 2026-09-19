@@ -11,6 +11,13 @@ let downloadLoadingInstance: ReturnType<typeof ElLoading.service>
 // 是否显示重新登录
 export const isRelogin = { show: false }
 
+/**
+ * 静默请求：`config.headers.silent` 为真时，401 / 500 / 601 / 网络异常都只压掉全局提示，
+ * promise 照旧 reject——调用方（编辑页自动同步）靠 reject 把状态条转「仅本地待同步」。
+ * 不加该标记的请求行为完全不变（动的是全站共用文件，需回归其它请求的错误提示）
+ */
+const isSilent = (config: any) => !!(config && config.headers && config.headers.silent)
+
 axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8'
 // 创建axios实例
 const service = axios.create({
@@ -84,7 +91,7 @@ service.interceptors.response.use((res: any) => {
     // 退出登录接口自身返回异常时不弹"登录状态已过期"，避免退出时再触发弹窗循环
     const isLogoutRequest = /\/logout(\?|$)/.test(res.config.url || '')
     if (code === 401 && !isLogoutRequest) {
-      if (!isRelogin.show) {
+      if (!isSilent(res.config) && !isRelogin.show) {
         isRelogin.show = true
         ElMessageBox.confirm('登录状态已过期，您可以继续留在该页面，或者重新登录', '系统提示', { confirmButtonText: '重新登录', cancelButtonText: '取消', type: 'warning' }).then(() => {
           isRelogin.show = false
@@ -99,13 +106,13 @@ service.interceptors.response.use((res: any) => {
       }
       return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
     } else if (code === 500) {
-      ElMessage({ message: msg, type: 'error' })
+      if (!isSilent(res.config)) ElMessage({ message: msg, type: 'error' })
       return Promise.reject(new Error(msg))
     } else if (code === 601) {
-      ElMessage({ message: msg, type: 'warning' })
+      if (!isSilent(res.config)) ElMessage({ message: msg, type: 'warning' })
       return Promise.reject(new Error(msg))
     } else if (code !== 200) {
-      ElNotification.error({ title: msg })
+      if (!isSilent(res.config)) ElNotification.error({ title: msg })
       return Promise.reject('error')
     } else {
       return  Promise.resolve(res.data)
@@ -120,7 +127,7 @@ service.interceptors.response.use((res: any) => {
     } else if (message.includes("Request failed with status code")) {
       message = "系统接口" + message.slice(-3) + "异常"
     }
-    ElMessage({ message: message, type: 'error', duration: 5 * 1000 })
+    if (!isSilent(error.config)) ElMessage({ message: message, type: 'error', duration: 5 * 1000 })
     return Promise.reject(error)
   }
 )
