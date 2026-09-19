@@ -397,7 +397,8 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | 测试 | 内容 |
 | --- | --- |
 | `SgjNoteExcerptTest`（新增，纯单测，无 Spring / 无 DB） | 剥离各类语法；**正文以同级 H1 开头时摘要不重复标题**；**YAML front-matter 整块移除**；窗口以命中处为中心；无命中取开头；命中标题时取开头；纯代码块笔记的回退；空正文；命中在首 / 尾 |
-| `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②草稿隔离：A 用户草稿对 B 不可见；**匿名访问草稿接口返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）；按他人 `draftId` 更新 / 删除被拒；带他人 `draftId` 发布被拒。③发布后草稿行消失。④**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失。⑤**存活校验（结论 40）**：往 `del_flag='2'` 的笔记、以及已物理删除的笔记写草稿都被拒。⑥**并发 upsert**：同一 `(create_by, note_id)` 连续两次不带 `draftId` 的 PUT，不产生第二行。⑦**`PUT /app/note/draft` 返回的 `updateTime` 与库里那行的 `update_time` 一致**（不能用 JVM 时钟，结论 10）。⑧检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除）。⑨**导入的原件路径出现在 `FileReferenceMapper.selectReferencedStorageKeys()` 的结果里**（结论 37）——漏了它原件会被每周的清理任务误删，而这类缺陷不会报错、只会静默丢文件 |
+| `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除）。③**导入的原件路径出现在 `FileReferenceMapper.selectReferencedStorageKeys()` 的结果里**（结论 37）——漏了它原件会被每周的清理任务误删，而这类缺陷不会报错、只会静默丢文件 |
+| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问四个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥上限 20 份：第 21 份被拒并提示；编辑态草稿不计入。⑦**并发 upsert**：同一 `(create_by, note_id)` 连续两次不带 `draftId` 的 PUT，不产生第二行；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑧发布语义：带自己的 `draftId` 保存后草稿行消失、不带 `draftId` 行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑨**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
 
 **前端**
 
@@ -406,8 +407,8 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | `MarkdownViewer` spec（新增，vitest + jsdom） | ` ```java ` 渲染后含 `span.hljs-*`（证明 class 未被 DOMPurify 误伤）；无语言标注不报错且不高亮；`<script>` / `onerror` 仍被消毒 |
 | `utils/sgj` spec（补用例） | 日期解析：`yyyy-MM-dd HH:mm:ss` → 正确 epoch（不得返回 NaN）；切片段：大小写不敏感、关键词含正则元字符（`(` `[` `*`）不抛错、命中多次全部切出 |
 | 导入解析 spec（新增，纯逻辑） | front-matter 解析：有 / 无 front-matter 都要正确；`tags` 里混有表内与表外标签时**只保留表内的**，并给出被忽略的数量（结论 38）；标题取值顺序 front-matter → 首个 H1 → 文件名去扩展名 |
-| 草稿恢复判断 spec（新增，纯逻辑） | 结论 10 的三条分支各一例：`dirty` 为真 → 取本地；`dirty` 为假且 `baseUpdateTime` 与 `updateTime` 相等 → 等价；不等 → 取服务端。另加：身份（`username`/`draftId`/`noteId`）任一不匹配的本地缓冲一律不采用（结论 26） |
-| 推送竞态 spec（新增，纯逻辑） | 推送在飞时内容又变（`seq` 变化）→ 响应回来**不清 `dirty`**；`seq` 未变 → 清 `dirty` 并把响应里的 `updateTime` 写进 `baseUpdateTime`（结论 26） |
+| 草稿恢复判断 spec（新增，纯逻辑，`utils/__tests__/noteDraftBuffer.spec.ts`） | 结论 10 的三条分支各一例：`dirty` 为真 → 取本地；`dirty` 为假且 `baseUpdateTime` 与 `updateTime` 相等 → 等价；不等 → 取服务端。另加：身份（`username`/`draftId`/`noteId`）任一不匹配的本地缓冲一律不采用（结论 26）；按用户隔离的读写清与登出清理 |
+| 推送竞态 spec（新增，纯逻辑，同 `noteDraftBuffer.spec.ts`） | 推送在飞时内容又变（`seq` 变化）→ 响应回来**不清 `dirty`**；`seq` 未变 → 清 `dirty` 并把响应里的 `updateTime` 写进 `baseUpdateTime`（结论 26） |
 | `utils/request` 静默开关 spec（补用例） | 带静默开关的请求在 401 / 500 时**不触发** `ElMessageBox` / `ElMessage` / `ElNotification`，但 promise 仍 reject（调用方靠它把状态条转「仅本地待同步」）；**不带开关的请求行为不变**（这条是回归，动的是全站共用文件） |
 
 **回归**
