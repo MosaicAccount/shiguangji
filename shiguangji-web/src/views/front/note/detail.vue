@@ -390,10 +390,11 @@ function formatTime(time?: string): string {
   min-height: 320px;
 }
 
-/* 文章头：冷炭灰胶片带（亮暗主题下均保持深色，做法同列表页 banner） */
+/* 文章头：冷炭灰胶片带（亮暗主题下均保持深色，做法同列表页 banner）
+   上内边距与左右两侧（40px）保持接近，否则顶部操作按钮贴边显局促 */
 .article-hero {
   position: relative;
-  padding: 22px 40px 30px;
+  padding: 32px 40px 30px;
   background: #282e2c;
   color: #e7ece9;
   overflow: hidden;
