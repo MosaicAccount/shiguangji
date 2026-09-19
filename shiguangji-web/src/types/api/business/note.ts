@@ -21,6 +21,8 @@ export interface SgjNote extends BaseEntity {
   hitTotal?: number
   /** 详情渲染用正文（后端已剥离前言与重复标题行；仅详情接口返回，content 仍为原文） */
   body?: string
+  /** 保存时携带的草稿ID：服务端在保存成功的同一次操作里删掉它（非表字段） */
+  draftId?: number
 }
 
 /** 学习笔记查询参数 */
