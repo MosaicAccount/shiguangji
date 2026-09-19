@@ -10,6 +10,13 @@
       <el-button v-if="isLogin" type="primary" class="banner-add" @click="openAdd">＋ 写笔记</el-button>
     </div>
 
+    <!-- 草稿箱入口：仅登录且有草稿时显示；数量取草稿列表长度（接口只回 excerpt，不拉正文） -->
+    <button v-if="draftCount > 0" class="draft-entry" @click="openDrafts">
+      <span class="draft-entry-icon" aria-hidden="true">🗂</span>
+      <span class="draft-entry-text">草稿箱里有 {{ draftCount }} 份没写完的笔记</span>
+      <span class="draft-entry-arrow" aria-hidden="true">→</span>
+    </button>
+
     <div class="filter-bar">
       <el-input
         v-model="searchKeyword"
@@ -99,6 +106,7 @@ import { getToken } from '@/utils/auth'
 import { Delete } from '@element-plus/icons-vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, delFrontNote } from '@/api/front/note'
+import { listNoteDrafts } from '@/api/front/noteDraft'
 import { getFrontItem } from '@/api/front/item'
 import { splitByKeyword } from '@/utils/sgj'
 import type { SgjNote } from '@/types/api/business/note'
@@ -128,6 +136,28 @@ const hasMore = computed(() => list.value.length < total.value)
 const filterItemId = ref<number | undefined>(undefined)
 /** 过滤条目的名称（展示用，取不到时回退 #id） */
 const filterItemName = ref('')
+/** 草稿份数（入口条用；未登录不发请求，失败也不提示） */
+const draftCount = ref(0)
+
+/**
+ * 拉草稿份数：匿名访客不发（本页免登录，拉了会因失效 token 弹「登录状态已过期」）；
+ * 请求带静默标记，失败只当作没有草稿，不弹任何提示
+ */
+function loadDraftCount(): void {
+  if (!isLogin.value) {
+    draftCount.value = 0
+    return
+  }
+  listNoteDrafts(true).then(response => {
+    draftCount.value = response.data?.length || 0
+  }).catch(() => {
+    draftCount.value = 0
+  })
+}
+
+function openDrafts(): void {
+  router.push('/note/draft')
+}
 
 /** 组装列表查询参数；关键词不足 2 字时提示并中止（ngram_token_size=2，单字切不出 token 搜不到） */
 function buildQuery() {
@@ -298,6 +328,7 @@ function handleDelete(note: SgjNote): void {
 
 loadData()
 handleRouteQuery()
+loadDraftCount()
 </script>
 
 <style scoped lang="scss">
@@ -400,6 +431,48 @@ html.dark .page-banner {
 
   .search-input {
     width: 260px;
+  }
+}
+
+/* 草稿箱入口条：与卡片同风格，整条可点，键盘可达 */
+.draft-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--sgj-bg);
+  border: 1px solid var(--sgj-border);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--sgj-text-2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s, background 0.16s;
+
+  &:hover {
+    border-color: var(--sgj-primary);
+    background: var(--sgj-bg-card);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--sgj-primary);
+    outline-offset: 2px;
+  }
+
+  .draft-entry-icon {
+    font-size: 15px;
+  }
+
+  .draft-entry-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .draft-entry-arrow {
+    color: var(--sgj-primary);
   }
 }
 
