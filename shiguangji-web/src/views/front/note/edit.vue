@@ -15,7 +15,7 @@
       <div class="sync-bar" :class="{ 'is-restored': restored && !noteDeleted }" role="status">
         <template v-if="noteDeleted">
           <span class="sync-deleted">这篇笔记已被删除，草稿无法继续保存</span>
-          <el-button link type="primary" size="small" @click="goBack">回列表页</el-button>
+          <el-button link type="primary" size="small" @click="backToList">回列表页</el-button>
         </template>
         <template v-else-if="restored">
           <span class="restore-dot" aria-hidden="true"></span>
@@ -143,6 +143,8 @@ let dirty = false
 let pushing = false
 /** 程序化改写表单（恢复 / 放弃 / 回滚）时不当作「用户改动」 */
 let muteChange = false
+/** 保存成功后跳转不得再弹离开确认 */
+let published = false
 /** 打开时的服务器快照（离开确认的判据）：编辑态是笔记原文，新增态是空表单 + 预填条目 */
 let baseline = ''
 
@@ -268,7 +270,7 @@ function readLocalBuffer(): NoteDraftBuffer | null {
   return bufferMatchesIdentity(buffer, { noteId: entryNoteId, draftId: entryDraftId }) ? buffer : null
 }
 
-/** 表单快照：判断恢复草稿后是否与打开时的快照一致，以及「放弃草稿」回滚用 */
+/** 表单快照（离开确认的判据：与打开时的服务器快照比，不能与草稿比——草稿总是最新的，那样写等于永不拦截） */
 function snapshot(): string {
   return JSON.stringify({
     title: form.title || '',
@@ -277,6 +279,10 @@ function snapshot(): string {
     tags: form.tags || '',
     isPublic: form.isPublic || '0'
   })
+}
+
+function hasUnsavedChanges(): boolean {
+  return !published && snapshot() !== baseline
 }
 
 /** 程序化改写表单：不触发「用户改动」 */
@@ -392,10 +398,51 @@ onBeforeUnmount(() => {
   window.removeEventListener('online', pushDraft)
 })
 
-/** 返回列表页（笔记已被删除时的出口也走这里） */
-function goBack(): void {
+// 关闭 / 刷新标签页：文案由浏览器决定（不可自定义），移动端 iOS Safari 基本不触发
+function onBeforeUnload(event: BeforeUnloadEvent): void {
+  if (!hasUnsavedChanges()) return
+  writeLocalBuffer()
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+window.addEventListener('beforeunload', onBeforeUnload)
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
+
+/** 返回列表页：离开前拦一道（未保存改动确认），确认后草稿保留 */
+async function goBack(): Promise<void> {
+  const leave = await confirmLeave()
+  if (!leave) return
   router.replace('/note')
 }
+
+function backToList(): void {
+  published = true
+  router.replace('/note')
+}
+
+/**
+ * 未保存离开确认：应用内文案须说明内容已保存到草稿箱，
+ * 但这句话由「草稿是否真的存在」决定——空表单不建草稿，此时说「已保存到草稿箱」与实际不符
+ */
+async function confirmLeave(): Promise<boolean> {
+  if (!hasUnsavedChanges()) return true
+  const message = draftId
+    ? '内容已保存到草稿箱，可从草稿箱继续写。确定离开吗？'
+    : (form.title || form.content)
+      ? '内容还没同步到草稿箱（已存在本机浏览器）。确定离开吗？'
+      : '标题与正文都为空，不会生成草稿；只有条目 / 标签 / 公开状态的改动不会保留。确定离开吗？'
+  try {
+    await proxy.$modal.confirm(message)
+    writeLocalBuffer()
+    pushDraft()
+    return true
+  } catch {
+    return false
+  }
+}
+
+onBeforeRouteLeave(async () => confirmLeave())
 
 /**
  * 放弃草稿：删服务端草稿 + 清本地缓冲 + 表单退回打开时的服务器快照。
@@ -447,6 +494,7 @@ function submitForm(): void {
     request.then(() => {
       // 保存成功后本地那份也要清掉：留着下次进编辑器会把刚保存好的正文盖回去
       clearNoteBuffer(username.value, editorKey)
+      published = true
       proxy.$modal.msgSuccess(form.noteId ? '修改成功' : '新增成功')
       router.replace('/note')
     }).catch(() => {}).finally(() => {
