@@ -3,7 +3,7 @@
     <router-link class="backlink" to="/note">← 返回笔记列表</router-link>
     <div class="head">
       <h1>草稿箱</h1>
-      <span class="sub">只放新笔记的草稿</span>
+      <span class="sub">所有没保存完的改动，每条一份</span>
     </div>
 
     <ul class="dlist" :aria-busy="loading">
@@ -36,7 +36,7 @@
           <div class="d-main">
             <p class="d-title" :class="{ clamp: !draft.title }">{{ draft.title || draft.excerpt || '无标题草稿' }}</p>
             <p class="d-sub">
-              <span class="d-item">{{ draft.itemId ? '🔗 ' + (draft.itemName || '#' + draft.itemId) : '📝 独立笔记' }}</span>
+              <span class="d-item"><template v-if="draft.noteId">✏️ 编辑 · </template>{{ draft.itemId ? '🔗 ' + (draft.itemName || '#' + draft.itemId) : '📝 独立笔记' }}</span>
               <span class="d-time">{{ relTime(draft.updateTime) }}</span>
             </p>
           </div>
@@ -108,6 +108,12 @@ function loadData(): void {
 }
 
 function continueDraft(draft: SgjNoteDraft): void {
+  // 编辑已有笔记的草稿回到那篇编辑页：基线是笔记原文，才能显示「已恢复未保存的草稿」提示条；
+  // 新建笔记草稿没有笔记可回，按 draftId 继续写（草稿自己带着 noteId）
+  if (draft.noteId) {
+    router.push({ path: '/note/edit', query: { noteId: String(draft.noteId) } })
+    return
+  }
   if (!draft.draftId) return
   router.push({ path: '/note/edit', query: { draftId: String(draft.draftId) } })
 }
