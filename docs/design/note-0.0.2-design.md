@@ -292,8 +292,9 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 
 | 动作 | 结果 |
 | --- | --- |
-| 新建笔记点「保存」 | `POST /app/note` + `draftId` → 插入 `sgj_note`，同事务删除草稿行 |
+| 新建笔记点「保存」 | `POST /app/note` + `draftId` → 插入 `sgj_note`，同事务删除草稿行（**两道**：按 `draftId` 删 + 按写作对象身份删，见下行） |
 | 编辑已有笔记点「保存」 | `PUT /app/note` + `draftId` → 更新 `sgj_note`，同事务删除草稿行 |
+| 保存时**没带** `draftId` | 仍按「写作对象身份」（编辑态 = `noteId`，新建态 = 关联条目的负数）删一份：换设备 / 清过本地缓冲时前端手里没有 `draftId`，不兜这一刀，那条「已经保存过」的草稿会一直挂在草稿箱里。身份必须在写入**之前**算（新增时 insert 会回填 `noteId`） |
 | 保存时带的 `draftId` 是别人的 | **整个请求失败**，不写任何数据（不能"忽略它、照常保存"） |
 | 草稿箱里点「删除」 | 硬删除该行 |
 | 草稿箱里点「继续写」 | 进编辑页并带 `draftId`，与普通新增共用同一个编辑器 |
@@ -403,7 +404,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | `SgjNoteExcerptTest`（新增，纯单测，无 Spring / 无 DB） | 剥离各类语法；**正文以同级 H1 开头时摘要不重复标题**；**YAML front-matter 整块移除**；窗口以命中处为中心；无命中取开头；命中标题时取开头；纯代码块笔记的回退；空正文；命中在首 / 尾 |
 | `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除）。③**导入的原件路径出现在 `FileReferenceMapper.selectReferencedStorageKeys()` 的结果里**（结论 37）——漏了它原件会被每周的清理任务误删，而这类缺陷不会报错、只会静默丢文件 |
-| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问四个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**并发 upsert**：同一 `(create_by, draft_scope)` 连续两次不带 `draftId` 的 PUT（编辑态 / 新建态各一次）不产生第二行——新建态也走这条收敛（以前只对编辑态做）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、不带 `draftId` 行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
+| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问四个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**并发 upsert**：同一 `(create_by, draft_scope)` 连续两次不带 `draftId` 的 PUT（编辑态 / 新建态各一次）不产生第二行——新建态也走这条收敛（以前只对编辑态做）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、**不带 `draftId` 也按写作对象身份清掉那份草稿（且不误删别的写作对象的）**、不带 `draftId` 的笔记写入行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
 
 **前端**
 
