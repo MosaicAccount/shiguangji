@@ -354,7 +354,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 
 | 文件 | 变更 |
 | --- | --- |
-| 新增 `sql/update/20260917_note_draft.sql` | 建表 `sgj_note_draft`（含 `unique key uk_sgj_note_draft_owner_note (create_by, note_id)`），幂等脚本，参照 `update/20260909_item_photos.sql` 体例 |
+| 新增 `sql/update/20260917_note_draft.sql` | 建表 `sgj_note_draft`（含非空生成列 `draft_scope` 与 `unique key uk_sgj_note_draft_owner_scope (create_by, draft_scope)`），幂等脚本，参照 `update/20260909_item_photos.sql` 体例 |
 | 新增 `sql/update/20260918_note_fulltext.sql` | 给 `sgj_note` 加 `FULLTEXT KEY ft_note_title_content (title, content) WITH PARSER ngram`（结论 33）。`ADD FULLTEXT` 会为存量行建索引，**不需要回填脚本**；注意它锁表重建，量大时挑低峰 |
 | 新增 `sql/update/20260918_note_source_file.sql` | 给 `sgj_note` 加 `source_file varchar(500) default ''`（导入原件的路径，结论 37），幂等脚本 |
 | `sql/init_business.sql` | 同步加入建表与建全文索引语句供新库使用 |
@@ -425,7 +425,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 ### 2.12 实施顺序（小步提交）
 
 1. `docs:` 本文 + 需求文档；
-2. `feat:` 建表脚本（`sql/update/20260917_note_draft.sql` + `init_business.sql`，含 `unique key uk_sgj_note_draft_owner_note`）与草稿实体 / Mapper / Service；
+2. `feat:` 建表脚本（`sql/update/20260917_note_draft.sql` + `init_business.sql`，含 `draft_scope` 与 `uk_sgj_note_draft_owner_scope`）与草稿实体 / Mapper / Service；
 3. `feat:` 全文索引脚本（`FULLTEXT ... WITH PARSER ngram`，结论 33）+ 正文上限提到 10 万字 + 后端 `keyword` 检索（布尔模式、剔除运算符）+ 列表与首页改取短文本（结论 32）→ 补匿名 keyword 回归用例，`mvn -pl shiguangji-admin -am test`；
 4. `feat:` 摘要生成静态方法（含标题去重）+ `SgjNoteExcerptTest`，手工查库校验若干真实笔记的摘要输出；
 5. `feat:` 草稿接口（**五个端点**（含按 id 取单条）+ 归属校验、`createBy` 覆盖、**存活校验**、按 owner + noteId 的 upsert 与**唯一键冲突转更新**）与隔离回归用例；
