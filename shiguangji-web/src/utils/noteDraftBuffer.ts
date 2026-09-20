@@ -57,6 +57,7 @@ export function writeNoteBuffer(username: string, editorKey: string, buffer: Not
     localStorage.setItem(bufferKey(username, editorKey), JSON.stringify(buffer))
   } catch {
     // 隐私模式 / 配额满：本地缓冲是尽力而为的兜底，写不进去不影响继续编辑
+    return
   }
 }
 
@@ -65,6 +66,7 @@ export function clearNoteBuffer(username: string, editorKey: string): void {
     localStorage.removeItem(bufferKey(username, editorKey))
   } catch {
     // 同上：清理失败无需打断流程
+    return
   }
 }
 
@@ -78,7 +80,8 @@ export function clearAllNoteBuffers(): void {
     }
     keys.forEach(key => localStorage.removeItem(key))
   } catch {
-    // 同上
+    // 同上：清理失败无需打断流程
+    return
   }
 }
 
@@ -120,6 +123,59 @@ export function decideRestore(local: NoteDraftBuffer | null, serverUpdateTime: n
   if (serverUpdateTime <= 0) return 'none'
   if (local.baseUpdateTime === serverUpdateTime) return 'local'
   return 'server'
+}
+
+/**
+ * 恢复时需要套回表单的字段（本地缓冲与服务端草稿都满足这个形状）
+ */
+export interface DraftContent {
+  noteId?: number
+  title?: string
+  content?: string
+  itemId?: number
+  tags?: string
+  isPublic?: string
+}
+
+/** 按来源取那一份内容（没有可取的返回 null） */
+function pickRestoreSource(
+  source: RestoreSource,
+  local: NoteDraftBuffer | null,
+  serverDraft: DraftContent | null
+): DraftContent | null {
+  if (source === 'local') return local
+  if (source === 'server') return serverDraft
+  return null
+}
+
+/**
+ * 选出来源那份内容，整理成表单字段。
+ * `source` 只决定「取哪一份」，**与编辑器是新增态还是编辑态无关**：编辑已有笔记时本地那份同样是
+ * 用户改过的最新内容，漏套回去就会出现「再进来还是笔记原文、也没有提示条」（本地缓冲里有改动，
+ * 表单却没被覆盖，于是内容与 baseline 相等，`restored` 也不会亮）。
+ *
+ * @param source        decideRestore 的结论
+ * @param local         本地缓冲（已通过身份校验）
+ * @param serverDraft   服务端草稿
+ * @param currentNoteId 当前正在编辑的笔记ID（草稿本身没带 noteId 时的兜底）
+ */
+export function restoreFormData(
+  source: RestoreSource,
+  local: NoteDraftBuffer | null,
+  serverDraft: DraftContent | null,
+  currentNoteId?: number
+): DraftContent | null {
+  const pick = pickRestoreSource(source, local, serverDraft)
+  if (!pick) return null
+  return {
+    // 编辑态 / 从草稿箱「继续写」：草稿带着来源笔记，冷启动 ?draftId= 才能继续编辑同一篇而不是新建
+    noteId: pick.noteId ?? currentNoteId,
+    title: pick.title,
+    content: pick.content,
+    itemId: pick.itemId,
+    tags: pick.tags,
+    isPublic: pick.isPublic || '0'
+  }
 }
 
 /**

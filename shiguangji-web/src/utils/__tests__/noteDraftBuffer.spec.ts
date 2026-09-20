@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   decideRestore,
+  restoreFormData,
   applyPushResult,
   bufferMatchesIdentity,
   editorKeyOf,
@@ -46,6 +47,41 @@ describe('decideRestore', () => {
 
   it('服务端没有草稿且本地没有未推送改动时不恢复（避免复活别处已删除的草稿）', () => {
     expect(decideRestore(buffer({ dirty: false }), 0)).toBe('none')
+  })
+})
+
+/** 恢复来源定了之后，套回表单的到底是哪一份内容 */
+describe('restoreFormData', () => {
+  it('编辑已有笔记、来源是本地时必须把本地正文套回表单（不能只给新增态套）', () => {
+    const local = buffer({ noteId: 42, title: '改过的标题', content: '改过的正文', tags: 'a', isPublic: '1', dirty: true })
+    expect(restoreFormData('local', local, null, 42)).toEqual({
+      noteId: 42,
+      title: '改过的标题',
+      content: '改过的正文',
+      itemId: undefined,
+      tags: 'a',
+      isPublic: '1'
+    })
+  })
+
+  it('来源是服务端时用服务端草稿，草稿没带 noteId 时回落到当前笔记', () => {
+    expect(restoreFormData('server', null, { content: '服务端的正文' }, 42)).toEqual({
+      noteId: 42,
+      title: undefined,
+      content: '服务端的正文',
+      itemId: undefined,
+      tags: undefined,
+      isPublic: '0'
+    })
+  })
+
+  it('新增态/继续写：缓冲里带着 noteId 时以它为准（那是草稿的来源笔记）', () => {
+    expect(restoreFormData('local', buffer({ noteId: 42, dirty: true }), null, undefined)?.noteId).toBe(42)
+  })
+
+  it('没有可恢复的内容时不套（source=none，或来源是本地但没有本地缓冲）', () => {
+    expect(restoreFormData('none', buffer({ dirty: true }), null, 42)).toBeNull()
+    expect(restoreFormData('local', null, null, 42)).toBeNull()
   })
 })
 

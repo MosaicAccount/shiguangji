@@ -79,6 +79,7 @@ import {
   clearNoteBuffer,
   bufferMatchesIdentity,
   decideRestore,
+  restoreFormData,
   applyPushResult,
   type NoteDraftBuffer
 } from '@/utils/noteDraftBuffer'
@@ -190,18 +191,14 @@ async function initEditor(): Promise<void> {
   const serverUpdateTime = parseServerTime(serverDraft?.updateTime)
 
   const source = decideRestore(local, serverUpdateTime)
+  // 来源那份内容一律套回表单：编辑已有笔记时本地那份同样是用户改过的最新内容，
+  // 只给新增态套的话会出现「再进来还是笔记原文、也没有提示条」（见 restoreFormData 注释）
+  const restoredForm = restoreFormData(source, local, serverDraft, form.noteId ?? entryNoteId)
+  if (restoredForm) {
+    applyForm(restoredForm)
+  }
+
   if (source === 'local' && local) {
-    if (!entryNoteId) {
-      // 新增态 / 继续写草稿：本地那份就是完整表单（含草稿可能带着的 noteId）
-      applyForm({
-        noteId: local.noteId,
-        title: local.title,
-        content: local.content,
-        itemId: local.itemId,
-        tags: local.tags,
-        isPublic: local.isPublic || '0'
-      })
-    }
     draftId = local.draftId ?? serverDraft?.draftId
     baseUpdateTime = local.baseUpdateTime
     dirty = local.dirty
@@ -212,15 +209,6 @@ async function initEditor(): Promise<void> {
       syncState.value = 'synced'
     }
   } else if (source === 'server' && serverDraft) {
-    applyForm({
-      // 编辑态草稿带着来源笔记：冷启动 /note/edit?draftId= 才能继续编辑同一篇，而不是新建一篇
-      noteId: serverDraft.noteId ?? form.noteId,
-      title: serverDraft.title,
-      content: serverDraft.content,
-      itemId: serverDraft.itemId,
-      tags: serverDraft.tags,
-      isPublic: serverDraft.isPublic || '0'
-    })
     draftId = serverDraft.draftId
     baseUpdateTime = serverUpdateTime
     dirty = false
