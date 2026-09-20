@@ -67,7 +67,7 @@ import MarkdownEditor from '@/components/MarkdownEditor/index.vue'
 import ItemSelect from '@/components/front/ItemSelect.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import { getFrontNote, addFrontNote, updateFrontNote } from '@/api/front/note'
-import { getNoteDraft, getNoteDraftByNoteId, saveNoteDraft, delNoteDraft } from '@/api/front/noteDraft'
+import { getNoteDraft, getNoteDraftByNoteId, getBlankNoteDraft, saveNoteDraft, delNoteDraft } from '@/api/front/noteDraft'
 import type { SgjNote } from '@/types/api/business/note'
 import type { SgjNoteDraft, NoteDraftPayload } from '@/types/api/front/noteDraft'
 import { getToken } from '@/utils/auth'
@@ -250,7 +250,11 @@ async function loadServerDraft(local: NoteDraftBuffer | null): Promise<SgjNoteDr
       return (await getNoteDraftByNoteId(entryNoteId)).data || null
     }
     const targetId = entryDraftId || local?.draftId
-    if (!targetId) return null
+    if (!targetId) {
+      // 本机没有 draftId（换设备 / 清过缓存）时按身份把那份空白草稿取回来：
+      // 空白草稿每人只有一份，不先取回来就写，第二篇会把第一篇未写完的内容静默覆盖掉
+      return (await getBlankNoteDraft()).data || null
+    }
     return (await getNoteDraft(targetId)).data || null
   } catch {
     // 草稿已被删（另一台设备清理 / 发布过）时当作服务端没有草稿

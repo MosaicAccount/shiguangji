@@ -21,10 +21,19 @@ export function getNoteDraftByNoteId(noteId: number): Promise<AjaxResult<SgjNote
   })
 }
 
-// 按 id 取单条草稿（含正文）：草稿箱「继续写」与冷启动 /note/edit?draftId=
+// 草稿箱「继续写」/ 冷启动 /note/edit?draftId= 按 id 取单条（含正文）
 export function getNoteDraft(draftId: number): Promise<AjaxResult<SgjNoteDraft>> {
   return request({
     url: '/app/note/draft/' + draftId,
+    method: 'get'
+  })
+}
+
+// 本人的空白草稿（每人一份，含正文）：进「写笔记」时按身份取回上一份没写完的内容
+// 本机 localStorage 里没有 draftId 时（换设备 / 清过缓存）就靠它，否则写第二篇会把第一篇静默覆盖
+export function getBlankNoteDraft(): Promise<AjaxResult<SgjNoteDraft>> {
+  return request({
+    url: '/app/note/draft/blank',
     method: 'get'
   })
 }
