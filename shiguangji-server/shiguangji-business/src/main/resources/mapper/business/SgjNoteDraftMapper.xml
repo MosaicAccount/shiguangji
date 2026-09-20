@@ -86,6 +86,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </delete>
 
+    <!-- 保存成功时的兜底清理：前端手里没有 draftId（换设备、清过本地缓冲）也要清掉那份旧草稿，
+         否则草稿箱会一直挂着一条已经保存过的草稿 -->
+    <delete id="deleteDraftByNoteId">
+        delete from sgj_note_draft where create_by = #{createBy} and note_id = ifnull(#{noteId}, 0)
+    </delete>
+
     <!-- 先于条目删除执行：sgj_note 行还在时才能按 item_id 反查到 note_id -->
     <delete id="deleteByItemIds" parameterType="Long">
         delete from sgj_note_draft where note_id in

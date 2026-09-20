@@ -271,7 +271,7 @@ class AppNoteDraftSmokeTest
     }
 
     // ------------------------------------------------------------------
-    // 6. 每个写作对象最多一行（draft_scope 唯一键）
+    // 6. 每个写作对象最多一行（空白草稿每人一份 + 每篇笔记一份）
     // ------------------------------------------------------------------
 
     @Test
@@ -362,9 +362,24 @@ class AppNoteDraftSmokeTest
         assertThat(added.path("code").asInt()).isEqualTo(200);
         assertThat(draftRowExists(draftId)).as("保存成功后草稿应消失").isFalse();
 
-        // 回归：不带 draftId 的保存行为完全一样
+        // 回归：不带 draftId 的保存行为完全一样（笔记照常写入）
         JsonNode plain = publish(adminToken, noteBody(null, MARK + "-publish 无草稿", null));
         assertThat(plain.path("code").asInt()).isEqualTo(200);
+
+        // 加固：不带 draftId 时也要按「写作对象身份」清掉那份草稿
+        // （换设备 / 清过本地缓冲时前端手里没有 draftId，否则草稿箱会一直挂着一条已经保存过的草稿）
+        long orphanDraftId = saveDraft(adminToken, draftBody(null, null, MARK + "-publish 兜底", "qat35 兜底正文"));
+        JsonNode hardened = publish(adminToken, noteBody(null, MARK + "-publish 兜底", null));
+        assertThat(hardened.path("code").asInt()).isEqualTo(200);
+        assertThat(draftRowExists(orphanDraftId)).as("不带 draftId 也要按身份清掉那份草稿").isFalse();
+
+        // 别的写作对象不受影响：另开一篇笔记的编辑态草稿，保存新笔记时不得被清掉
+        long otherNote = createNote(MARK + "-publish 另一篇");
+        long otherEditDraft = saveDraft(adminToken, draftBody(null, otherNote, MARK + "-publish 另一篇编辑态", "qat35 另一篇正文"));
+        JsonNode otherTarget = publish(adminToken, noteBody(null, MARK + "-publish 再存一篇", null));
+        assertThat(otherTarget.path("code").asInt()).isEqualTo(200);
+        assertThat(draftRowExists(otherEditDraft)).as("别的写作对象的草稿不得被删").isTrue();
+        jdbcTemplate.update("delete from sgj_note_draft where draft_id = ?", otherEditDraft);
 
         // 编辑：带自己的 draftId → 同样消失
         long noteId = findNoteId(MARK + "-publish 无草稿");
@@ -439,7 +454,7 @@ class AppNoteDraftSmokeTest
         return body;
     }
 
-    /** 带关联条目的新建态草稿（draft_scope 按条目区分，不带 draftId 首次写入） */
+    /** 带关联条目的空白草稿（item_id 只是数据，不参与身份） */
     private Map<String, Object> draftBodyWithItem(long itemId, String title, String content)
     {
         Map<String, Object> body = draftBody(null, null, title, content);

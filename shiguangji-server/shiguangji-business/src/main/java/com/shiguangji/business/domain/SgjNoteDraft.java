@@ -147,4 +147,5 @@ public class SgjNoteDraft extends BaseEntity
     {
         this.excerpt = excerpt;
     }
+
 }
