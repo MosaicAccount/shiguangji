@@ -6,22 +6,6 @@
       <span class="sub">只放新笔记的草稿</span>
     </div>
 
-    <!-- 配额：不到临界值只留一行文字，一条常年停在 15% 的进度条只是占地方 -->
-    <div v-if="!loading && !loadError && list.length" class="quota">
-      <span
-        v-if="list.length >= NEAR"
-        class="bar"
-        :class="{ 'is-full': list.length >= CAP }"
-        role="progressbar"
-        aria-label="草稿配额"
-        :aria-valuenow="list.length"
-        aria-valuemin="0"
-        :aria-valuemax="CAP"
-      ><i :style="{ width: Math.round(list.length / CAP * 100) + '%' }"></i></span>
-      <span v-if="list.length >= CAP" class="capnote">已满 {{ list.length }} / {{ CAP }} 份 · 先清理几份，再新建草稿</span>
-      <span v-else class="quota-text">已用 {{ list.length }} / {{ CAP }} 份</span>
-    </div>
-
     <ul class="dlist" :aria-busy="loading">
       <template v-if="loading">
         <li v-for="i in 3" :key="i" class="draft sk" aria-hidden="true">
@@ -86,10 +70,6 @@ import type { SgjNoteDraft } from '@/types/api/front/noteDraft'
 
 const { proxy } = getCurrentInstance() as { proxy: any }
 const router = useRouter()
-
-/** 上限与「接近上限」阈值，与后端 BOX_MAX_DRAFTS / 设计图一致 */
-const CAP = 20
-const NEAR = 16
 
 const list = ref<SgjNoteDraft[]>([])
 const loading = ref(false)
@@ -189,41 +169,6 @@ loadData()
     color: var(--sgj-text-2);
     font-size: 13px;
     padding-bottom: 3px;
-  }
-}
-
-.quota {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  min-height: 20px;
-  margin: 14px 0 18px;
-  font-size: 12.5px;
-  /* 元信息文字用 --sgj-text-2：--sgj-text-4 在卡片上对比度只有 2.2:1，12px 读不出来 */
-  color: var(--sgj-text-2);
-
-  .bar {
-    flex: 0 0 148px;
-    height: 6px;
-    border-radius: 999px;
-    background: var(--sgj-bg-deep);
-    overflow: hidden;
-
-    i {
-      display: block;
-      height: 100%;
-      background: var(--sgj-amber);
-    }
-
-    &.is-full i {
-      background: var(--sgj-danger);
-    }
-  }
-
-  .capnote {
-    color: var(--sgj-danger);
-    font-weight: 600;
   }
 }
 
