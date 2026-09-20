@@ -227,8 +227,14 @@ async function initEditor(): Promise<void> {
     syncState.value = 'pending'
   }
 
+  // 从草稿箱「继续写」进来的（地址栏带着 draftId）：用户点开的就是这份草稿，不是「从笔记里恢复出来的」——
+  // 以它本身为基准：不弹「已恢复未保存的草稿」，也不会因为「和打开时的快照不同」而误拦离开
+  if (entryDraftId) {
+    baseline = snapshot()
+  }
+
   // 恢复了草稿就提示——不提示的话用户会以为这些内容已经正式保存了；
-  // 内容与打开时的快照一致时（比如刷新后本地与服务端等价）不提示，避免无意义的状态条
+  // 内容与打开时的快照一致时（比如刷新后本地与服务端等价、或是从草稿箱进来的）不提示，避免无意义的状态条
   restored.value = source !== 'none' && snapshot() !== baseline
   initializing.value = false
   startTimers()
