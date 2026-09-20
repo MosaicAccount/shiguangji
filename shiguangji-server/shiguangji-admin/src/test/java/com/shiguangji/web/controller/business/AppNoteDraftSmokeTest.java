@@ -52,7 +52,7 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>boxExcerptFallsBackToContent           —— 无标题草稿用正文首行兜底（摘要复用笔记列表那套剥离逻辑）</li>
  *   <li>draftsAreVisibleToOwnerOnly            —— 他人（含管理员）既看不到也改不了 / 删不了别人的草稿</li>
  *   <li>homeStatsIgnoreDrafts                  —— 首页笔记总数与最近笔记不受草稿影响（独立表的直接收益）</li>
- *   <li>oneRowPerWritingTarget                 —— 新建态按「本人 + 关联条目」收敛为一行；换条目 / 不选条目各一行</li>
+ *   <li>oneRowPerWritingTarget                 —— 空白草稿每人一份（换条目也只是更新同一行，库里存 0）；编辑态每篇笔记一份</li>
  *   <li>editDraftUpsertByNoteIdAndAliveCheck   —— 不带 draftId 的编辑态写入按「本人 + 笔记」收敛为一行；
  *       笔记软删 / 彻底删除后再写入被拒（存活校验）</li>
  * </ol>
@@ -276,17 +276,24 @@ class AppNoteDraftSmokeTest
     {
         deleteMarkedDrafts();
 
-        // 新建态：同一个关联条目反复首推（不带 draftId）→ 收敛为一行
-        long itemADraft = saveDraft(adminToken, draftBodyWithItem(ITEM_A, MARK + "-scope 条目A", "qat35 scope A"));
-        long itemAAgain = saveDraft(adminToken, draftBodyWithItem(ITEM_A, MARK + "-scope 条目A 再推", "qat35 scope A2"));
-        assertThat(itemAAgain).as("同一（本人 + 条目）第二次首推应更新同一行").isEqualTo(itemADraft);
+        // 空白草稿每人一份：连推两次（第二次还换了关联条目）仍只有一行——item_id 只是数据，不参与身份
+        long blank = saveDraft(adminToken, draftBodyWithItem(ITEM_A, MARK + "-blank 第一篇", "qat35 blank 1"));
+        long blankAgain = saveDraft(adminToken, draftBodyWithItem(ITEM_B, MARK + "-blank 第二篇", "qat35 blank 2"));
+        assertThat(blankAgain).as("空白草稿只有一份：第二次首推应更新同一行").isEqualTo(blank);
+        assertThat(countMarkedDrafts()).as("空白草稿只有一行").isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "select note_id from sgj_note_draft where draft_id = ?", Long.class, blank))
+                .as("空白草稿在库里存哨兵 0（对外仍是 null）").isEqualTo(0L);
 
-        // 换一个条目 → 另一行；都不选条目 → 又是另一行
-        long itemBDraft = saveDraft(adminToken, draftBodyWithItem(ITEM_B, MARK + "-scope 条目B", "qat35 scope B"));
-        long noItemDraft = saveDraft(adminToken, draftBody(null, null, MARK + "-scope 无条目", "qat35 scope 无条目"));
-        assertThat(itemBDraft).isNotEqualTo(itemADraft);
-        assertThat(noItemDraft).isNotEqualTo(itemADraft);
-        assertThat(countMarkedDrafts()).as("三个不同的写作对象各一行").isEqualTo(3);
+        // 编辑态：同一篇笔记一份，不同笔记各一份
+        long noteA = createNote(MARK + "-blank 笔记A");
+        long noteB = createNote(MARK + "-blank 笔记B");
+        long editA = saveDraft(adminToken, draftBody(null, noteA, MARK + "-blank 编辑A", "qat35 编辑 A"));
+        long editAAgain = saveDraft(adminToken, draftBody(null, noteA, MARK + "-blank 编辑A 再推", "qat35 编辑 A2"));
+        long editB = saveDraft(adminToken, draftBody(null, noteB, MARK + "-blank 编辑B", "qat35 编辑 B"));
+        assertThat(editAAgain).as("同一篇笔记第二次首推应更新同一行").isEqualTo(editA);
+        assertThat(editB).as("不同笔记各一份").isNotEqualTo(editA);
+        assertThat(countMarkedDrafts()).as("空白 1 行 + 两篇笔记各一行").isEqualTo(3);
 
         deleteMarkedDrafts();
     }

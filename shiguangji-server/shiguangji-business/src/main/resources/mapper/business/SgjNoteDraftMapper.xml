@@ -42,11 +42,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by d.update_time desc, d.draft_id desc
     </select>
 
-    <!-- 按「写作对象」取本人的那份草稿：note_id 不为空时 scope 就是 note_id；
-         note_id 为空时 scope 是关联条目的负数（没选条目为 -1），见建表脚本里的 draft_scope -->
-    <select id="selectDraftByScope" resultMap="SgjNoteDraftResult">
+    <!-- 按「写作对象」取本人的那份草稿（取最新一行）：身份就是 note_id，null 即 0（空白草稿） -->
+    <select id="selectDraftByNoteId" resultMap="SgjNoteDraftResult">
         <include refid="selectDraftVo"/>
-        where d.create_by = #{createBy} and d.draft_scope = #{scope}
+        where d.create_by = #{createBy} and d.note_id = ifnull(#{noteId}, 0)
         order by d.update_time desc, d.draft_id desc
         limit 1
     </select>
@@ -60,14 +59,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         insert into sgj_note_draft
         (note_id, item_id, title, content, tags, is_public, create_by, create_time, update_time)
         values
-        (#{noteId}, #{itemId}, #{title}, #{content}, #{tags}, #{isPublic}, #{createBy}, sysdate(), sysdate())
+        (ifnull(#{noteId}, 0), ifnull(#{itemId}, 0), #{title}, #{content}, #{tags}, #{isPublic}, #{createBy}, sysdate(), sysdate())
     </insert>
 
     <!-- update_time 由数据库时钟生成：客户端存进 baseUpdateTime 的必须是服务端的钟（JVM 与 DB 可能是两个钟） -->
     <update id="updateSgjNoteDraft" parameterType="SgjNoteDraft">
         update sgj_note_draft
-        set note_id = #{noteId},
-            item_id = #{itemId},
+        set note_id = ifnull(#{noteId}, 0),
+            item_id = ifnull(#{itemId}, 0),
             title = #{title},
             content = #{content},
             tags = #{tags},

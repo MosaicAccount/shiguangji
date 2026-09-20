@@ -46,34 +46,35 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService
             // 摘要复用笔记列表同一套剥离逻辑（标题为空时它就是展示行的内容）
             draft.setExcerpt(SgjNoteServiceImpl.buildExcerpt(draft.getExcerptSrc(), draft.getTitle()));
             draft.setExcerptSrc(null);
+            clearBlankNoteId(draft);
         }
         return list;
+    }
+
+    /**
+     * 空白草稿在库里用 0 表示（唯一键要能管住它），对外一律当作 null：
+     * 前端只认「noteId 为空 = 新建态」，不必知道 0 这个哨兵存在
+     */
+    private void clearBlankNoteId(SgjNoteDraft draft)
+    {
+        if (draft != null && draft.getNoteId() != null && draft.getNoteId() == 0L)
+        {
+            draft.setNoteId(null);
+        }
     }
 
     @Override
     public SgjNoteDraft selectByNoteId(String createBy, Long noteId)
     {
-        // 编辑态草稿的身份就是笔记ID（draft_scope = note_id）
-        return sgjNoteDraftMapper.selectDraftByScope(createBy, noteId);
-    }
-
-    /**
-     * 草稿身份（写作对象）：编辑已有笔记是那篇笔记（正数），新建笔记是关联条目（负数，没选条目为 -1）。
-     * 与建表脚本里 draft_scope 的生成表达式一致——两边算得不一样就会跟唯一键对不上
-     */
-    private long scopeOf(SgjNoteDraft draft)
-    {
-        if (draft.getNoteId() != null)
-        {
-            return draft.getNoteId();
-        }
-        return -(draft.getItemId() == null ? 0L : draft.getItemId()) - 1;
+        return sgjNoteDraftMapper.selectDraftByNoteId(createBy, noteId);
     }
 
     @Override
     public SgjNoteDraft selectOwnedDraft(Long draftId, String createBy)
     {
-        return requireOwned(draftId, createBy);
+        SgjNoteDraft draft = requireOwned(draftId, createBy);
+        clearBlankNoteId(draft);
+        return draft;
     }
 
     @Override
@@ -98,9 +99,9 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService
         }
         else
         {
-            // 每个写作对象最多一份：先按「本人 + 身份」定位，避免两台设备各建一行；
-            // 新建态同样走这里（note_id 为空时身份是关联条目的负数），不能只对编辑态做
-            SgjNoteDraft existing = sgjNoteDraftMapper.selectDraftByScope(createBy, scopeOf(draft));
+            // 每个写作对象最多一份：先按「本人 + note_id」定位（note_id 为空即 0 = 空白草稿，每人一份），
+            // 避免两台设备各建一行
+            SgjNoteDraft existing = sgjNoteDraftMapper.selectDraftByNoteId(createBy, draft.getNoteId());
             if (existing != null)
             {
                 draftId = existing.getDraftId();
@@ -117,8 +118,8 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService
             }
             catch (DuplicateKeyException e)
             {
-                // 并发兜底：两台设备同时首推同一个写作对象时撞上 uk_sgj_note_draft_owner_scope，转更新
-                SgjNoteDraft existing = sgjNoteDraftMapper.selectDraftByScope(createBy, scopeOf(draft));
+                // 并发兜底：两台设备同时首推同一个写作对象时撞上 uk_sgj_note_draft_owner_note，转更新
+                SgjNoteDraft existing = sgjNoteDraftMapper.selectDraftByNoteId(createBy, draft.getNoteId());
                 if (existing == null)
                 {
                     throw e;

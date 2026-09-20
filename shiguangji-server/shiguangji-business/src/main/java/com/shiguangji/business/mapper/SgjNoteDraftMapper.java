@@ -27,13 +27,13 @@ public interface SgjNoteDraftMapper
     public List<SgjNoteDraft> selectBoxDraftList(String createBy);
 
     /**
-     * 按「写作对象」查询本人的那份草稿（取最新一行）
+     * 按「写作对象」取本人的那份草稿（取最新一行）：身份就是 note_id，传 null 即 0（空白草稿）
      *
      * @param createBy 当前登录用户
-     * @param scope    写作对象身份：编辑态 = 笔记ID；新建态 = 其关联条目的负数（未选条目 = -1）
+     * @param noteId   编辑来源笔记ID；null / 0 = 空白草稿（每人一份）
      * @return 草稿（含完整正文）；无则返回 null
      */
-    public SgjNoteDraft selectDraftByScope(@Param("createBy") String createBy, @Param("scope") long scope);
+    public SgjNoteDraft selectDraftByNoteId(@Param("createBy") String createBy, @Param("noteId") Long noteId);
 
     /**
      * 按草稿ID查询（含完整正文）
