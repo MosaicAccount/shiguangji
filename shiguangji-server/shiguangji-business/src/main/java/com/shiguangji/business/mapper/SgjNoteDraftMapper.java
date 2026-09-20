@@ -19,7 +19,7 @@ public interface SgjNoteDraftMapper
      * 查询草稿箱列表（当前用户的新笔记草稿，note_id 为空），按更新时间倒序
      *
      * 只取摘要所需的正文前缀（excerpt_src），不取全文——列表页免登录即可打开，
-     * 入口条每次都要拉这份列表，不能把 20 份 × 十万字的正文带上
+     * 入口条每次都要拉这份列表，不能把每份十万字的正文带上
      *
      * @param createBy 当前登录用户
      * @return 草稿集合（含 itemName 与 excerptSrc，content 为空）
@@ -42,14 +42,6 @@ public interface SgjNoteDraftMapper
      * @return 草稿；不存在返回 null
      */
     public SgjNoteDraft selectDraftById(Long draftId);
-
-    /**
-     * 新笔记草稿份数（供 20 份上限判断；编辑态草稿不计入）
-     *
-     * @param createBy 当前登录用户
-     * @return 份数
-     */
-    public int countBoxDrafts(String createBy);
 
     /**
      * 新增草稿

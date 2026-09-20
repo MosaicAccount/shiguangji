@@ -25,9 +25,6 @@ import com.shiguangji.common.utils.StringUtils;
 @Service
 public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService
 {
-    /** 新笔记草稿份数上限（issue #35：超了不让新建，提示先清理） */
-    private static final int BOX_MAX_DRAFTS = 20;
-
     /** 是否公开：私密（默认值） */
     private static final String IS_PUBLIC_NO = "0";
 
@@ -94,10 +91,6 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService
                 draftId = existing.getDraftId();
                 insert = false;
             }
-        }
-        else if (sgjNoteDraftMapper.countBoxDrafts(createBy) >= BOX_MAX_DRAFTS)
-        {
-            throw new ServiceException("草稿数量已达上限（" + BOX_MAX_DRAFTS + " 份），请先清理后再新建");
         }
 
         if (insert)

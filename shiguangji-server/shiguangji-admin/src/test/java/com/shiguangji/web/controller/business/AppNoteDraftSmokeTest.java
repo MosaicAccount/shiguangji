@@ -52,7 +52,6 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>boxExcerptFallsBackToContent           —— 无标题草稿用正文首行兜底（摘要复用笔记列表那套剥离逻辑）</li>
  *   <li>draftsAreVisibleToOwnerOnly            —— 他人（含管理员）既看不到也改不了 / 删不了别人的草稿</li>
  *   <li>homeStatsIgnoreDrafts                  —— 首页笔记总数与最近笔记不受草稿影响（独立表的直接收益）</li>
- *   <li>boxDraftLimitIsTwenty                  —— 第 21 份新笔记草稿被拒并提示先清理；编辑态草稿不计入</li>
  *   <li>editDraftUpsertByNoteIdAndAliveCheck   —— 不带 draftId 的编辑态写入按「本人 + 笔记」收敛为一行；
  *       笔记软删 / 彻底删除后再写入被拒（存活校验）</li>
  * </ol>
@@ -264,33 +263,6 @@ class AppNoteDraftSmokeTest
     }
 
     // ------------------------------------------------------------------
-    // 6. 新笔记草稿上限 20 份
-    // ------------------------------------------------------------------
-
-    @Test
-    void boxDraftLimitIsTwenty() throws Exception
-    {
-        deleteMarkedDrafts();
-        for (int i = 1; i <= 20; i++)
-        {
-            saveDraft(adminToken, draftBody(null, null, MARK + "-limit " + i, "qat35 limit " + i));
-        }
-        // 第 21 份被拒并提示先清理
-        mockMvc.perform(put("/app/note/draft").header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(draftBody(null, null, MARK + "-limit 21", "qat35 limit 21"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(500))
-                .andExpect(jsonPath("$.msg").value(containsString("上限")));
-        assertThat(countBoxDrafts(PUBLIC_OWNER)).isEqualTo(20);
-
-        // 编辑态草稿不受上限约束：有 noteId 时即使草稿箱满了也能写
-        long editDraftId = saveDraft(adminToken, draftBody(null, adminNoteId(), MARK + "-limit 编辑态", "qat35 limit 编辑态"));
-        assertThat(editDraftId).isPositive();
-        deleteMarkedDrafts();
-    }
-
-    // ------------------------------------------------------------------
     // 7. 编辑态草稿：按「本人 + 笔记」收敛 + 笔记存活校验
     // ------------------------------------------------------------------
 
@@ -443,12 +415,6 @@ class AppNoteDraftSmokeTest
         return bodyOf(result).path("data").get(0).path("noteId").asLong();
     }
 
-    /** 夹具笔记（草稿上限用例里作为「编辑态草稿不受限」的载体），用完即删 */
-    private long adminNoteId() throws Exception
-    {
-        return createNote(MARK + "-limit 载体笔记");
-    }
-
     private static JsonNode findById(JsonNode array, long draftId)
     {
         for (JsonNode row : array)
@@ -465,12 +431,6 @@ class AppNoteDraftSmokeTest
     {
         return jdbcTemplate.queryForObject(
                 "select count(*) from sgj_note_draft where draft_id = ?", Integer.class, draftId) > 0;
-    }
-
-    private int countBoxDrafts(String createBy)
-    {
-        return jdbcTemplate.queryForObject(
-                "select count(*) from sgj_note_draft where create_by = ? and note_id is null", Integer.class, createBy);
     }
 
     private int countDraftsById(long draftId)

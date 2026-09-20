@@ -53,10 +53,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where d.draft_id = #{draftId}
     </select>
 
-    <select id="countBoxDrafts" parameterType="String" resultType="int">
-        select count(*) from sgj_note_draft where create_by = #{createBy} and note_id is null
-    </select>
-
     <insert id="insertSgjNoteDraft" parameterType="SgjNoteDraft" useGeneratedKeys="true" keyProperty="draftId">
         insert into sgj_note_draft
         (note_id, item_id, title, content, tags, is_public, create_by, create_time, update_time)
