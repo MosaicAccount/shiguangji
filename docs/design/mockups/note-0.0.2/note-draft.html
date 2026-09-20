@@ -211,7 +211,7 @@ body[data-vp=mobile] .head h1{font-size:22px}
       <a class="backlink" href="note-list.html">← 返回笔记列表</a>
       <div class="head">
         <h1>草稿箱</h1>
-        <span class="sub">只放新笔记的草稿<span class="an" data-n="1" aria-hidden="true"></span></span>
+        <span class="sub">所有没保存完的改动，每条一份<span class="an" data-n="1" aria-hidden="true"></span></span>
       </div>
 
       <ul class="dlist" id="dlist"></ul>
@@ -237,12 +237,12 @@ body[data-vp=mobile] .head h1{font-size:22px}
 <section class="legend">
   <h2>本屏标注</h2>
   <ol>
-    <li><span class="new">新增页</span>：<code>/note/draft</code>，仅登录可进。访客不会出现在这一屏——路由守卫直接跳登录页，所以这里<b>没有</b>访客态；入口只有笔记列表页的草稿入口条，前台导航不加项。这一屏<b>只放新笔记草稿</b>（<code>note_id</code> 为空），编辑已有笔记时没保存的改动<b>不进这里</b>，只在进那篇编辑页时静默恢复——这是本页最容易被误解的一点。</li>
+    <li><span class="new">新增页</span>：<code>/note/draft</code>，仅登录可进。访客不会出现在这一屏——路由守卫直接跳登录页，所以这里<b>没有</b>访客态；入口只有笔记列表页的草稿入口条，前台导航不加项。这一屏<b>放全部草稿</b>——新建笔记的与编辑已有笔记的都在里面，<b>每个写作对象一行</b>（编辑已有笔记时对象是那篇笔记，新建时对象是关联条目）；「继续写」按身份跳：编辑态回那篇编辑页（带「已恢复未保存的草稿」提示条），新建态按 <code>draftId</code> 继续写。</li>
     <li><span class="new">新增</span>：<b>标题为空时用正文首行兜底</b>（第 2 条草稿）。取的是与列表摘要<strong>同一套</strong>剥离逻辑（去 Markdown 标记、去图片、去 front-matter），后端直接给 <code>excerpt</code>，前端不另写一份；最多两行，超出裁掉。</li>
     <li><span class="new">新增</span>：<b>条目查不到就显示 <code>#id</code></b>（第 3 条草稿的 <code>🔗 #12</code>，条目已被删）。与笔记列表的做法一致，不做特殊提示。</li>
     <li><span class="new">新增</span>：<b>相对时间</b>（「3 分钟前」）走 <code>formatTime()</code>，但后端给的是 <code>yyyy-MM-dd HH:mm:ss</code>，必须先经解析函数转 epoch——直接喂进去会渲染成 <code>NaN月NaN日</code>（Safari 上 <code>new Date(str)</code> 直接是 Invalid Date）。</li>
     <li><span class="new">新增</span>：<b>硬删除 + 确认弹窗</b>。草稿不进回收站，避免出现第二个暂存区；所以这里<b>必须</b>拦一道（不可逆操作才值得确认）。弹窗写明删的是哪一份，焦点移入弹窗、关闭后回到触发它的那个「删除」按钮。</li>
-    <li><span class="new">新增</span>：<b>不做数量上限</b>，也没有配额行——草稿的出口只有「手动删」「保存成功后删」「笔记被删时一并删」；草稿箱只装新笔记草稿，编辑态草稿不入箱。列表为空时给出去写一篇的出口。</li>
+    <li><span class="new">新增</span>：<b>不做数量上限</b>，也没有配额行——草稿与写作对象一对一（每个对象一行，行数天然有界），出口只有「手动删」「保存成功后删」「笔记被删时一并删」。列表为空时给出去写一篇的出口。</li>
     <li><span class="new">补齐</span>：<b>加载中</b>与<b>加载失败</b>两个状态（原来只有 4 个状态）。加载用骨架屏并带 <code>aria-busy</code>；失败给「重新加载」，文案说清是网络/服务的问题，并提供另一条出路。</li>
     <li><span class="fix">修正</span>：<b>元信息文字从 <code>--sgj-text-4</code> 换成 <code>--sgj-text-2</code></b>。原来时间与条目名用的 <code>--sgj-text-4</code>（<code>#A4ADA9</code>）在卡片上只有 <b>2.2:1</b> 对比度，12px 文字远低于 4.5:1 的门槛，等于读不出来；换成 <code>--sgj-text-2</code> 后是亮色 6.8:1 / 暗色 9.6:1。<b>这个 token 在其它几屏也有同样问题</b>，建议单独做一次全组校准，本屏先不扩散。</li>
     <li><span class="fix">修正</span>：<b>移动端触控目标</b>。每行的「继续写 / 删除」在移动端补到 44px 高，主操作「继续写」占满剩余宽度；底部自留 76px 并带上 <code>env(safe-area-inset-bottom)</code>，不被固定标签栏或 home indicator 遮住。</li>

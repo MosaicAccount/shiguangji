@@ -55,7 +55,7 @@
 | 8 | 草稿存储 | **服务端独立表** `sgj_note_draft`（不混入 `sgj_note` 加标志位），现有六处查询一行不改 |
 | 9 | 草稿写入 | **本地缓冲 + 服务端同步**：停手 1s 写本地 `localStorage`，每 15s 与页面离开时推服务端 |
 | 10 | 冲突规则 | **时间戳只由服务端给**：本地缓冲存 `baseUpdateTime`（最近一次推送成功时服务端返回的 `updateTime`）+ `dirty` + 本地递增 `seq`，**不再存客户端 `savedAt`**。进编辑器时三态：`dirty` 为真 → 用本地并立即推送；`dirty` 为假且 `baseUpdateTime` 与服务端 `updateTime` 相等 → 两份等价；不等 → 用服务端。身份不一致的本地缓冲不采用（结论 26） |
-| 11 | 草稿箱边界 | 只装**新笔记草稿**（`note_id` 为空）；编辑已有笔记的未保存改动也存，但不入箱，进那篇编辑页时静默恢复 |
+| 11 | 草稿箱边界 | 装**全部**草稿：新建笔记草稿 + 编辑已有笔记的未保存改动，**每个写作对象一行**（编辑态是那篇笔记，新建态是关联条目，没选条目就是独立的那一份）；点「继续写」回到对应位置 |
 | 12 | 草稿可见范围 | **只本人可见**：按当前登录用户过滤，管理员不可读他人草稿；接口不加 `@Anonymous` |
 | 13 | 草稿箱入口 | 笔记列表页入口条（有草稿才显示，**数量取草稿列表长度**）+ 独立页 `/note/draft`；删除为**硬删除**；未登录访问 `/note/draft` **沿用现有路由守卫**（`isPathMatch` 是锚定正则，`/note` 匹配不到 `/note/draft`，会跳到 `/login?redirect=/note/draft`），不另做「提示后回列表页」 |
 | 14 | 草稿数量 | **不设数量上限**：过去那个 20 份上限只挡得住「身份丢失（退出登录 / 换设备 / 清浏览器数据）后缓慢增长」的行数，却会在满额后把用户**当下正在写的内容**挡在本地（服务端拒绝，前端只会显示「同步失败（可重试）」，用户在编辑页也没有出口）；草稿的出口只有「手动删」「保存成功后删」「笔记被删时一并删」，**不做**自动过期清理任务。**空表单不建草稿的判据只看 `title` 与 `content`**（两者都空即不建；此时只改了条目 / 标签 / 公开状态就离开，元数据不保留，是这一版接受的代价——离开确认文案须随之调整，结论 20 下方的 §2.9 表）。**草稿正文复用 `CONTENT_MAX_LENGTH`（100000）**，编辑器内提前拦截并明确提示，避免「自动保存被静默拒绝、状态条永远停在『仅本地待同步』」这种哑失败 |
@@ -136,7 +136,7 @@ and n.title like concat('%', #{keyword}, '%') or n.content like concat('%', #{ke
 -- sql/update/20260917_note_draft.sql（同时并入 init_business.sql 供新库使用）
 create table sgj_note_draft (
   draft_id    bigint(20)   not null auto_increment comment '草稿ID',
-  note_id     bigint(20)   default null comment '编辑来源笔记ID；空=新笔记草稿（只有这类进草稿箱）',
+  note_id     bigint(20)   default null comment '编辑来源笔记ID；空=新建笔记草稿',
   item_id     bigint(20)   default null comment '关联条目ID，空为独立笔记',
   title       varchar(200) default '' comment '标题（草稿可为空）',
   content     longtext     comment '正文（Markdown）',
@@ -146,9 +146,13 @@ create table sgj_note_draft (
   create_time datetime     comment '创建时间',
   update_time datetime     comment '更新时间',
   primary key (draft_id),
-  -- 每篇笔记最多一份编辑态草稿。note_id 为空时 NULL 在唯一索引里互不相等，
-  -- 所以「新笔记草稿不限量」是这个约束自带的语义，不是特例（见 §2.5 的 upsert 规则）
-  unique key uk_sgj_note_draft_owner_note (create_by, note_id),
+  -- 草稿身份（写作对象）做成**非空**生成列，唯一键因此对两类草稿都生效：
+  -- 编辑态 = 笔记ID（正数）；新建态 = 关联条目的负数（没选条目 = -1）
+  -- 不能直接拿 (create_by, note_id) 当唯一键：MySQL 唯一索引把 NULL 视为互不相等，
+  -- 那样只拦得住编辑态，新建态可以无限增长（见 §2.5 的 upsert 规则）
+  draft_scope bigint(20) generated always as
+                (if(note_id is null, -ifnull(item_id, 0) - 1, note_id)) stored,
+  unique key uk_sgj_note_draft_owner_scope (create_by, draft_scope),
   key idx_sgj_note_draft_owner (create_by),
   key idx_sgj_note_draft_note (note_id)
 ) engine=innodb auto_increment=1 comment = '拾光记-笔记草稿表';
@@ -160,7 +164,7 @@ create table sgj_note_draft (
 2. **不加 `item_id` 外键**：`sgj_note` 有 `fk_sgj_note_item … on delete cascade`。草稿是临时数据，条目物理删除时残留的 `item_id` 由前端回退为 `#id` 展示（与现有 `itemName` 缺失的处理一致），不必为此让删条目连带删草稿。同理**不加 `del_flag`**：草稿的删除是硬删除，不进回收站（避免出现第二个暂存区）。
 3. **`note_id` 也不加外键**：`on delete cascade` 覆盖得了物理删除，但覆盖不了软删（那是 UPDATE），所以仍然必须靠结论 40 的存活校验兜底——两个机制职责重叠却谁都不完整。改为**显式清理**（结论 25 的三处清理点，共用一个 `deleteByNoteIds`）：少一处隐式级联，多一处能读的代码，代价是清理点从一处变三处，必须一起改。
 
-索引方面：`unique key uk_sgj_note_draft_owner_note (create_by, note_id)` 是**并发兜底**，写入路径仍是 §2.5 的「先查后写」——但要 catch 唯一键冲突后转为更新，否则两台设备同时推同一篇会产生第二行。`create_by` 单列索引与 `note_id` 单列索引都保留：前者支撑草稿箱列表，后者供按笔记反查。
+索引方面：`unique key uk_sgj_note_draft_owner_scope (create_by, draft_scope)` 是**并发兜底**（同一写作对象只允许一行），写入路径仍是 §2.5 的「先查后写」——但要 catch 唯一键冲突后转为更新，否则两台设备同时推同一个对象会产生第二行（新建态也走这条，所以兜底查询必须按 `draft_scope`，不能按 `note_id`——后者查不到 `note_id is null` 的行）。`create_by` 单列索引与 `note_id` 单列索引都保留：前者支撑列表，后者供按笔记反查（清理路径）。
 
 ### 2.5 接口
 
@@ -170,7 +174,7 @@ create table sgj_note_draft (
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/app/note/draft/list` | 无参：当前用户的**新笔记草稿**列表（`note_id is null`），供草稿箱。**只回 `excerpt`，不回 `content`**；`itemName` 左联 `sgj_item` 带出（查不到回退 `#id`，与笔记列表一致） |
+| GET | `/app/note/draft/list` | 无参：当前用户的**全部**草稿（新建态 + 编辑态，每个写作对象一行），供草稿箱。**只回 `excerpt`，不回 `content`**；`itemName` 左联 `sgj_item` 带出（查不到回退 `#id`，与笔记列表一致）；`noteId` 供「继续写」跳回对应编辑页 |
 | GET | `/app/note/draft/list?noteId=` | 有参：该篇笔记的未保存改动（供编辑页静默恢复），取最新一行 |
 | GET | `/app/note/draft/{draftId}` | 按 id 取单条草稿（**含完整 `content`**），供草稿箱「继续写」与冷启动的 `/note/edit?draftId=`。字面量 `/list` 优先于 `/{draftId}` 匹配，不冲突 |
 | PUT | `/app/note/draft` | upsert：带 `draftId` 则更新，不带则新建。带 `noteId` 时按 owner + noteId 先查后写，**撞唯一键冲突则 catch 后转为更新**；**带 `noteId` 时必须先校验该笔记存在且 `del_flag='0'`**，否则拒绝并返回可识别错误（编辑页提示「笔记已被删除」，结论 40）。返回 `draftId` 与 `updateTime`——**`updateTime` 必须回查数据库取 `update_time`，不能用 Java 的 `new Date()`**，否则客户端存进 `baseUpdateTime` 的就是第三个钟，结论 10 白修 |
@@ -398,7 +402,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | `SgjNoteExcerptTest`（新增，纯单测，无 Spring / 无 DB） | 剥离各类语法；**正文以同级 H1 开头时摘要不重复标题**；**YAML front-matter 整块移除**；窗口以命中处为中心；无命中取开头；命中标题时取开头；纯代码块笔记的回退；空正文；命中在首 / 尾 |
 | `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除）。③**导入的原件路径出现在 `FileReferenceMapper.selectReferencedStorageKeys()` 的结果里**（结论 37）——漏了它原件会被每周的清理任务误删，而这类缺陷不会报错、只会静默丢文件 |
-| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问四个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**并发 upsert**：同一 `(create_by, note_id)` 连续两次不带 `draftId` 的 PUT，不产生第二行；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、不带 `draftId` 行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
+| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问四个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**并发 upsert**：同一 `(create_by, draft_scope)` 连续两次不带 `draftId` 的 PUT（编辑态 / 新建态各一次）不产生第二行——新建态也走这条收敛（以前只对编辑态做）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、不带 `draftId` 行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
 
 **前端**
 
