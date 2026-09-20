@@ -76,14 +76,6 @@ body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
 .backlink{display:inline-block;margin-bottom:14px;font-size:13px;color:var(--sgj-text-2);text-decoration:none}
 .backlink:hover{text-decoration:underline}
 
-/* 配额：软上限，不到临界值不出进度条——一条一直存在的 15% 进度条只是在占地方 */
-.quota{margin:14px 0 18px;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--sgj-text-2);min-height:20px;flex-wrap:wrap}
-.quota .n{font-variant-numeric:tabular-nums}
-.bar{flex:0 0 148px;height:6px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--sgj-amber)}
-.bar.is-full i{background:var(--sgj-danger)}
-.capnote{color:var(--sgj-danger);font-weight:600}
-
 .dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .draft{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 18px;
   box-shadow:var(--sgj-shadow-sm);display:flex;gap:16px;align-items:center}
@@ -192,8 +184,6 @@ body[data-vp=mobile] .head h1{font-size:22px}
     </nav>
     <span class="seg" role="group" aria-label="状态">
       <button data-state="list" aria-pressed="true">有草稿</button>
-      <button data-state="near" aria-pressed="false">接近上限</button>
-      <button data-state="full" aria-pressed="false">已满 20 份</button>
       <button data-state="loading" aria-pressed="false">加载中</button>
       <button data-state="error" aria-pressed="false">加载失败</button>
       <button data-state="empty" aria-pressed="false">空态</button>
@@ -224,7 +214,6 @@ body[data-vp=mobile] .head h1{font-size:22px}
         <span class="sub">只放新笔记的草稿<span class="an" data-n="1" aria-hidden="true"></span></span>
       </div>
 
-      <div class="quota" id="quota"></div>
       <ul class="dlist" id="dlist"></ul>
       <p class="sr" id="live" role="status" aria-live="polite"></p>
     </div>
@@ -253,7 +242,7 @@ body[data-vp=mobile] .head h1{font-size:22px}
     <li><span class="new">新增</span>：<b>条目查不到就显示 <code>#id</code></b>（第 3 条草稿的 <code>🔗 #12</code>，条目已被删）。与笔记列表的做法一致，不做特殊提示。</li>
     <li><span class="new">新增</span>：<b>相对时间</b>（「3 分钟前」）走 <code>formatTime()</code>，但后端给的是 <code>yyyy-MM-dd HH:mm:ss</code>，必须先经解析函数转 epoch——直接喂进去会渲染成 <code>NaN月NaN日</code>（Safari 上 <code>new Date(str)</code> 直接是 Invalid Date）。</li>
     <li><span class="new">新增</span>：<b>硬删除 + 确认弹窗</b>。草稿不进回收站，避免出现第二个暂存区；所以这里<b>必须</b>拦一道（不可逆操作才值得确认）。弹窗写明删的是哪一份，焦点移入弹窗、关闭后回到触发它的那个「删除」按钮。</li>
-    <li><span class="new">新增</span>：<b>配额只在接近上限时才出现进度条</b>。<b>接近上限</b>（17 / 20）起才显示进度条，<b>已满</b>（20 / 20）转危险色并说明要先清理。3 / 20 时只留一行文字——一条常年停在 15% 的进度条只是占地方，不传递任何紧张感。</li>
+    <li><span class="new">新增</span>：<b>不做数量上限</b>，也没有配额行——草稿的出口只有「手动删」「保存成功后删」「笔记被删时一并删」；草稿箱只装新笔记草稿，编辑态草稿不入箱。列表为空时给出去写一篇的出口。</li>
     <li><span class="new">补齐</span>：<b>加载中</b>与<b>加载失败</b>两个状态（原来只有 4 个状态）。加载用骨架屏并带 <code>aria-busy</code>；失败给「重新加载」，文案说清是网络/服务的问题，并提供另一条出路。</li>
     <li><span class="fix">修正</span>：<b>元信息文字从 <code>--sgj-text-4</code> 换成 <code>--sgj-text-2</code></b>。原来时间与条目名用的 <code>--sgj-text-4</code>（<code>#A4ADA9</code>）在卡片上只有 <b>2.2:1</b> 对比度，12px 文字远低于 4.5:1 的门槛，等于读不出来；换成 <code>--sgj-text-2</code> 后是亮色 6.8:1 / 暗色 9.6:1。<b>这个 token 在其它几屏也有同样问题</b>，建议单独做一次全组校准，本屏先不扩散。</li>
     <li><span class="fix">修正</span>：<b>移动端触控目标</b>。每行的「继续写 / 删除」在移动端补到 44px 高，主操作「继续写」占满剩余宽度；底部自留 76px 并带上 <code>env(safe-area-inset-bottom)</code>，不被固定标签栏或 home indicator 遮住。</li>
@@ -293,15 +282,16 @@ const POOL = [
   {id:19, t:'Vite 生产构建为什么还是慢', item:'', dt:'2026-09-08T15:11:00+08:00', rel:'9月8日 15:11', ex:''},
   {id:20, t:'Obsidian 到拾光记的笔记迁移', item:'', dt:'2026-09-07T18:29:00+08:00', rel:'9月7日 18:29', ex:''}
 ];
-const CAP = 20;
-const NEAR = 16;          /* 到这里才出进度条 */
 const removed = new Set();
 let state = 'list';
 
 const el = id => document.getElementById(id);
+/* 演示数据只有本文件里的常量（POOL），没有外部输入；字符串转节点统一收在这一处，
+   各渲染函数只返回字符串、不再自己碰 innerHTML */
+function setHTML(node, html){
+  node.replaceChildren(document.createRange().createContextualFragment(html));
+}
 const listFor = s => (s === 'empty' ? []
-                     : s === 'full' ? POOL.slice(0, CAP)
-                     : s === 'near' ? POOL.slice(0, 17)
                      : POOL.slice(0, 3)).filter(d => !removed.has(d.id));
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -331,21 +321,6 @@ function row(d){
   </li>`;
 }
 
-function quota(n){
-  const q = el('quota');
-  if (state === 'loading' || state === 'error'){ q.innerHTML = ''; return; }
-  const full = n >= CAP, near = n >= NEAR;
-  const bar = near ? `<span class="bar${full ? ' is-full' : ''}" role="progressbar"
-      aria-valuenow="${n}" aria-valuemin="0" aria-valuemax="${CAP}"
-      aria-label="草稿配额"><i style="width:${Math.round(n / CAP * 100)}%"></i></span>` : '';
-  const txt = full
-    ? `<span class="capnote">已满 ${n} / ${CAP} 份</span>
-       <span class="capnote">· 先清理几份，再新建草稿<span class="an" data-n="6" aria-hidden="true"></span></span>`
-    : `<span class="n">已用 ${n} / ${CAP} 份</span>`
-      + (near ? '<span class="an" data-n="6" aria-hidden="true"></span>' : '');
-  q.innerHTML = bar + txt;
-}
-
 function body(){
   if (state === 'loading')
     return Array.from({length:3}, () => `<li class="sk" aria-hidden="true"><div class="l w1"></div><div class="l w2"></div></li>`).join('');
@@ -367,12 +342,8 @@ function body(){
 
 function render(){
   const list = el('dlist');
-  const n = (state === 'loading' || state === 'error') ? 0 : listFor(state).length;
-  list.innerHTML = body();
+  setHTML(list, body());
   list.setAttribute('aria-busy', String(state === 'loading'));
-  /* 加载中 / 加载失败 / 空态都没有「用了几份」可言，配额行整体收起 */
-  if (state === 'loading' || state === 'error' || n === 0) el('quota').innerHTML = '';
-  else quota(n);
   list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => openDlg(b)));
   if (state === 'confirm') { openDlg(el('dlist').querySelector('[data-del]')); }
   else closeDlg(false);
@@ -385,9 +356,9 @@ function openDlg(trigger){
   const d = POOL.find(x => String(x.id) === trigger.dataset.del);
   if (!d) return;
   if (el('mask').hidden) lastFocus = trigger || document.activeElement;
-  el('dlgWho').innerHTML = d.t
+  setHTML(el('dlgWho'), d.t
     ? '《<b>' + esc(d.t) + '</b>》'
-    : '无标题草稿 · <b>' + esc(short(d.ex, 28)) + '</b>';
+    : '无标题草稿 · <b>' + esc(short(d.ex, 28)) + '</b>');
   el('dlgOk').dataset.id = d.id;
   el('mask').hidden = false;
   el('device').setAttribute('inert', '');
