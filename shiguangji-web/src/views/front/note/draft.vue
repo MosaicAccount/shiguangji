@@ -108,12 +108,8 @@ function loadData(): void {
 }
 
 function continueDraft(draft: SgjNoteDraft): void {
-  // 编辑已有笔记的草稿回到那篇编辑页：基线是笔记原文，才能显示「已恢复未保存的草稿」提示条；
-  // 新建笔记草稿没有笔记可回，按 draftId 继续写（草稿自己带着 noteId）
-  if (draft.noteId) {
-    router.push({ path: '/note/edit', query: { noteId: String(draft.noteId) } })
-    return
-  }
+  // 一律按 draftId 继续写（草稿自己带着 noteId，编辑态会在表单里回填那篇笔记）。
+  // 编辑页把这种情况当作「打开这份草稿」而不是「从笔记里恢复」：不弹恢复提示条（#32）
   if (!draft.draftId) return
   router.push({ path: '/note/edit', query: { draftId: String(draft.draftId) } })
 }
