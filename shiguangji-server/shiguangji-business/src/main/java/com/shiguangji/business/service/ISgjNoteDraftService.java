@@ -12,7 +12,7 @@ import com.shiguangji.business.domain.SgjNoteDraft;
 public interface ISgjNoteDraftService
 {
     /**
-     * 查询草稿箱列表（当前用户的新笔记草稿）
+     * 查询草稿箱列表（当前用户的全部草稿：新建态 + 编辑态）
      *
      * @param createBy 当前登录用户
      * @return 草稿集合（含 excerpt，不含正文）

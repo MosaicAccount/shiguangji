@@ -162,7 +162,7 @@ create table sgj_note (
 drop table if exists sgj_note_draft;
 create table sgj_note_draft (
   draft_id     bigint(20)      not null auto_increment    comment '草稿ID',
-  note_id      bigint(20)      default null               comment '编辑来源笔记ID；空=新笔记草稿（只有这类进草稿箱）',
+  note_id      bigint(20)      default null               comment '编辑来源笔记ID；空=新建笔记草稿',
   item_id      bigint(20)      default null               comment '关联条目ID，空为独立笔记',
   title        varchar(200)    default ''                 comment '标题（草稿可为空）',
   content      longtext                                   comment '正文（Markdown）',
@@ -171,8 +171,11 @@ create table sgj_note_draft (
   create_by    varchar(64)     default ''                 comment '创建者',
   create_time  datetime                                   comment '创建时间',
   update_time  datetime                                   comment '更新时间',
+  draft_scope  bigint(20) generated always as
+                 (if(note_id is null, -ifnull(item_id, 0) - 1, note_id)) stored
+                                                          comment '写作对象身份：笔记ID为正；新建笔记为其条目的负数（未选条目 = -1）',
   primary key (draft_id),
-  unique key uk_sgj_note_draft_owner_note (create_by, note_id),
+  unique key uk_sgj_note_draft_owner_scope (create_by, draft_scope),
   key idx_sgj_note_draft_owner (create_by),
   key idx_sgj_note_draft_note (note_id)
 ) engine=innodb auto_increment=1 comment = '拾光记-笔记草稿表';

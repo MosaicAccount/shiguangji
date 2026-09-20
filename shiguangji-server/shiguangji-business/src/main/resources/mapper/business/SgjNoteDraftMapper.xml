@@ -28,7 +28,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         left join sgj_item i on i.item_id = d.item_id
     </sql>
 
-    <!-- 草稿箱列表：只回摘要所需的正文前缀（截断规格与笔记列表前言片段一致，Java 侧再剥离 Markdown 并裁到 120 字） -->
+    <!-- 草稿箱列表：全部草稿（新建态 + 编辑态，每个写作对象一行），只回摘要所需的正文前缀
+         （截断规格与笔记列表前言片段一致，Java 侧再剥离 Markdown 并裁到 120 字） -->
     <select id="selectBoxDraftList" parameterType="String" resultMap="SgjNoteDraftResult">
         select d.draft_id, d.note_id, d.item_id, d.title, d.tags, d.is_public,
                d.create_by, d.create_time, d.update_time,
@@ -37,13 +38,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                       if(char_length(d.content) > 600, '…', '')) as excerpt_src
         from sgj_note_draft d
         left join sgj_item i on i.item_id = d.item_id
-        where d.create_by = #{createBy} and d.note_id is null
+        where d.create_by = #{createBy}
         order by d.update_time desc, d.draft_id desc
     </select>
 
-    <select id="selectDraftByNoteId" resultMap="SgjNoteDraftResult">
+    <!-- 按「写作对象」取本人的那份草稿：note_id 不为空时 scope 就是 note_id；
+         note_id 为空时 scope 是关联条目的负数（没选条目为 -1），见建表脚本里的 draft_scope -->
+    <select id="selectDraftByScope" resultMap="SgjNoteDraftResult">
         <include refid="selectDraftVo"/>
-        where d.create_by = #{createBy} and d.note_id = #{noteId}
+        where d.create_by = #{createBy} and d.draft_scope = #{scope}
         order by d.update_time desc, d.draft_id desc
         limit 1
     </select>

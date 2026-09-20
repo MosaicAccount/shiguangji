@@ -52,6 +52,7 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>boxExcerptFallsBackToContent           —— 无标题草稿用正文首行兜底（摘要复用笔记列表那套剥离逻辑）</li>
  *   <li>draftsAreVisibleToOwnerOnly            —— 他人（含管理员）既看不到也改不了 / 删不了别人的草稿</li>
  *   <li>homeStatsIgnoreDrafts                  —— 首页笔记总数与最近笔记不受草稿影响（独立表的直接收益）</li>
+ *   <li>oneRowPerWritingTarget                 —— 新建态按「本人 + 关联条目」收敛为一行；换条目 / 不选条目各一行</li>
  *   <li>editDraftUpsertByNoteIdAndAliveCheck   —— 不带 draftId 的编辑态写入按「本人 + 笔记」收敛为一行；
  *       笔记软删 / 彻底删除后再写入被拒（存活校验）</li>
  * </ol>
@@ -69,6 +70,10 @@ class AppNoteDraftSmokeTest
 {
     /** 夹具标记：草稿表无 tags 列，用 title/content 里的统一标记做隔离与清理 */
     private static final String MARK = "qat35";
+
+    /** 写作对象夹具：两个不存在的条目ID就够了——item_id 上无外键，分行用例不需要真实条目 */
+    private static final long ITEM_A = 9999001L;
+    private static final long ITEM_B = 9999002L;
 
     /** 公开博主账号（application.yml shiguangji.public-owner），同时是管理员 */
     private static final String PUBLIC_OWNER = "admin";
@@ -263,6 +268,30 @@ class AppNoteDraftSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 6. 每个写作对象最多一行（draft_scope 唯一键）
+    // ------------------------------------------------------------------
+
+    @Test
+    void oneRowPerWritingTarget() throws Exception
+    {
+        deleteMarkedDrafts();
+
+        // 新建态：同一个关联条目反复首推（不带 draftId）→ 收敛为一行
+        long itemADraft = saveDraft(adminToken, draftBodyWithItem(ITEM_A, MARK + "-scope 条目A", "qat35 scope A"));
+        long itemAAgain = saveDraft(adminToken, draftBodyWithItem(ITEM_A, MARK + "-scope 条目A 再推", "qat35 scope A2"));
+        assertThat(itemAAgain).as("同一（本人 + 条目）第二次首推应更新同一行").isEqualTo(itemADraft);
+
+        // 换一个条目 → 另一行；都不选条目 → 又是另一行
+        long itemBDraft = saveDraft(adminToken, draftBodyWithItem(ITEM_B, MARK + "-scope 条目B", "qat35 scope B"));
+        long noItemDraft = saveDraft(adminToken, draftBody(null, null, MARK + "-scope 无条目", "qat35 scope 无条目"));
+        assertThat(itemBDraft).isNotEqualTo(itemADraft);
+        assertThat(noItemDraft).isNotEqualTo(itemADraft);
+        assertThat(countMarkedDrafts()).as("三个不同的写作对象各一行").isEqualTo(3);
+
+        deleteMarkedDrafts();
+    }
+
+    // ------------------------------------------------------------------
     // 7. 编辑态草稿：按「本人 + 笔记」收敛 + 笔记存活校验
     // ------------------------------------------------------------------
 
@@ -284,8 +313,10 @@ class AppNoteDraftSmokeTest
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.draftId").value((int) first))
                 .andExpect(jsonPath("$.data.content").value("第二版"));
-        // 编辑态草稿不进草稿箱
-        assertThat(findById(boxList(adminToken), first)).isNull();
+        // 编辑态草稿也在草稿箱里（每个写作对象一行），并带上 noteId 供「继续写」跳回那篇
+        JsonNode boxRow = findById(boxList(adminToken), first);
+        assertThat(boxRow).as("编辑态草稿也要进草稿箱").isNotNull();
+        assertThat(boxRow.path("noteId").asLong()).as("带上笔记ID，才能跳回那篇").isEqualTo(noteId);
 
         // 笔记软删后：草稿行被清理，继续写入被存活校验拒绝
         mockMvc.perform(delete("/app/note/" + noteId).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
@@ -320,6 +351,21 @@ class AppNoteDraftSmokeTest
         body.put("tags", MARK);
         body.put("isPublic", "0");
         return body;
+    }
+
+    /** 带关联条目的新建态草稿（draft_scope 按条目区分，不带 draftId 首次写入） */
+    private Map<String, Object> draftBodyWithItem(long itemId, String title, String content)
+    {
+        Map<String, Object> body = draftBody(null, null, title, content);
+        body.put("itemId", itemId);
+        return body;
+    }
+
+    private int countMarkedDrafts()
+    {
+        return jdbcTemplate.queryForObject(
+                "select count(*) from sgj_note_draft where title like ? or content like ?",
+                Integer.class, MARK + "%", "%" + MARK + "%");
     }
 
     /** PUT 一份草稿，断言成功并返回 draftId */

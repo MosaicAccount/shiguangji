@@ -16,7 +16,7 @@ import com.shiguangji.business.domain.SgjNoteDraft;
 public interface SgjNoteDraftMapper
 {
     /**
-     * 查询草稿箱列表（当前用户的新笔记草稿，note_id 为空），按更新时间倒序
+     * 查询草稿箱列表（当前用户的全部草稿：新建态 + 编辑态，每个写作对象一行），按更新时间倒序
      *
      * 只取摘要所需的正文前缀（excerpt_src），不取全文——列表页免登录即可打开，
      * 入口条每次都要拉这份列表，不能把每份十万字的正文带上
@@ -27,13 +27,13 @@ public interface SgjNoteDraftMapper
     public List<SgjNoteDraft> selectBoxDraftList(String createBy);
 
     /**
-     * 查询某篇笔记未保存完的改动（当前用户，取最新一行）
+     * 按「写作对象」查询本人的那份草稿（取最新一行）
      *
      * @param createBy 当前登录用户
-     * @param noteId   笔记ID
+     * @param scope    写作对象身份：编辑态 = 笔记ID；新建态 = 其关联条目的负数（未选条目 = -1）
      * @return 草稿（含完整正文）；无则返回 null
      */
-    public SgjNoteDraft selectDraftByNoteId(@Param("createBy") String createBy, @Param("noteId") Long noteId);
+    public SgjNoteDraft selectDraftByScope(@Param("createBy") String createBy, @Param("scope") long scope);
 
     /**
      * 按草稿ID查询（含完整正文）
