@@ -1,6 +1,6 @@
 <template>
   <div class="note-edit-page">
-    <div class="edit-card">
+    <div class="edit-card" v-loading="initializing">
       <!-- 顶栏：返回 + 标题 + 保存 -->
       <div class="edit-header">
         <el-button class="back-btn" circle :icon="ArrowLeft" @click="goBack" />
@@ -12,12 +12,13 @@
       </div>
 
       <!-- 草稿状态条：笔记被删 > 已恢复草稿（可关闭，关闭后显示同步态） > 同步三态 -->
-      <div class="sync-bar" role="status">
+      <div class="sync-bar" :class="{ 'is-restored': restored && !noteDeleted }" role="status">
         <template v-if="noteDeleted">
           <span class="sync-deleted">这篇笔记已被删除，草稿无法继续保存</span>
           <el-button link type="primary" size="small" @click="goBack">回列表页</el-button>
         </template>
         <template v-else-if="restored">
+          <span class="restore-dot" aria-hidden="true"></span>
           <span>已恢复未保存的草稿</span>
           <el-button link type="primary" size="small" @click="discardDraft">放弃草稿</el-button>
           <el-button link size="small" @click="restored = false">关闭</el-button>
@@ -121,6 +122,11 @@ const syncText = computed(() => {
 })
 /** 已恢复未保存的草稿（优先显示，可关闭；关闭 ≠ 删草稿） */
 const restored = ref(false)
+/**
+ * 进编辑器时先不画表单：先拿笔记原文、再拉草稿，两段 await 之间画出去的话，
+ * 用户会看到内容「先变成笔记原文、又变成草稿」。内容与「已恢复未保存的草稿」提示条只该一起出现一次
+ */
+const initializing = ref(false)
 /** 笔记已被删除：草稿接口的存活校验拒绝写入，反复重试没有意义 */
 const noteDeleted = ref(false)
 const contentTooLong = computed(() => (form.content || '').length > CONTENT_MAX_LENGTH)
@@ -162,7 +168,9 @@ if (!getToken()) {
  * 恢复规则见 utils/noteDraftBuffer.decideRestore（只用服务端时间，不存客户端 savedAt）
  */
 async function initEditor(): Promise<void> {
+  initializing.value = true
   if (entryNoteId && !Number.isFinite(entryNoteId)) {
+    initializing.value = false
     router.replace('/note')
     return
   }
@@ -174,6 +182,7 @@ async function initEditor(): Promise<void> {
       // 加载失败（含已删除）与原来的行为一致：提示后回列表页
     }
     if (!note) {
+      initializing.value = false
       proxy.$modal.msgError('笔记不存在或已删除')
       router.replace('/note')
       return
@@ -221,6 +230,7 @@ async function initEditor(): Promise<void> {
   // 恢复了草稿就提示——不提示的话用户会以为这些内容已经正式保存了；
   // 内容与打开时的快照一致时（比如刷新后本地与服务端等价）不提示，避免无意义的状态条
   restored.value = source !== 'none' && snapshot() !== baseline
+  initializing.value = false
   startTimers()
 }
 
@@ -487,6 +497,20 @@ function submitForm(): void {
 
   .sync-state.is-synced {
     color: var(--sgj-moss);
+  }
+
+  // 恢复草稿：与「同步三态」区分开，别让用户以为是已保存状态；这是「这些内容还没正式保存」的唯一提示
+  &.is-restored {
+    background: var(--sgj-primary-soft);
+    border-color: transparent;
+
+    .restore-dot {
+      width: 7px;
+      height: 7px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--sgj-primary);
+    }
   }
 
   .sync-state.is-failed,
