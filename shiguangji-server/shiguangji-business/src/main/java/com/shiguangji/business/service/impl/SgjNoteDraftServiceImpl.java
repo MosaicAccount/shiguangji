@@ -70,6 +70,15 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService
     }
 
     @Override
+    public SgjNoteDraft selectBlankDraft(String createBy)
+    {
+        // 传 null → SQL 里 ifnull(null,0) → 就是那份 note_id = 0 的空白草稿
+        SgjNoteDraft draft = sgjNoteDraftMapper.selectDraftByNoteId(createBy, null);
+        clearBlankNoteId(draft);
+        return draft;
+    }
+
+    @Override
     public SgjNoteDraft selectOwnedDraft(Long draftId, String createBy)
     {
         SgjNoteDraft draft = requireOwned(draftId, createBy);

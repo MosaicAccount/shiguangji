@@ -285,6 +285,13 @@ class AppNoteDraftSmokeTest
                 "select note_id from sgj_note_draft where draft_id = ?", Long.class, blank))
                 .as("空白草稿在库里存哨兵 0（对外仍是 null）").isEqualTo(0L);
 
+        // 进「写笔记」时按身份把那唯一一份空白草稿取回来（否则写第二篇会静默覆盖上一篇）
+        mockMvc.perform(get("/app/note/draft/blank").header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.draftId").value((int) blankAgain))
+                .andExpect(jsonPath("$.data.content").value("qat35 blank 2"));
+
         // 编辑态：同一篇笔记一份，不同笔记各一份
         long noteA = createNote(MARK + "-blank 笔记A");
         long noteB = createNote(MARK + "-blank 笔记B");

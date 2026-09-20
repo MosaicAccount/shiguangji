@@ -57,6 +57,18 @@ public class AppNoteDraftController extends BaseController
     }
 
     /**
+     * 取本人的**空白草稿**（还没成为笔记的那一份，每人一份；含完整正文）
+     *
+     * 进「写笔记」时按身份先拿它：本机 localStorage 里没有 draftId 时（换设备 / 清过缓存）
+     * 也能把上一份未写完的东西接回来——不拿的话，写第二篇会静默覆盖第一篇
+     */
+    @GetMapping("/blank")
+    public AjaxResult blank()
+    {
+        return success(sgjNoteDraftService.selectBlankDraft(SecurityUtils.getUsername()));
+    }
+
+    /**
      * 按ID取单条草稿（含完整正文）：草稿箱「继续写」与冷启动的 /note/edit?draftId= 用
      */
     @GetMapping("/{draftId}")

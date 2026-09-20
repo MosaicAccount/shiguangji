@@ -29,6 +29,14 @@ public interface ISgjNoteDraftService
     public SgjNoteDraft selectByNoteId(String createBy, Long noteId);
 
     /**
+     * 取本人的空白草稿（还没成为笔记的那一份，每人一份；含完整正文）
+     *
+     * @param createBy 当前登录用户
+     * @return 草稿；没有则返回 null
+     */
+    public SgjNoteDraft selectBlankDraft(String createBy);
+
+    /**
      * 按草稿ID查询本人的草稿（含正文）
      *
      * @param draftId  草稿ID
