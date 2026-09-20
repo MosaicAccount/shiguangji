@@ -297,13 +297,14 @@ class AppNoteDraftSmokeTest
 
         // 编辑态：同一篇笔记一份，不同笔记各一份
         long noteA = createNote(MARK + "-blank 笔记A");
+        assertThat(draftRowExists(blank)).as("保存笔记后空白草稿就没了（写完保存才会再有新的空白草稿）").isFalse();
         long noteB = createNote(MARK + "-blank 笔记B");
         long editA = saveDraft(adminToken, draftBody(null, noteA, MARK + "-blank 编辑A", "qat35 编辑 A"));
         long editAAgain = saveDraft(adminToken, draftBody(null, noteA, MARK + "-blank 编辑A 再推", "qat35 编辑 A2"));
         long editB = saveDraft(adminToken, draftBody(null, noteB, MARK + "-blank 编辑B", "qat35 编辑 B"));
         assertThat(editAAgain).as("同一篇笔记第二次首推应更新同一行").isEqualTo(editA);
         assertThat(editB).as("不同笔记各一份").isNotEqualTo(editA);
-        assertThat(countMarkedDrafts()).as("空白 1 行 + 两篇笔记各一行").isEqualTo(3);
+        assertThat(countMarkedDrafts()).as("两篇笔记各一行（空白草稿已被保存清掉）").isEqualTo(2);
 
         deleteMarkedDrafts();
     }
