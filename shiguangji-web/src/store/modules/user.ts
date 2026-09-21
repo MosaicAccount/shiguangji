@@ -3,6 +3,7 @@ import cache from '@/plugins/cache'
 import { ElMessageBox } from 'element-plus'
 import { login, logout, getInfo } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
+import { clearAllNoteBuffers } from '@/utils/noteDraftBuffer'
 import { isHttp, isEmpty } from "@/utils/validate"
 import useLockStore from '@/store/modules/lock'
 import defAva from '@/assets/images/profile.jpg'
@@ -92,6 +93,8 @@ const useUserStore = defineStore(
           this.roles = []
           this.permissions = []
           removeToken()
+          // 清掉本机的笔记草稿缓冲：换个人登录不该看到上一个人没保存的内容（issue #32）
+          clearAllNoteBuffers()
         }
         return new Promise<void>((resolve, reject) => {
           logout().then(() => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { splitByKeyword, applyKeywordHighlights, clearKeywordHighlights } from '../sgj'
+import { splitByKeyword, applyKeywordHighlights, clearKeywordHighlights, parseServerTime } from '../sgj'
 
 /** issue #31：摘要关键词切片。字面量切分（元字符安全）、大小写不敏感、多词合并区间 */
 describe('splitByKeyword', () => {
@@ -106,5 +106,30 @@ describe('applyKeywordHighlights / clearKeywordHighlights', () => {
     expect(applyKeywordHighlights(null, '草稿')).toHaveLength(0)
     expect(clearKeywordHighlights(null)).toBeUndefined()
     root.remove()
+  })
+})
+
+/** issue #32 / #39：后端 yyyy-MM-dd HH:mm:ss（GMT+8）必须先转 epoch，直接喂 formatTime 会得到 NaN月NaN日 */
+describe('parseServerTime', () => {
+  it('解析后端时间串为 epoch（按 +08:00 解释，不受浏览器时区影响）', () => {
+    expect(parseServerTime('2026-09-19 17:12:00')).toBe(Date.parse('2026-09-19T17:12:00+08:00'))
+    expect(parseServerTime('2026-09-19 17:12:00')).not.toBeNaN()
+  })
+
+  it('容忍 ISO 的 T 分隔与已带时区偏移的串', () => {
+    expect(parseServerTime('2026-09-19T17:12:00')).toBe(Date.parse('2026-09-19T17:12:00+08:00'))
+    expect(parseServerTime('2026-09-19T17:12:00Z')).toBe(Date.parse('2026-09-19T17:12:00Z'))
+  })
+
+  it('兼容 epoch 数字与数字串（10 位按秒处理）', () => {
+    expect(parseServerTime(1758273120000)).toBe(1758273120000)
+    expect(parseServerTime('1758273120')).toBe(1758273120000)
+  })
+
+  it('空值与无法解析的输入返回 0（不抛错、不产生 NaN）', () => {
+    expect(parseServerTime(undefined)).toBe(0)
+    expect(parseServerTime(null)).toBe(0)
+    expect(parseServerTime('')).toBe(0)
+    expect(parseServerTime('not-a-date')).toBe(0)
   })
 })
