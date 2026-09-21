@@ -11,6 +11,7 @@
               <div class="hero-top">
                 <el-button class="hero-btn" circle :icon="ArrowLeft" title="返回列表" @click="goBack" />
                 <div v-if="isLogin" class="hero-actions">
+                  <el-button v-if="canExport" class="hero-btn" circle :icon="Download" title="导出 Markdown" @click="handleExport" />
                   <el-button class="hero-btn" circle :icon="EditPen" title="编辑" @click="openEdit" />
                   <el-button class="hero-btn" circle :icon="Delete" title="删除" @click="handleDelete" />
                 </div>
@@ -127,19 +128,29 @@
 </template>
 
 <script setup lang="ts" name="FrontNoteDetail">
-import { ArrowDown, ArrowLeft, Delete, EditPen, List } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowLeft, Delete, Download, EditPen, List } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
-import { getFrontNote, delFrontNote } from '@/api/front/note'
+import { getFrontNote, delFrontNote, noteExportUrl } from '@/api/front/note'
 import { applyKeywordHighlights, clearKeywordHighlights, splitByKeyword } from '@/utils/sgj'
 import type { SgjNote } from '@/types/api/business/note'
 import { getToken } from '@/utils/auth'
+import useUserStore from '@/store/modules/user'
 
 const { proxy } = getCurrentInstance() as { proxy: any }
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 /** 是否登录（访客只读，登录后可管理） */
 const isLogin = computed(() => !!getToken())
+/**
+ * 导出入口的显隐：登录 + 这篇是我的（或管理员）。
+ * 口径与后端 canOperate 一致（create_by 存的是登录名，userStore.name 就是它）；
+ * 显隐只是观感，真正的门在导出接口自己（不靠前端藏按钮）
+ */
+const canExport = computed(() =>
+  isLogin.value && (note.value?.createBy === userStore.name || userStore.roles.includes('admin'))
+)
 
 const loading = ref(false)
 const note = ref<SgjNote | null>(null)
@@ -323,6 +334,13 @@ function goBack(): void {
 function openEdit(): void {
   if (!note.value?.noteId) return
   router.push({ path: '/note/edit', query: { noteId: String(note.value.noteId) } })
+}
+
+/** 导出为 Markdown 文件（服务端现场生成，带 noteId 的 front-matter，改完可以再导回来） */
+function handleExport(): void {
+  const noteId = note.value?.noteId
+  if (!noteId) return
+  proxy.$download.file(noteExportUrl(noteId))
 }
 
 function handleDelete(): void {

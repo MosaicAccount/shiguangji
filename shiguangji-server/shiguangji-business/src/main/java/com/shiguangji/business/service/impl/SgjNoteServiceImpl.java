@@ -300,6 +300,91 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     }
 
     /**
+     * 生成导出用的 Markdown 全文（服务端现场生成，issue #41）。
+     *
+     * 形状固定为「front-matter + 空行 + 正文」。front-matter 只写能被导入侧读回来的三个键
+     * （{@code noteId} / {@code title} / {@code tags}）——昵称、创建时间一律不写：
+     * {@code insertSgjNote} 里 {@code create_time} 写死 {@code sysdate()}，客户端给什么都会被忽略，
+     * 写了也没人读。{@code noteId} 是「导出 → 本地改 → 重新导入」认出同一篇的唯一依据
+     * （用户不需要认识它，程序自己写、自己读）。
+     *
+     * 正文先剥掉自身可能带的旧 front-matter：不剥的话导出的文件里会有两个 front-matter 块，
+     * 而重新导入时只剥掉第一个，第二个就留在正文里了。
+     *
+     * @param note 笔记（需要 noteId / title / tags / content）
+     * @return 可直接下载的 Markdown 全文，以换行结尾
+     */
+    public static String buildExportMarkdown(SgjNote note)
+    {
+        String content = note.getContent() == null ? "" : note.getContent();
+        String body = content.substring(frontMatterEnd(content));
+        // front-matter 与正文之间固定空一行：正文自己开头的换行先去掉，否则会出现两个空行
+        int start = 0;
+        while (start < body.length() && (body.charAt(start) == '\n' || body.charAt(start) == '\r'))
+        {
+            start++;
+        }
+        body = body.substring(start);
+
+        StringBuilder out = new StringBuilder(body.length() + 96);
+        out.append("---\n");
+        out.append("noteId: ").append(note.getNoteId() == null ? "" : note.getNoteId()).append('\n');
+        out.append("title: ").append(yamlString(note.getTitle())).append('\n');
+        out.append("tags: ").append(yamlString(note.getTags())).append('\n');
+        out.append("---\n\n").append(body);
+        if (out.charAt(out.length() - 1) != '\n')
+        {
+            out.append('\n');
+        }
+        return out.toString();
+    }
+
+    /**
+     * 写成 YAML 双引号标量。
+     *
+     * 必须转义：标题里出现 {@code : }、{@code #} 或引号时，裸标量会被解析成别的东西，
+     * 严重时整块 front-matter 解析失败——而导出的文件是要被重新导入的（前端 js-yaml 解析）。
+     * 双引号风格的转义序列与 JSON 一致，js-yaml 能原样读回。
+     */
+    private static String yamlString(String value)
+    {
+        String text = value == null ? "" : value;
+        StringBuilder sb = new StringBuilder(text.length() + 2).append('"');
+        for (int i = 0; i < text.length(); i++)
+        {
+            char c = text.charAt(i);
+            switch (c)
+            {
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
+                    if (c < 0x20)
+                    {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    }
+                    else
+                    {
+                        sb.append(c);
+                    }
+            }
+        }
+        return sb.append('"').toString();
+    }
+
+    /**
      * 由 SQL 截出的原文片段生成前台摘要（供 AppNoteController.list 使用）。
      *
      * 片段带定位标记：开头/结尾的 … 表示片段之外还有正文（SQL 依据截窗几何位置拼接）。
