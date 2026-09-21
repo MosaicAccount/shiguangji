@@ -55,6 +55,9 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>oneRowPerWritingTarget                 —— 空白草稿每人一份（换条目也只是更新同一行，库里存 0）；编辑态每篇笔记一份</li>
  *   <li>editDraftUpsertByNoteIdAndAliveCheck   —— 不带 draftId 的编辑态写入按「本人 + 笔记」收敛为一行；
  *       笔记软删 / 彻底删除后再写入被拒（存活校验）</li>
+ *   <li>publishConsumesDraft                   —— 保存笔记（新增 / 编辑）同事务删掉草稿；不带 draftId 行为不变；
+ *       带他人 draftId 整个请求失败且不写入任何数据</li>
+ *   <li>noteAndItemDeletionCleanDrafts         —— 笔记软删、笔记彻底删除、条目彻底删除三条路径都清掉草稿行</li>
  * </ol>
  *
  * <p><b>响应契约</b>：与既有冒烟测试一致——未登录 = HTTP 200 + 业务码 401；越权 / 业务拒绝 = 业务码 500。</p>
@@ -268,7 +271,7 @@ class AppNoteDraftSmokeTest
     }
 
     // ------------------------------------------------------------------
-    // 6. 每个写作对象最多一行（draft_scope 唯一键）
+    // 6. 每个写作对象最多一行（空白草稿每人一份 + 每篇笔记一份）
     // ------------------------------------------------------------------
 
     @Test
@@ -294,13 +297,14 @@ class AppNoteDraftSmokeTest
 
         // 编辑态：同一篇笔记一份，不同笔记各一份
         long noteA = createNote(MARK + "-blank 笔记A");
+        assertThat(draftRowExists(blank)).as("保存笔记后空白草稿就没了（写完保存才会再有新的空白草稿）").isFalse();
         long noteB = createNote(MARK + "-blank 笔记B");
         long editA = saveDraft(adminToken, draftBody(null, noteA, MARK + "-blank 编辑A", "qat35 编辑 A"));
         long editAAgain = saveDraft(adminToken, draftBody(null, noteA, MARK + "-blank 编辑A 再推", "qat35 编辑 A2"));
         long editB = saveDraft(adminToken, draftBody(null, noteB, MARK + "-blank 编辑B", "qat35 编辑 B"));
         assertThat(editAAgain).as("同一篇笔记第二次首推应更新同一行").isEqualTo(editA);
         assertThat(editB).as("不同笔记各一份").isNotEqualTo(editA);
-        assertThat(countMarkedDrafts()).as("空白 1 行 + 两篇笔记各一行").isEqualTo(3);
+        assertThat(countMarkedDrafts()).as("两篇笔记各一行（空白草稿已被保存清掉）").isEqualTo(2);
 
         deleteMarkedDrafts();
     }
@@ -336,6 +340,7 @@ class AppNoteDraftSmokeTest
         mockMvc.perform(delete("/app/note/" + noteId).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+        assertThat(countDraftsOfNote(noteId)).as("软删笔记应一并清掉它的草稿").isZero();
         rejectDraftWriteForDeadNote(noteId);
 
         // 彻底删除后同样被拒
@@ -343,6 +348,89 @@ class AppNoteDraftSmokeTest
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
         rejectDraftWriteForDeadNote(noteId);
+    }
+
+    // ------------------------------------------------------------------
+    // 8. 发布语义：保存成功同事务删草稿；他人的 draftId 整个请求失败
+    // ------------------------------------------------------------------
+
+    @Test
+    void publishConsumesDraft() throws Exception
+    {
+        // 新增：带自己的 draftId → 草稿随保存消失
+        long draftId = saveDraft(adminToken, draftBody(null, null, MARK + "-publish 新笔记", "qat35 publish 正文"));
+        JsonNode added = publish(adminToken, noteBody(null, MARK + "-publish 新笔记", draftId));
+        assertThat(added.path("code").asInt()).isEqualTo(200);
+        assertThat(draftRowExists(draftId)).as("保存成功后草稿应消失").isFalse();
+
+        // 回归：不带 draftId 的保存行为完全一样（笔记照常写入）
+        JsonNode plain = publish(adminToken, noteBody(null, MARK + "-publish 无草稿", null));
+        assertThat(plain.path("code").asInt()).isEqualTo(200);
+
+        // 加固：不带 draftId 时也要按「写作对象身份」清掉那份草稿
+        // （换设备 / 清过本地缓冲时前端手里没有 draftId，否则草稿箱会一直挂着一条已经保存过的草稿）
+        long orphanDraftId = saveDraft(adminToken, draftBody(null, null, MARK + "-publish 兜底", "qat35 兜底正文"));
+        JsonNode hardened = publish(adminToken, noteBody(null, MARK + "-publish 兜底", null));
+        assertThat(hardened.path("code").asInt()).isEqualTo(200);
+        assertThat(draftRowExists(orphanDraftId)).as("不带 draftId 也要按身份清掉那份草稿").isFalse();
+
+        // 别的写作对象不受影响：另开一篇笔记的编辑态草稿，保存新笔记时不得被清掉
+        long otherNote = createNote(MARK + "-publish 另一篇");
+        long otherEditDraft = saveDraft(adminToken, draftBody(null, otherNote, MARK + "-publish 另一篇编辑态", "qat35 另一篇正文"));
+        JsonNode otherTarget = publish(adminToken, noteBody(null, MARK + "-publish 再存一篇", null));
+        assertThat(otherTarget.path("code").asInt()).isEqualTo(200);
+        assertThat(draftRowExists(otherEditDraft)).as("别的写作对象的草稿不得被删").isTrue();
+        jdbcTemplate.update("delete from sgj_note_draft where draft_id = ?", otherEditDraft);
+
+        // 编辑：带自己的 draftId → 同样消失
+        long noteId = findNoteId(MARK + "-publish 无草稿");
+        long editDraftId = saveDraft(adminToken, draftBody(null, noteId, MARK + "-publish 编辑态", "qat35 publish 编辑正文"));
+        JsonNode edited = publish(adminToken, noteBody(noteId, MARK + "-publish 已改", editDraftId));
+        assertThat(edited.path("code").asInt()).isEqualTo(200);
+        assertThat(draftRowExists(editDraftId)).isFalse();
+
+        // 带他人的 draftId → 整个请求失败，且没有写入任何数据
+        long otherDraftId = saveDraft(otherToken, draftBody(null, null, MARK + "-publish 他人草稿", "qat35 他人的正文"));
+        int before = countNotesByTitle(MARK + "-publish 越权");
+        JsonNode rejected = publish(adminToken, noteBody(null, MARK + "-publish 越权", otherDraftId));
+        assertThat(rejected.path("code").asInt()).isEqualTo(500);
+        assertThat(countNotesByTitle(MARK + "-publish 越权")).as("被拒的保存不得写入任何数据").isEqualTo(before);
+        assertThat(draftRowExists(otherDraftId)).as("他人的草稿不得被删掉").isTrue();
+
+        jdbcTemplate.update("delete from sgj_note_draft where draft_id = ?", otherDraftId);
+    }
+
+    // ------------------------------------------------------------------
+    // 9. 三条清理路径：笔记软删 / 笔记彻底删除 / 条目彻底删除
+    // ------------------------------------------------------------------
+
+    @Test
+    void noteAndItemDeletionCleanDrafts() throws Exception
+    {
+        // 条目彻底删除：先删草稿再删条目（反序会因级联删 sgj_note 而反查不到 note_id）
+        long itemId = createItem(MARK + "-purge 条目");
+        long noteId = createNoteWithItem(MARK + "-purge 条目笔记", itemId);
+        long draftId = saveDraft(adminToken, draftBody(null, noteId, MARK + "-purge 草稿", "qat35 purge 正文"));
+        assertThat(draftRowExists(draftId)).isTrue();
+        mockMvc.perform(delete("/app/item/" + itemId).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(post("/app/item/recycle/purge/" + itemId).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertThat(draftRowExists(draftId)).as("条目彻底删除后草稿行不应残留").isFalse();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from sgj_note where note_id = ?", Integer.class, noteId))
+                .as("条目删除经外键级联清掉笔记").isZero();
+
+        // 笔记彻底删除（独立笔记，软删后清掉草稿）
+        long boxNoteId = createNote(MARK + "-purge 独立笔记");
+        long boxDraftId = saveDraft(adminToken, draftBody(null, boxNoteId, MARK + "-purge 独立草稿", "qat35 purge 独立正文"));
+        mockMvc.perform(delete("/app/note/" + boxNoteId).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk());
+        assertThat(draftRowExists(boxDraftId)).isFalse();
+        mockMvc.perform(post("/app/note/recycle/purge/" + boxNoteId).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk());
+        assertThat(draftRowExists(boxDraftId)).isFalse();
     }
 
     // ------------------------------------------------------------------
@@ -367,7 +455,7 @@ class AppNoteDraftSmokeTest
         return body;
     }
 
-    /** 带关联条目的新建态草稿（draft_scope 按条目区分，不带 draftId 首次写入） */
+    /** 带关联条目的空白草稿（item_id 只是数据，不参与身份） */
     private Map<String, Object> draftBodyWithItem(long itemId, String title, String content)
     {
         Map<String, Object> body = draftBody(null, null, title, content);
@@ -395,7 +483,7 @@ class AppNoteDraftSmokeTest
         return bodyOf(result).path("data").path("draftId").asLong();
     }
 
-    /** 往已删除的笔记写草稿 → 存活校验拒绝（草稿行是否同时被清掉属 #38 的发布语义，见 next 分支） */
+    /** 往已删除的笔记写草稿 → 存活校验拒绝 */
     private void rejectDraftWriteForDeadNote(long noteId) throws Exception
     {
         mockMvc.perform(put("/app/note/draft")
@@ -404,6 +492,7 @@ class AppNoteDraftSmokeTest
                         .content(objectMapper.writeValueAsString(draftBody(null, noteId, MARK + " 已删笔记", "qat35 已删正文"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(500));
+        assertThat(countDraftsOfNote(noteId)).as("已删笔记不得再写入草稿").isZero();
     }
 
     private JsonNode boxList(String token) throws Exception
@@ -453,6 +542,18 @@ class AppNoteDraftSmokeTest
         return body;
     }
 
+    private JsonNode publish(String token, Map<String, Object> body) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = body.containsKey("noteId")
+                ? put("/app/note") : post("/app/note");
+        MvcResult result = mockMvc.perform(builder
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andReturn();
+        return bodyOf(result);
+    }
 
     private long createNote(String title) throws Exception
     {
@@ -464,7 +565,31 @@ class AppNoteDraftSmokeTest
         return findNoteId(title);
     }
 
+    private long createNoteWithItem(String title, long itemId) throws Exception
+    {
+        Map<String, Object> body = noteBody(null, title, null);
+        body.put("itemId", itemId);
+        mockMvc.perform(post("/app/note").header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        return findNoteId(title);
+    }
 
+    private long createItem(String title) throws Exception
+    {
+        mockMvc.perform(post("/app/item").header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("title", title, "itemType", "MOVIE", "tags", MARK))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        MvcResult result = mockMvc.perform(get("/app/item/list").param("title", title)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andReturn();
+        return bodyOf(result).path("data").get(0).path("itemId").asLong();
+    }
 
     private long findNoteId(String title) throws Exception
     {
@@ -505,6 +630,10 @@ class AppNoteDraftSmokeTest
                 "select count(*) from sgj_note_draft where note_id = ?", Integer.class, noteId);
     }
 
+    private int countNotesByTitle(String title)
+    {
+        return jdbcTemplate.queryForObject("select count(*) from sgj_note where title = ?", Integer.class, title);
+    }
 
     private String createTokenFor(String username)
     {

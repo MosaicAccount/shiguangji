@@ -7,9 +7,11 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.business.mapper.SgjNoteMapper;
+import com.shiguangji.business.service.ISgjNoteDraftService;
 import com.shiguangji.business.service.ISgjNoteService;
 import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.StringUtils;
@@ -51,6 +53,9 @@ public class SgjNoteServiceImpl implements ISgjNoteService
 
     @Autowired
     private SgjNoteMapper sgjNoteMapper;
+
+    @Autowired
+    private ISgjNoteDraftService sgjNoteDraftService;
 
     @Override
     public SgjNote selectSgjNoteById(Long noteId)
@@ -123,18 +128,27 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     }
 
     @Override
+    @Transactional
     public int insertSgjNote(SgjNote sgjNote)
     {
         validateNote(sgjNote, true);
+        // 草稿身份：新增笔记时它是空白草稿（库里 note_id = 0，这里传 null）——insert 会把 noteId 回填成
+        // 新笔记的 ID，所以必须在写入前取一次
+        Long blankDraftTarget = sgjNote.getNoteId();
         // 新增笔记未传公开状态时默认私密
         if (StringUtils.isEmpty(sgjNote.getIsPublic()))
         {
             sgjNote.setIsPublic(IS_PUBLIC_NO);
         }
-        return sgjNoteMapper.insertSgjNote(sgjNote);
+        int rows = sgjNoteMapper.insertSgjNote(sgjNote);
+        // 保存成功与删除草稿必须在同一事务里：留着旧草稿，编辑页下次自动恢复会把它盖回刚保存好的正文。
+        // 身份要在插入前算：insert 会把 noteId 回填成新笔记的 ID，而这份草稿的身份是「新建笔记」（按关联条目）
+        deleteDraftOnSave(sgjNote, sgjNote.getCreateBy(), blankDraftTarget);
+        return rows;
     }
 
     @Override
+    @Transactional
     public int updateSgjNote(SgjNote sgjNote)
     {
         if (sgjNote.getNoteId() == null)
@@ -142,12 +156,48 @@ public class SgjNoteServiceImpl implements ISgjNoteService
             throw new ServiceException("笔记ID不能为空");
         }
         validateNote(sgjNote, false);
-        return sgjNoteMapper.updateSgjNote(sgjNote);
+        int rows = sgjNoteMapper.updateSgjNote(sgjNote);
+        if (rows > 0)
+        {
+            String owner = StringUtils.isNotEmpty(sgjNote.getUpdateBy()) ? sgjNote.getUpdateBy() : sgjNote.getCreateBy();
+            deleteDraftOnSave(sgjNote, owner, sgjNote.getNoteId());
+        }
+        return rows;
+    }
+
+    /**
+     * 保存笔记成功后删除对应草稿：带的是他人草稿时抛错（整个请求失败，不写任何数据）。
+     * 与笔记写入同事务，不存在「笔记保存了但草稿还在」的中间状态
+     */
+    /**
+     * 保存成功时清掉这份写作对象的草稿。两道：
+     *
+     * <ol>
+     *   <li>带 `draftId` 就按 id 删——前端的正常路径，也顺便守住「带他人 draftId 整个请求失败」的约定；</li>
+     *   <li>再按「写作对象身份」删一次兜底：换设备 / 清过本地缓冲时前端手里没有 draftId，
+     *       不兜这一刀，那条「已经保存过」的草稿会一直挂在草稿箱里，下次写笔记还会撞上它。</li>
+     * </ol>
+     *
+     * 两道都在保存的同一个事务里（调用方已 `@Transactional`），不会出现「笔记存了、草稿还在」的中间态。
+     *
+     * @param draftTargetNoteId 草稿身份：编辑态是那篇笔记的 ID；新增态传 null（空白草稿，库里是 0）。
+     *                           调用方要在写入**之前**取好（新增时 insert 会回填 noteId）
+     */
+    private void deleteDraftOnSave(SgjNote sgjNote, String owner, Long draftTargetNoteId)
+    {
+        if (sgjNote.getDraftId() != null)
+        {
+            sgjNoteDraftService.deleteOwnedDraft(sgjNote.getDraftId(), owner);
+        }
+        sgjNoteDraftService.deleteByNoteId(owner, draftTargetNoteId);
     }
 
     @Override
+    @Transactional
     public int deleteSgjNoteByIds(Long[] noteIds)
     {
+        // 笔记进回收站时一并清掉它的草稿：否则留下用户看不到、也清不掉的孤儿行
+        sgjNoteDraftService.deleteByNoteIds(noteIds);
         return sgjNoteMapper.deleteSgjNoteByIds(noteIds);
     }
 
@@ -158,8 +208,10 @@ public class SgjNoteServiceImpl implements ISgjNoteService
     }
 
     @Override
+    @Transactional
     public int purgeSgjNoteByIds(Long[] noteIds)
     {
+        sgjNoteDraftService.deleteByNoteIds(noteIds);
         return sgjNoteMapper.purgeSgjNoteByIds(noteIds);
     }
 

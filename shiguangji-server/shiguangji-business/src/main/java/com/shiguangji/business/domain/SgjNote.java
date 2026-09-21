@@ -53,6 +53,9 @@ public class SgjNote extends BaseEntity
     /** 详情渲染用正文（已剥离 YAML 前言、去掉与标题重复的首个一级标题行，出参，非表字段） */
     private String body;
 
+    /** 保存时携带的草稿ID（入参，非表字段）：保存成功后在同一事务里删除该草稿 */
+    private Long draftId;
+
     public Long getNoteId()
     {
         return noteId;
@@ -185,5 +188,16 @@ public class SgjNote extends BaseEntity
     public void setBody(String body)
     {
         this.body = body;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public Long getDraftId()
+    {
+        return draftId;
+    }
+
+    public void setDraftId(Long draftId)
+    {
+        this.draftId = draftId;
     }
 }

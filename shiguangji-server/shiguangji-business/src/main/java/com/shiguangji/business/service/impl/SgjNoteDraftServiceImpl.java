@@ -155,6 +155,12 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService
     }
 
     @Override
+    public int deleteByNoteId(String createBy, Long noteId)
+    {
+        return sgjNoteDraftMapper.deleteDraftByNoteId(createBy, noteId);
+    }
+
+    @Override
     public int deleteByNoteIds(Long[] noteIds)
     {
         return noteIds == null || noteIds.length == 0 ? 0 : sgjNoteDraftMapper.deleteByNoteIds(noteIds);

@@ -68,6 +68,17 @@ public interface ISgjNoteDraftService
     public int deleteOwnedDraft(Long draftId, String createBy);
 
     /**
+     * 按「写作对象」删掉本人的草稿（保存成功时的兜底清理；没有则返回 0）：
+     * 前端手里没有 draftId 时（换设备、清过本地缓冲）也要清掉那份旧草稿，
+     * 否则草稿箱会一直挂着一条已经保存过的草稿
+     *
+     * @param createBy 当前登录用户
+     * @param noteId   编辑来源笔记ID；null / 0 = 空白草稿
+     * @return 删除行数
+     */
+    public int deleteByNoteId(String createBy, Long noteId);
+
+    /**
      * 清理这些笔记的编辑态草稿（笔记软删 / 彻底删除时调用）
      *
      * @param noteIds 笔记ID
