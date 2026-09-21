@@ -97,10 +97,11 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" fixed="right" width="150" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" fixed="right" width="260" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['sgj:note:edit']">修改</el-button>
           <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['sgj:note:remove']">删除</el-button>
+          <el-button link type="primary" icon="Download" @click="handleExportMarkdown(scope.row)" title="导出 Markdown（带 noteId，改完可以再导回来）">导出 Markdown</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -178,6 +179,7 @@ import MarkdownEditor from '@/components/MarkdownEditor/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import ItemSelect from '@/components/front/ItemSelect.vue'
 import { listNote, getNote, addNote, updateNote, delNote } from '@/api/business/note'
+import { noteExportUrl } from '@/api/front/note'
 import { getBlankNoteDraft, getNoteDraftByNoteId, saveNoteDraft } from '@/api/front/noteDraft'
 import {
   applyPushResult,
@@ -652,6 +654,17 @@ function handleDelete(row?: SgjNote) {
     getList()
     proxy.$modal.msgSuccess('删除成功')
   }).catch(() => {})
+}
+
+/**
+ * 导出为 Markdown 文件（每行都能导出，没有灰按钮）。
+ *
+ * 调的是前台那个导出接口（`/app/note/{noteId}/export`）：它的归属校验是「本人或管理员」，
+ * 所以管理员在这里照样导得出任何一篇，而输出与前台详情页逐字节相同——一个接口才保证这一点（设计 结论 39）
+ */
+function handleExportMarkdown(row: SgjNote) {
+  if (!row.noteId) return
+  proxy.$download.file(noteExportUrl(row.noteId))
 }
 
 /** 导出进行中（数据导出） */
