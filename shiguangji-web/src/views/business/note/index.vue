@@ -688,6 +688,10 @@ async function onImportFileChange(event: Event): Promise<void> {
   if (result.droppedTagCount > 0) {
     proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
   }
+  // 与前台同一条提示：图片文件不在 md 里，本版也还没做搬运（#56）
+  if (result.localImageCount > 0) {
+    proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用；本版不搬图片，导入后那些图会失效`)
+  }
 
   await openEditor(targetNoteId)
   title.value = '导入笔记'
