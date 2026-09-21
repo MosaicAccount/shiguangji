@@ -23,7 +23,8 @@ export function parseTime(time: any, pattern?: string): string | null {
     }
     date = new Date(time)
   }
-  const formatObj: Record<string, any> = {
+  /** 格式化位取值：全是数字（a 是星期几，0 = 周日） */
+  const formatObj: Record<string, number> = {
     y: date.getFullYear(),
     m: date.getMonth() + 1,
     d: date.getDate(),
@@ -33,13 +34,11 @@ export function parseTime(time: any, pattern?: string): string | null {
     a: date.getDay()
   }
   const time_str = format.replace(/{(y|m|d|h|i|s|a)+}/g, (result, key) => {
-    let value = formatObj[key]
+    const value = formatObj[key]
     // Note: getDay() returns 0 on Sunday
     if (key === 'a') { return ['日', '一', '二', '三', '四', '五', '六'][value] }
-    if (result.length > 0 && value < 10) {
-      value = '0' + value
-    }
-    return value || 0
+    // 两位数以内补零（value 为 0 时得到 '00'，与 ruoyi 原实现的 `value = '0' + value` 一致）
+    return result.length > 0 && value < 10 ? '0' + value : String(value)
   })
   return time_str
 }
@@ -97,9 +96,11 @@ export function selectDictLabels(datas: any, value: any, separator?: string): st
   const actions: string[] = []
   const currentSeparator = undefined === separator ? "," : separator
   const temp = value.split(currentSeparator)
-  Object.keys(value.split(currentSeparator)).some((val) => {
+  // 下面两个循环都是「逐个处理」，不是「判断有没有匹配」——写成 .some 会让人以为它会短路，
+  // 而它的回调从不返回真值，所以换成 forEach 不改变任何行为
+  Object.keys(temp).forEach((val) => {
     let match = false
-    Object.keys(datas).some((key) => {
+    Object.keys(datas).forEach((key) => {
       if (datas[key].value == ('' + temp[val])) {
         actions.push(datas[key].label + currentSeparator)
         match = true
@@ -157,6 +158,9 @@ export function mergeRecursive(source: any, target: any): any {
  * @param parentId 父节点字段 默认 'parentId'
  * @param children 孩子节点字段 默认 'children'
  */
+/** 树节点：入参是「一行原始数据」，字段名由 config 决定，所以只能按下标访问 */
+type TreeNode = Record<string, unknown>
+
 export function handleTree(data: any[], id?: string, parentId?: string, children?: string): any[] {
   const config = {
     id: id || 'id',
@@ -164,8 +168,8 @@ export function handleTree(data: any[], id?: string, parentId?: string, children
     childrenList: children || 'children'
   }
 
-  const childrenListMap: Record<string, any> = {}
-  const tree: any[] = []
+  const childrenListMap: Record<string, TreeNode> = {}
+  const tree: TreeNode[] = []
   for (const d of data) {
     const id = d[config.id]
     childrenListMap[id] = d
@@ -180,17 +184,24 @@ export function handleTree(data: any[], id?: string, parentId?: string, children
     if (!parentObj) {
       tree.push(d)
     } else {
-      parentObj[config.childrenList].push(d)
+      // 子列表是上面就地补上的数组（键名由 config 决定，所以这里只能收窄一次）
+      (parentObj[config.childrenList] as TreeNode[]).push(d)
     }
   }
   return tree
 }
 
+/** 查询参数里的标量值 */
+type QueryParamScalar = string | number | boolean | null | undefined
+
+/** 待编码的查询参数：标量直接编码，一层嵌套对象按 `key[sub]=value` 展开（与后端的接收口径一致） */
+type QueryParamValue = QueryParamScalar | Record<string, QueryParamScalar>
+
 /**
 * 参数处理
 * @param params  参数
 */
-export function tansParams(params: Record<string, any>): string {
+export function tansParams(params: Record<string, QueryParamValue>): string {
   let result = ''
   for (const propName of Object.keys(params)) {
     const value = params[propName]

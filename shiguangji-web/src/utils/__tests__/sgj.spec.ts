@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { splitByKeyword, applyKeywordHighlights, clearKeywordHighlights, parseServerTime } from '../sgj'
+import {
+  splitByKeyword,
+  applyKeywordHighlights,
+  clearKeywordHighlights,
+  parseServerTime,
+  parseTime,
+  selectDictLabels,
+  handleTree,
+  tansParams
+} from '../sgj'
 
 /** issue #31：摘要关键词切片。字面量切分（元字符安全）、大小写不敏感、多词合并区间 */
 describe('splitByKeyword', () => {
@@ -131,5 +140,87 @@ describe('parseServerTime', () => {
     expect(parseServerTime(null)).toBe(0)
     expect(parseServerTime('')).toBe(0)
     expect(parseServerTime('not-a-date')).toBe(0)
+  })
+})
+/**
+ * 下面四组的对象都是 ruoyi 遗留工具，在给它们收窄类型（`Record<string, any>` → 精确类型）与
+ * 把被当 `forEach` 用的 `.some` 换成 `forEach` 之前没有测试。这些用例钉住的是**改之前的行为**，
+ * 收窄类型/换写法的提交必须让它们原样通过
+ */
+describe('parseTime', () => {
+  it('按 pattern 格式化，两位数以内补零', () => {
+    expect(parseTime(new Date(2026, 8, 21, 10, 23, 45), '{y}-{m}-{d} {h}:{i}:{s}')).toBe('2026-09-21 10:23:45')
+    expect(parseTime(new Date(2026, 0, 5, 3, 4, 6), '{y}-{m}-{d} {h}:{i}:{s}')).toBe('2026-01-05 03:04:06')
+  })
+
+  it('{a} 输出星期几（0 = 周日）：2026-09-21 是周一，2026-09-20 是周日', () => {
+    expect(parseTime(new Date(2026, 8, 21), '{a}')).toBe('一')
+    expect(parseTime(new Date(2026, 8, 20), '{a}')).toBe('日')
+  })
+
+  it('不传 pattern 时用默认格式；空值返回 null', () => {
+    expect(parseTime(new Date(2026, 8, 21, 10, 23, 45))).toBe('2026-09-21 10:23:45')
+    expect(parseTime(undefined)).toBeNull()
+    expect(parseTime('')).toBeNull()
+  })
+})
+
+describe('selectDictLabels', () => {
+  const DICTS = [{ value: '0', label: '男' }, { value: '1', label: '女' }]
+
+  it('逗号串逐个翻译，末尾不留下分隔符', () => {
+    expect(selectDictLabels(DICTS, '0,1')).toBe('男,女')
+    expect(selectDictLabels(DICTS, '1,1')).toBe('女,女')
+  })
+
+  it('查不到的值原样保留', () => {
+    expect(selectDictLabels(DICTS, '0,9')).toBe('男,9')
+  })
+
+  it('数组入参与自定义分隔符', () => {
+    expect(selectDictLabels(DICTS, ['0', '1'])).toBe('男,女')
+    expect(selectDictLabels(DICTS, '0|1', '|')).toBe('男|女')
+  })
+
+  it('空值返回空串', () => {
+    expect(selectDictLabels(DICTS, undefined)).toBe('')
+    expect(selectDictLabels(DICTS, '')).toBe('')
+  })
+})
+
+describe('handleTree', () => {
+  it('按 parentId 组装成树，根节点保持原顺序', () => {
+    const rows = [
+      { id: 1, parentId: 0, name: 'a' },
+      { id: 2, parentId: 1, name: 'a-1' },
+      { id: 3, parentId: 1, name: 'a-2' },
+      { id: 4, parentId: 0, name: 'b' }
+    ]
+    const tree = handleTree(rows)
+    expect(tree.map((node: any) => node.id)).toEqual([1, 4])
+    expect(tree[0].children.map((node: any) => node.id)).toEqual([2, 3])
+    // 第一轮会给每个节点都补上空 children 数组，所以叶子也是 [] 而不是 undefined
+    expect(tree[1].children).toEqual([])
+  })
+
+  it('可自定义 id / parentId / children 的键名', () => {
+    const rows = [{ key: 1, pid: 0 }, { key: 2, pid: 1 }]
+    const tree = handleTree(rows, 'key', 'pid', 'nodes')
+    expect(tree).toHaveLength(1)
+    expect(tree[0].nodes.map((node: any) => node.key)).toEqual([2])
+  })
+})
+
+describe('tansParams', () => {
+  it('标量直接编码，末尾保留 &', () => {
+    expect(tansParams({ a: 1, b: 'x y' })).toBe('a=1&b=x%20y&')
+  })
+
+  it('嵌套对象展开成 key[sub]=value（方括号也会被编码）', () => {
+    expect(tansParams({ page: { num: 1, size: 10 } })).toBe('page%5Bnum%5D=1&page%5Bsize%5D=10&')
+  })
+
+  it('null / 空串 / undefined 跳过，0 要保留', () => {
+    expect(tansParams({ a: null, b: '', c: undefined, d: 0 })).toBe('d=0&')
   })
 })
