@@ -35,7 +35,7 @@ export interface NoteImportPrefill {
 export type NoteImportErrorCode = 'not-md' | 'too-long'
 
 export type NoteImportResult =
-  | { ok: true; prefill: NoteImportPrefill; droppedTagCount: number }
+  | { ok: true; prefill: NoteImportPrefill; droppedTagCount: number; localImageCount: number }
   | { ok: false; code: NoteImportErrorCode; length?: number }
 
 interface FrontMatterSplit {
@@ -134,6 +134,18 @@ function firstH1(body: string): string {
   return matched ? matched[1].trim() : ''
 }
 
+/**
+ * 指向**本地文件**的图片引用：标准 `![](./a.png)` 与 Obsidian 的 `![[a.png]]`。
+ *
+ * 外链（`http(s):`）与 `data:` 内嵌刻意不算：那些导入后仍然显示得出来，提醒了反而是噪声
+ */
+const LOCAL_IMAGE_PATTERN = /!\[\[[^\]]+\]\]|!\[[^\]]*\]\((?!https?:|data:)[^)]+\)/g
+
+/** 正文里本地图片引用的处数（用于「本版不搬图片」的提示） */
+export function countLocalImageRefs(content: string): number {
+  return content.match(LOCAL_IMAGE_PATTERN)?.length || 0
+}
+
 /** 把 front-matter 的某个标量键读成字符串（`title: 2024` 会被 YAML 解析成数字） */
 function scalarText(value: unknown): string {
   if (value === null || value === undefined || typeof value === 'object') return ''
@@ -177,7 +189,10 @@ export function parseNoteMarkdown(text: string, fileName: string): NoteImportRes
       tags: joinTagsWithinLimit(kept),
       noteId: identityNoteId(data.noteId)
     },
-    droppedTagCount: allTags.length - kept.length
+    droppedTagCount: allTags.length - kept.length,
+    // 图片文件不在 md 里（系统拿不到相对路径指向的文件），而且编辑器没有插图入口，
+    // 所以带图笔记导入后那些引用必然失效——不能静默，也不能把外链算进来虚报
+    localImageCount: countLocalImageRefs(content)
   }
 }
 

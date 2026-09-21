@@ -193,8 +193,7 @@ describe('后端导出的文本能被解析回同样的字段', () => {
   })
 })
 
-describe('front-matter 的 noteId（往返识别的依据）', () => {
-  const noteIdOf = (line: string) => prefillOf(`---\n${line}\n---\n正文`).prefill.noteId
+describe('front-matter 的 noteId（往返识别的依据）', () => {  const noteIdOf = (line: string) => prefillOf(`---\n${line}\n---\n正文`).prefill.noteId
 
   it('正整数才认，字符串数字也认', () => {
     expect(noteIdOf('noteId: 12')).toBe(12)
@@ -207,5 +206,28 @@ describe('front-matter 的 noteId（往返识别的依据）', () => {
     expect(noteIdOf('noteId: -3')).toBeUndefined()
     expect(noteIdOf('noteId: abc')).toBeUndefined()
     expect(noteIdOf('noteId: [1, 2]')).toBeUndefined()
+  })
+})
+
+/**
+ * 图片文件不在 md 里，本版也不搬（#56）：导入时必须提示，不能静默丢。
+ * 只算指向本地文件的两种写法，外链与 data: 不算（那些导完仍然显示得出来）。
+ */
+describe('本地图片引用的计数（「本版不搬图片」提示的依据）', () => {
+  const imagesOf = (content: string) => prefillOf(content).localImageCount
+
+  it('标准 md 图片与 Obsidian 的 ![[…]] 都算', () => {
+    expect(imagesOf('# t\n\n![alt](./assets/a.png)\n')).toBe(1)
+    expect(imagesOf('# t\n\n![[b.png]]\n')).toBe(1)
+    expect(imagesOf('# t\n\n![a](./a.png)\n\n![[b.png]]\n\n![c](../c.png)\n')).toBe(3)
+  })
+
+  it('外链与 data: 内嵌不算（导入后仍然可用）', () => {
+    expect(imagesOf('# t\n\n![a](https://example.com/a.png)\n')).toBe(0)
+    expect(imagesOf('# t\n\n![a](data:image/png;base64,iVBORw0KGgo=)\n')).toBe(0)
+  })
+
+  it('没有图片时为 0', () => {
+    expect(imagesOf('# t\n\n普通段落，只有一个 [链接](https://example.com)。\n')).toBe(0)
   })
 })

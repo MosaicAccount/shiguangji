@@ -284,6 +284,10 @@ async function onImportFileChange(event: Event): Promise<void> {
   if (result.droppedTagCount > 0) {
     proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
   }
+  // 图片文件不在 md 里，本版也还没做搬运（#56）：不静默，明说这一版会失效
+  if (result.localImageCount > 0) {
+    proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用；本版不搬图片，导入后那些图会失效`)
+  }
   setPendingImport(result.prefill)
   // 带 noteId 进去 = 更新那篇（编辑页会把它当编辑态），不带 = 新建一篇
   router.push(targetNoteId ? { path: '/note/edit', query: { noteId: String(targetNoteId) } } : '/note/edit')
