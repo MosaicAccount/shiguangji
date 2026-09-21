@@ -114,7 +114,16 @@
       @pagination="getList"
     />
 
-    <el-dialog :title="title" v-model="open" width="1000px" append-to-body :close-on-click-modal="false">
+    <el-dialog
+      :title="title"
+      v-model="open"
+      width="1000px"
+      append-to-body
+      :close-on-click-modal="false"
+      :before-close="beforeClose"
+    >
+      <!-- 草稿兜底（#57）：与前台编辑页同一套判定，这行说明当前这份内容到底存在哪里 -->
+      <div class="draft-bar" :class="'is-' + syncState">{{ syncText }}</div>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-row>
           <el-col :span="12">
@@ -171,11 +180,28 @@ import TagSelect from '@/components/TagSelect/index.vue'
 import ItemSelect from '@/components/front/ItemSelect.vue'
 import { listNote, getNote, addNote, updateNote, delNote } from '@/api/business/note'
 import { noteExportUrl } from '@/api/front/note'
+import { getBlankNoteDraft, getNoteDraftByNoteId, saveNoteDraft } from '@/api/front/noteDraft'
+import {
+  applyPushResult,
+  bufferMatchesIdentity,
+  clearNoteBuffer,
+  decideRestore,
+  editorKeyOf,
+  readNoteBuffer,
+  restoreFormData,
+  writeNoteBuffer,
+  type NoteDraftBuffer
+} from '@/utils/noteDraftBuffer'
+import { NOTE_CONTENT_MAX_LENGTH } from '@/utils/note'
+import { getToken } from '@/utils/auth'
+import useUserStore from '@/store/modules/user'
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import type { SgjNote } from '@/types/api/business/note'
-import { parseTime } from '@/utils/sgj'
+import type { SgjNoteDraft } from '@/types/api/front/noteDraft'
+import { parseServerTime, parseTime } from '@/utils/sgj'
 
 const { proxy } = getCurrentInstance() as { proxy: any }
+const userStore = useUserStore()
 
 const noteList = ref<SgjNote[]>([])
 const open = ref<boolean>(false)
@@ -217,6 +243,272 @@ function noteSummary(content?: string): string {
   return plain.length > 40 ? plain.slice(0, 40) + '…' : (plain || '-')
 }
 
+// ------------------------------------------------------------------
+// 草稿兜底（issue #57）：后台弹窗接上既有的 sgj_note_draft
+//
+// 与前台编辑页 edit.vue **共用同一个槽位**：草稿行按 (create_by, note_id) 归属，本地缓冲按
+// (username, 'note:{id}' | 'new') 归属。同一篇笔记的未保存内容不该有两个地方，所以后台与前台
+// 同时开着同一篇时是后写覆盖（结论 24），与前台跨设备时的行为一致。
+//
+// ponytail: 「监听表单 → 本地缓冲 → 定时推送 → 三态」这套接线在 edit.vue 已有一份。这里按同样的
+// 顺序再写一遍，而不是抽 composable——edit.vue 此刻正被导入/导出分支改着，现在抽会把两条分支拧在一起。
+// 等 feat/note-import 合入后，两处接线可以收成一份 useNoteDraftSync。
+// ------------------------------------------------------------------
+
+/** 与前台 edit.vue 一致：本地缓冲的 key 由它算出来，两边不一致就会读写到两个槽位 */
+const username = computed(() => userStore.name || getToken() || '')
+
+/** 服务端同步周期；本地缓冲在停手 1s 后写入（与前台同一组数值） */
+const SYNC_INTERVAL_MS = 15000
+const LOCAL_DEBOUNCE_MS = 1000
+
+const draftId = ref<number | undefined>(undefined)
+const syncState = ref<'synced' | 'pending' | 'failed'>('pending')
+/** 打开时恢复出了未保存的草稿（提示优先于同步态） */
+const restored = ref(false)
+/** 笔记已被删除：存活校验拒了写入，再试没有意义 */
+const noteDeleted = ref(false)
+const contentTooLong = computed(() => (form.value.content || '').length > NOTE_CONTENT_MAX_LENGTH)
+
+/** 状态条：四态一句话（恢复提示优先，其次是两种「别试了」） */
+const syncText = computed(() => {
+  if (restored.value) return '已恢复未保存的草稿'
+  if (noteDeleted.value) return '这篇笔记已被删除，草稿不再保存'
+  if (contentTooLong.value) return `正文超过 ${NOTE_CONTENT_MAX_LENGTH} 字，草稿保存不了`
+  if (syncState.value === 'synced') return '已同步到草稿箱'
+  if (syncState.value === 'failed') return '同步失败（可重试）'
+  return '仅本地待同步'
+})
+
+/** 本地递增计数器（不是时钟）：判断推送响应回来时内容有没有再变过 */
+let seq = 0
+/** 有服务端从没见过的内容 */
+let dirty = false
+/** 推送在飞：避免同一时刻并发两次 PUT */
+let pushing = false
+/** 最近一次推送成功时服务端返回的 updateTime（epoch 毫秒） */
+let baseUpdateTime = 0
+/** 打开时的快照（离开确认的判据） */
+let baseline = ''
+/** 程序化改写表单时不当作「用户改动」 */
+let muteChange = false
+let localTimer: number | undefined
+let syncTimer: number | undefined
+
+/**
+ * 表单快照。
+ *
+ * `remark` 不在里面：草稿模型（`NoteDraftPayload`）没有备注字段，把它算进改动会弹出一个
+ * 「已保存到草稿箱」的假承诺。只改备注就关闭，行为与做这个 issue 之前一致（不拦、不保）。
+ */
+function snapshot(): string {
+  return JSON.stringify({
+    title: form.value.title || '',
+    content: form.value.content || '',
+    itemId: form.value.itemId ?? null,
+    tags: form.value.tags || '',
+    isPublic: form.value.isPublic || '0'
+  })
+}
+
+function hasUnsavedChanges(): boolean {
+  return snapshot() !== baseline
+}
+
+/** 程序化改写表单：不触发「用户改动」 */
+function applyForm(data: Partial<SgjNote>): void {
+  muteChange = true
+  Object.assign(form.value, data)
+  nextTick(() => { muteChange = false })
+}
+
+function currentBuffer(): NoteDraftBuffer {
+  return {
+    draftId: draftId.value,
+    noteId: form.value.noteId,
+    itemId: form.value.itemId,
+    title: form.value.title,
+    content: form.value.content,
+    tags: form.value.tags,
+    isPublic: form.value.isPublic,
+    baseUpdateTime,
+    dirty
+  }
+}
+
+function writeLocalBuffer(): void {
+  writeNoteBuffer(username.value, editorKeyOf(form.value.noteId), currentBuffer())
+}
+
+/** 停手 1s 写本地：写本地是瞬间完成的，断网 / 页面被强杀都不会丢 */
+function scheduleLocalWrite(): void {
+  window.clearTimeout(localTimer)
+  localTimer = window.setTimeout(writeLocalBuffer, LOCAL_DEBOUNCE_MS)
+}
+
+/**
+ * 打开弹窗后准备草稿：与前台编辑页走同一条判定链（`utils/noteDraftBuffer`），
+ * 所以「哪一份更新」两边理解一致——只用服务端时间 + dirty，不存客户端 savedAt
+ *
+ * @param entryNoteId 编辑态传笔记ID；新增态不传（对应空白草稿槽位 note_id = 0）
+ */
+async function prepareDraft(entryNoteId?: number): Promise<void> {
+  noteDeleted.value = false
+  restored.value = false
+  syncState.value = 'pending'
+  seq = 0
+  dirty = false
+  pushing = false
+  // 快照要在套草稿**之前**取：套完再取的话两份相等，「恢复了草稿」永远看不出来
+  baseline = snapshot()
+
+  const rawLocal = readNoteBuffer(username.value, editorKeyOf(entryNoteId))
+  const local = bufferMatchesIdentity(rawLocal, { noteId: entryNoteId }) ? rawLocal : null
+
+  let serverDraft: SgjNoteDraft | null = null
+  try {
+    // 新增态取的是「空白草稿」（每人一份）：前台也在写那一份，不先取回来就会彼此静默顶掉
+    serverDraft = entryNoteId
+      ? ((await getNoteDraftByNoteId(entryNoteId)).data || null)
+      : ((await getBlankNoteDraft()).data || null)
+  } catch {
+    // 草稿已被删（另一台设备清理 / 已发布）时当作服务端没有
+    serverDraft = null
+  }
+  const serverUpdateTime = parseServerTime(serverDraft?.updateTime)
+
+  const source = decideRestore(local, serverUpdateTime)
+  const draftForm = restoreFormData(source, local, serverDraft, entryNoteId)
+  if (draftForm) applyForm(draftForm)
+
+  if (source === 'local' && local) {
+    draftId.value = local.draftId ?? serverDraft?.draftId
+    baseUpdateTime = local.baseUpdateTime
+    dirty = local.dirty
+    // 本地有服务端从没见过的改动：立即补推一次，不等下一个 15s
+    if (local.dirty) pushDraft()
+    else syncState.value = 'synced'
+  } else if (source === 'server' && serverDraft) {
+    draftId.value = serverDraft.draftId
+    baseUpdateTime = serverUpdateTime
+    dirty = false
+    syncState.value = 'synced'
+  } else {
+    draftId.value = undefined
+    baseUpdateTime = 0
+  }
+
+  restored.value = source !== 'none' && snapshot() !== baseline
+}
+
+/**
+ * 推服务端（静默）。upsert 的收敛、存活校验、唯一键冲突都在服务端（结论 40 / 草稿表唯一键），
+ * 这里失败只改状态条，内容由本地缓冲兜住
+ */
+function pushDraft(): void {
+  if (pushing || noteDeleted.value || contentTooLong.value) return
+  // 空表单不建草稿：否则点一次「新增」就留下一份空草稿挂在草稿箱里
+  if (!draftId.value && !form.value.title && !form.value.content) return
+
+  const pushedSeq = seq
+  pushing = true
+  saveNoteDraft({
+    draftId: draftId.value,
+    noteId: form.value.noteId,
+    itemId: form.value.itemId,
+    title: form.value.title,
+    content: form.value.content,
+    tags: form.value.tags,
+    isPublic: form.value.isPublic || '0'
+  }, true).then(response => {
+    const saved = response.data
+    draftId.value = saved?.draftId ?? draftId.value
+    const buffer = applyPushResult(currentBuffer(), pushedSeq, seq, draftId.value, parseServerTime(saved?.updateTime))
+    baseUpdateTime = buffer.baseUpdateTime
+    dirty = buffer.dirty
+    writeNoteBuffer(username.value, editorKeyOf(form.value.noteId), buffer)
+    syncState.value = dirty ? 'pending' : 'synced'
+  }).catch((error: any) => {
+    const message = String(error?.message || error || '')
+    if (message.includes('已被删除')) {
+      noteDeleted.value = true
+      restored.value = false
+      proxy.$modal.msgError('这篇笔记已被删除，草稿不再保存')
+    } else {
+      syncState.value = 'failed'
+    }
+  }).finally(() => {
+    pushing = false
+  })
+}
+
+/**
+ * 未保存离开确认。文案由「草稿是不是真的存在」决定——空表单不建草稿，
+ * 此时说「已保存到草稿箱」与实际不符
+ */
+async function confirmLeave(): Promise<boolean> {
+  if (!hasUnsavedChanges()) return true
+  const message = draftId.value
+    ? '内容已保存到草稿箱，下次可以接着改。确定关闭吗？'
+    : (form.value.title || form.value.content)
+      ? '内容还没同步到草稿箱（已存在本机浏览器）。确定关闭吗？'
+      : '标题与正文都为空，不会生成草稿；只有条目 / 标签 / 公开状态的改动不会保留。确定关闭吗？'
+  try {
+    await proxy.$modal.confirm(message)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 关闭前的尽力而为：先同步写本地，再推一次（未送达由下次打开时补推兜底） */
+async function flushDraft(): Promise<void> {
+  writeLocalBuffer()
+  pushDraft()
+}
+
+/** 切走 / 关闭标签页：先同步写本地，再尽力推一次 */
+function onHide(): void {
+  if (document.visibilityState === 'hidden') {
+    writeLocalBuffer()
+    pushDraft()
+  }
+}
+
+function startSyncTimers(): void {
+  stopSyncTimers()
+  syncTimer = window.setInterval(() => { if (dirty) pushDraft() }, SYNC_INTERVAL_MS)
+  document.addEventListener('visibilitychange', onHide)
+  window.addEventListener('pagehide', onHide)
+}
+
+function stopSyncTimers(): void {
+  window.clearInterval(syncTimer)
+  window.clearTimeout(localTimer)
+  document.removeEventListener('visibilitychange', onHide)
+  window.removeEventListener('pagehide', onHide)
+}
+
+watch(
+  () => [form.value.title, form.value.content, form.value.itemId, form.value.tags, form.value.isPublic],
+  () => {
+    // !open 也要挡：关闭弹窗时 reset() 会改表单，那时不该算改动
+    if (muteChange || !open.value) return
+    seq += 1
+    dirty = true
+    restored.value = false
+    if (syncState.value === 'synced') syncState.value = 'pending'
+    scheduleLocalWrite()
+  }
+)
+
+watch(open, (opened) => {
+  if (opened) startSyncTimers()
+  else stopSyncTimers()
+})
+
+onBeforeUnmount(stopSyncTimers)
+
 /** 查询列表 */
 function getList() {
   loading.value = true
@@ -228,13 +520,27 @@ function getList() {
 }
 
 /** 取消按钮 */
-function cancel() {
+async function cancel() {
+  if (!(await confirmLeave())) return
+  await flushDraft()
   open.value = false
   reset()
 }
 
-/** 表单重置 */
+/**
+ * 右上角 ✕ / ESC 关闭：el-dialog 的 before-close 只在这些路径上触发，「取消」按钮不走这里，
+ * 所以两条路径各自都要拦一道（文案与判据同一个）
+ */
+async function beforeClose(done: () => void) {
+  if (!(await confirmLeave())) return
+  await flushDraft()
+  done()
+  reset()
+}
+
+/** 表单重置（程序化写表单，不算用户改动） */
 function reset() {
+  muteChange = true
   form.value = {
     noteId: undefined,
     itemId: undefined,
@@ -245,6 +551,7 @@ function reset() {
     isPublic: '0'
   }
   proxy.resetForm('formRef')
+  nextTick(() => { muteChange = false })
 }
 
 /** 搜索按钮操作 */
@@ -280,6 +587,7 @@ function handleAdd() {
   reset()
   open.value = true
   title.value = '新增笔记'
+  prepareDraft()
 }
 
 /** 修改按钮操作 */
@@ -287,11 +595,13 @@ function handleUpdate(row?: SgjNote) {
   reset()
   const noteId = row?.noteId || ids.value[0]
   getNote(noteId).then(response => {
-    form.value = response.data || {}
+    // 用 applyForm 而不是直接换对象：否则下面那个 watch 会把「打开一篇笔记」当成用户改动
+    applyForm(response.data || {})
     // 公开状态归一化：仅接受 '0'/'1'，空值按私密处理（存量数据兜底）
     form.value.isPublic = form.value.isPublic === '1' ? '1' : '0'
     open.value = true
     title.value = '修改笔记'
+    prepareDraft(noteId)
   })
 }
 
@@ -307,20 +617,30 @@ function handlePublicChange(row: SgjNote) {
 /** 提交按钮 */
 function submitForm() {
   proxy.$refs['formRef'].validate((valid: boolean) => {
-    if (valid) {
-      if (form.value.noteId != undefined) {
-        updateNote(form.value).then(() => {
-          proxy.$modal.msgSuccess('修改成功')
-          open.value = false
-          getList()
-        })
-      } else {
-        addNote(form.value).then(() => {
-          proxy.$modal.msgSuccess('新增成功')
-          open.value = false
-          getList()
-        })
-      }
+    if (!valid) return
+    if (contentTooLong.value) {
+      proxy.$modal.msgError(`正文长度不能超过 ${NOTE_CONTENT_MAX_LENGTH} 个字符`)
+      return
+    }
+    // 带 draftId 保存：服务端在同一事务里删掉草稿；不带也会按 note_id 兜一刀（结论 15 / §2.8）
+    const payload: SgjNote = { ...form.value, draftId: draftId.value }
+    const done = () => {
+      clearNoteBuffer(username.value, editorKeyOf(form.value.noteId))
+      draftId.value = undefined
+      dirty = false
+      open.value = false
+      getList()
+    }
+    if (form.value.noteId != undefined) {
+      updateNote(payload).then(() => {
+        proxy.$modal.msgSuccess('修改成功')
+        done()
+      })
+    } else {
+      addNote(payload).then(() => {
+        proxy.$modal.msgSuccess('新增成功')
+        done()
+      })
     }
   })
 }
@@ -395,6 +715,21 @@ getList()
 </script>
 
 <style scoped>
+/* 草稿状态条（#57）：一行小字，紧贴表单上方 */
+.draft-bar {
+  margin: -4px 0 14px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.draft-bar.is-pending {
+  color: #e6a23c;
+}
+
+.draft-bar.is-failed {
+  color: #f56c6c;
+}
+
 /* ：内容摘要列（单行省略） */
 .note-summary {
   display: inline-block;
