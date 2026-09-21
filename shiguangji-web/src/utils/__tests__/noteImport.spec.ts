@@ -150,3 +150,62 @@ describe('导入预填的交接', () => {
     expect(takePendingImport()).toBeNull()
   })
 })
+
+/**
+ * 跨边界的往返契约：下面两段字面量**逐字照抄**后端导出的真实输出
+ * （{@code AppNoteExportSmokeTest} 断言的就是这两段形状）。
+ * 两边改一处必须同步改另一处，否则「导出 → 导入」会在没人注意的地方断掉。
+ */
+describe('后端导出的文本能被解析回同样的字段', () => {
+  it('普通笔记', () => {
+    const exported =
+      '---\n' +
+      'noteId: 12\n' +
+      'title: "qat41 普通笔记"\n' +
+      'tags: "技术,笔记"\n' +
+      '---\n\n' +
+      'qat41 正文第一行\n\n第二段\n'
+
+    const result = prefillOf(exported)
+    expect(result.prefill).toEqual({
+      noteId: 12,
+      title: 'qat41 普通笔记',
+      tags: '技术,笔记',
+      content: 'qat41 正文第一行\n\n第二段'
+    })
+  })
+
+  it('标题里带引号、冒号、井号（后端双引号转义的标量）', () => {
+    const exported =
+      '---\n' +
+      'noteId: 7\n' +
+      'title: "qat41 报价 \\"含引号\\": 关键#标签"\n' +
+      'tags: "a,b"\n' +
+      '---\n\n' +
+      '正文\n'
+
+    const result = prefillOf(exported)
+    expect(result.prefill.title).toBe('qat41 报价 "含引号": 关键#标签')
+    expect(result.prefill.noteId).toBe(7)
+    // 转义没弄好时，引号会把后面的键吃进标题，tags 就没了
+    expect(result.prefill.tags).toBe('a,b')
+    expect(result.prefill.content).toBe('正文')
+  })
+})
+
+describe('front-matter 的 noteId（往返识别的依据）', () => {
+  const noteIdOf = (line: string) => prefillOf(`---\n${line}\n---\n正文`).prefill.noteId
+
+  it('正整数才认，字符串数字也认', () => {
+    expect(noteIdOf('noteId: 12')).toBe(12)
+    expect(noteIdOf('noteId: "12"')).toBe(12)
+  })
+
+  it('缺失 / 0 / 负数 / 非数字一律当作没有（调用方按新建处理）', () => {
+    expect(noteIdOf('title: t')).toBeUndefined()
+    expect(noteIdOf('noteId: 0')).toBeUndefined()
+    expect(noteIdOf('noteId: -3')).toBeUndefined()
+    expect(noteIdOf('noteId: abc')).toBeUndefined()
+    expect(noteIdOf('noteId: [1, 2]')).toBeUndefined()
+  })
+})

@@ -108,8 +108,8 @@
 import { getToken } from '@/utils/auth'
 import { Delete } from '@element-plus/icons-vue'
 import TagPills from '@/components/TagPills/index.vue'
-import { listFrontNote, delFrontNote } from '@/api/front/note'
-import { listNoteDrafts } from '@/api/front/noteDraft'
+import { listFrontNote, delFrontNote, getFrontNote } from '@/api/front/note'
+import { listNoteDrafts, getNoteDraftByNoteId } from '@/api/front/noteDraft'
 import { getFrontItem } from '@/api/front/item'
 import { splitByKeyword } from '@/utils/sgj'
 import { ElMessageBox } from 'element-plus'
@@ -178,27 +178,64 @@ function pickImportFile(): void {
 }
 
 /**
- * 导入前置检查：这份**新笔记**草稿里是不是已经存着还没保存的内容（有就说明再导入会把它顶掉）。
+ * 导入前置检查：**这次要落地的那个槽位**里是不是已经存着还没保存的内容（有就说明再导入会把它顶掉）。
  *
- * 两个来源都要看，缺一个就会漏：本地缓冲（停手 1s 就写，比服务端 15s 推得早）与服务端空白草稿
+ * 两个槽位共用一套判据（设计 结论 42 只写了空白草稿那个，但同一失效模式在编辑态同样成立）：
+ * - `entryNoteId` 缺省：新增态编辑页 = 空白草稿槽位（`note_id = 0`）；
+ * - `entryNoteId` 给了：那篇笔记自己的编辑态草稿槽位。
+ *
+ * 两个来源都要看，缺一个就会漏：本地缓冲（停手 1s 就写，比服务端 15s 推得早）与服务端草稿
  * （换设备 / 清过缓存时本地没有，只有它）。判据取宽——只要有内容就当冲突：多问一次只是多一次点击，
  * 漏问一次就是用户的半篇笔记无声消失。
- *
- * 草稿列表接口不下发正文，用 `title` / `excerpt` 判断就够了（纯代码块的正文在摘要里也会回退成原文开头）。
  */
-async function unfinishedNewNoteDraft(): Promise<{ chars: number } | null> {
-  const buffer = readNoteBuffer(username.value, editorKeyOf())
+async function unfinishedDraft(entryNoteId?: number): Promise<{ chars: number } | null> {
+  const buffer = readNoteBuffer(username.value, editorKeyOf(entryNoteId))
   const local = `${buffer?.title || ''}${buffer?.content || ''}`.trim()
   if (local) return { chars: local.length }
   try {
-    const drafts = (await listNoteDrafts(true)).data || []
-    const blank = drafts.find(draft => !draft.noteId)
-    const server = `${blank?.title || ''}${blank?.excerpt || ''}`.trim()
+    // 草稿箱列表不下发正文，用 title / excerpt 判断就够了（纯代码块的正文也会回退成原文开头）；
+    // 按 noteId 取单条时是带正文的，两边都用 title + 正文类字段
+    const draft = entryNoteId
+      ? (await getNoteDraftByNoteId(entryNoteId)).data
+      : ((await listNoteDrafts(true)).data || []).find(item => !item.noteId)
+    const server = `${draft?.title || ''}${draft?.content || draft?.excerpt || ''}`.trim()
     if (server) return { chars: server.length }
   } catch {
     // 这一步只是「多问一句」，查不到就当作没有，不能因为它的失败阻断导入
   }
   return null
+}
+
+/**
+ * 往返识别（设计 结论 34 / 39）：文件里带着 `noteId`，且它确实是**自己**的笔记时，问更新还是新建。
+ *
+ * 「是不是自己的」用返回的 create_by 严格比对，而不是「能不能看到」——否则管理员导入一份别人的导出文件
+ * 也会被问「更新」，而按需求那种情况必须静默新建（不写他人数据）。
+ * 不是自己的 / 已删除 / 查不到，一律返回 undefined（调用方按新建处理），不报错也不多弹一个框。
+ *
+ * @returns 要更新的笔记ID；按新建处理时返回 undefined
+ */
+async function askRoundTripTarget(noteId?: number): Promise<number | undefined> {
+  if (!noteId) return undefined
+  let own: SgjNote | null = null
+  try {
+    const note = (await getFrontNote(noteId)).data
+    own = note && note.createBy === username.value ? note : null
+  } catch {
+    // 查不到（已删除）或无权访问：都按新建处理
+    return undefined
+  }
+  if (!own?.noteId) return undefined
+  try {
+    await ElMessageBox.confirm(
+      `这份文件里带着《${own.title || '无标题'}》的标记，而且那篇笔记是你自己的。要更新它，还是新建一篇？`,
+      '这份文件来自一篇已有的笔记',
+      { confirmButtonText: '更新那篇', cancelButtonText: '新建一篇', type: 'info' }
+    )
+    return own.noteId
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -225,17 +262,21 @@ async function onImportFileChange(event: Event): Promise<void> {
     return
   }
 
-  const conflict = await unfinishedNewNoteDraft()
+  // 往返识别放在最前面：若是「更新已有笔记」，接下来要看的是那篇笔记自己的草稿，而不是空白草稿
+  const targetNoteId = await askRoundTripTarget(result.prefill.noteId)
+
+  const conflict = await unfinishedDraft(targetNoteId)
   if (conflict) {
     try {
       await ElMessageBox.confirm(
-        `编辑页里有一份没写完的草稿（约 ${conflict.chars} 字），导入会覆盖它。`,
+        `${targetNoteId ? '那篇笔记里' : '编辑页里'}有一份没写完的草稿（约 ${conflict.chars} 字），导入会覆盖它。`,
         '导入会覆盖草稿',
-        { confirmButtonText: '继续导入', cancelButtonText: '先去看看草稿', type: 'warning' }
+        { confirmButtonText: '继续导入', cancelButtonText: '先去看看', type: 'warning' }
       )
     } catch {
-      // 「先去看看草稿」：把人送到草稿箱，这次导入作废
-      router.push('/note/draft')
+      // 「先去看看」：更新分支送去那篇笔记的编辑页（静默恢复未保存的草稿），新建分支送去草稿箱。
+      // 两种都是取消这次导入
+      router.push(targetNoteId ? { path: '/note/edit', query: { noteId: String(targetNoteId) } } : '/note/draft')
       return
     }
   }
@@ -244,7 +285,8 @@ async function onImportFileChange(event: Event): Promise<void> {
     proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
   }
   setPendingImport(result.prefill)
-  router.push('/note/edit')
+  // 带 noteId 进去 = 更新那篇（编辑页会把它当编辑态），不带 = 新建一篇
+  router.push(targetNoteId ? { path: '/note/edit', query: { noteId: String(targetNoteId) } } : '/note/edit')
 }
 
 /** 组装列表查询参数；关键词不足 2 字时提示并中止（ngram_token_size=2，单字切不出 token 搜不到） */

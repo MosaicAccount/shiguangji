@@ -24,6 +24,11 @@ export interface NoteImportPrefill {
   title: string
   content: string
   tags: string
+  /**
+   * front-matter 里的 `noteId`：命中同一篇笔记时的更新依据（导出侧写、导入侧读，用户不需要认识它）。
+   * 只在正整数时给出；手改坏了 / 缺了 / 0 或负数都当没有，调用方按新建处理
+   */
+  noteId?: number
 }
 
 /** 解析失败的原因码（中文文案由调用方给，这里不拼提示，方便单测断言） */
@@ -136,6 +141,16 @@ function scalarText(value: unknown): string {
 }
 
 /**
+ * front-matter 的 `noteId`：只有正整数才算（导出写的是裸主键）。
+ * 写坏了、写成 0 / 负数 / 别的字串都当没有——不能因为表头里一个坏字段就让整篇导入失败
+ */
+function identityNoteId(value: unknown): number | undefined {
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined
+  const parsed = Number(String(value).trim())
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+}
+
+/**
  * 解析一个 md 文件的内容。
  *
  * @param text     文件全文（调用方用 `File.text()` 读出来）
@@ -156,7 +171,12 @@ export function parseNoteMarkdown(text: string, fileName: string): NoteImportRes
 
   return {
     ok: true,
-    prefill: { title, content, tags: joinTagsWithinLimit(kept) },
+    prefill: {
+      title,
+      content,
+      tags: joinTagsWithinLimit(kept),
+      noteId: identityNoteId(data.noteId)
+    },
     droppedTagCount: allTags.length - kept.length
   }
 }
