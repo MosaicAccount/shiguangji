@@ -456,7 +456,7 @@ function refreshDots(p){
   });
   /* 暂停时不重建进度条（保留原位冻结）；运行中重建成时长匹配的新进度条；接管后满格 */
   if(!frozen || p.manual){
-    const cur = dotEls[p.i]; cur.innerHTML = '';
+    const cur = dotEls[p.i]; cur.replaceChildren();
     const f = document.createElement('span'); f.className = 'fill';
     if(p.manual){ f.style.animation = 'none'; f.style.transform = 'scaleX(1)'; }
     else f.style.setProperty('--d', p.wait + 'ms');
@@ -534,7 +534,7 @@ function render(){
   players.forEach(p => clearTimeout(p.t));
   if(io) io.disconnect();
   players = [];
-  const list = $('#list'); list.innerHTML = '';
+  const list = $('#list'); list.replaceChildren();
   let multi = 0;
   for(const n of NOTES){
     const card = buildCard(n);

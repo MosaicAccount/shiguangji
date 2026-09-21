@@ -310,8 +310,12 @@ function goLeave(){ document.getElementById('mask').hidden=false; }
 document.getElementById('mask').addEventListener('click',e=>{ if(e.target.id==='mask') closeDlg(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDlg(); });
 
-/** 本文件的数据都是字面量，用 range 解析而不走 innerHTML（静态设计稿，无外部输入） */
-function setHTML(el, html){ const r = document.createRange(); r.selectNode(el); el.replaceChildren(r.createContextualFragment(html || '')); }
+/** 本文件的数据都是字面量，用 range 解析而不走 innerHTML（静态设计稿，无外部输入）。
+ *  已挂载时用 selectNode 取解析上下文（否则 tbody 里的 <tr> 会被整段丢掉），未挂载的新节点退回文档上下文 */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
 
 function render(){
   const c = CFG[state] || {};

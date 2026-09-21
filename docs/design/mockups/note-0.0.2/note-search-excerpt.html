@@ -344,6 +344,11 @@ function segParts(text, kws){
   return parts;
 }
 /* 内容一律走 DOM（textNode + mark），不走 innerHTML —— 演示 issue 的「不拼 HTML」要求 */
+/* 已挂载时用 selectNode 取解析上下文（否则 tbody 里的 <tr> 会被整段丢掉），未挂载的新节点退回文档上下文 */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
 function paintText(el, text, kws){
   el.textContent = '';
   for(const p of segParts(text, kws)){
@@ -387,12 +392,11 @@ function buildCard(n, kws){
 
 function render(state){
   const conf = STATES[state];
-  const list = $('#list'); list.innerHTML = '';
+  const list = $('#list'); list.replaceChildren();
   $('#kw').value = conf.kw;
   if(!conf.notes){
-    list.innerHTML = '';
     const empty = document.createElement('div'); empty.className = 'empty';
-    empty.innerHTML = '<div class="ic">⌕</div><div>没有找到匹配的笔记</div><div style="font-size:12px">试试更长的关键词（至少 2 个字）</div>';
+    setHTML(empty, '<div class="ic">⌕</div><div>没有找到匹配的笔记</div><div style="font-size:12px">试试更长的关键词（至少 2 个字）</div>');
     list.appendChild(empty);
     return;
   }

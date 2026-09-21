@@ -105,6 +105,19 @@ html.dark .draftbar{background:var(--sgj-primary-soft)}
 .search .go{border:0;border-left:1px solid var(--sgj-border);background:var(--sgj-bg);color:var(--sgj-text-2);font:inherit;padding:0 14px;cursor:pointer}
 body[data-vp=mobile] .filter{justify-content:flex-start}
 body[data-vp=mobile] .search{width:100%}
+/* 导入入口与导入拦截弹窗（设计 结论 34 / 41 / 42） */
+.imp{flex:none;margin-left:10px;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);
+  font:inherit;font-size:12px;border-radius:var(--sgj-r-pill);padding:7px 15px;cursor:pointer;white-space:nowrap}
+.mask{position:fixed;inset:0;background:rgba(23,27,26,.45);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+.mask.on{display:flex}
+.dlg{background:var(--sgj-bg-card);border-radius:var(--sgj-r-lg);width:440px;max-width:100%;padding:20px 22px;box-shadow:var(--sgj-shadow-hover)}
+.dlg h3{margin:0 0 10px;font-size:16px;font-family:var(--sgj-font-serif)}
+.dlg p{margin:0 0 18px;font-size:13px;color:var(--sgj-text-2);line-height:1.7}
+.dlg .row{display:flex;justify-content:flex-end;gap:10px}
+.dlg .row .btn{height:32px;padding:0 16px;font-size:12px}
+.dlg .row .btn.ghost{color:var(--sgj-text-2);border-color:var(--sgj-border)}
+body[data-vp=mobile] .filter{flex-wrap:wrap}
+body[data-vp=mobile] .imp{margin:10px 0 0;width:100%}
 .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .pill{border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);border-radius:var(--sgj-r-pill);padding:4px 13px;font-size:12px;cursor:pointer}
 .pill.on{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
@@ -169,6 +182,8 @@ html.dark .legend .new{color:#D67870}
       <button data-state="empty" aria-pressed="false">无结果</button>
       <button data-state="error" aria-pressed="false">加载失败</button>
       <button data-state="guest" aria-pressed="false">访客未登录</button>
+      <button data-state="import-conflict" aria-pressed="false">导入·草稿冲突</button>
+      <button data-state="import-toolong" aria-pressed="false">导入·超长拦截</button>
     </span>
     <span class="seg" role="group" aria-label="主题">
       <button id="themeBtn" aria-pressed="false">深色模式</button>
@@ -216,7 +231,8 @@ html.dark .legend .new{color:#D67870}
           <span class="pfx">⌕</span>
           <input id="kw" type="search" placeholder="搜索标题与正文" value="" readonly>
           <button class="go" type="button">搜索</button>
-        </label><span class="an" data-n="3"></span>
+        </label>
+        <button class="imp" data-show="login" type="button" title="读取本机 .md 文件，解析后跳编辑页预填">导入 md</button><span class="an" data-n="3"></span>
       </div>
 
       <div class="pills">
@@ -236,6 +252,19 @@ html.dark .legend .new{color:#D67870}
       </div>
     </div>
 
+    <div class="mask" id="imask">
+      <div class="dlg" data-dlg="conflict" hidden>
+        <h3>编辑页里有一份未保存的草稿</h3>
+        <p>约 320 字，更新于 2026-09-18 09:12。导入会覆盖它——新增态的编辑页与空白草稿是同一个槽位，只能留一份。</p>
+        <div class="row"><button class="btn ghost" type="button">先去看看草稿</button><button class="btn" type="button">继续导入</button></div>
+      </div>
+      <div class="dlg" data-dlg="toolong" hidden>
+        <h3>这篇太大了，导不进来</h3>
+        <p>文件约 12.4 万字，超过 10 万字上限。<br>可以先在本地拆成两篇，再分别导入。</p>
+        <div class="row"><button class="btn" type="button">知道了</button></div>
+      </div>
+    </div>
+
     <nav class="tabbar">
       <div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div>
     </nav>
@@ -245,14 +274,15 @@ html.dark .legend .new{color:#D67870}
 <section class="legend">
   <h2>本屏标注</h2>
   <ol>
-    <li><span class="new">新增</span>：<b>导入 md</b> 入口。入口在列表页与条目页；上传后跳编辑页预填，不在列表页停留。</li>
+    <li><span class="new">新增</span>：<b>导入 md</b> 入口，<b>只有列表页这一个</b>（条目详情页不放；后台入口见 #58，阻塞于 #57）。全程在浏览器本地读取与解析，<b>没有任何上传请求</b>，解析完直接跳编辑页预填。按钮按 <code>isLogin</code> 显隐，真正的门是 <code>/note/edit</code> 的路由守卫。</li>
     <li><span class="new">新增</span>：<b>草稿入口条</b>。仅登录且草稿数 &gt; 0 时渲染；访客与失效 token 都不发这个请求（避免 401 弹「登录状态已过期」）。</li>
     <li><span class="new">改动</span>：搜索框 placeholder 由「搜索笔记标题」改为「<b>搜索标题与正文</b>」；检索走 FULLTEXT + ngram，<b>至少输入 2 个字</b>（少于此长度给提示，不是静默空结果）。</li>
     <li><span class="new">改动</span>：卡片摘要由「渲染整篇 Markdown」改为 <b>纯文本摘要常显</b>（无关键词取开头，有关键词以命中处为中心）；关键词高亮按字面量切片段渲染，<b>不拼 HTML、不走 <code>v-html</code></b>。</li>
     <li><span class="new">改动</span>：底部 32px 渐隐改为<b>仅在内容真的溢出时</b>出现——摘要是定长的（约 120 字），原来那套「预览整篇必然溢出」的前提已不成立，否则渐隐会压在完整文字上像被截断。</li>
     <li><span class="new">改动</span>：移动端筛选栏的媒体查询选择器由失效的 <code>.toolbar</code> 改为 <code>.filter-bar</code>，搜索框恢复占满整行（此前从未生效）。</li>
+    <li><span class="new">新增</span>：<b>导入的两道前置拦截</b>——见「导入·草稿冲突」与「导入·超长拦截」两个状态。① 编辑页里已有一份未保存的空白草稿时先问一句：新增态编辑页与空白草稿是同一个槽位（<code>note_id = 0</code>），而初始化会 <b>无条件</b> 用草稿覆盖表单，不问就是一份内容静默消失（[设计 结论 42](../../note-0.0.2-design.md)）。② 超过 10 万字的文件在 <b>导入时</b> 就拦下、不进编辑页，否则用户会白编辑一遍才发现保存被拒（[设计 结论 34](../../note-0.0.2-design.md)）。</li>
   </ol>
-  <p class="scope"><b>无徽标的改动</b>：列表页不再 import <code>MarkdownViewer</code>（首屏不付高亮库体积），因此本页视觉与代码高亮无关；条目筛选提示沿用既有样式，无功能变化。<br><b>未在本屏建模</b>：真实搜索请求、分页请求、删除确认弹窗（弹窗样式见编辑页）。banner 与卡片视觉均为既有样式，未改动。</p>
+  <p class="scope"><b>无徽标的改动</b>：列表页不再 import <code>MarkdownViewer</code>（首屏不付高亮库体积），因此本页视觉与代码高亮无关；条目筛选提示沿用既有样式，无功能变化。<br><b>未在本屏建模</b>：真实搜索请求、分页请求、删除确认弹窗（样式同本页的导入拦截弹窗）、文件选择器本身与解析失败提示。banner 与卡片视觉均为既有样式，未改动。</p>
 </section>
 
 <script>
@@ -299,19 +329,32 @@ const STATES = {
     <div style="font-size:12px;color:var(--sgj-text-4)">试试更长的关键词（至少 2 个字）</div></div>`; },
   error(){ return `<div class="err"><span>加载失败，请稍后重试</span>
     <button class="btn sm" style="height:30px">重试</button></div>`; },
-  guest(){ return NOTES.map(n=>card(n,false)).join(''); }
+  guest(){ return NOTES.map(n=>card(n,false)).join(''); },
+  'import-conflict'(){ return NOTES.map(n=>card(n,true)).join(''); },
+  'import-toolong'(){ return NOTES.map(n=>card(n,true)).join(''); }
 };
 const SHOW = {
   default:{login:1,draft:1,list:1},
   search:{login:1,list:1},
   empty:{login:1,list:0},
   error:{login:1,list:0},
-  guest:{login:0,draft:0,list:1}
+  guest:{login:0,draft:0,list:1},
+  'import-conflict':{login:1,draft:1,list:1},
+  'import-toolong':{login:1,list:1}
 };
+
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML。
+   已挂载时用 selectNode 取解析上下文（否则 tbody 里的 <tr> 会被整段丢掉），未挂载的新节点退回文档上下文 */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+/** 状态 → 该显示的弹窗 */
+const DLG = {'import-conflict':'conflict','import-toolong':'toolong'};
 
 let state='default';
 function render(){
-  document.getElementById('list').innerHTML = STATES[state]();
+  setHTML(document.getElementById('list'), STATES[state]());
   const show = SHOW[state] || {};
   document.querySelectorAll('[data-show]').forEach(el=>{
     const keys = el.dataset.show.split(' ');
@@ -320,6 +363,9 @@ function render(){
   if(state==='guest'){ document.querySelector('.banner p').textContent='记录你的思考与学习笔记。'; }
   document.getElementById('kw').value = state==='search' ? 'ngram' : '';
   document.getElementById('kw').placeholder = state==='search' ? '搜索标题与正文' : '搜索标题与正文';
+  const dlg = DLG[state];
+  document.getElementById('imask').classList.toggle('on', !!dlg);
+  document.querySelectorAll('[data-dlg]').forEach(d=>{ d.hidden = d.dataset.dlg !== dlg; });
 }
 document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
   state=b.dataset.state;

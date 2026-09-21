@@ -72,6 +72,8 @@ html.dark .hero{background:var(--sgj-bg-deep)}
 .hero .top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .circ{width:32px;height:32px;border-radius:50%;border:1px solid rgba(231,236,233,.35);color:#dfe6e2;background:transparent;
   display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+.top .exp{font:inherit;font-size:12px;color:#dfe6e2;background:transparent;cursor:pointer;white-space:nowrap;
+  border:1px solid rgba(231,236,233,.35);border-radius:var(--sgj-r-pill);padding:5px 13px}
 .hero h1{margin:0 0 12px;font-family:var(--sgj-font-serif);font-weight:700;font-size:32px;line-height:1.35}
 .hero .tp{display:flex;gap:8px;margin-bottom:12px}
 .hero .tp span{border:1px solid rgba(231,236,233,.35);border-radius:999px;padding:2px 11px;font-size:12px;color:#dfe6e2}
@@ -183,6 +185,7 @@ html.dark .legend .new{color:#D67870}
           <div class="top">
             <span class="circ">←</span>
             <span style="flex:1"></span>
+            <button class="exp" type="button" title="用当前正文现场生成，带 noteId，可用于往返">导出 Markdown</button>
             <span class="circ">✎</span>
             <span class="circ">✕</span>
           </div>
@@ -234,8 +237,9 @@ html.dark .legend .new{color:#D67870}
     <li><span class="new">约束</span>：高亮 CSS <b>不能新开一段不带 <code>:deep()</code> 的 scoped 规则</b>。本组件的样式全部写在 <code>&lt;style scoped&gt;</code> + <code>:deep()</code> 里；<code>v-html</code> 生成的节点没有 data-v 属性，普通 scoped 规则对它不生效——这是本版最容易踩的坑。</li>
     <li><span class="new">改动</span>：主题用 <code>highlight.js/styles/atom-one-dark.css</code>，其底色与既有 <code>pre</code> 的固定 <code>#282c34</code> 同源，因此<b>两种主题下代码块都保持深色</b>、不随主题翻转。既有的 <code>pre code</code> 规则特异性更高，会覆盖主题对 <code>code</code> 的底色，无需改 <code>pre</code> 配色。</li>
     <li><span class="new">改动</span>：本页与编辑页共用 <code>MarkdownViewer</code>，高亮自动同时生效；列表页不再引用该组件，所以高亮库不进首屏。右侧大纲为既有功能（#26），本次未改动。</li>
+    <li><span class="new">新增</span>：<b>导出 Markdown</b>。前台详情页的导出入口——<b>仅登录且这篇笔记是自己的</b>时显示（游客与其他登录用户都看不到）。按钮显隐只是观感，<b>导出接口自己校验归属</b>（要登录 + 比对 <code>create_by</code>，见[设计 结论 39](../../note-0.0.2-design.md)）。内容是当前正文<b>现场生成</b>的，front-matter 只含 <code>noteId</code> / <code>title</code> / <code>tags</code>。</li>
   </ol>
-  <p class="scope"><b>未建模</b>：真实的大纲锚点滚动与 scroll-spy、图片与相册、评论。<br>代码块的语义配色为本图示意，取值参照 atom-one-dark；实现时以包内实际值为准。</p>
+  <p class="scope"><b>未建模</b>：真实的大纲锚点滚动与 scroll-spy、图片与相册、评论、导出后的浏览器下载行为。<br>代码块的语义配色为本图示意，取值参照 atom-one-dark；实现时以包内实际值为准。</p>
 </section>
 
 <script>
@@ -280,8 +284,15 @@ just plain monospace text</code></pre>
 const STATES = {hl:BODY_HL, plain:BODY_PLAIN, toc:BODY_HL};
 let state='hl';
 
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML。
+   已挂载时用 selectNode 取解析上下文（否则 tbody 里的 <tr> 会被整段丢掉），未挂载的新节点退回文档上下文（selectNode 对它抛 InvalidNodeTypeError） */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+
 function render(){
-  document.getElementById('body').innerHTML = STATES[state];
+  setHTML(document.getElementById('body'), STATES[state]);
   const toc = state==='toc';
   document.getElementById('panel').hidden = !toc;
   document.getElementById('pmask').hidden = !toc;

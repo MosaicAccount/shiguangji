@@ -286,10 +286,11 @@ const removed = new Set();
 let state = 'list';
 
 const el = id => document.getElementById(id);
-/* 演示数据只有本文件里的常量（POOL），没有外部输入；字符串转节点统一收在这一处，
-   各渲染函数只返回字符串、不再自己碰 innerHTML */
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML。
+   已挂载时用 selectNode 取解析上下文（否则 tbody 里的 <tr> 会被整段丢掉），未挂载的新节点退回文档上下文（selectNode 对它抛 InvalidNodeTypeError） */
 function setHTML(node, html){
-  node.replaceChildren(document.createRange().createContextualFragment(html));
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
 }
 const listFor = s => (s === 'empty' ? []
                      : POOL.slice(0, 3)).filter(d => !removed.has(d.id));
