@@ -65,7 +65,7 @@
 | 18 | 全局搜索（D-4） | **不纳入 0.0.2**，转 0.0.5（FR-005-5） |
 | 19 | 交付方式 | 本文 + 两端测试；评审后开工 |
 
-### 2.2 结论（20~42）：正文存储、上限、全文索引、文件导入导出、草稿写入边界
+### 2.2 结论（20~44）：正文存储、上限、全文索引、文件导入导出、草稿写入边界
 
 > 「已拍板」= 已定的做法；「缺陷」= 代码里已有的问题，修法唯一；「约束」= 实现时必须遵守的边界，无替代方案；「收益」= 某个决定带来的附带好处；「已废弃」= 方案调整后不再适用。各条对应的验收项见需求文档 §3.3、§5。
 
@@ -94,6 +94,8 @@
 | 40 | 缺陷 | 草稿写入的存活校验与归属覆盖 | `PUT /app/note/draft` 带 `noteId` 时，必须先校验该笔记**存在且 `del_flag='0'`**，否则拒绝并返回可识别错误（编辑页提示「笔记已被删除」）。缺了它，编辑页在笔记被删后仍会继续写入：软删后写回一行挂在回收站笔记上的草稿，彻底删除后写回一行永久孤儿（清理发生在删除那一刻，写入发生在之后，窗口随编辑页那个标签页存活而敞开）。另外 `SgjNoteDraft` 若继承 `BaseEntity`，`createBy` 是**客户端可绑定**字段，控制器必须**无条件覆盖** `draft.setCreateBy(SecurityUtils.getUsername())`——写成「为空才填」则 `?createBy=他人` 即可读他人草稿；改 / 删的归属判断也要拿库里那行的 `create_by` 比，不能信请求体 |
 | 41 | 已拍板 | 导入预填要与草稿机制对齐 | 导入预填**不能走 `applyForm` 的静默路径**（它设 `muteChange`，`watch` 里第一件事就是 `if (muteChange) return`）：必须置 `dirty = true`、`baseline` 在**预填之后**取（这样 `snapshot() === baseline`，离开时**不弹**确认）、预填完**立即推一次草稿**（照抄 `initEditor` 里 `if (local.dirty) pushDraft()` 的先例）。不做这三条，15s 定时器因 `dirty` 为假永不触发、本地缓冲因 watch 被 mute 不写、路由离开时 `confirmLeave()` 见 `hasUnsavedChanges() === false` 直接放行——**用户导入完点「返回」，服务端与本地都没留下任何东西** |
 | 42 | 已拍板 | 导入与空白草稿的冲突 | 新增态编辑页 `editorKey = 'new'`，与空白草稿是同一个槽位（`note_id = 0`）。而 `initEditor()` 的顺序是：预填 → 取 `baseline` → `getBlankNoteDraft()` → `restoreFormData()` 非空就**无条件 `applyForm(restoredForm)` 整份套回表单**。所以导入前必须先查一次空白草稿，非空就弹确认框「编辑页里有一份未保存的草稿（约 N 字 / 更新于 X），导入会覆盖它。[继续导入] [先去看看草稿]」——不查的话两份内容抢同一个槽位，**必有一份静默消失** |
+| 43 | 已拍板 | 后台弹窗与前台共用同一份草稿 | 后台笔记编辑弹窗接上同一张 `sgj_note_draft` 与同一份本地缓冲（key 仍是 `{username}:{editorKey}`），**不新开槽位**：草稿行按 `(create_by, note_id)` 归属，所以后台「新增」恢复的就是前台「写笔记」那份空白草稿。代价是两边同时编辑同一篇时后写覆盖（与结论 24 一致），好处是「同一篇笔记的未保存内容」只有一个地方。判定链复用 `utils/noteDraftBuffer`，后台只重写视图接线（watch / 定时器 / 弹窗生命周期）——等两条分支都合入后，两处接线可以收成一份 composable |
+| 44 | 已拍板 | 导入的两道前置检查只有一份实现 | 「目标槽位的草稿冲突」与「`noteId` 往返识别」抽在 `utils/noteImportGuards`，前台列表页与后台弹窗共用。判据必须一致：不一致的话，同一份文件在两条入口上前台会问你一句、后台静默顶掉；或者前台认得出是同一篇、后台多存一篇。「是不是自己的」严格按 `create_by` 比对（不看「能不能看到」），所以**管理员导入别人的导出文件同样静默新建**，不写他人数据 |
 
 ### 2.3 检索的两条安全与语义边界
 
@@ -452,7 +454,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 - 不做 md 里的 base64 内嵌图片转存、不做相对路径图片的自动匹配；
 - 不做「下载原件」——出口只有「导出 Markdown」（结论 37 已废弃原件留存，结论 39）；
 - 不做图片搬运（[#56](https://github.com/MosaicAccount/shiguangji/issues/56)）：带图笔记导入后图片引用失效，界面明说；
-- 不做后台编辑弹窗的草稿兜底（[#57](https://github.com/MosaicAccount/shiguangji/issues/57)）——后台的「导入 md」入口因此本版不加（[#58](https://github.com/MosaicAccount/shiguangji/issues/58)，阻塞于 #57；结论 34、41、42 的草稿机制只接在前台编辑页上）；
+- 后台编辑弹窗的草稿兜底（[#57](https://github.com/MosaicAccount/shiguangji/issues/57)）与后台的导入入口（[#58](https://github.com/MosaicAccount/shiguangji/issues/58)）**后纳入本版**（见结论 43、44）——它们不改前台的草稿机制，只是把同一套机制接到后台弹窗上（#58 阻塞于 #57）；
 - 不做批量导入（目录 / vault）与批量导出打包；
 - 不做全文索引的深度调优（分词器定制、相关度调参），**不引入独立检索服务**（Elasticsearch / Meilisearch 之类），全文检索用 MySQL 原生 FULLTEXT + ngram（结论 33）。到需要相关度排序、跨类型聚合时再评估；
 - 不做前台全局搜索（转 0.0.5，见结论 18）；
