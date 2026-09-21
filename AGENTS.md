@@ -13,7 +13,8 @@ This is a single Git monorepo containing two applications. `shiguangji-web/` is 
 - `npm run build:prod`: create the production bundle in `dist/`.
 - `npx vue-tsc --noEmit`: type-check Vue and TypeScript sources.
 - `cd shiguangji-server && mvn clean package -DskipTests`: compile and package all backend modules.
-- `mvn -pl shiguangji-admin -am test`: run backend tests and required modules.
+- `mvn -pl shiguangji-admin -am test`: run backend tests and required modules. The smoke tests use the `dev` profile against MySQL on `localhost:13306` and Redis on `localhost:16379`, so start those containers first.
+- The backend targets **Java 17**, so `mvn` itself must run on a JDK 17+. Check with `mvn -version`: a shell whose `JAVA_HOME` points at an older JDK (a jenv / asdf default, or macOS' bundled 1.8) dies with `无效的目标发行版: 17` before compiling anything. On macOS: `JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn ...`.
 - `java -jar shiguangji-admin/target/shiguangji-admin.jar`: run the packaged API (default port `18080`).
 
 ## Coding Style & Naming Conventions
@@ -52,6 +53,10 @@ git worktree add -b <type>/<topic> .worktrees/<topic> develop
 ```
 
 Merge back with a PR. If a stray change lands in the `develop` working tree, move it onto a worktree branch before doing anything else. The worktree directory lives under `.worktrees/`, excluded locally via `.git/info/exclude` so it never shows up as untracked and `.gitignore` stays untouched.
+
+A worktree has no `node_modules` of its own: symlink the main checkout's in (`ln -s ../../../shiguangji-web/node_modules node_modules`) — `vite.config.ts` allows the repo root, so `npm run dev` works through that symlink too. Two traps cost real time here: `npm install` **replaces that symlink with a real directory** and silently strips the package out of every other worktree (add what the shared install is missing with `npm install --no-save <pkg>` in the main checkout instead), and swapping or deleting a worktree's `node_modules` **while a dev server runs from it** leaves Vite's dependency pre-bundle stale — its lazy-loaded route chunks then fail with `504 Outdated Optimize Dep`, which looks exactly like a broken app (the page never leaves its splash screen).
+
+**A finished branch becomes a pull request.** Commit → push the branch → open the PR against `develop`. A branch that only exists locally is not finished work. The PR body carries what the title cannot: the behavior change, the verification commands you actually ran with their results, the linked issue(s), any SQL / configuration change, and for visible UI work the design mockup it implements plus the manual steps nobody-but-a-human can run (say plainly when you could not run them).
 
 ## Security & Configuration
 
