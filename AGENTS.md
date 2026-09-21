@@ -36,11 +36,11 @@ Create a Git commit for every completed change. Do not leave an implemented chan
 
 `develop` accepts direct commits for exactly three things:
 
-1. finalizing the version requirement docs;
+1. **global documents that no single feature owns** — finalizing the version requirement docs, product planning, overall design diagrams, project architecture, and similar cross-cutting docs. Judging by scope, not by file path: `/docs/design/*` may belong here (整体设计图) or to the worktree branch described below (某个功能的详细设计); the test is whether the document is about the product as a whole or about one feature;
 2. version bumps / version changes;
 3. **global-impact files that no single feature owns** — `AGENTS.md`, `CLAUDE.md`, `.gitignore`, and similar repo-wide config. These are not tied to one workstream, so routing them through a feature branch only splits them across branches.
 
-Everything else — design docs, code, tests, feature config — goes through a worktree branch, never a direct edit in the `develop` working tree:
+Everything else — **a single feature's** design docs, code, tests, feature config — goes through a worktree branch named after that feature, cut from the latest `develop`, never a direct edit in the `develop` working tree. The feature's docs and code live in the same branch (e.g. 草稿箱: its design doc and its implementation are both in `feat/note-draft`):
 
 ```bash
 git worktree add -b <type>/<topic> .worktrees/<topic> develop
