@@ -173,10 +173,9 @@ html.dark .legend .new{color:#D67870}
   <h2>本屏标注</h2>
   <ol>
     <li><span class="new">改动</span>：查询表单的 label 由「<b>标题</b>」改为「<b>关键词</b>」。后台与前台共用同一个 <code>keyword</code> 参数、同一条全文索引，因此后台也能搜到<b>只存在于正文</b>的命中项。<br>回收站<b>不变</b>——仍只搜标题（表格无内容列，命中理由不可见）。</li>
-    <li><span class="new">新增</span>：行内两个动作——<b>「下载原件」</b>与<b>「导出 Markdown」</b>。</li>
-    <li><span class="new">新增</span>：<b>「下载原件」</b>取回的是导入时上传的那份原始文件；<code>source_file</code> 为空（手写、或导入后未保存就离开）时该动作<b>禁用</b>，见第一行与第三行的差异。</li>
-    <li><span class="new">新增</span>：<b>「导出 Markdown」</b>用当前正文 + front-matter（含 <code>noteId</code> / title / tags / is_public）<b>现生成</b>，与「下载原件」不是一回事。</li>
-    <li><span class="new">约束</span>：<b>往返必须用「导出 Markdown」</b>。原件不含 <code>noteId</code>、也不含之后在网页上的修改，拿它重新导入会新建一篇重复笔记——这条要写进按钮的提示文案，否则用户一定会踩。</li>
+    <li><span class="new">新增</span>：行内一个动作——<b>「导出 Markdown」</b>。每篇笔记都能导出，没有灰按钮（「下载原件」已废弃，见结论 37）。</li>
+    <li><span class="new">新增</span>：<b>「导出 Markdown」</b>用当前正文 + front-matter（只含 <code>noteId</code> / <code>title</code> / <code>tags</code>）<b>现生成</b>，不预先存一份——存一份就会和正文不一致，改完正文那份就过期了。</li>
+    <li><span class="new">约束</span>：<b>导出接口自己校验归属</b>（登录 + 比对 <code>create_by</code>），不能只靠前端藏按钮。前台详情页有同一个导出入口，条件相同（结论 39）。</li>
     <li><span class="new">改动</span>：后台列表与导出<b>仍带完整正文</b>（导出 CSV / JSON 的「内容」列依赖它）。本版的「列表不吃全文」只改前台。</li>
   </ol>
   <p class="scope"><b>视觉说明</b>：后台沿用既有 admin / Element Plus 主题，本图只标注本次改动，不重新设计表格样式。<br><b>未建模</b>：真实检索与分页、导出下拉的 CSV / JSON 选项、编辑弹窗。</p>
@@ -185,14 +184,11 @@ html.dark .legend .new{color:#D67870}
 <script>
 const ROWS = [
   {id:312, item:'—', ttl:'MySQL 全文索引与 ngram 分词', pub:'私密', time:'2026-09-18 10:23',
-   sum:'实测结论：<mark>ngram</mark> 自然语言模式会把 mysql 命中到只含 sql 的行，必须用布尔模式；ngram_token_size=2 时单个汉字搜不到。',
-   src:'/profile/upload/2026/09/18/a1b2c3.md'},
+   sum:'实测结论：<mark>ngram</mark> 自然语言模式会把 mysql 命中到只含 sql 的行，必须用布尔模式；ngram_token_size=2 时单个汉字搜不到。'},
   {id:311, item:'—', ttl:'Obsidian 到拾光记的笔记迁移', pub:'公开', time:'2026-09-18 09:41',
-   sum:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 <mark>ngram</mark> 索引变成垃圾 token。',
-   src:'/profile/upload/2026/09/18/d4e5f6.md'},
+   sum:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 <mark>ngram</mark> 索引变成垃圾 token。'},
   {id:308, item:'人类简史', ttl:'《人类简史》读书笔记', pub:'公开', time:'2026-09-17 22:08',
-   sum:'印象最深的是认知革命那一章：智人靠「虚构的故事」完成大规模协作。这一点和后面的帝国、货币、宗教是同一条线的延伸。',
-   src:''}
+   sum:'印象最深的是认知革命那一章：智人靠「虚构的故事」完成大规模协作。这一点和后面的帝国、货币、宗教是同一条线的延伸。'}
 ];
 function row(r){
   return `<tr>
@@ -203,8 +199,7 @@ function row(r){
     <td><span class="pill ${r.pub==='公开'?'on':'off'}">${r.pub}</span></td>
     <td>${r.time}</td>
     <td><div class="acts">
-      <button class="ebtn link" ${r.src?'':'disabled'} title="${r.src?'下载导入时上传的原始文件':'该笔记没有留存原件（手写或导入后未保存就离开）'}">下载原件</button>
-      <button class="ebtn link warn" title="用当前内容现生成，带 noteId，可用于往返；原件不含 noteId，请勿用原件往返">导出 Markdown</button>
+      <button class="ebtn link warn" title="用当前正文现生成，带 noteId，可用来往返">导出 Markdown</button>
     </div></td>
   </tr>`;
 }
@@ -213,7 +208,9 @@ const STATES = {
   none(){ return `<tr><td colspan="7"><div class="empty">没有匹配的笔记</div></td></tr>`; }
 };
 let state='hit';
-function render(){ document.getElementById('rows').innerHTML = STATES[state](); }
+/** 本文件的数据都是字面量，用 range 解析而不走 innerHTML（静态设计稿，无外部输入） */
+function setHTML(el, html){ const r = document.createRange(); r.selectNode(el); el.replaceChildren(r.createContextualFragment(html || '')); }
+function render(){ setHTML(document.getElementById('rows'), STATES[state]()); }
 document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
   state=b.dataset.state;
   document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));

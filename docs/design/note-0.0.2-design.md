@@ -33,7 +33,7 @@
 | --- | --- |
 | 「`HeaderSearch` 组件没人用，接上前台就能做全局搜索」 | 它被后台侧栏引用（`layout/components/Sidebar/index.vue:39`），是 Fuse.js 的**菜单**搜索、零后端调用，而且前台没有搜索位 |
 | 「列表检索放后端是为了省流量」 | 列表接口**本来就**返回完整正文；重点不是「前端算还是后端算」，是顺手停掉全文下发 |
-| 「语法高亮是唯一新增的前端依赖」 | 是**两个**包（`highlight.js` + `marked-highlight`）；文件导入只做 md，不引入解析依赖 |
+| 「语法高亮是唯一新增的前端依赖」 | 是**两个**包（`highlight.js` + `marked-highlight`）；文件导入本版只做 md，但**要一个解析依赖** `js-yaml`（结论 35，2026-09-18 修正） |
 | 「关闭标签页也能弹自定义确认」 | iOS Safari 的 `beforeunload` 基本不触发，移动端做不到，验收要按平台拆开 |
 | 「正文可以随便长」 | 服务端有 20000 字上限（`CONTENT_MAX_LENGTH`），而且列表与首页会把全文读出来（结论 32） |
 
@@ -65,7 +65,7 @@
 | 18 | 全局搜索（D-4） | **不纳入 0.0.2**，转 0.0.5（FR-005-5） |
 | 19 | 交付方式 | 本文 + 两端测试；评审后开工 |
 
-### 2.2 结论（20~40）：正文存储、上限、全文索引、文件导入导出、草稿写入边界
+### 2.2 结论（20~42）：正文存储、上限、全文索引、文件导入导出、草稿写入边界
 
 > 「已拍板」= 已定的做法；「缺陷」= 代码里已有的问题，修法唯一；「约束」= 实现时必须遵守的边界，无替代方案；「收益」= 某个决定带来的附带好处；「已废弃」= 方案调整后不再适用。各条对应的验收项见需求文档 §3.3、§5。
 
@@ -85,13 +85,15 @@
 | 31 | 已拍板 | **正文存储定案** | 正文继续以 Markdown 存 `sgj_note.content`（`longtext`）；文件只作**导入源与导出产物**，二进制一律走 `FileStorageService`。理由：本版的写入模式（每 15s 双端自动保存）、读模式（检索 + 摘要）、元数据（草稿 / 回收站 / 公开性）都是数据库主场；文件化要重建检索、事务、权限、备份四项能力，而收益只有「数据可携带」一项，用导入导出即可获得。**文件是门，不是仓库** |
 | 32 | 已拍板 | 正文上限与列表瘦身 | `CONTENT_MAX_LENGTH` 20000 → **100000**（#14 的前置条件：用户从 Obsidian 之类导入的 md 常常是长篇，几万字很常见）。同时**前台列表不再取全文**，改由 SQL 算出「命中窗口 + 无命中前缀」两段短文本（`substring(content, greatest(1, locate(kw, content) - 40), 200)` / `left(content, 400)`），回传几百字符而非十万字；扫描仍在引擎内发生（LIKE/FTS 本来就要扫）。命中落在窗口外时降级为取开头。**同批**：首页 `selectRecentNotes` 也在 select `content`（`SgjDashboardMapper.xml:144`）却从不显示，一并去掉该列 |
 | 33 | 已拍板 | 检索改用 FULLTEXT + ngram | 索引 `FULLTEXT KEY ft_note_title_content (title, content) WITH PARSER ngram`，查询 `match(title, content) against(#{keyword} in boolean mode)`。**必须用布尔模式**：实测自然语言模式会把 `mysql` 命中到只含 `sql` 的行（ngram 把查询词也切词 + OR 语义）。`ngram_token_size=2` 是**只读启动变量**（实测 `ERROR 1238`），改动必须重建索引；token 大小为 2 导致**单个汉字搜不到**，搜索框需最小长度约束与提示 |
-| 34 | 已拍板 | #14 纳入 0.0.2（**仅 md**） | 范围：**导入 md + 导出 md**；**Word（docx）转后续版本**（见 §2.13）。流程：前端 `FileReader` 本地读文件 → 解析并剥离 front-matter → **跳编辑页预填** → 用户补完关联条目 / 标签 / 公开状态 → **点保存时才上传原件**（结论 37）。选「跳编辑页确认」是因为：不新增预览界面、复用编辑页与其草稿机制（导入后未保存离开不会丢）、解析失败不会在库里留下垃圾笔记、元数据在保存前可设（这正是「纳入系统管理」的动作）。导出写 front-matter（含 `noteId`），重新导入时若识别到 `noteId` 则问「更新《X》/ 新建一篇」 |
-| 35 | 约束 | 导入产物必须干净 | md 源文件普遍带 **YAML front-matter**（Obsidian / Jekyll / Hugo 都写），必须在入库前剥离：否则摘要首行会显示成 `---`，且 `title:` / `tags:` 这些键会进 ngram 索引变成垃圾 token。摘要剥离规则相应增加「YAML front-matter 整块移除」。md 里的图片引用**无法转存**（系统拿不到相对路径指向的文件）：相对路径 `![](./a.png)` 与 Obsidian 的 `![[a.png]]` 必须提示而不静默丢失；`data:` base64 内嵌图片本版不处理 |
+| 34 | 已拍板 | #14 纳入 0.0.2（**仅 md**） | 范围：**导入 md + 导出 md**；**Word（docx）转后续版本**（见 §2.13）。流程：前端 `FileReader` 本地读文件 → 解析并剥离 front-matter → **跳编辑页预填** → 用户补完关联条目 / 标签 / 公开状态 → **点保存时入库**（全程不上传；原件留档已废弃，见结论 37）。**长度上限（100000）在导入时就检查**，超限不进编辑页，免得用户白编辑一遍。选「跳编辑页确认」是因为：不新增预览界面、复用编辑页与其草稿机制（导入后未保存离开不会丢）、解析失败不会在库里留下垃圾笔记、元数据在保存前可设（这正是「纳入系统管理」的动作）。导出写 front-matter（`noteId` + `title` + `tags`），重新导入时若识别到 `noteId` 且**该笔记属于当前用户**则问「更新《X》/ 新建一篇」；命中**他人**笔记的 `noteId` 时静默按新建处理，不报错、不写他人数据 |
+| 35 | 约束 | 导入产物必须干净 | md 源文件普遍带 **YAML front-matter**（Obsidian / Jekyll / Hugo 都写），必须在入库前剥离：否则摘要首行会显示成 `---`，且 `title:` / `tags:` 这些键会进 ngram 索引变成垃圾 token。摘要剥离规则相应增加「YAML front-matter 整块移除」。md 里的图片引用**无法转存**（系统拿不到相对路径指向的文件），而且**笔记编辑器根本没有插图入口**（`MarkdownEditor` 是 `el-input` + 预览面板，全仓库能传图的组件都只给条目封面 / 相册 / 头像用）：相对路径 `![](./a.png)` 与 Obsidian 的 `![[a.png]]` 因此**必然失效**，界面须明说「本版不搬图片」，**图片搬运单独开 issue**。`data:` base64 内嵌图片本版不处理。**front-matter 的解析方式与边界**（2026-09-18 补）：用 **`js-yaml`**（新增前端依赖）——手写解析认不全 `tags` 的三种写法（逗号串 / `[a, b]` 内联数组 / `- item` 块数组），会把 `[科幻` 当成标签名，然后弹一句用户看不懂的提示；只有**文件第一行恰好是 `---`、且后面找得到闭合的 `---`** 才算 front-matter，残缺的 `---` 不当 front-matter（别把正文吃掉） |
 | 36 | 收益 | 草稿独立表挡住索引重写 | 草稿表**没有**全文索引，所以每 15s 的自动保存不触发任何 FTS token 维护，只有真正「保存」发布时才写 `sgj_note.content`。如果用「同表加 `is_draft`」，十万字笔记每 15s 要重写约十万个 token。这是独立表（结论 8）的附带好处 |
-| 37 | 已拍板 | 原件留存与孤儿对账 | 原件在**用户点保存时**上传（不是导入时），路径写入 `sgj_note.source_file`；**关键：必须同步给 `FileReferenceMapper.selectReferencedStorageKeys()` 加一行 `union select source_file from sgj_note where source_file like '/profile/%'`**——该 mapper 的注释已写明「新增引用列时必须同步扩展，否则对应文件会被误判为孤儿」。这个机制白送三条正确行为：① 7 天 GRACE（`FileCleanupTask:47`）覆盖上传与入库之间的窗口；② 保存失败或用户放弃时，原件由清理任务回收；③ 笔记彻底删除后行消失，原件自动成为孤儿被回收。上传失败**只放弃原件、不阻断保存**。已知代价：导入后未保存就离开、事后从草稿恢复再保存时没有原件（`File` 对象已随页面消失） |
-| 38 | 已拍板 | 导入的标签怎么对接 | front-matter 的 `tags` 里，**在标签表里的预填进编辑页；不在表里的忽略并提示**「N 个标签不在标签表中，已忽略」。尊重「词表由运维维护、仅可选择不可手输」的既有约束（README 的跨版本原则）；用户在编辑页可自行补选已知标签。不自动建标签 |
-| 39 | 已拍板 | 两个下载入口的分工 | 后台笔记管理页每行给两个动作：**「下载原件」**（取回当初上传的那份，`source_file` 为空时禁用）与**「导出 Markdown」**（用当前正文 + front-matter 现生成，含 `noteId`）。**往返必须用「导出 Markdown」**——原件不含 `noteId`、也不含之后在网页上的修改，拿它重新导入会新建一篇重复笔记，UI 文案须写明这一点。前台（详情页）**不做**下载 / 导出入口 |
+| 37 | 已废弃 | 原件留存与孤儿对账 | 原方案：原件在用户点保存时上传，路径写入 `sgj_note.source_file`，并给 `FileReferenceMapper.selectReferencedStorageKeys()` 补一行 union 让孤儿清理任务认得它。**2026-09-18 废弃**：原件既没有 `noteId`、也不含之后在网页上的修改，**不能用来往返**，只剩「留档」一个作用，撑不起它的代价（`source_file` 列 + 迁移 SQL + 清理任务 union 行 + 保存时上传链路 + 一个「下载原件」灰按钮）；而唯一说得通的动机（保住自己写的 front-matter 键）用「标签原样存」就够了。**列、迁移脚本、那条 union、上传链路一律不做** |
+| 38 | 已拍板 | 导入的标签怎么对接 | **原样存，不建词条**（2026-09-18 修正）。`sgj_note.tags` 本来就是自由文本列（varchar(500)），`sgj_tag` 只是**选择与筛选用**的字典，与记录之间没有引用完整性（`tag-management-design.md` §2 方案 A 已接受的代价）。所以 front-matter 的 `tags` 归一化（trim、去前导 `#`、去重、丢空值）后**原样预填**，表内表外一视同仁；最多 20 个，超出丢弃并提示；写库前按 500 字符硬截断兜底。**不自动建词条**：没有引用完整性，建错的词条删了也清不掉记录里的文本，只会留下永远筛不到东西的空词条，词表会单向腐烂；且 `tag_name` 是 varchar(50)，长标签会卡在插入。已知代价：**表外标签筛不出来**（筛选框的选项只来自词表，而 `tags` 不在 `ft_note_title_content` 里），要能筛得先去后台把词条建出来 |
+| 39 | 已拍板 | 出口只有一个动作、两个入口 | **「导出 Markdown」**（用当前正文 + front-matter 现生成，不预先存一份）。两个入口：**前台笔记详情页**（按钮按 `isLogin` + 归属显隐）与**后台笔记管理页每行**。**导出接口自己校验归属**（要登录 + 比对 `create_by`），不能只靠前端藏按钮。front-matter 只写 `noteId` + `title` + `tags`——**不写昵称、不写创建时间**（`insertSgjNote` 里 `create_time` 写死 `sysdate()`，客户端给什么都被忽略，写了也没人读）。导出文件名要处理标题里的 `/`、`:`。**「下载原件」已废弃**（结论 37），不再有灰按钮，也不再有「原件不能用来往返」那条提示 |
 | 40 | 缺陷 | 草稿写入的存活校验与归属覆盖 | `PUT /app/note/draft` 带 `noteId` 时，必须先校验该笔记**存在且 `del_flag='0'`**，否则拒绝并返回可识别错误（编辑页提示「笔记已被删除」）。缺了它，编辑页在笔记被删后仍会继续写入：软删后写回一行挂在回收站笔记上的草稿，彻底删除后写回一行永久孤儿（清理发生在删除那一刻，写入发生在之后，窗口随编辑页那个标签页存活而敞开）。另外 `SgjNoteDraft` 若继承 `BaseEntity`，`createBy` 是**客户端可绑定**字段，控制器必须**无条件覆盖** `draft.setCreateBy(SecurityUtils.getUsername())`——写成「为空才填」则 `?createBy=他人` 即可读他人草稿；改 / 删的归属判断也要拿库里那行的 `create_by` 比，不能信请求体 |
+| 41 | 已拍板 | 导入预填要与草稿机制对齐 | 导入预填**不能走 `applyForm` 的静默路径**（它设 `muteChange`，`watch` 里第一件事就是 `if (muteChange) return`）：必须置 `dirty = true`、`baseline` 在**预填之后**取（这样 `snapshot() === baseline`，离开时**不弹**确认）、预填完**立即推一次草稿**（照抄 `initEditor` 里 `if (local.dirty) pushDraft()` 的先例）。不做这三条，15s 定时器因 `dirty` 为假永不触发、本地缓冲因 watch 被 mute 不写、路由离开时 `confirmLeave()` 见 `hasUnsavedChanges() === false` 直接放行——**用户导入完点「返回」，服务端与本地都没留下任何东西** |
+| 42 | 已拍板 | 导入与空白草稿的冲突 | 新增态编辑页 `editorKey = 'new'`，与空白草稿是同一个槽位（`note_id = 0`）。而 `initEditor()` 的顺序是：预填 → 取 `baseline` → `getBlankNoteDraft()` → `restoreFormData()` 非空就**无条件 `applyForm(restoredForm)` 整份套回表单**。所以导入前必须先查一次空白草稿，非空就弹确认框「编辑页里有一份未保存的草稿（约 N 字 / 更新于 X），导入会覆盖它。[继续导入] [先去看看草稿]」——不查的话两份内容抢同一个槽位，**必有一份静默消失** |
 
 ### 2.3 检索的两条安全与语义边界
 
@@ -192,6 +194,7 @@ create table sgj_note_draft (
 | `DELETE /app/note/{noteId}`、回收站彻底删除、**后台 `DELETE /business/note/{noteIds}`** | 删除该笔记的草稿行（结论 25）。清理写在 `SgjNoteServiceImpl.deleteSgjNoteByIds` / `purgeSgjNoteByIds` 里，两个控制器自动覆盖 |
 | `DELETE /app/item/{itemId}` 的彻底删除（`purgeSgjItemByIds`） | **先删该条目下所有笔记的草稿，再删条目**——顺序不能反（结论 25）；该方法当前无 `@Transactional`，需一并补 |
 | `GET /business/note/list` | 新增 `keyword` 入参；响应**保持含 `content`**（后台摘要列与 CSV / JSON 导出依赖它） |
+| **新增导出接口**（前台详情页与后台列表各一个调用点） | 服务端按当前正文现场生成 md 作为文件下载；**必须登录并校验归属**（结论 39）。响应头带文件名（标题里的 `/`、`:` 要替换）。不引入 `source_file` 之类字段（结论 37 已废弃） |
 | 回收站两个接口 | 不变（表格无内容列，命中理由不可见，故不纳入正文检索） |
 
 `SgjNote` 域对象新增四个**非表字段**（与既有的 `itemName` 同类，无需 DDL）：
@@ -356,7 +359,6 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | 新增 `sql/update/20260917_note_draft.sql` | 建表 `sgj_note_draft`（含 `note_id` / `item_id` 默认 `0` 与非空、`unique key uk_sgj_note_draft_owner_note (create_by, note_id)`），幂等脚本，参照 `update/20260909_item_photos.sql` 体例 |
 | 新增 `sql/update/20260918_note_fulltext.sql` | 给 `sgj_note` 加 `FULLTEXT KEY ft_note_title_content (title, content) WITH PARSER ngram`（结论 33）。`ADD FULLTEXT` 会为存量行建索引，**不需要回填脚本**；注意它锁表重建，量大时挑低峰 |
-| 新增 `sql/update/20260918_note_source_file.sql` | 给 `sgj_note` 加 `source_file varchar(500) default ''`（导入原件的路径，结论 37），幂等脚本 |
 | `sql/init_business.sql` | 同步加入建表与建全文索引语句供新库使用 |
 
 **后端**
@@ -365,7 +367,6 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | `business/.../domain/SgjNote.java` | 新增 `keyword`、`excerpt`、`draftId` 三个非表字段 |
 | 新增 `business/.../domain/SgjNoteDraft.java` | 草稿实体（另需 `itemName`、`excerpt` 两个非表字段） |
-| `business/.../resources/mapper/business/FileReferenceMapper.xml` | **新增一行 union**：`select source_file from sgj_note where source_file like '/profile/%'`（结论 37）。漏掉它，导入的原件会在下一轮清理中被当孤儿误删——这是本版最容易被遗忘的一处 |
 | 新增 `business/.../mapper/SgjNoteDraftMapper.java` + `resources/mapper/business/SgjNoteDraftMapper.xml` | 草稿 CRUD，按 `create_by` 过滤；列表只取 `excerpt` 所需列（不取 `content`）、左联 `sgj_item` 带 `item_name`；含 `deleteByNoteIds` 与「按 item_id 反查 note_id 删草稿」 |
 | `business/.../resources/mapper/business/SgjNoteMapper.xml` | `selectSgjNoteList` 的检索条件改为 `match(title, content) against(#{keyword} in boolean mode)`；列表列清单改为只取「命中窗口 / 前缀」短文本（结论 32）；新增按 `noteId` 判断存活 / 按 `itemId` 取 `note_id` 的查询 |
 | `business/.../service/impl/SgjNoteServiceImpl.java` | 新增静态摘要方法（含标题去重与 front-matter 剥离）；`CONTENT_MAX_LENGTH` 20000 → 100000（结论 32）；检索前剔除布尔运算符字符（结论 33）；**`deleteSgjNoteByIds` / `purgeSgjNoteByIds` 加 `@Transactional` 并调 `deleteByNoteIds`**（结论 25）；`add` / `edit` 的 `draftId` 归属校验与同事务删除（结论 15） |
@@ -392,7 +393,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | `types/api/front/note.ts` · `types/api/business/note.ts` | `keyword` 入参、`excerpt` / `hitTotal` / `draftId` 字段 |
 | `components/MarkdownViewer/index.vue` | 接入 hljs + 主题 |
 | 新增 `components/MarkdownViewer/__tests__/index.spec.ts` | 高亮与消毒断言 |
-| 列表页 / 条目页导入入口、后台笔记管理页的两个下载动作（文件待定） | #14 的前端部分：导入**不新增预览界面**（跳编辑页）；后台每行加「下载原件」「导出 Markdown」（结论 39）。详细交互**待专项设计**（需求 FR-002-8） |
+| 笔记列表页导入入口、前台详情页与后台笔记管理页的导出动作（文件待定） | #14 的前端部分：导入**不新增预览界面**（跳编辑页）；导出两个入口（结论 39）。导入解析函数**只写一份**放 `utils/`；新增依赖 `js-yaml`（结论 35）。详细交互**待专项设计**（需求 FR-002-8） |
 
 ### 2.11 测试计划
 
@@ -401,7 +402,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | 测试 | 内容 |
 | --- | --- |
 | `SgjNoteExcerptTest`（新增，纯单测，无 Spring / 无 DB） | 剥离各类语法；**正文以同级 H1 开头时摘要不重复标题**；**YAML front-matter 整块移除**；窗口以命中处为中心；无命中取开头；命中标题时取开头；纯代码块笔记的回退；空正文；命中在首 / 尾 |
-| `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除）。③**导入的原件路径出现在 `FileReferenceMapper.selectReferencedStorageKeys()` 的结果里**（结论 37）——漏了它原件会被每周的清理任务误删，而这类缺陷不会报错、只会静默丢文件 |
+| `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除） |
 | `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问六个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**同一身份收敛**：空白草稿连推两次（中间换了 `item_id` 也只算同一份）、编辑态每篇笔记一行，同一 `(create_by, note_id)` 不带 `draftId` 连推不产生第二行（空白草稿写 `0`）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、**不带 `draftId` 也按 `note_id` 清掉那份草稿（新增 = 空白草稿；且不误删别的笔记的编辑态草稿）**、不带 `draftId` 的笔记写入行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
 
 **前端**
@@ -410,7 +411,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | `MarkdownViewer` spec（新增，vitest + jsdom） | ` ```java ` 渲染后含 `span.hljs-*`（证明 class 未被 DOMPurify 误伤）；无语言标注不报错且不高亮；`<script>` / `onerror` 仍被消毒 |
 | `utils/sgj` spec（补用例） | 日期解析：`yyyy-MM-dd HH:mm:ss` → 正确 epoch（不得返回 NaN）；切片段：大小写不敏感、关键词含正则元字符（`(` `[` `*`）不抛错、命中多次全部切出 |
-| 导入解析 spec（新增，纯逻辑） | front-matter 解析：有 / 无 front-matter 都要正确；`tags` 里混有表内与表外标签时**只保留表内的**，并给出被忽略的数量（结论 38）；标题取值顺序 front-matter → 首个 H1 → 文件名去扩展名 |
+| 导入解析 spec（新增，纯逻辑） | front-matter 解析：有 / 无 front-matter 都要正确；`tags` 的三种写法（逗号串 / `[a, b]` 内联数组 / `- item` 块数组）都要正确；**表外标签原样保留、不建词条**，超过 20 个只留前 20 个（结论 38）；首行 `---` 但正文里只是一条分隔线时正文不被吃掉；残缺的 `---` 不当 front-matter；标题取值顺序 front-matter → 首个 H1 → 文件名去扩展名；超过 100000 字给出可识别的失败信号（结论 34） |
 | 草稿恢复判断 spec（新增，纯逻辑，`utils/__tests__/noteDraftBuffer.spec.ts`） | 结论 10 的三条分支各一例：`dirty` 为真 → 取本地；`dirty` 为假且 `baseUpdateTime` 与 `updateTime` 相等 → 等价；不等 → 取服务端。另加：身份（`username`/`draftId`/`noteId`）任一不匹配的本地缓冲一律不采用（结论 26）；按用户隔离的读写清与登出清理 |
 | 推送竞态 spec（新增，纯逻辑，同 `noteDraftBuffer.spec.ts`） | 推送在飞时内容又变（`seq` 变化）→ 响应回来**不清 `dirty`**；`seq` 未变 → 清 `dirty` 并把响应里的 `updateTime` 写进 `baseUpdateTime`（结论 26） |
 | `utils/request` 静默开关 spec（补用例） | 带静默开关的请求在 401 / 500 时**不触发** `ElMessageBox` / `ElMessage` / `ElNotification`，但 promise 仍 reject（调用方靠它把状态条转「仅本地待同步」）；**不带开关的请求行为不变**（这条是回归，动的是全站共用文件） |
@@ -438,10 +439,10 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 12. `feat:` 草稿箱页面与路由（未登录走现有守卫跳登录页）；
 13. `feat:` 语法高亮 + `MarkdownViewer` spec；
 14. `feat:` #14 导入 / 导出（**仅 md**）——拆成两个子 issue 实施：
-    - [#40 导入链路](https://github.com/MosaicAccount/shiguangji/issues/40)：前端解析 → 跳编辑页预填 → 保存时上传原件；含 `source_file` 列与 `FileReferenceMapper` 的 union；
-    - [#41 导出与两个下载入口](https://github.com/MosaicAccount/shiguangji/issues/41)：后台行内的「导出 Markdown」与「下载原件」；
+    - [#40 导入链路](https://github.com/MosaicAccount/shiguangji/issues/40)：浏览器本地解析（`js-yaml`）→ 跳编辑页预填 → 保存时入库（结论 34、41、42）；
+    - [#41 导出 Markdown](https://github.com/MosaicAccount/shiguangji/issues/41)：前台详情页与后台行内两个导出入口（结论 39）；
 
-    两者都依赖 [#42 正文上限提升与列表瘦身](https://github.com/MosaicAccount/shiguangji/issues/42)（与第 3 步同批，因为它改的是同一个 mapper）；
+    两者的前置 [#42 正文上限提升与列表瘦身](https://github.com/MosaicAccount/shiguangji/issues/42) 已完成；
 15. 提交前运行：前端 `npx vue-tsc --noEmit`、`npm run build:prod`、`npm run test:unit`；后端 `mvn -pl shiguangji-admin -am test`。
 
 ### 2.13 非目标
@@ -449,7 +450,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 - 不做笔记版本历史、分类 / 文件夹、导入 / 导出之外的文件能力；
 - **本版导入只支持 md**：Word（docx）解析与转换（含内嵌图片转存）转后续版本。docx 解析要新增依赖、还要做结构与图片转存，而它的验收与 md 完全独立，适合单独排期；
 - 不做 md 里的 base64 内嵌图片转存、不做相对路径图片的自动匹配；
-- 前台不做下载 / 导出入口——出口都在后台笔记管理页（结论 39）；
+- 不做「下载原件」——出口只有「导出 Markdown」（结论 37 已废弃原件留存，结论 39）；
 - 不做批量导入（目录 / vault）与批量导出打包；
 - 不做全文索引的深度调优（分词器定制、相关度调参），**不引入独立检索服务**（Elasticsearch / Meilisearch 之类），全文检索用 MySQL 原生 FULLTEXT + ngram（结论 33）。到需要相关度排序、跨类型聚合时再评估；
 - 不做前台全局搜索（转 0.0.5，见结论 18）；
@@ -476,7 +477,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | `note-detail.html` | 详情 | `/note/detail` | 代码高亮 / 无标注与未知语言 / 移动端大纲浮层 |
 | `admin-note.html` | 后台笔记管理 | `/business/note` | 关键词命中正文 / 无结果 |
 
-条目详情的关联笔记列表沿用列表页的摘要样式，不单独出图；后台那屏纳入是因为它有新增的两个下载动作。
+条目详情的关联笔记列表沿用列表页的摘要样式，不单独出图；后台那屏纳入是因为它有新增的导出动作。
 
 ### 3.2 出图约定
 

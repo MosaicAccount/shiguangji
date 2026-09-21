@@ -256,8 +256,7 @@ html.dark .legend .new{color:#D67870}
     <li><span class="new">改动</span>：后台自动同步（每 15s、页面隐藏、网络恢复）<b>不发全局错误提示</b>——否则断网时每 15 秒弹一个红字。同时带 <code>repeatSubmit: false</code>，避免被 1 秒防重拦掉。上报失败时状态条转「仅本地待同步」，不打断输入。</li>
     <li><span class="new">改动</span>：本地缓冲的 key 带用户身份（<code>sgj:note:buf:{username}:{editorKey}</code>）。原来的 key 在新增态恒为 <code>new</code>，同一浏览器换人登录会继承上一个人的未保存内容。</li>
     <li><span class="new">新增</span>：<b>离开确认弹窗</b>。判据是「与打开时的服务器快照不同」——<b>不能</b>用「与草稿是否相同」，草稿总是最新的，那样写等于永不拦截。文案说明内容已存入草稿箱，而不是「修改将丢失」。<br>关闭标签页时浏览器只给通用文案（<code>beforeunload</code> 不可自定义），文案要求<b>只适用于这个弹窗</b>。</li>
-    <li><span class="new">新增</span>：<b>导入预填</b>。标题按 front-matter → 首个 H1 → 文件名取值；front-matter 里的标签只有<b>在标签表中存在</b>的才预填，其余忽略并提示（标签体系是「仅可选择不可手输」）。</li>
-    <li><span class="new">新增</span>：<b>保存时上传原件</b>。原件路径随保存写入笔记，上传失败只放弃留存、不阻断保存；未保存就离开的话没有原件。</li>
+    <li><span class="new">新增</span>：<b>导入预填</b>。标题按 front-matter → 首个 H1 → 文件名取值；front-matter 里的标签归一化后<b>原样预填</b>（表内表外一视同仁，最多 20 个），<b>不写入标签表</b>（结论 38）。超过 10 万字的文件在导入时就拦下、不进本页（结论 34）。</li>
     <li><span class="new">改动</span>：移动端隐藏右侧预览、收进「预览」弹窗（既有行为），编辑器高度固定 55vh。</li>
   </ol>
   <p class="scope"><b>未建模</b>：真实保存请求、字数统计逻辑、标签选择器与条目选择器的弹窗、Markdown 工具栏。<br><b>本屏不新增</b>：编辑器本身的结构、分屏预览、字符计数都是既有实现；本次只在它上方加了状态条。</p>
@@ -311,15 +310,18 @@ function goLeave(){ document.getElementById('mask').hidden=false; }
 document.getElementById('mask').addEventListener('click',e=>{ if(e.target.id==='mask') closeDlg(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDlg(); });
 
+/** 本文件的数据都是字面量，用 range 解析而不走 innerHTML（静态设计稿，无外部输入） */
+function setHTML(el, html){ const r = document.createRange(); r.selectNode(el); el.replaceChildren(r.createContextualFragment(html || '')); }
+
 function render(){
   const c = CFG[state] || {};
-  document.getElementById('stripes').innerHTML = STRIPES[state] || '';
+  setHTML(document.getElementById('stripes'), STRIPES[state] || '');
   document.getElementById('pageTitle').textContent = c.title || '编辑笔记';
   document.getElementById('t').value = c.title==='写笔记' ? '' : 'MySQL 全文索引与 ngram 分词';
-  document.getElementById('tagCtl').innerHTML = c.tags!==undefined && c.tags===''
-    ? '选择标签（可选） <span class="ph">▾</span>' : '数据库, 笔记 <span class="ph">▾</span>';
+  setHTML(document.getElementById('tagCtl'), c.tags!==undefined && c.tags===''
+    ? '选择标签（可选） <span class="ph">▾</span>' : '数据库, 笔记 <span class="ph">▾</span>');
   document.getElementById('src').textContent = SRC_FULL;
-  document.getElementById('pv').innerHTML = PV_FULL;
+  setHTML(document.getElementById('pv'), PV_FULL);
   const sb = document.getElementById('saveBtn');
   sb.disabled = !!c.saving;
   sb.textContent = c.saving ? '保存中…' : '保存';
