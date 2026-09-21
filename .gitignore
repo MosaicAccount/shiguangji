@@ -6,6 +6,7 @@ dist/
 *.tsbuildinfo
 coverage/
 **/target/
+**/.lithe/
 logs/
 *.log
 
