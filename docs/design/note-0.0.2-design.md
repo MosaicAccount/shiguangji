@@ -452,7 +452,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 - 不做 md 里的 base64 内嵌图片转存、不做相对路径图片的自动匹配；
 - 不做「下载原件」——出口只有「导出 Markdown」（结论 37 已废弃原件留存，结论 39）；
 - 不做图片搬运（[#56](https://github.com/MosaicAccount/shiguangji/issues/56)）：带图笔记导入后图片引用失效，界面明说；
-- 不做后台编辑弹窗的草稿兜底（[#57](https://github.com/MosaicAccount/shiguangji/issues/57)）——后台的「导入 md」入口因此本版不加（结论 34、41、42 的草稿机制只接在前台编辑页上）；
+- 不做后台编辑弹窗的草稿兜底（[#57](https://github.com/MosaicAccount/shiguangji/issues/57)）——后台的「导入 md」入口因此本版不加（[#58](https://github.com/MosaicAccount/shiguangji/issues/58)，阻塞于 #57；结论 34、41、42 的草稿机制只接在前台编辑页上）；
 - 不做批量导入（目录 / vault）与批量导出打包；
 - 不做全文索引的深度调优（分词器定制、相关度调参），**不引入独立检索服务**（Elasticsearch / Meilisearch 之类），全文检索用 MySQL 原生 FULLTEXT + ngram（结论 33）。到需要相关度排序、跨类型聚合时再评估；
 - 不做前台全局搜索（转 0.0.5，见结论 18）；
