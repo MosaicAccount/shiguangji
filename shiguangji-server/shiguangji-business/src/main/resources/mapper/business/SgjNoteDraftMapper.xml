@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguangji.business.mapper.SgjNoteDraftMapper">
+
+    <resultMap type="SgjNoteDraft" id="SgjNoteDraftResult">
+        <result property="draftId"     column="draft_id"     />
+        <result property="noteId"      column="note_id"      />
+        <result property="itemId"      column="item_id"      />
+        <result property="itemName"    column="item_name"    />
+        <result property="title"       column="title"        />
+        <result property="content"     column="content"      />
+        <result property="tags"        column="tags"         />
+        <result property="isPublic"    column="is_public"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateTime"  column="update_time"  />
+        <result property="excerptSrc"  column="excerpt_src"  />
+    </resultMap>
+
+    <!-- 左联条目表带出关联条目名称；条目已删时 item_name 为空，前端回退 #id（与笔记列表一致） -->
+    <sql id="selectDraftVo">
+        select d.draft_id, d.note_id, d.item_id, d.title, d.content, d.tags, d.is_public,
+               d.create_by, d.create_time, d.update_time,
+               i.title as item_name
+        from sgj_note_draft d
+        left join sgj_item i on i.item_id = d.item_id
+    </sql>
+
+    <!-- 草稿箱列表：全部草稿（新建态 + 编辑态，每个写作对象一行），只回摘要所需的正文前缀
+         （截断规格与笔记列表前言片段一致，Java 侧再剥离 Markdown 并裁到 120 字） -->
+    <select id="selectBoxDraftList" parameterType="String" resultMap="SgjNoteDraftResult">
+        select d.draft_id, d.note_id, d.item_id, d.title, d.tags, d.is_public,
+               d.create_by, d.create_time, d.update_time,
+               i.title as item_name,
+               concat(substring(d.content, 1, 600),
+                      if(char_length(d.content) > 600, '…', '')) as excerpt_src
+        from sgj_note_draft d
+        left join sgj_item i on i.item_id = d.item_id
+        where d.create_by = #{createBy}
+        order by d.update_time desc, d.draft_id desc
+    </select>
+
+    <!-- 按「写作对象」取本人的那份草稿（取最新一行）：身份就是 note_id，null 即 0（空白草稿） -->
+    <select id="selectDraftByNoteId" resultMap="SgjNoteDraftResult">
+        <include refid="selectDraftVo"/>
+        where d.create_by = #{createBy} and d.note_id = ifnull(#{noteId}, 0)
+        order by d.update_time desc, d.draft_id desc
+        limit 1
+    </select>
+
+    <select id="selectDraftById" parameterType="Long" resultMap="SgjNoteDraftResult">
+        <include refid="selectDraftVo"/>
+        where d.draft_id = #{draftId}
+    </select>
+
+    <insert id="insertSgjNoteDraft" parameterType="SgjNoteDraft" useGeneratedKeys="true" keyProperty="draftId">
+        insert into sgj_note_draft
+        (note_id, item_id, title, content, tags, is_public, create_by, create_time, update_time)
+        values
+        (ifnull(#{noteId}, 0), ifnull(#{itemId}, 0), #{title}, #{content}, #{tags}, #{isPublic}, #{createBy}, sysdate(), sysdate())
+    </insert>
+
+    <!-- update_time 由数据库时钟生成：客户端存进 baseUpdateTime 的必须是服务端的钟（JVM 与 DB 可能是两个钟） -->
+    <update id="updateSgjNoteDraft" parameterType="SgjNoteDraft">
+        update sgj_note_draft
+        set note_id = ifnull(#{noteId}, 0),
+            item_id = ifnull(#{itemId}, 0),
+            title = #{title},
+            content = #{content},
+            tags = #{tags},
+            is_public = #{isPublic},
+            update_time = sysdate()
+        where draft_id = #{draftId}
+    </update>
+
+    <delete id="deleteSgjNoteDraftById" parameterType="Long">
+        delete from sgj_note_draft where draft_id = #{draftId}
+    </delete>
+
+    <delete id="deleteByNoteIds" parameterType="Long">
+        delete from sgj_note_draft where note_id in
+        <foreach item="noteId" collection="array" open="(" separator="," close=")">
+            #{noteId}
+        </foreach>
+    </delete>
+
+    <!-- 先于条目删除执行：sgj_note 行还在时才能按 item_id 反查到 note_id -->
+    <delete id="deleteByItemIds" parameterType="Long">
+        delete from sgj_note_draft where note_id in
+        (select note_id from sgj_note where item_id in
+        <foreach item="itemId" collection="array" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+        )
+    </delete>
+
+</mapper>
