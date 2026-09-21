@@ -54,6 +54,10 @@ git worktree add -b <type>/<topic> .worktrees/<topic> develop
 
 Merge back with a PR. If a stray change lands in the `develop` working tree, move it onto a worktree branch before doing anything else. The worktree directory lives under `.worktrees/`, excluded locally via `.git/info/exclude` so it never shows up as untracked and `.gitignore` stays untouched.
 
+A worktree has no `node_modules` of its own: symlink the main checkout's in (`ln -s ../../../shiguangji-web/node_modules node_modules`) so the checks can run. But `npm install` **replaces that symlink with a real directory** — the package then looks installed in this worktree while every other worktree silently loses it. To add something the shared install is missing, run `npm install --no-save <pkg>` in the main checkout instead.
+
+**A finished branch becomes a pull request.** Commit → push the branch → open the PR against `develop`. A branch that only exists locally is not finished work. The PR body carries what the title cannot: the behavior change, the verification commands you actually ran with their results, the linked issue(s), any SQL / configuration change, and for visible UI work the design mockup it implements plus the manual steps nobody-but-a-human can run (say plainly when you could not run them).
+
 ## Security & Configuration
 
 Use environment overrides documented by `application*.yml` and `.env.*`. Never commit production database, Redis, or JWT credentials; provide secrets through environment variables such as `MYSQL_URL`, `REDIS_HOST`, and `JWT_SECRET`. 
