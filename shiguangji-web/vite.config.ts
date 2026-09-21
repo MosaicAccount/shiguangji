@@ -45,7 +45,7 @@ export default defineConfig(({ mode, command }) => {
         // worktree（`.worktrees/<topic>/`）里的 node_modules 通常是从主检出符号链接过来的，
         // 而默认的 allow 只有 worktree 根，于是依赖文件会以 /@fs/<主检出>/… 的绝对路径被拒成 403
         // （典型症状：字体全 404/403、控制台一片红）。允许仓库根即可。
-        allow: [searchForWorkspaceRoot(process.cwd()), path.resolve(__dirname, '../..')]
+        allow: [searchForWorkspaceRoot(process.cwd()), path.resolve(__dirname, '..')]
       },
       proxy: {
         // https://cn.vitejs.dev/config/#server-proxy
