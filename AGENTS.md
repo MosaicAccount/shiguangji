@@ -54,6 +54,10 @@ git worktree add -b <type>/<topic> .worktrees/<topic> develop
 
 Merge back with a PR. If a stray change lands in the `develop` working tree, move it onto a worktree branch before doing anything else. The worktree directory lives under `.worktrees/`, excluded locally via `.git/info/exclude` so it never shows up as untracked and `.gitignore` stays untouched.
 
+A worktree has no `node_modules` of its own: symlink the main checkout's in (`ln -s ../../../shiguangji-web/node_modules node_modules`) — `vite.config.ts` allows the repo root, so `npm run dev` works through that symlink too. Two traps cost real time here: `npm install` **replaces that symlink with a real directory** and silently strips the package out of every other worktree (add what the shared install is missing with `npm install --no-save <pkg>` in the main checkout instead), and swapping or deleting a worktree's `node_modules` **while a dev server runs from it** leaves Vite's dependency pre-bundle stale — its lazy-loaded route chunks then fail with `504 Outdated Optimize Dep`, which looks exactly like a broken app (the page never leaves its splash screen).
+
+**A finished branch becomes a pull request.** Commit → push the branch → open the PR against `develop`. A branch that only exists locally is not finished work. The PR body carries what the title cannot: the behavior change, the verification commands you actually ran with their results, the linked issue(s), any SQL / configuration change, and for visible UI work the design mockup it implements plus the manual steps nobody-but-a-human can run (say plainly when you could not run them).
+
 ## Security & Configuration
 
 Use environment overrides documented by `application*.yml` and `.env.*`. Never commit production database, Redis, or JWT credentials; provide secrets through environment variables such as `MYSQL_URL`, `REDIS_HOST`, and `JWT_SECRET`. 
