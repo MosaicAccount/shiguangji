@@ -73,6 +73,8 @@ import type { SgjNoteDraft, NoteDraftPayload } from '@/types/api/front/noteDraft
 import { getToken } from '@/utils/auth'
 import useUserStore from '@/store/modules/user'
 import { parseServerTime } from '@/utils/sgj'
+import { NOTE_CONTENT_MAX_LENGTH } from '@/utils/note'
+import { takePendingImport } from '@/utils/noteImport'
 import {
   editorKeyOf,
   readNoteBuffer,
@@ -90,8 +92,8 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-/** 与后端 SgjNoteServiceImpl.CONTENT_MAX_LENGTH 保持一致 */
-const CONTENT_MAX_LENGTH = 100000
+/** 正文上限取自共享域常量（与后端 `SgjNoteServiceImpl.CONTENT_MAX_LENGTH` 一致，导入的前置检查也读它） */
+const CONTENT_MAX_LENGTH = NOTE_CONTENT_MAX_LENGTH
 /** 服务端同步周期；本地缓冲在停手 1s 后写入 */
 const SYNC_INTERVAL_MS = 15000
 const LOCAL_DEBOUNCE_MS = 1000
@@ -156,6 +158,12 @@ const editorKey = editorKeyOf(entryNoteId, entryDraftId)
 
 const timers: number[] = []
 let localTimer: number | undefined
+
+/**
+ * 导入交接过来的内容（见 utils/noteImport）：一口气取走，取走即清。
+ * 放在登录判断**之前**取，未登录被弹回列表页时，它不会留到下一次进编辑页才突然冒出来
+ */
+const importedPrefill = takePendingImport()
 
 /** 未登录不可编辑（访客只读），直接回列表页 */
 if (!getToken()) {
@@ -238,6 +246,23 @@ async function initEditor(): Promise<void> {
   // 恢复了草稿就提示——不提示的话用户会以为这些内容已经正式保存了；
   // 内容与打开时的快照一致时（比如刷新后本地与服务端等价、或是从草稿箱进来的）不提示，避免无意义的状态条
   restored.value = source !== 'none' && snapshot() !== baseline
+
+  // 导入预填放在草稿恢复**之后**：它是用户此刻的意图，要盖过草稿里的旧内容
+  if (importedPrefill) {
+    applyForm({ title: importedPrefill.title, content: importedPrefill.content, tags: importedPrefill.tags })
+    // 快照重新取：导入进来的内容就是「打开时的样子」，离开时不该弹确认（设计结论 41）
+    baseline = snapshot()
+    // 不是「恢复了未保存的草稿」，那份提示条不该亮
+    restored.value = false
+    // 置 dirty 并立刻推一次 + 写本地：预填走 applyForm 会把 watch 的 muteChange 拉起来，
+    // 于是本地缓冲不写、15s 定时器也不推（它只推 dirty 的）——
+    // 三条都绕开的话，用户导入完点「返回」，服务端与本地都留不下任何东西（设计结论 41）
+    dirty = true
+    seq += 1
+    writeLocalBuffer()
+    pushDraft()
+  }
+
   initializing.value = false
   startTimers()
 }
