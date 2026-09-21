@@ -32,6 +32,10 @@ Use prefixes such as `feat:`, `fix:`, `docs:`, `test:`, and `chore:`. Keep subje
 
 Create a Git commit for every completed change. Do not leave an implemented change only in the working tree; commit it after the required tests pass.
 
+**Commit in small steps.** One commit = one reviewable change, not one issue. An issue that lands as a single 500-line diff across backend + frontend + docs cannot be reviewed, tested or reverted as a unit. Split by concern — a DDL change, one endpoint, one page's entry point, a doc alignment, the tests for one of them — and commit each once its own check passes. The issue's commit list should read as the outline of the work; if a commit message needs "and" to describe it, it is two commits.
+
+Every commit must leave the tree in a working state: the type-check, the tests and the build relevant to what it touched still pass at that commit.
+
 ### Branch workflow: `develop` is receive-only
 
 `develop` accepts direct commits for exactly three things:
