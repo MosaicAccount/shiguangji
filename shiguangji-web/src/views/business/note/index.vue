@@ -43,6 +43,9 @@
         <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['sgj:note:add']">新增</el-button>
       </el-col>
       <el-col :span="1.5">
+        <el-button type="primary" plain icon="Upload" @click="pickImportFile" v-hasPermi="['sgj:note:add']">导入 md</el-button>
+      </el-col>
+      <el-col :span="1.5">
         <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate" v-hasPermi="['sgj:note:edit']">修改</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -63,6 +66,8 @@
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
+
+    <input ref="importInputRef" type="file" accept=".md" hidden @change="onImportFileChange" />
 
     <el-table v-loading="loading" :data="noteList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
@@ -193,12 +198,15 @@ import {
   type NoteDraftBuffer
 } from '@/utils/noteDraftBuffer'
 import { NOTE_CONTENT_MAX_LENGTH } from '@/utils/note'
+import { NOTE_TAG_MAX_COUNT, parseNoteMarkdown, type NoteImportPrefill } from '@/utils/noteImport'
+import { findDraftConflict, findRoundTripTarget } from '@/utils/noteImportGuards'
 import { getToken } from '@/utils/auth'
 import useUserStore from '@/store/modules/user'
 import { fetchAllRows, downloadJson, downloadCsv, exportDateTag } from '@/utils/exportData'
 import type { SgjNote } from '@/types/api/business/note'
 import type { SgjNoteDraft } from '@/types/api/front/noteDraft'
 import { parseServerTime, parseTime } from '@/utils/sgj'
+import { ElMessageBox } from 'element-plus'
 
 const { proxy } = getCurrentInstance() as { proxy: any }
 const userStore = useUserStore()
@@ -582,27 +590,124 @@ function handleSelectionChange(selection: SgjNote[]) {
   multiple.value = !selection.length
 }
 
-/** 新增按钮操作 */
-function handleAdd() {
+/**
+ * 打开编辑弹窗并准备好草稿。新增态与编辑态共用这一条路——导入也走它，
+ * 否则预填会盖在半个表单上（编辑态还得先读到原文，才能保住关联条目 / 公开状态 / 备注）
+ */
+async function openEditor(noteId?: number): Promise<void> {
   reset()
-  open.value = true
-  title.value = '新增笔记'
-  prepareDraft()
-}
-
-/** 修改按钮操作 */
-function handleUpdate(row?: SgjNote) {
-  reset()
-  const noteId = row?.noteId || ids.value[0]
-  getNote(noteId).then(response => {
-    // 用 applyForm 而不是直接换对象：否则下面那个 watch 会把「打开一篇笔记」当成用户改动
+  if (noteId) {
+    const response = await getNote(noteId)
+    // 用 applyForm 而不是直接换对象：否则那个 watch 会把「打开一篇笔记」当成用户改动
     applyForm(response.data || {})
     // 公开状态归一化：仅接受 '0'/'1'，空值按私密处理（存量数据兜底）
     form.value.isPublic = form.value.isPublic === '1' ? '1' : '0'
     open.value = true
     title.value = '修改笔记'
-    prepareDraft(noteId)
-  })
+    await prepareDraft(noteId)
+    return
+  }
+  open.value = true
+  title.value = '新增笔记'
+  await prepareDraft()
+}
+
+/** 新增按钮操作 */
+function handleAdd() {
+  openEditor()
+}
+
+/** 修改按钮操作 */
+function handleUpdate(row?: SgjNote) {
+  openEditor(row?.noteId || ids.value[0])
+}
+
+/** 导入 md 的文件选择器（真实的 input 藏在模板里，按钮只是它的代理） */
+const importInputRef = ref<HTMLInputElement>()
+
+function pickImportFile(): void {
+  importInputRef.value?.click()
+}
+
+/**
+ * 导入一个 md：浏览器本地读 → 解析 → 打开编辑弹窗预填（不直接入库）。
+ *
+ * 解析用的是前台同一份函数（`utils/noteImport`），两道前置检查也是同一份
+ * （`utils/noteImportGuards`：目标槽位的草稿冲突、front-matter 里的 noteId 往返识别）——
+ * 两条入口问的是同一个问题，就必须给同一个答案。
+ */
+async function onImportFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  // 先清空：不然连着导入同一个文件不会再触发 change
+  input.value = ''
+  if (!file) return
+
+  const result = parseNoteMarkdown(await file.text(), file.name)
+  if (!result.ok) {
+    if (result.code === 'not-md') {
+      proxy.$modal.msgError('只支持导入 .md 文件')
+    } else {
+      proxy.$modal.msgError(`这篇共 ${result.length} 字，超过上限 ${NOTE_CONTENT_MAX_LENGTH} 字，无法导入`)
+    }
+    return
+  }
+
+  // 往返识别：命中的是**自己的**笔记才问（别人的一律静默新建，不写他人数据）
+  const own = await findRoundTripTarget(result.prefill.noteId, username.value)
+  let targetNoteId: number | undefined
+  if (own?.noteId) {
+    try {
+      await ElMessageBox.confirm(
+        `这份文件里带着《${own.title || '无标题'}》的标记，而且那篇笔记是你自己的。要更新它，还是新建一篇？`,
+        '这份文件来自一篇已有的笔记',
+        { confirmButtonText: '更新那篇', cancelButtonText: '新建一篇', type: 'info' }
+      )
+      targetNoteId = own.noteId
+    } catch {
+      targetNoteId = undefined
+    }
+  }
+
+  // 冲突检查：要落到哪个槽位就查哪个槽位
+  const conflict = await findDraftConflict(username.value, targetNoteId)
+  if (conflict) {
+    try {
+      await ElMessageBox.confirm(
+        `${targetNoteId ? '那篇笔记里' : '编辑页里'}有一份没写完的草稿（约 ${conflict.chars} 字），导入会覆盖它。`,
+        '导入会覆盖草稿',
+        { confirmButtonText: '继续导入', cancelButtonText: '先去看看', type: 'warning' }
+      )
+    } catch {
+      // 「先去看看」：取消这次导入，把人送到对应的地方（更新态打开那篇，它会静默恢复自己的草稿）
+      if (targetNoteId) openEditor(targetNoteId)
+      return
+    }
+  }
+
+  if (result.droppedTagCount > 0) {
+    proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
+  }
+
+  await openEditor(targetNoteId)
+  title.value = '导入笔记'
+  applyImportPrefill(result.prefill)
+}
+
+/**
+ * 把导入的内容套到已打开的弹窗上（设计 结论 41 的三条约束，与前台跳编辑页时同一套）：
+ * ① 不能走静默路径——要置 dirty，否则本地缓冲不写、15s 定时器也不推（它只推 dirty 的）；
+ * ② baseline 在预填**之后**重取，否则关弹窗时会多弹一次确认；
+ * ③ 立即推一次草稿，让「内容已经在草稿箱里」当场成立，而不是等 15s 或靠关窗那一哆嗦。
+ */
+function applyImportPrefill(prefill: NoteImportPrefill): void {
+  applyForm({ title: prefill.title, content: prefill.content, tags: prefill.tags })
+  baseline = snapshot()
+  restored.value = false
+  dirty = true
+  seq += 1
+  writeLocalBuffer()
+  pushDraft()
 }
 
 /** 切换公开状态：列表快捷开关，失败回滚 */
