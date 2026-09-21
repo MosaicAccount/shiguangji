@@ -13,7 +13,8 @@ This is a single Git monorepo containing two applications. `shiguangji-web/` is 
 - `npm run build:prod`: create the production bundle in `dist/`.
 - `npx vue-tsc --noEmit`: type-check Vue and TypeScript sources.
 - `cd shiguangji-server && mvn clean package -DskipTests`: compile and package all backend modules.
-- `mvn -pl shiguangji-admin -am test`: run backend tests and required modules.
+- `mvn -pl shiguangji-admin -am test`: run backend tests and required modules. The smoke tests use the `dev` profile against MySQL on `localhost:13306` and Redis on `localhost:16379`, so start those containers first.
+- The backend targets **Java 17**, so `mvn` itself must run on a JDK 17+. Check with `mvn -version`: a shell whose `JAVA_HOME` points at an older JDK (a jenv / asdf default, or macOS' bundled 1.8) dies with `无效的目标发行版: 17` before compiling anything. On macOS: `JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn ...`.
 - `java -jar shiguangji-admin/target/shiguangji-admin.jar`: run the packaged API (default port `18080`).
 
 ## Coding Style & Naming Conventions
