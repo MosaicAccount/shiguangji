@@ -1,6 +1,10 @@
 package com.shiguangji.web.controller.business;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,7 +23,10 @@ import com.shiguangji.business.service.impl.SgjNoteServiceImpl;
 import com.shiguangji.common.annotation.Anonymous;
 import com.shiguangji.common.core.controller.BaseController;
 import com.shiguangji.common.core.domain.AjaxResult;
+import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.SecurityUtils;
+import com.shiguangji.common.utils.StringUtils;
+import com.shiguangji.common.utils.file.FileUtils;
 
 /**
  * 前台学习笔记 操作处理
@@ -89,6 +96,39 @@ public class AppNoteController extends BaseController
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNoteForGuest(note);
         return success(note);
+    }
+
+    /**
+     * 导出笔记为 Markdown 文件（#41，服务端按当前正文现场生成，不预先存一份）。
+     *
+     * 归属校验与修改 / 删除同一套 {@code canOperate}（本人或管理员）——后台笔记管理页也调这一个接口，
+     * 因此管理员那一侧同样导得出任何一篇。**必须登录**：本接口不加 {@code @Anonymous}，
+     * 匿名请求在 Security 层就被拒（业务码 401），根本走不到这里。
+     */
+    @GetMapping("/{noteId}/export")
+    public void export(@PathVariable Long noteId, HttpServletResponse response) throws IOException
+    {
+        SgjNote note = sgjNoteService.selectSgjNoteById(noteId);
+        if (note == null || !appScopeHelper.canOperate(note.getCreateBy()))
+        {
+            // 错误契约与其它接口一致：抛给全局异常处理器，落业务码 500
+            throw new ServiceException("笔记不存在或无权导出");
+        }
+        response.setContentType("text/markdown;charset=UTF-8");
+        FileUtils.setAttachmentResponseHeader(response, exportFileName(note));
+        response.getOutputStream().write(
+                SgjNoteServiceImpl.buildExportMarkdown(note).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * 导出文件名：标题里的路径分隔符与各类保留字符在响应头 / 保存对话框里都非法，统一换成下划线。
+     * 文件名本身还会被 {@link FileUtils#setAttachmentResponseHeader} 做百分号编码（含 RFC 5987 的 filename*），
+     * 所以中文标题可用
+     */
+    private String exportFileName(SgjNote note)
+    {
+        String title = StringUtils.isEmpty(note.getTitle()) ? "笔记" : note.getTitle();
+        return title.replaceAll("[\\\\/:*?\"<>|\\r\\n\\t]", "_") + ".md";
     }
 
     /**
