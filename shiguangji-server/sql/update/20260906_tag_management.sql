@@ -2,7 +2,8 @@
 -- 标签管理增量脚本
 -- 功能：后台标签管理（按模块区分）+ 记录按标签精确筛选
 -- 前置：已执行 init_system.sql 与 init_business.sql
--- 幂等性：可重复执行（建表用 drop-if-exists，菜单/字典/迁移均先清理或防重）
+-- 幂等性：可重复执行（建表用 create table if not exists，不 drop——drop 会清空已有标签；
+--         菜单/字典先删后插，存量迁移靠 not exists 防重）
 -- ----------------------------
 
 set names utf8mb4;
@@ -13,8 +14,7 @@ set names utf8mb4;
 -- 同模块同名的唯一性由服务层校验（RuoYi 惯例）：逻辑删除行会与唯一约束冲突，
 -- 故仅建普通索引，不建 unique key
 -- ----------------------------
-drop table if exists sgj_tag;
-create table sgj_tag (
+create table if not exists sgj_tag (
   tag_id       bigint(20)   not null auto_increment    comment '标签ID',
   module       varchar(20)  not null                   comment '所属模块（MOVIE/TV/BOOK/PLACE/NOTE）',
   tag_name     varchar(50)  not null                   comment '标签名称',
