@@ -6,6 +6,21 @@ This is a single Git monorepo containing two applications. `shiguangji-web/` is 
 
 `shiguangji-server/` is a Java 17, Spring Boot multi-module Maven project. `shiguangji-admin` is the executable entry point; `business`, `system`, `framework`, `common`, `quartz`, and `generator` separate domain and infrastructure concerns. MyBatis XML belongs in each module's `src/main/resources/mapper/`. Database scripts live in `sql/`.
 
+## Division of Work & Deliverables
+
+- **后端（`shiguangji-server/`）的修改交给后端专用 agent**，本 agent 不直接动后端代码。唯一例外：前后端同一处的最小修复，或后端 agent 不可用；此时在 PR 里写明原因。
+- **前端（`shiguangji-web/`）由本 agent 负责**：`views/`、`components/`、`api/`、`store/`、`types/api/` 及与后端的联调。
+- **需求阶段就要出全四份文档，缺一不开工**，讨论需求时一并谈定，评审通过后才进入编码：
+
+| 产出物 | 落盘位置 |
+| --- | --- |
+| 需求文档 | `docs/requirements/<版本>-<主题>.md`（沿用既有约定） |
+| 架构文档 | `docs/design/<主题>-architecture.md` |
+| 详细设计 | `docs/design/<主题>-design.md` |
+| 测试用例 | `docs/design/<主题>-testcases.md` |
+
+四份文档按同一主题命名以便成对查找；后续需求变更同步改文档，不留「代码与文档两张皮」。
+
 ## Build, Test, and Development Commands
 
 - `cd shiguangji-web && npm ci`: install the locked frontend dependencies.
