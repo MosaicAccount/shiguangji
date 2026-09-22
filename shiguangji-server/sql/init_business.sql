@@ -2,10 +2,17 @@
 -- 拾光记业务表结构（主表 + 扩展表）
 -- 适用于：电影 / 电视剧 / 书籍 / 地点 / 学习笔记
 -- 使用前请按顺序执行 init_system.sql 与 quartz.sql
+-- 本脚本 drop 并重建全部 sgj_* 表，可反复执行（等价于本地库重置），会清空已有业务数据；
+-- 已有库的结构升级请走 update/ 下的增量脚本，不要重跑本文件
 -- ----------------------------
 
 -- 统一连接字符集，避免客户端默认 latin1 导入导致中文双重编码乱码
 set names utf8mb4;
+
+-- 关掉外键检查才能 drop 被引用的父表：sgj_item 被 movie/tv/book/place/photo/note
+-- 六个子表引用，父表先 drop 会报 ERROR 3730。子表随后也被本脚本重建成同一批外键，故安全。
+-- 会话级开关，脚本末尾恢复。
+set foreign_key_checks = 0;
 
 -- ----------------------------
 -- 1、内容条目主表
@@ -19,7 +26,7 @@ create table sgj_item (
   item_type      varchar(20)     not null                   comment '条目类型（MOVIE/TV/BOOK/PLACE）',
   title          varchar(200)    not null                   comment '标题/名称',
   status         varchar(20)     not null default 'WANT'    comment '状态（WANT/DONE）',
-  rating         decimal(2,1)    default null               comment '评分（0-10，可自行决定精度）',
+  rating         decimal(3,1)    default null               comment '评分（0-10，保留一位小数）',
   comment        text                                       comment '个人短评',
   tags           varchar(500)    default ''                 comment '标签，多个用英文逗号分隔',
   cover_url      varchar(500)    default ''                 comment '封面图/图片地址',
@@ -323,3 +330,5 @@ insert into sys_dict_data values(221, 2, '电视剧', 'TV',    'sgj_tag_module',
 insert into sys_dict_data values(222, 3, '书籍',   'BOOK',  'sgj_tag_module', '', 'success', 'N', '0', 'admin', sysdate(), '', null, '书籍');
 insert into sys_dict_data values(223, 4, '地点',   'PLACE', 'sgj_tag_module', '', 'info',    'N', '0', 'admin', sysdate(), '', null, '地点');
 insert into sys_dict_data values(224, 5, '笔记',   'NOTE',  'sgj_tag_module', '', 'default', 'N', '0', 'admin', sysdate(), '', null, '笔记');
+
+set foreign_key_checks = 1;
