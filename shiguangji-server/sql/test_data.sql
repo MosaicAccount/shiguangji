@@ -1,6 +1,6 @@
 -- ----------------------------
 -- 拾光记业务测试数据
--- 前置：按顺序执行 init_system.sql、init_business.sql、update/20260906_tag_management.sql
+-- 前置：按顺序执行 init_system.sql、quartz.sql、init_business.sql（sgj_tag 已含在 init_business.sql 内）
 -- 幂等：可重复执行；只清理本脚本写入的 9001+ 号数据，不影响手工创建的记录
 -- 覆盖场景：
 --   1. 四类条目（MOVIE/TV/BOOK/PLACE）× 想看/看过 两种状态
