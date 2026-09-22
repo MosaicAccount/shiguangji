@@ -179,6 +179,29 @@ create table sgj_note_draft (
 ) engine=innodb auto_increment=1 comment = '拾光记-笔记草稿表';
 
 -- ----------------------------
+-- 7.2 标签表（合并自 update/20260906_tag_management.sql）
+-- module 复用 sgj_item.item_type 取值（MOVIE/TV/BOOK/PLACE）并扩展 NOTE
+-- 同模块同名的唯一性由服务层校验（RuoYi 惯例）：逻辑删除行会与唯一约束冲突，
+-- 故仅建普通索引，不建 unique key
+-- ----------------------------
+drop table if exists sgj_tag;
+create table sgj_tag (
+  tag_id       bigint(20)   not null auto_increment    comment '标签ID',
+  module       varchar(20)  not null                   comment '所属模块（MOVIE/TV/BOOK/PLACE/NOTE）',
+  tag_name     varchar(50)  not null                   comment '标签名称',
+  sort         int(4)       default 0                  comment '显示排序',
+  status       char(1)      default '0'                comment '状态（0启用 1停用）',
+  del_flag     char(1)      default '0'                comment '删除标志（0存在 2删除）',
+  create_by    varchar(64)  default ''                 comment '创建者',
+  create_time  datetime                                comment '创建时间',
+  update_by    varchar(64)  default ''                 comment '更新者',
+  update_time  datetime                                comment '更新时间',
+  remark       varchar(500) default null               comment '备注',
+  primary key (tag_id),
+  key idx_sgj_tag_module (module, del_flag)
+) engine=innodb auto_increment=1 comment = '拾光记-标签表';
+
+-- ----------------------------
 -- 8、菜单初始化
 -- 权限标识：sgj:item:*、sgj:note:* 和 sgj:recycle:list
 -- ----------------------------
@@ -199,6 +222,12 @@ insert into sys_menu values('2012', '笔记新增', '2006', '2', '', '', '', '',
 insert into sys_menu values('2013', '笔记修改', '2006', '3', '', '', '', '', 1, 0, 'F', '1', '0', 'sgj:note:edit',    '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2014', '笔记删除', '2006', '4', '', '', '', '', 1, 0, 'F', '1', '0', 'sgj:note:remove',  '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2015', '回收站', '2000', '5', 'recycle', 'business/recycle/index', '', '', 1, 0, 'C', '0', '0', 'sgj:recycle:list', 'time', 'admin', sysdate(), '', null, '已删条目和笔记的恢复与彻底删除');
+-- 标签管理（合并自 update/20260906_tag_management.sql，排序 6 接在回收站之后）
+insert into sys_menu values('2016', '标签管理', '2000', '6', 'tag', 'business/tag/index', '', '', 1, 0, 'C', '0', '0', 'sgj:tag:list', 'component', 'admin', sysdate(), '', null, '按模块管理标签');
+insert into sys_menu values('2017', '标签查询', '2016', '1', '', '', '', '', 1, 0, 'F', '1', '0', 'sgj:tag:query',  '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2018', '标签新增', '2016', '2', '', '', '', '', 1, 0, 'F', '1', '0', 'sgj:tag:add',    '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2019', '标签修改', '2016', '3', '', '', '', '', 1, 0, 'F', '1', '0', 'sgj:tag:edit',   '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2020', '标签删除', '2016', '4', '', '', '', '', 1, 0, 'F', '1', '0', 'sgj:tag:remove', '#', 'admin', sysdate(), '', null, '');
 -- ============================================================
 -- 拾光记业务数据字典（sgj_*）
 -- 说明：核心枚举（条目类型/状态）value 使用稳定 code，
@@ -216,6 +245,7 @@ insert into sys_dict_type values(36, '影视题材',       'sgj_movie_genre',   
 insert into sys_dict_type values(37, '书籍分类',       'sgj_book_genre',    '0', 'admin', sysdate(), '', null, '书籍分类');
 insert into sys_dict_type values(38, '影视地区',       'sgj_region',        '0', 'admin', sysdate(), '', null, '影视出品地区');
 insert into sys_dict_type values(39, '影视语言',       'sgj_language',      '0', 'admin', sysdate(), '', null, '影视语言');
+insert into sys_dict_type values(40, '标签模块',       'sgj_tag_module',    '0', 'admin', sysdate(), '', null, '标签所属业务模块');
 
 -- 字典数据
 -- 条目类型
@@ -287,3 +317,9 @@ insert into sys_dict_data values(214, 5, '韩语', '韩语', 'sgj_language', '',
 insert into sys_dict_data values(215, 6, '法语', '法语', 'sgj_language', '', '', 'N', '0', 'admin', sysdate(), '', null, '法语');
 insert into sys_dict_data values(216, 7, '德语', '德语', 'sgj_language', '', '', 'N', '0', 'admin', sysdate(), '', null, '德语');
 insert into sys_dict_data values(217, 8, '其他', '其他', 'sgj_language', '', '', 'N', '0', 'admin', sysdate(), '', null, '其他');
+-- 标签模块（合并自 update/20260906_tag_management.sql）
+insert into sys_dict_data values(220, 1, '电影',   'MOVIE', 'sgj_tag_module', '', 'primary', 'N', '0', 'admin', sysdate(), '', null, '电影');
+insert into sys_dict_data values(221, 2, '电视剧', 'TV',    'sgj_tag_module', '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '电视剧');
+insert into sys_dict_data values(222, 3, '书籍',   'BOOK',  'sgj_tag_module', '', 'success', 'N', '0', 'admin', sysdate(), '', null, '书籍');
+insert into sys_dict_data values(223, 4, '地点',   'PLACE', 'sgj_tag_module', '', 'info',    'N', '0', 'admin', sysdate(), '', null, '地点');
+insert into sys_dict_data values(224, 5, '笔记',   'NOTE',  'sgj_tag_module', '', 'default', 'N', '0', 'admin', sysdate(), '', null, '笔记');

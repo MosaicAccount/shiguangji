@@ -483,6 +483,8 @@ create table sys_job (
 insert into sys_job values(1, '系统默认（无参）', 'DEFAULT', 'ryTask.ryNoParams',        '0/10 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
 insert into sys_job values(2, '系统默认（有参）', 'DEFAULT', 'ryTask.ryParams(\'ry\')',  '0/15 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
 insert into sys_job values(3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryMultipleParams(\'ry\', true, 2000L, 316.50D, 100)',  '0/20 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
+-- 孤儿文件清理（合并自 update/20260910_orphan_file_cleanup.sql）：job_id 固定 100
+insert into sys_job values(100, '孤儿文件清理', 'DEFAULT', 'fileCleanupTask.cleanupOrphanFiles', '0 0 3 ? * MON', '3', '1', '0', 'admin', sysdate(), '', null, '每周一 03:00 回收无人引用的上传文件（保留 7 天内与回收站中的文件）');
 
 
 -- ----------------------------
