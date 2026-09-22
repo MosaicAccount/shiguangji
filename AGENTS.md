@@ -8,7 +8,7 @@ This is a single Git monorepo containing two applications. `shiguangji-web/` is 
 
 ## Division of Work & Deliverables
 
-- **后端（`shiguangji-server/`）的修改交给后端专用 agent**，本 agent 不直接动后端代码。唯一例外：前后端同一处的最小修复，或后端 agent 不可用；此时在 PR 里写明原因。
+- **后端（`shiguangji-server/`）由使用者本人实现，本 agent 不动后端代码**（Java、MyBatis XML、`sql/`）。对后端，本 agent 只参与需求 / 架构 / 详细设计 / 测试用例四份文档的讨论与评审，产出「需要什么接口、字段、SQL 变更」的清单交人实现。
 - **前端（`shiguangji-web/`）由本 agent 负责**：`views/`、`components/`、`api/`、`store/`、`types/api/` 及与后端的联调。
 - **需求阶段就要出全四份文档，缺一不开工**，讨论需求时一并谈定，评审通过后才进入编码：
 
