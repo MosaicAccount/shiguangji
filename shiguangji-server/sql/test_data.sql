@@ -4,6 +4,8 @@
 -- 前置：按顺序执行 init_system.sql、quartz.sql、init_business.sql。
 --       不需要 update/ 下的增量脚本（sgj_tag / sgj_item_photo / sgj_note_draft /
 --       全文索引都已在 init_business.sql 里）。
+--       例外：库是 2026-09-22 之前建的，得先跑 update/20260922_rating_precision.sql
+--       （rating 列还是 decimal(2,1) 时，本脚本的满分样例 10.0 会撞 ERROR 1264）。
 -- 幂等：可重复执行。只清理本脚本号段（id 9001-9499）与两个已删除的旧脚本遗留号段
 --       （旧 test_data.sql 的 9001+、旧 test_data_bulk.sql 的 10001-10200 /
 --        10501-10550 / 10601-10651），不碰手工创建的数据。
@@ -23,9 +25,8 @@
 --       避免覆盖 admin 的真实草稿；重复执行会清掉 shiguangji 名下的草稿再重建
 --    9. 封面 / 照片三种形态：空串、/profile 站内相对路径、https 外链
 --       （对应前端 photoUrl() 的「补前缀」与「外链原样」两个分支）
---   10. 边界值：评分 9.9（列是 decimal(2,1)，存不进 10.0）与 0.0、无标签、超长标题、
---       短评含全角引号与 emoji、连载中剧集（end_year 为空）、书籍缺页数与出版日期、
---       照片文件不存在时的占位回退
+--   10. 边界值：评分满分 10.0 与下界 0.0、无标签、超长标题、短评含全角引号与 emoji、
+--       连载中剧集（end_year 为空）、书籍缺页数与出版日期、照片文件不存在时的占位回退
 --
 -- 时间口径：create_time = date_sub(now(), interval N month)，N 取 5..0，每月 6-8 条。
 --   这样 6 个自然月各自都有数据，且 N=5 恰好落在 selectItemMonthTrend 的
@@ -75,7 +76,7 @@ insert into sgj_item (item_id, item_type, title, status, rating, `comment`, tags
 (9008, 'MOVIE', '上海堡垒', 'DONE', 2.9, '看完了，但仿佛什么都没看。', '科幻', '', date(@m3), date(@m3), '2', 'admin', @m3, 'admin', now(), '回收站样例'),
 (9009, 'MOVIE', '流浪地球2', 'DONE', 8.3, '人类的勇气可以跨越所有历史。', '科幻', '', date(@m1), date(@m1), '0', 'shiguangji', @m1, 'shiguangji', @m1, null),
 (9010, 'MOVIE', '布达佩斯大饭店', 'WANT', null, null, '剧情,喜剧', '', null, null, '0', 'shiguangji', @m0, 'shiguangji', @m0, null),
-(9011, 'MOVIE', '标题很长的电影：用来验证列表页标题截断与详情页换行的高度自适应该怎么写才不塌', 'DONE', 9.9, '他说："这才是电影。" 🎬 满分。', '剧情', '', date(@m4), date(@m4), '0', 'admin', @m4, 'admin', @m4, '边界样例：可存的最大评分 9.9、超长标题、短评含全角引号与 emoji、无 IMDb / 豆瓣编号'),
+(9011, 'MOVIE', '标题很长的电影：用来验证列表页标题截断与详情页换行的高度自适应该怎么写才不塌', 'DONE', 10.0, '他说："这才是电影。" 🎬 满分。', '剧情', '', date(@m4), date(@m4), '0', 'admin', @m4, 'admin', @m4, '边界样例：满分 10.0（rating 是 decimal(3,1)，业务上限 10）、超长标题、短评含全角引号与 emoji、无 IMDb / 豆瓣编号'),
 -- 电视剧
 (9012, 'TV', '琅琊榜', 'DONE', 9.4, '麒麟才子，得之可得天下。', '古装,权谋', '', date(@m5), date(@m5), '0', 'admin', @m5, 'admin', @m5, null),
 (9013, 'TV', '老友记', 'WANT', null, null, '喜剧,经典', '', null, null, '0', 'admin', @m4, 'admin', @m4, null),

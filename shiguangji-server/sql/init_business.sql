@@ -26,7 +26,7 @@ create table sgj_item (
   item_type      varchar(20)     not null                   comment '条目类型（MOVIE/TV/BOOK/PLACE）',
   title          varchar(200)    not null                   comment '标题/名称',
   status         varchar(20)     not null default 'WANT'    comment '状态（WANT/DONE）',
-  rating         decimal(2,1)    default null               comment '评分（0-10，可自行决定精度）',
+  rating         decimal(3,1)    default null               comment '评分（0-10，保留一位小数）',
   comment        text                                       comment '个人短评',
   tags           varchar(500)    default ''                 comment '标签，多个用英文逗号分隔',
   cover_url      varchar(500)    default ''                 comment '封面图/图片地址',
