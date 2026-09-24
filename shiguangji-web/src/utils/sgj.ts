@@ -272,41 +272,32 @@ export interface KeywordSegment {
   hit: boolean
 }
 
+/** 关键词在文本中的全部命中区间（调用方传小写文本；字面量匹配，命中区间互不重叠） */
+function keywordRanges(lowerText: string, lowerWord: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = []
+  let index = 0
+  while ((index = lowerText.indexOf(lowerWord, index)) !== -1) {
+    ranges.push([index, index + lowerWord.length])
+    index += lowerWord.length
+  }
+  return ranges
+}
+
 /**
- * 摘要按检索词切片段（供搜索结果关键词高亮）。
- * 多词检索（空格分隔）任一词命中即标亮；大小写不敏感，与 MySQL 全文匹配行为一致；
- * 按字面量 indexOf 切分——关键词含 ( [ * 等元字符也不会报错，不拼 RegExp、不产出 HTML，
- * 模板里循环渲染片段即可（不要走 v-html）
+ * 摘要按关键词切片段（供搜索结果关键词高亮）。
+ * 后端只支持**一个关键词**（整串按字面量定位，不再按空白切词），这里同样整串匹配；
+ * 大小写不敏感，与 MySQL 全文匹配行为一致；按字面量 indexOf 切分——关键词含 ( [ * 等元字符也不会报错，
+ * 不拼 RegExp、不产出 HTML，模板里循环渲染片段即可（不要走 v-html）
  */
 export function splitByKeyword(text: string | undefined, keyword: string | undefined): KeywordSegment[] {
-  const words = (keyword || '').trim().split(/\s+/).filter(w => w.length > 0)
+  const word = (keyword || '').trim()
   if (!text) return []
-  if (words.length === 0) return [{ text, hit: false }]
-  const lower = text.toLowerCase()
-  const ranges: Array<[number, number]> = []
-  for (const word of words) {
-    const lw = word.toLowerCase()
-    let index = 0
-    while ((index = lower.indexOf(lw, index)) !== -1) {
-      ranges.push([index, index + lw.length])
-      index += lw.length
-    }
-  }
+  if (!word) return [{ text, hit: false }]
+  const ranges = keywordRanges(text.toLowerCase(), word.toLowerCase())
   if (ranges.length === 0) return [{ text, hit: false }]
-  ranges.sort((a, b) => a[0] - b[0])
-  // 相邻/重叠命中区间合并，避免片段交叉
-  const merged: Array<[number, number]> = []
-  for (const range of ranges) {
-    const last = merged[merged.length - 1]
-    if (last && range[0] <= last[1]) {
-      last[1] = Math.max(last[1], range[1])
-    } else {
-      merged.push([range[0], range[1]])
-    }
-  }
   const segments: KeywordSegment[] = []
   let pos = 0
-  for (const [start, end] of merged) {
+  for (const [start, end] of ranges) {
     if (start > pos) segments.push({ text: text.slice(pos, start), hit: false })
     segments.push({ text: text.slice(start, end), hit: true })
     pos = end
@@ -318,14 +309,15 @@ export function splitByKeyword(text: string | undefined, keyword: string | undef
 /**
  * 在已渲染的 DOM 内为检索词打高亮标记（详情页承接：列表带关键词进入时全文可导航）。
  * 遍历文本节点，命中片段用 mark.kw-hit 包裹，返回全部标记元素（供上一处/下一处跳转）。
- * 多词任一命中即标记；重叠区间合并；跨元素边界的词不处理（与浏览器原生查找行为一致）。
+ * 整串任一命中即标记（后端只支持一个关键词）；跨元素边界的词不处理（与浏览器原生查找行为一致）。
  * 纯 DOM 操作，不产出 HTML 字符串；重复调用前会先清除旧标记
  */
 export function applyKeywordHighlights(root: HTMLElement | null | undefined, keyword: string | undefined): HTMLElement[] {
   if (!root) return []
   clearKeywordHighlights(root)
-  const words = (keyword || '').trim().split(/\s+/).filter(w => w.length > 0)
-  if (words.length === 0) return []
+  const word = (keyword || '').trim()
+  if (!word) return []
+  const lowerWord = word.toLowerCase()
 
   // 先收集再改写：遍历过程中替换节点会使 TreeWalker 失效
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -333,8 +325,7 @@ export function applyKeywordHighlights(root: HTMLElement | null | undefined, key
       const value = node.nodeValue || ''
       const parent = node.parentElement
       if (!value.trim() || !parent || parent.closest('mark')) return NodeFilter.FILTER_REJECT
-      const lower = value.toLowerCase()
-      return words.some(w => lower.includes(w.toLowerCase())) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+      return value.toLowerCase().includes(lowerWord) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
     }
   })
   const targets: Text[] = []
@@ -343,27 +334,11 @@ export function applyKeywordHighlights(root: HTMLElement | null | undefined, key
   const marks: HTMLElement[] = []
   for (const node of targets) {
     const text = node.nodeValue || ''
-    const lower = text.toLowerCase()
-    const ranges: Array<[number, number]> = []
-    for (const word of words) {
-      const lw = word.toLowerCase()
-      let index = 0
-      while ((index = lower.indexOf(lw, index)) !== -1) {
-        ranges.push([index, index + lw.length])
-        index += lw.length
-      }
-    }
+    const ranges = keywordRanges(text.toLowerCase(), lowerWord)
     if (ranges.length === 0) continue
-    ranges.sort((a, b) => a[0] - b[0])
-    const merged: Array<[number, number]> = []
-    for (const range of ranges) {
-      const last = merged[merged.length - 1]
-      if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1])
-      else merged.push([range[0], range[1]])
-    }
     const frag = document.createDocumentFragment()
     let pos = 0
-    for (const [start, end] of merged) {
+    for (const [start, end] of ranges) {
       if (start > pos) frag.appendChild(document.createTextNode(text.slice(pos, start)))
       const mark = document.createElement('mark')
       mark.className = 'kw-hit'
