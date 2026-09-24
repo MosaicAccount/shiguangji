@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.Strings;
 
+import com.shiguangji.business.constants.SgjNoteConstants;
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.common.utils.StringUtils;
 
@@ -18,9 +19,6 @@ import jakarta.validation.constraints.NotNull;
  * @date 2026年09月23日
  */
 public class SgjNoteUtils {
-
-    /** 摘要目标长度 */
-    private static final int EXCERPT_WINDOW_LENGTH = 120;
 
     /** 截断落在英文单词中间时最多向后扩的字符数（切到最近的空白或标点） */
     private static final int WORD_BOUNDARY_MAX_EXTRA = 10;
@@ -66,7 +64,8 @@ public class SgjNoteUtils {
         int bodyLen = body.length();
         // 如果关键词为空，就只取开头
         if (StringUtils.isEmpty(keyword)) {
-            return Collections.singletonList(truncateAtWordBoundary(body, Math.min(bodyLen, EXCERPT_WINDOW_LENGTH)));
+            return Collections.singletonList(
+                    truncateAtWordBoundary(body, Math.min(bodyLen, SgjNoteConstants.EXCERPT_WINDOW_LENGTH)));
         }
 
         ArrayList<Integer> keyWordIndexList = new ArrayList<>();
@@ -86,7 +85,7 @@ public class SgjNoteUtils {
         int i = 0;
         startIndex = 0;
         // 如果检索关键字超过窗口长度，或者窗口长度超过笔记内容长度，要调整窗口大小
-        int windowSize = Math.min(bodyLen, Math.max(EXCERPT_WINDOW_LENGTH, keyword.length()));
+        int windowSize = Math.min(bodyLen, Math.max(SgjNoteConstants.EXCERPT_WINDOW_LENGTH, keyword.length()));
         while (i < keyWordIndexList.size()) {
             int keywordIndex = keyWordIndexList.get(i);
             // 获取窗口最左边的位置

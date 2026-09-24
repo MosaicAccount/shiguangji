@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
+import com.shiguangji.business.constants.SgjNoteConstants;
 import com.shiguangji.business.domain.SgjNoteDraft;
 import com.shiguangji.business.mapper.SgjNoteDraftMapper;
 import com.shiguangji.business.mapper.SgjNoteMapper;
@@ -42,7 +43,7 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService {
         List<SgjNoteDraft> list = sgjNoteDraftMapper.selectBoxDraftList(createBy);
         for (SgjNoteDraft draft : list) {
             // 摘要复用笔记列表同一套剥离逻辑（标题为空时它就是展示行的内容）
-            draft.setExcerpt(SgjNoteUtils.truncateAtWordBoundary(draft.getContent(), 120));
+            draft.setExcerpt(SgjNoteUtils.truncateAtWordBoundary(draft.getContent(), SgjNoteConstants.EXCERPT_WINDOW_LENGTH));
             clearBlankNoteId(draft);
         }
         return list;

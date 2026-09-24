@@ -1,6 +1,5 @@
 package com.shiguangji.business.service.impl;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -8,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.shiguangji.business.constants.SgjNoteConstants;
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.business.mapper.SgjNoteMapper;
 import com.shiguangji.business.service.ISgjNoteDraftService;
@@ -74,7 +74,7 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
                 }
 
                 note.setExcerpt(SgjNoteUtils.stripMarkdown(CollectionUtils.isNotEmpty(excerptList) ? excerptList.get(0)
-                        : SgjNoteUtils.truncateAtWordBoundary(body, 120)));
+                        : SgjNoteUtils.truncateAtWordBoundary(body, SgjNoteConstants.EXCERPT_WINDOW_LENGTH)));
             }
 
         }
