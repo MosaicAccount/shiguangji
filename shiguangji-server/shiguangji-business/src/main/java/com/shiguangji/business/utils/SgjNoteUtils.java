@@ -25,11 +25,11 @@ public class SgjNoteUtils {
     /** 截断落在英文单词中间时最多向后扩的字符数（切到最近的空白或标点） */
     private static final int WORD_BOUNDARY_MAX_EXTRA = 10;
 
-    /** yaml-front-format 块正则 */
     private static final Pattern FRONT_MATTER_PATTERN = Pattern.compile(
             "\\A\\x{FEFF}?---[ \\t]*\\r?\\n" + // 开头 ---，可选 BOM
                     "(?:.*\\r?\\n)*?" + // YAML 内容，非贪婪
-                    "(?:---|\\.\\.\\.)[ \\t]*(?:\\r?\\n|\\z)" // 结束行 --- 或 ...，吃掉一个换行或到结尾
+                    "(?:---|\\.\\.\\.)[ \\t]*" + // 结束行 --- 或 ...
+                    "(?:\\r?\\n(?:[ \\t]*\\r?\\n)*)?" // 吃掉一个换行 + 后续的空行（可选，兼容字符串末尾）
     );
 
     // 正文标题匹配规则，例如 # Hello World
