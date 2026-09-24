@@ -98,13 +98,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="hitTotal"    column="hit_total"    />
     </resultMap>
 
-    <!-- 前台列表（结论 32）：不取全文，正文与 remark 均不下发。
-         摘要片段与命中总数由 selectSgjNoteExcerptFragments 按页内主键补查——
-         复杂表达式若放进本查询，PageHelper 生成 count 时的 jsqlparser 解析会灾难性回溯（实测 CPU 卡死），
-         故基础查询保持简单列清单。后台列表与导出仍走 selectSgjNoteList / selectSgjNoteVo，带完整正文 -->
     <select id="selectSgjNoteFrontList" parameterType="SgjNote" resultMap="SgjNoteFrontResult">
         select n.note_id, n.item_id, i.title as item_name, n.title, n.tags, n.is_public,
-               n.create_by, n.create_time, n.update_by, n.update_time
+               n.create_by, n.create_time, n.update_by, n.update_time, n.content, n.remark, n.title
         from sgj_note n
         left join sgj_item i on i.item_id = n.item_id
         <include refid="listWhere"/>
