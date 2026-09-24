@@ -2,8 +2,6 @@ package com.shiguangji.business.mapper;
 
 import java.util.List;
 
-import org.apache.ibatis.annotations.Param;
-
 import com.shiguangji.business.domain.SgjNote;
 
 /**
@@ -44,16 +42,6 @@ public interface SgjNoteMapper
      * @return 笔记集合
      */
     public List<SgjNote> selectSgjNoteFrontList(SgjNote sgjNote);
-
-    /**
-     * 按页内主键补查摘要原文片段与命中总数（excerpt_src 为 SQL 定位截出的原文片段，未剥离 Markdown）
-     *
-     * @param noteIds      页内笔记ID
-     * @param keywordWords 检索词（按空白切分；空表示无关键词，取正文前缀）
-     * @return 仅含 noteId/excerptSrc/hitTotal 的笔记集合
-     */
-    public List<SgjNote> selectSgjNoteExcerptFragments(@Param("noteIds") List<Long> noteIds,
-                                                      @Param("keywordWords") List<String> keywordWords);
 
     /**
      * 查询回收站笔记列表（del_flag='2'）
