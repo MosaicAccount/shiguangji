@@ -63,13 +63,14 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
             for (SgjNote note : list) {
                 String body = SgjNoteUtils.removeDuplicatedTitle(SgjNoteUtils.removeYamlFrontFormat(note.getContent()),
                         note.getTitle());
+
+                String keyword = sgjNote.getKeyword();
                 List<String> excerptList = SgjNoteUtils.extractSnippets(body, sgjNote.getKeyword());
                 if (StringUtils.isNotBlank(sgjNote.getKeyword())) {
 
-                    List<String> titleExcerptList = SgjNoteUtils.extractSnippets(note.getTitle(),
-                            sgjNote.getKeyword());
-                    long hitTotal = excerptList.size() + titleExcerptList.size();
-
+                    long hitTotal = excerptList.stream().map(item -> StringUtils.countMatches(item.toLowerCase(), keyword.toLowerCase()))
+                            .mapToInt(Integer::intValue).sum();
+                    hitTotal += StringUtils.countMatches(note.getTitle().toLowerCase(), keyword.toLowerCase());
                     note.setHitTotal(hitTotal);
                 }
 
