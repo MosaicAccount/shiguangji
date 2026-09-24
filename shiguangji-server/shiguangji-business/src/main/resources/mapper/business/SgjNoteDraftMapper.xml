@@ -16,7 +16,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createBy"    column="create_by"    />
         <result property="createTime"  column="create_time"  />
         <result property="updateTime"  column="update_time"  />
-        <result property="excerptSrc"  column="excerpt_src"  />
     </resultMap>
 
     <!-- 左联条目表带出关联条目名称；条目已删时 item_name 为空，前端回退 #id（与笔记列表一致） -->

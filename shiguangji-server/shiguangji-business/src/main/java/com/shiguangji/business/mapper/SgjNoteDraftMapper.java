@@ -22,7 +22,7 @@ public interface SgjNoteDraftMapper
      * 入口条每次都要拉这份列表，不能把每份十万字的正文带上
      *
      * @param createBy 当前登录用户
-     * @return 草稿集合（含 itemName 与 excerptSrc，content 为空）
+     * @return 草稿集合（含 itemName，content 为空）
      */
     public List<SgjNoteDraft> selectBoxDraftList(String createBy);
 

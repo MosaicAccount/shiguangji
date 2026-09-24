@@ -94,7 +94,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createTime"  column="create_time"  />
         <result property="updateBy"    column="update_by"    />
         <result property="updateTime"  column="update_time"  />
-        <result property="excerptSrc"  column="excerpt_src"  />
         <result property="hitTotal"    column="hit_total"    />
     </resultMap>
 
@@ -109,7 +108,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <resultMap type="SgjNote" id="SgjNoteExcerptResult">
         <result property="noteId"      column="note_id"      />
-        <result property="excerptSrc"  column="excerpt_src"  />
         <result property="hitTotal"    column="hit_total"    />
     </resultMap>
 
