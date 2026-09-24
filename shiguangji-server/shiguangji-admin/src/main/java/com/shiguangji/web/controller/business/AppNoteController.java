@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +18,6 @@ import com.github.pagehelper.Page;
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.business.service.ISgjNoteService;
 import com.shiguangji.business.service.impl.SgjNoteServiceImpl;
-import com.shiguangji.business.utils.SgjNoteUtils;
 import com.shiguangji.common.annotation.Anonymous;
 import com.shiguangji.common.core.controller.BaseController;
 import com.shiguangji.common.core.domain.AjaxResult;
@@ -63,9 +61,6 @@ public class AppNoteController extends BaseController {
         }
         startPage();
         List<SgjNote> list = sgjNoteService.selectSgjNoteFrontList(sgjNote);
-        for (SgjNote note : list) {
-            note.setExcerpt(SgjNoteUtils.truncateAtWordBoundary(note.getBody(), 120));
-        }
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNotesForGuest(list);
         AjaxResult result = success(list);

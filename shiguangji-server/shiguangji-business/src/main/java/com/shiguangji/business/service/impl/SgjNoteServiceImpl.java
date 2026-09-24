@@ -1,5 +1,6 @@
 package com.shiguangji.business.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -60,21 +61,25 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
         List<SgjNote> list = sgjNoteMapper.selectSgjNoteFrontList(sgjNote);
         if (!list.isEmpty()) {
             for (SgjNote note : list) {
-                String body = SgjNoteUtils.removeDuplicatedTitle(SgjNoteUtils.removeYamlFrontFormat(note.getBody()),
-                        sgjNote.getTitle());
+                String body = SgjNoteUtils.removeDuplicatedTitle(SgjNoteUtils.removeYamlFrontFormat(note.getContent()),
+                        note.getTitle());
                 List<String> excerptList = SgjNoteUtils.extractSnippets(body, sgjNote.getKeyword());
-                List<String> titleExcerptList = SgjNoteUtils.extractSnippets(sgjNote.getTitle(), sgjNote.getKeyword());
-                long hitTotal = excerptList.size() + titleExcerptList.size();
+                if (StringUtils.isNotBlank(sgjNote.getKeyword())) {
 
-                note.setHitTotal(hitTotal);
-                note.setExcerpt(CollectionUtils.isNotEmpty(excerptList) ? excerptList.get(0) : "");
+                    List<String> titleExcerptList = SgjNoteUtils.extractSnippets(note.getTitle(),
+                            sgjNote.getKeyword());
+                    long hitTotal = excerptList.size() + titleExcerptList.size();
+
+                    note.setHitTotal(hitTotal);
+                }
+
+                note.setExcerpt(SgjNoteUtils.stripMarkdown(CollectionUtils.isNotEmpty(excerptList) ? excerptList.get(0)
+                        : SgjNoteUtils.truncateAtWordBoundary(body, 120)));
             }
 
         }
         return list;
     }
-
-   
 
     @Override
     public List<SgjNote> selectRecycleNoteList(SgjNote sgjNote) {
