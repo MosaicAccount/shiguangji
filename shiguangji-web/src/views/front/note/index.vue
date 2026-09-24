@@ -86,8 +86,8 @@
             </template>
           </p>
         </div>
-        <!-- 多于 1 处出现时提示；大数字不可行动，统一弱化为「多次」 -->
-        <span v-if="note.hitTotal && note.hitTotal > 1" class="hit-count">{{ hitCountText(note.hitTotal) }}</span>
+        <!-- 有关键词即提示命中次数（1 次也显示：用户能确认这篇是因命中而返回的） -->
+        <span v-if="note.hitTotal" class="hit-count">{{ hitCountText(note.hitTotal) }}</span>
         <div class="note-meta">
           <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
           <span v-if="note.itemId" class="note-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
@@ -339,9 +339,9 @@ function titleSegments(note: SgjNote) {
   return splitByKeyword(note.title, appliedKeyword.value)
 }
 
-/** 出现次数提示：统一「文中出现 N 次」；仅 1 次时不展示（无信息量） */
+/** 出现次数提示：统一「文中出现 N 次」（1 次也显示；数字为后端统计的真·出现次数） */
 function hitCountText(hitTotal?: number): string {
-  if (!hitTotal || hitTotal < 2) return ''
+  if (!hitTotal) return ''
   return `文中出现 ${hitTotal} 次`
 }
 
