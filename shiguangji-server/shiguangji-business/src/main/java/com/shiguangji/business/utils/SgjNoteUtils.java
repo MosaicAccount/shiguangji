@@ -11,6 +11,8 @@ import org.apache.commons.lang3.Strings;
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.common.utils.StringUtils;
 
+import jakarta.validation.constraints.NotNull;
+
 /**
  * @author JLian
  * @date 2026年09月23日
@@ -29,6 +31,10 @@ public class SgjNoteUtils {
                     "(?:.*\\r?\\n)*?" + // YAML 内容，非贪婪
                     "(?:---|\\.\\.\\.)[ \\t]*(?:\\r?\\n|\\z)" // 结束行 --- 或 ...，吃掉一个换行或到结尾
     );
+
+    // 正文标题匹配规则，例如 # Hello World
+    private static final Pattern FIRST_LINE_TITLE = Pattern
+            .compile("^[ \\t]*#{1,6}(?!#)[ \\t]*([^\\r\\n]*)(?:\\r?\\n|$)");
 
     /**
      * 清洗检索关键词：剔除布尔模式的运算符字符后再传参。
@@ -150,13 +156,13 @@ public class SgjNoteUtils {
      * @param title 标题
      * @return 删除掉第一行出现的标题后的正文内容
      */
-    public static String removeDuplicatedTitle(String body, String title) {
-        if (StringUtils.isEmpty(title)) {
+    public static String removeDuplicatedTitle(String body, @NotNull String title) {
+        if (StringUtils.isEmpty(body) || StringUtils.isEmpty(title)) {
             return body;
         }
-        String[] parts = body.split("\n", 2);
-        if (parts.length > 0 && title.trim().equals(parts[0].trim())) {
-            return parts.length > 1 ? parts[1] : "";
+        Matcher m = FIRST_LINE_TITLE.matcher(body);
+        if (m.find() && title.trim().equals(m.group(1).trim())) {
+            return body.substring(m.end()); // 直接从匹配结束处截断
         }
         return body;
     }
