@@ -10,7 +10,7 @@ import {
   tansParams
 } from '../sgj'
 
-/** issue #31：摘要关键词切片。字面量切分（元字符安全）、大小写不敏感、多词合并区间 */
+/** issue #31：摘要关键词切片。字面量切分（元字符安全）、大小写不敏感、整串匹配（后端只支持一个关键词） */
 describe('splitByKeyword', () => {
   it('无关键词时整段原样返回', () => {
     expect(splitByKeyword('纯文本摘要', undefined)).toEqual([{ text: '纯文本摘要', hit: false }])
@@ -38,14 +38,14 @@ describe('splitByKeyword', () => {
     expect(segs.filter(s => s.hit).map(s => s.text)).toEqual(['MySQL', 'Mysql', 'mysql'])
   })
 
-  it('多词检索任一词命中即标亮，相邻区间合并', () => {
-    const segs = splitByKeyword('正文包含草稿与摘要两个词', '草稿 摘要')
-    expect(segs).toEqual([
-      { text: '正文包含', hit: false },
-      { text: '草稿', hit: true },
-      { text: '与', hit: false },
-      { text: '摘要', hit: true },
-      { text: '两个词', hit: false }
+  it('整串匹配：空格分隔的多个词不分别标亮', () => {
+    expect(splitByKeyword('正文包含草稿与摘要两个词', '草稿 摘要')).toEqual([
+      { text: '正文包含草稿与摘要两个词', hit: false }
+    ])
+    expect(splitByKeyword('搜索词写成「草稿 摘要」才算命中', '草稿 摘要')).toEqual([
+      { text: '搜索词写成「', hit: false },
+      { text: '草稿 摘要', hit: true },
+      { text: '」才算命中', hit: false }
     ])
   })
 
@@ -86,10 +86,10 @@ describe('applyKeywordHighlights / clearKeywordHighlights', () => {
     root.remove()
   })
 
-  it('多词任一命中即标记且重叠合并', () => {
+  it('整串匹配：空格分隔的多个词不分别标记', () => {
     const root = buildBody('<p>草稿与摘要两个词</p>')
-    const marks = applyKeywordHighlights(root, '草稿 摘要')
-    expect(marks.map(m => m.textContent)).toEqual(['草稿', '摘要'])
+    expect(applyKeywordHighlights(root, '草稿 摘要')).toHaveLength(0)
+    expect(applyKeywordHighlights(root, '草稿与摘要')).toHaveLength(1)
     root.remove()
   })
 

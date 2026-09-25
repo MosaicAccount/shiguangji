@@ -94,17 +94,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createTime"  column="create_time"  />
         <result property="updateBy"    column="update_by"    />
         <result property="updateTime"  column="update_time"  />
-        <result property="excerptSrc"  column="excerpt_src"  />
         <result property="hitTotal"    column="hit_total"    />
     </resultMap>
 
-    <!-- 前台列表（结论 32）：不取全文，正文与 remark 均不下发。
-         摘要片段与命中总数由 selectSgjNoteExcerptFragments 按页内主键补查——
-         复杂表达式若放进本查询，PageHelper 生成 count 时的 jsqlparser 解析会灾难性回溯（实测 CPU 卡死），
-         故基础查询保持简单列清单。后台列表与导出仍走 selectSgjNoteList / selectSgjNoteVo，带完整正文 -->
     <select id="selectSgjNoteFrontList" parameterType="SgjNote" resultMap="SgjNoteFrontResult">
         select n.note_id, n.item_id, i.title as item_name, n.title, n.tags, n.is_public,
-               n.create_by, n.create_time, n.update_by, n.update_time
+               n.create_by, n.create_time, n.update_by, n.update_time, n.content, n.remark, n.title
         from sgj_note n
         left join sgj_item i on i.item_id = n.item_id
         <include refid="listWhere"/>
@@ -113,73 +108,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <resultMap type="SgjNote" id="SgjNoteExcerptResult">
         <result property="noteId"      column="note_id"      />
-        <result property="excerptSrc"  column="excerpt_src"  />
         <result property="hitTotal"    column="hit_total"    />
     </resultMap>
-
-    <!-- 按页内主键补查摘要片段与命中总数（每页 ≤ pageSize 行，不经分页插件）。
-         命中总数统计口径 = 标题 + 去前言正文，并去除与标题重复的首个一级标题行——
-         与详情页「标题 + 正文」的高亮所见完全一致：列表次数 = 详情可跳转处数。
-         摘要片段：正文首个命中为中心 ±40 字取 200 字符（余量给剥离损耗，Java 再裁）；
-         只命中标题（正文内无命中）时回退正文前缀 600 字符；片段外还有正文时由 SQL 拼省略号。
-         min_loc 的 foreach 段重复三次（MyBatis 无法给表达式取别名），LEAST 尾部追加哨兵
-         2147483647 保证单检索词时也有两个参数（MySQL 的 LEAST 要求至少两参） -->
-    <select id="selectSgjNoteExcerptFragments" resultMap="SgjNoteExcerptResult">
-        select t.note_id,
-               <if test="keywordWords != null and keywordWords.size() > 0">
-               <!-- 统计口径见上方注释；h1 行仅匹配「# + 标题」的精确形式，变体（无空格等）按未重复处理 -->
-               (<foreach collection="keywordWords" item="w" separator=" + ">
-                    (char_length(t.txt) - char_length(replace(t.txt, #{w}, ''))) div char_length(#{w})
-                </foreach>) as hit_total,
-               </if>
-               t.excerpt_src
-        from (
-            select
-                   <if test="keywordWords != null and keywordWords.size() > 0">
-                   concat(n.title,
-                          if(left(substring(n.content, <include refid="fmEnd"/>),
-                                  char_length(concat('# ', n.title, char(10)))) = concat('# ', n.title, char(10)),
-                             substring(substring(n.content, <include refid="fmEnd"/>),
-                                       char_length(concat('# ', n.title, char(10))) + 1),
-                             substring(n.content, <include refid="fmEnd"/>))) as txt,
-                   case when least(
-                            <foreach collection="keywordWords" item="w" separator=",">
-                                ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
-                            </foreach>
-                            , 2147483647) = 2147483647
-                        then concat(substring(n.content, <include refid="fmEnd"/>, 600),
-                                    if(char_length(n.content) - <include refid="fmEnd"/> + 1 > 600, '…', ''))
-                        else concat(
-                            if(least(
-                                <foreach collection="keywordWords" item="w" separator=",">
-                                    ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
-                                </foreach>
-                                , 2147483647) > 41, '…', ''),
-                            substring(n.content, greatest(1, least(
-                                <foreach collection="keywordWords" item="w" separator=",">
-                                    ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
-                                </foreach>
-                                , 2147483647) - 40), 200),
-                            if(greatest(1, least(
-                                <foreach collection="keywordWords" item="w" separator=",">
-                                    ifnull(nullif(locate(#{w}, n.content, <include refid="fmEnd"/>), 0), 2147483647)
-                                </foreach>
-                                , 2147483647) - 40) + 200 >= char_length(n.content) + 1, '', '…'))
-                   end as excerpt_src,
-                   </if>
-                   <if test="keywordWords == null or keywordWords.size() == 0">
-                   concat(substring(n.content, <include refid="fmEnd"/>, 600),
-                          if(char_length(n.content) - <include refid="fmEnd"/> + 1 > 600, '…', '')) as excerpt_src,
-                   </if>
-                   n.note_id
-            from sgj_note n
-            where n.del_flag = '0'
-            and n.note_id in
-            <foreach collection="noteIds" item="id" open="(" separator="," close=")">
-                #{id}
-            </foreach>
-        ) t
-    </select>
 
     <insert id="insertSgjNote" parameterType="SgjNote" useGeneratedKeys="true" keyProperty="noteId">
         insert into sgj_note

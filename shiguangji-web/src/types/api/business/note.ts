@@ -17,7 +17,7 @@ export interface SgjNote extends BaseEntity {
   isPublic?: string
   /** 前台列表摘要（纯文本；仅前台列表接口返回，正文不再随列表下发） */
   excerpt?: string
-  /** 全文命中次数（仅关键词检索时有值；>1 时前台显示「共 N 处命中」） */
+  /** 全文命中次数（仅关键词检索时有值；有值即在前台显示「文中出现 N 次」，1 次也显示） */
   hitTotal?: number
   /** 详情渲染用正文（后端已剥离前言与重复标题行；仅详情接口返回，content 仍为原文） */
   body?: string
@@ -28,7 +28,7 @@ export interface SgjNote extends BaseEntity {
 /** 学习笔记查询参数 */
 export interface SgjNoteQueryParams extends PageDomain {
   itemId?: number
-  /** 检索关键词（标题+正文全文匹配；单个汉字切不出 token 搜不到） */
+  /** 检索关键词（标题+正文全文匹配；整串匹配，不按空白拆多词；单个汉字切不出 token 搜不到） */
   keyword?: string
   tags?: string
   /** 公开筛选（'0'私密 '1'公开，空为全部；后端 SgjNoteMapper 已支持，） */
