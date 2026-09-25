@@ -46,7 +46,10 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
 
     @Override
     public SgjNote selectSgjNoteById(Long noteId) {
-        return sgjNoteMapper.selectSgjNoteById(noteId);
+        SgjNote note = sgjNoteMapper.selectSgjNoteById(noteId);
+
+        note.setBody(SgjNoteUtils.buildBody(note.getContent(), note.getTitle()));
+        return note;
     }
 
     @Override
@@ -61,14 +64,14 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
         List<SgjNote> list = sgjNoteMapper.selectSgjNoteFrontList(sgjNote);
         if (!list.isEmpty()) {
             for (SgjNote note : list) {
-                String body = SgjNoteUtils.removeDuplicatedTitle(SgjNoteUtils.removeYamlFrontFormat(note.getContent()),
-                        note.getTitle());
+                String body = SgjNoteUtils.buildBody(note.getContent(), note.getTitle());
 
                 String keyword = sgjNote.getKeyword();
                 List<String> excerptList = SgjNoteUtils.extractSnippets(body, sgjNote.getKeyword());
                 if (StringUtils.isNotBlank(sgjNote.getKeyword())) {
 
-                    long hitTotal = excerptList.stream().map(item -> StringUtils.countMatches(item.toLowerCase(), keyword.toLowerCase()))
+                    long hitTotal = excerptList.stream()
+                            .map(item -> StringUtils.countMatches(item.toLowerCase(), keyword.toLowerCase()))
                             .mapToInt(Integer::intValue).sum();
                     hitTotal += StringUtils.countMatches(note.getTitle().toLowerCase(), keyword.toLowerCase());
                     note.setHitTotal(hitTotal);
@@ -201,45 +204,6 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
     }
 
     /**
-     * 生成详情页渲染用正文（供 AppNoteController.getInfo 使用）：
-     * 剥离 YAML 前言（front-matter）整块，再去掉与标题全等重复的首个一级标题行。
-     *
-     * 口径与列表摘要/命中计数完全一致（SgjNoteMapper.xml 的 fmEnd 与 selectSgjNoteExcerptFragments），
-     * 改这里必须同步改那边，否则「列表次数 = 详情可跳转处数」会失配
-     *
-     * @param content 笔记原文（可带前言），可为 null
-     * @param title   笔记标题（用于首行去重），可为 null
-     * @return 去前言、去重标题行后的正文；content 为空时原样返回
-     */
-    public static String buildBody(String content, String title) {
-        if (StringUtils.isEmpty(content)) {
-            return content;
-        }
-        String body = content.substring(frontMatterEnd(content));
-        if (StringUtils.isEmpty(title)) {
-            return body;
-        }
-        String h1 = "# " + title + "\n";
-        // SQL 侧的 left(...) = concat(...) 走 MySQL 默认 *_ci 排序规则（大小写不敏感），用 regionMatches
-        // 对齐
-        return body.regionMatches(true, 0, h1, 0, h1.length()) ? body.substring(h1.length()) : body;
-    }
-
-    /**
-     * 正文起始下标（0 基）。语义与 SgjNoteMapper.xml 的 fmEnd 片段一致：
-     * 首行以三连字符开头才认定有前言，找首个 '\n---' 作闭合（+5 跳过闭合行），找不到闭合按无前言处理
-     */
-    private static int frontMatterEnd(String content) {
-        if (!content.startsWith("---\n") && !content.startsWith("---\r")) {
-            return 0;
-        }
-        int close = content.indexOf("\n---");
-        // SQL: coalesce(nullif(locate('\n---', content), 0) + 5, 1)；locate 为 1 基，转 0
-        // 基后即 close + 5
-        return close < 0 ? 0 : Math.min(close + 5, content.length());
-    }
-
-    /**
      * 生成导出用的 Markdown 全文（服务端现场生成，issue #41）。
      *
      * @param note 笔记（需要 noteId / title / tags / content）
@@ -247,19 +211,11 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
      */
     public static String buildExportMarkdown(SgjNote note) {
         String content = note.getContent() == null ? "" : note.getContent();
-        String body = content.substring(frontMatterEnd(content));
-        // front-matter 与正文之间固定空一行：正文自己开头的换行先去掉，否则会出现两个空行
-        int start = 0;
-        while (start < body.length() && (body.charAt(start) == '\n' || body.charAt(start) == '\r')) {
-            start++;
-        }
-        body = body.substring(start);
+        content = SgjNoteUtils.writeYaml(content, "noteId", note.getNoteId() == null ? "" : note.getNoteId());
+        content = SgjNoteUtils.writeYaml(content, "title", note.getTitle());
+        content = SgjNoteUtils.writeYaml(content, "tags", note.getTags());
 
-        body = SgjNoteUtils.writeYaml(body, "noteId", note.getNoteId() == null ? "" : note.getNoteId());
-        body = SgjNoteUtils.writeYaml(body, "title", note.getTitle());
-        body = SgjNoteUtils.writeYaml(body, "tags", note.getTags());
-
-        return body;
+        return content;
     }
 
 }

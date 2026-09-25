@@ -346,4 +346,16 @@ public class SgjNoteUtils {
         return trimmed.indexOf('|') >= 0 && trimmed.indexOf('-') >= 0 && trimmed.matches("[\\s:|-]+");
     }
 
+    /**
+     * 构建纯正文文本，无标题，无yaml front-format 块，保留原始格式
+     * 
+     * @param content 源文本
+     * @param title   笔记标题
+     * @return 无标题，无yaml front-format 块的正文内容
+     */
+    public static String buildBody(String content, String title) {
+        return SgjNoteUtils.removeDuplicatedTitle(SgjNoteUtils.removeYamlFrontFormat(content),
+                title);
+    }
+
 }
