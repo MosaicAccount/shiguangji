@@ -12,7 +12,7 @@ This is a single Git monorepo containing two applications. `shiguangji-web/` is 
 - **后端的审查与测试由本 agent 负责**，这是后端改动的验收关口：
   - **审查**：改动落地后读 diff 给出结论 —— 正确性、接口契约（字段/口径是否与前端一致）、跨端影响、边界与异常路径、遗留映射与死代码。实现与既有断言冲突时，先判定是「实现错」还是「契约该改」，连证据与建议一起交使用者拍板；既不放过红点，也不擅自改产品代码。
   - **测试**：亲自跑并贴出真实命令与输出（`mvn -pl shiguangji-admin -am test`、`npx vitest run`、`npx vue-tsc --noEmit`、`npm run build:prod`），不转述、不臆测「应该能过」。测试代码（`src/test/java` 与前端 `__tests__/`）的增改由本 agent 负责。
-  - 测试是红的，就不能把这次改动说成完成：PR 只能开成草稿，或在描述里明确列出红点、成因与修法。
+  - 测试是红的，就不能把这次改动说成完成：PR 开成草稿或标出阻塞；红点、成因与修法按「Pull request：描述按模板，审查意见走评论」写进评论，不写进描述。
 - **前端（`shiguangji-web/`）由本 agent 负责**：`views/`、`components/`、`api/`、`store/`、`types/api/` 及与后端的联调。
 - **需求阶段就要出全四份文档，缺一不开工**，讨论需求时一并谈定，评审通过后才进入编码：
 
@@ -76,6 +76,13 @@ Merge back with a PR. If a stray change lands in the `develop` working tree, mov
 A worktree has no `node_modules` of its own: symlink the main checkout's in (`ln -s ../../../shiguangji-web/node_modules node_modules`) — `vite.config.ts` allows the repo root, so `npm run dev` works through that symlink too. Two traps cost real time here: `npm install` **replaces that symlink with a real directory** and silently strips the package out of every other worktree (add what the shared install is missing with `npm install --no-save <pkg>` in the main checkout instead), and swapping or deleting a worktree's `node_modules` **while a dev server runs from it** leaves Vite's dependency pre-bundle stale — its lazy-loaded route chunks then fail with `504 Outdated Optimize Dep`, which looks exactly like a broken app (the page never leaves its splash screen).
 
 **A finished branch becomes a pull request.** Commit → push the branch → open the PR against `develop`. A branch that only exists locally is not finished work. The PR body carries what the title cannot: the behavior change, the verification commands you actually ran with their results, the linked issue(s), any SQL / configuration change, and for visible UI work the design mockup it implements plus the manual steps nobody-but-a-human can run (say plainly when you could not run them).
+
+### Pull request：描述按模板，审查意见走评论
+
+- **描述必须按 `.github/pull_request_template.md` 的章节写**（变更说明 / 关联任务 / 验证方式 / SQL 与配置变更 / 界面变化 / 检查清单），章节标题与顺序不自行增删；「界面变化」只在确实没有可见 UI 变更时才删。
+- **提交时默认本次改动没有问题**：描述只写「改了什么 / 为什么 / 怎么验」，不把疑虑、待办、风险猜想塞进描述 —— 描述不是第二份审查报告。检查清单据实勾选：命令跑过且通过才勾（凭据那条要先核查 diff 确实没带生产库 / Redis / JWT 凭据）。
+- **审查发现问题一律作为 PR 评论提交**：本 agent 的审查结论、真机复现步骤与证据、失败用例与成因、修法建议都走评论；描述保持提交时的样子，不因审查结果反复改写。
+- 问题足以阻塞合并时：评论写清 + 用 draft 或「请求变更」表达，不靠改描述。
 
 ## Security & Configuration
 
