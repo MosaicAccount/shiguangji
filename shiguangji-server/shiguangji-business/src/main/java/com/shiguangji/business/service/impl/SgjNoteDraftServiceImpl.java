@@ -42,8 +42,10 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService {
     public List<SgjNoteDraft> selectBoxList(String createBy) {
         List<SgjNoteDraft> list = sgjNoteDraftMapper.selectBoxDraftList(createBy);
         for (SgjNoteDraft draft : list) {
-            // 摘要复用笔记列表同一套剥离逻辑（标题为空时它就是展示行的内容）
-            draft.setExcerpt(SgjNoteUtils.truncateAtWordBoundary(draft.getContent(), SgjNoteConstants.EXCERPT_WINDOW_LENGTH));
+            // 草稿正文有可能为空，所以要提前排除
+            if(StringUtils.isNotEmpty(draft.getContent())) {
+                draft.setExcerpt(SgjNoteUtils.truncateAtWordBoundary(draft.getContent(), SgjNoteConstants.EXCERPT_WINDOW_LENGTH));
+            }
             clearBlankNoteId(draft);
         }
         return list;
