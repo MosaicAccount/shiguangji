@@ -7,7 +7,11 @@
         <h1>笔记</h1>
         <p>记录你的思考与学习笔记。</p>
       </div>
-      <el-button v-if="isLogin" type="primary" class="banner-add" @click="openAdd">＋ 写笔记</el-button>
+      <!-- 操作区合并到一处：导入 md 与写笔记都是「创建」类动作；筛选栏留给「找」 -->
+      <div v-if="isLogin" class="banner-acts">
+        <el-button class="banner-import" @click="pickImportFile">⤒ 导入 md</el-button>
+        <el-button type="primary" class="banner-add" @click="openAdd">＋ 写笔记</el-button>
+      </div>
     </div>
 
     <!-- 草稿箱入口：仅登录且有草稿时显示；数量取草稿列表长度（接口只回 excerpt，不拉正文） -->
@@ -31,8 +35,6 @@
           <el-button @click="loadData">搜索</el-button>
         </template>
       </el-input>
-      <!-- 导入 md：读文件与解析全在浏览器本地完成（不上传），解析完跳编辑页预填 -->
-      <el-button v-if="isLogin" class="import-btn" @click="pickImportFile">导入 md</el-button>
     </div>
     <input ref="importInputRef" type="file" accept=".md" hidden @change="onImportFileChange" />
 
@@ -44,7 +46,7 @@
       <el-button link type="primary" size="small" @click="clearFilter">查看全部笔记</el-button>
     </div>
 
-    <div ref="listRef" v-loading="loading" class="note-list">
+    <div v-loading="loading" class="note-list">
       <el-empty v-if="!loading && !list.length && !loadError" description="暂无笔记" />
       <div v-if="loadError" class="load-error">
         <span>加载失败，请稍后重试</span>
@@ -72,28 +74,21 @@
             @click.stop="handleDelete(note)"
           />
         </div>
-        <!-- 纯文本摘要常显（后端生成）；渐隐仅在内容真的溢出时出现 -->
-        <div
-          v-if="note.excerpt"
-          class="note-preview"
-          :class="{ clip: clippedNoteIds.has(note.noteId!) }"
-          :data-note-id="note.noteId"
-        >
-          <p class="note-excerpt">
-            <template v-for="(seg, si) in excerptSegments(note)" :key="si">
-              <mark v-if="seg.hit">{{ seg.text }}</mark>
-              <template v-else>{{ seg.text }}</template>
-            </template>
-          </p>
-        </div>
-        <!-- 有关键词即提示命中次数（1 次也显示：用户能确认这篇是因命中而返回的） -->
-        <span v-if="note.hitTotal" class="hit-count">{{ hitCountText(note.hitTotal) }}</span>
+        <!-- 纯文本摘要常显（后端生成）；最多 2 行，超出由浏览器以省略号收尾 -->
+        <p v-if="note.excerpt" class="note-excerpt">
+          <template v-for="(seg, si) in excerptSegments(note)" :key="si">
+            <mark v-if="seg.hit">{{ seg.text }}</mark>
+            <template v-else>{{ seg.text }}</template>
+          </template>
+        </p>
         <div class="note-meta">
           <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
           <span v-if="note.itemId" class="note-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
           <span v-else class="note-link">📝 独立笔记</span>
           <span v-if="note.tags" class="note-tags">{{ note.tags }}</span>
           <span class="note-time">{{ formatTime(note.updateTime || note.createTime) }}</span>
+          <!-- 有关键词即提示命中次数（1 次也显示：用户能确认这篇是因命中而返回的）；贴 meta 行右端 -->
+          <span v-if="note.hitTotal" class="note-hit">{{ hitCountText(note.hitTotal) }}</span>
         </div>
       </div>
     </div>
@@ -345,24 +340,6 @@ function hitCountText(hitTotal?: number): string {
   return `文中出现 ${hitTotal} 次`
 }
 
-/** 渐隐仅在摘要真的溢出时显示（渲染与窗口尺寸变化后测量） */
-const clippedNoteIds = ref<Set<number>>(new Set())
-const listRef = ref<HTMLElement | null>(null)
-
-function measureClip(): void {
-  const next = new Set<number>()
-  listRef.value?.querySelectorAll<HTMLElement>('.note-preview').forEach(el => {
-    if (el.scrollHeight > el.clientHeight + 2 && el.dataset.noteId) {
-      next.add(Number(el.dataset.noteId))
-    }
-  })
-  clippedNoteIds.value = next
-}
-
-watch(list, () => nextTick(measureClip))
-onMounted(() => window.addEventListener('resize', measureClip))
-onBeforeUnmount(() => window.removeEventListener('resize', measureClip))
-
 /** 跳转独立编辑页（新增/编辑共用，验收：单独的 markdown 编辑页面） */
 function openAdd(): void {
   router.push('/note/edit')
@@ -428,7 +405,10 @@ loadDraftCount()
 </script>
 
 <style scoped lang="scss">
+/* 内容栏收窄：120 字摘要在全宽（1248px）下会铺成一整行，读起来像裸文本 */
 .note-page {
+  max-width: 1080px;
+  margin: 0 auto;
   color: var(--sgj-text);
 }
 
@@ -502,15 +482,40 @@ loadDraftCount()
     }
   }
 
-  .banner-add {
+  /* 创建类动作合并成一组，靠 banner 右端 */
+  .banner-acts {
     position: relative;
     z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .banner-add {
     height: 46px;
     padding: 0 28px;
     border-radius: 23px;
     font-size: 13px;
     font-weight: 500;
     letter-spacing: 1px;
+  }
+
+  /* 深色 banner 上的次级按钮：描边 + 浅色字，不抢主按钮 */
+  .banner-import {
+    height: 46px;
+    padding: 0 22px;
+    border-radius: 23px;
+    font-size: 13px;
+    background: transparent;
+    color: #e7ece9;
+    border-color: rgba(231, 236, 233, 0.4);
+
+    &:hover,
+    &:focus {
+      background: rgba(231, 236, 233, 0.12);
+      color: #e7ece9;
+      border-color: rgba(231, 236, 233, 0.6);
+    }
   }
 
 }
@@ -526,12 +531,7 @@ html.dark .page-banner {
   margin-bottom: 20px;
 
   .search-input {
-    width: 260px;
-  }
-
-  .import-btn {
-    flex: none;
-    margin-left: 10px;
+    width: 280px;
   }
 }
 
@@ -590,18 +590,28 @@ html.dark .page-banner {
   color: var(--sgj-primary);
 }
 
+/* 卡片网格：minmax 的 min 用 min(320px, 100%) 兜住窄屏，避免 320px 撑破容器 */
 .note-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: 14px;
   min-height: 200px;
+
+  /* 空态与错误态横跨整行，不被挤进一个网格单元 */
+  :deep(.el-empty),
+  .load-error {
+    grid-column: 1 / -1;
+  }
 }
 
+/* 竖直 flex：配合网格的拉伸让同行卡片等高，meta 行贴底对齐 */
 .note-card {
+  display: flex;
+  flex-direction: column;
   background: var(--sgj-bg-card);
   border: 1px solid var(--sgj-border-card);
   border-radius: 16px;
-  padding: 18px;
+  padding: 16px 18px;
   box-shadow: var(--sgj-shadow-sm);
   cursor: pointer;
   transition: box-shadow 0.16s, transform 0.16s;
@@ -620,9 +630,9 @@ html.dark .page-banner {
       flex: 1;
       min-width: 0;
       font-family: var(--sgj-font-serif);
-      font-weight: 500;
-      font-size: 16px;
-      line-height: 24px;
+      font-weight: 600;
+      font-size: 17px;
+      line-height: 25px;
       color: var(--sgj-text);
       word-break: break-word;
 
@@ -656,60 +666,47 @@ html.dark .page-banner {
     }
   }
 
-  .note-preview {
-    margin-top: 8px;
-    max-height: 96px;
+  /* 摘要最多 2 行（约 120 字，字数上限由后端摘要窗口决定）；超出由浏览器以省略号收尾 */
+  .note-excerpt {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    position: relative;
+    margin: 8px 0 10px;
+    font-size: 13px;
+    color: var(--sgj-text-3);
+    line-height: 1.7;
+    word-break: break-word;
 
-    /* 底部渐隐仅在内容真的溢出时出现（measureClip 测量后加 clip 类） */
-    &.clip::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 32px;
-      background: linear-gradient(transparent, var(--sgj-bg-card));
-      pointer-events: none;
-    }
-
-    .note-excerpt {
-      margin: 0;
-      font-size: 13px;
-      color: var(--sgj-text-3);
-      line-height: 1.6;
-      word-break: break-word;
-
-      mark {
-        background: var(--sgj-amber-soft);
-        color: var(--sgj-amber);
-        border-radius: 3px;
-        padding: 0 2px;
-        font-weight: 600;
-      }
+    mark {
+      background: var(--sgj-amber-soft);
+      color: var(--sgj-amber);
+      border-radius: 3px;
+      padding: 0 2px;
+      font-weight: 600;
     }
   }
 
-  .hit-count {
-    display: inline-flex;
-    align-items: center;
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--sgj-amber);
-    font-variant-numeric: tabular-nums;
-  }
-
+  /* margin-top:auto：同行等高后，各卡的 meta 行落在同一条基线上 */
   .note-meta {
-    margin-top: 10px;
+    margin-top: auto;
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    align-items: center;
+    gap: 10px;
     font-size: 12px;
     color: var(--sgj-text-4);
 
     .note-tags {
       color: var(--sgj-amber);
+    }
+
+    /* 命中次数：贴 meta 行右端 */
+    .note-hit {
+      margin-left: auto;
+      color: var(--sgj-amber);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
   }
 }
@@ -722,11 +719,6 @@ html.dark .page-banner {
 
     .search-input {
       width: 100% !important;
-    }
-
-    .import-btn {
-      width: 100%;
-      margin: 10px 0 0;
     }
   }
 
