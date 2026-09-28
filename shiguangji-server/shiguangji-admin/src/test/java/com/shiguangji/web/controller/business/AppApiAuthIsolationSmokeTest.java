@@ -614,7 +614,16 @@ class AppApiAuthIsolationSmokeTest
         long kwSqlId = findSingleNoteId(adminToken, KW_SQL_TITLE);
 
         // 本人：正文独有词命中（标题不含该词——本需求的核心价值）
-        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+        // 两处加固：①先钉住「行确实在库里」，检索失败时才分得清是「行不在」还是「索引漏了它」；
+        // ②pageSize 放大到 100，不依赖默认第 1 页——ngram 布尔检索按 bigram 取 OR，命中面很宽，
+        // 目标行一旦被挤出第 1 页，失败原因就与「检索语义」无关了
+        JsonNode kwResp = listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER, null, 1, 100);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sgj_note where content like ?",
+                Integer.class, "%" + KW_PUBLIC_MARKER + "%"))
+                .as("夹具应已落库").isPositive();
+        assertThat(extractIds(kwResp.path("data"), "noteId"))
+                .as("全文检索应命中刚建的笔记；resp=%s", kwResp)
                 .contains(kwPublicId);
 
         // 匿名：公开笔记正文命中（全文检索对匿名可用，但只允许公开范围）
@@ -736,9 +745,12 @@ class AppApiAuthIsolationSmokeTest
                 .as("首页最近笔记不得下发 content").isFalse();
 
         // 搜索只出现在正文中部的词（远在开头 120 字之外）：能命中，摘要以命中处为中心
-        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, midMarker).path("data"), "noteId"))
+        // pageSize 放大到 100：ngram 布尔检索命中面很宽，目标行不该因为被挤出默认第 1 页而失败
+        JsonNode midResp = listNotesBody(adminToken, TAG_MAIN, midMarker, null, 1, 100);
+        assertThat(extractIds(midResp.path("data"), "noteId"))
+                .as("全文检索应命中正文中部的词；resp=%s", midResp)
                 .contains(longNoteId);
-        JsonNode hitRow = listNotesBody(adminToken, TAG_MAIN, midMarker).path("data").valueStream()
+        JsonNode hitRow = midResp.path("data").valueStream()
                 .filter(n -> n.path("noteId").asLong() == longNoteId)
                 .findFirst().orElseThrow();
         assertThat(hitRow.path("excerpt").asText())
@@ -748,9 +760,10 @@ class AppApiAuthIsolationSmokeTest
 
         // 只命中标题（正文不含该词）时正文内定位不到，摘要退化为取开头
         String titleOnlyKeyword = "十万字";
-        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data"), "noteId"))
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword, null, 1, 100).path("data"), "noteId"))
                 .as("keyword 应命中标题").contains(longNoteId);
-        JsonNode titleOnlyRow = listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data").valueStream()
+        JsonNode titleOnlyRow = listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword, null, 1, 100)
+                .path("data").valueStream()
                 .filter(n -> n.path("noteId").asLong() == longNoteId)
                 .findFirst().orElseThrow();
         assertThat(titleOnlyRow.path("excerpt").asText())
