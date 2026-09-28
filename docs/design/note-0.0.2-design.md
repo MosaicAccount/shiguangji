@@ -176,7 +176,8 @@ create table sgj_note_draft (
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/app/note/draft/list` | 无参：当前用户的**全部**草稿（空白草稿 + 编辑态），供草稿箱。**只回 `excerpt`，不回 `content`**；`itemName` 左联 `sgj_item` 带出（查不到回退 `#id`，与笔记列表一致）；`noteId` 标明来源笔记（空白草稿为 `null`） |
+| GET | `/app/note/draft/list` | 无参：当前用户的**全部**草稿（空白草稿 + 编辑态），供草稿箱。**只回 `excerpt`，不回 `content`**；`itemName` 左联 `sgj_item` 带出（查不到回退 `#id`，与笔记列表一致）；`noteId` 标明来源笔记（空白草稿为 `null`）。正文只在服务端用于生成摘要，响应前置空 |
+| GET | `/app/note/draft/count` | 当前用户的**草稿份数**（笔记列表页入口条用）。入口条每次页面加载都要这个数字，所以单开一条只回计数的查询：列表接口为了生成摘要把每份草稿正文都取了回来，不能拿它当计数用 |
 | GET | `/app/note/draft/blank` | 本人的**空白草稿**（每人一份，含正文）：进「写笔记」时按身份取回来——本机 localStorage 里没有 `draftId`（换设备 / 清过缓存）也接得住，否则写第二篇会静默覆盖第一篇 |
 | GET | `/app/note/draft/list?noteId=` | 有参：该篇笔记的未保存改动（供编辑页静默恢复），取最新一行 |
 | GET | `/app/note/draft/{draftId}` | 按 id 取单条草稿（**含完整 `content`**），供草稿箱「继续写」与冷启动的 `/note/edit?draftId=`。字面量 `/list` 优先于 `/{draftId}` 匹配，不冲突 |
@@ -259,6 +260,8 @@ create table sgj_note_draft (
 
 **已采纳的原升级路径（原 ponytail 取舍作废）**：原方案让草稿列表顺带返回完整 `content`，省掉一个按 id 取单条草稿的接口；代价是每份草稿 × 单篇 100,000 字（原来的 20 份上限已取消，见结论 14）≈ 最坏 6MB，而这个 6MB 会落在**笔记列表页每次加载**上——入口条要知道数量就得先拉列表，且该页免登录、是访客最常打开的页面。现改为：列表只回 `excerpt`（约 2KB 量级），另加按 id 取单条。
 
+**入口条不订阅列表**：它单独订阅 `GET /app/note/draft/count`（只回计数、不取正文），所以「列表要不要取回正文」这件事已经与列表页每次加载脱钩——列表只为草稿箱页面服务，而那个页面本就要展示每份草稿，读回正文生成摘要是它自己的成本。
+
 ### 2.7 草稿写入与同步
 
 打字时先写本地，再定期与服务端同步。本地缓冲是为了"断网、强杀、崩溃都不丢"，服务端才是跨设备的那一份。
@@ -319,7 +322,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 - 搜索框 placeholder 由「搜索笔记标题」改为「搜索标题与正文」；传参由 `title` 改为 `keyword`；
 - 删除 `previewContent()`——该职责已由后端摘要承担（结论 20）；
 - 修复移动端断点选择器 `.toolbar` → `.filter-bar`（结论 28）；
-- 插入草稿入口条，仅登录且草稿数 > 0 时渲染；**数量取草稿列表长度**（列表只回 `excerpt`，不再为这个数字拉下全部草稿正文，§2.6）。
+- 插入草稿入口条，仅登录且草稿数 > 0 时渲染；**数量取 `GET /app/note/draft/count`**（只回计数，不为这一行文案拉下草稿箱列表与每份草稿正文，§2.6/§2.7）。
 
 > 「改吃 `excerpt`」已落地（#39）：`SgjNote` 有 `excerpt` 字段，前台列表生成摘要后把 `content` 置空、正文不下发，卡片不再依赖 `MarkdownViewer` / `previewContent()`（`previewContent()` 已删除）。**草稿箱与笔记列表共用同一套摘要口径**（先剥离 Markdown 再截 120 字），不再有「同一字段两种语义」。
 
@@ -374,8 +377,8 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | `business/.../domain/SgjNote.java` | 新增 `keyword`、`excerpt`、`draftId` 三个非表字段 |
 | 新增 `business/.../domain/SgjNoteDraft.java` | 草稿实体（另需 `itemName`、`excerpt` 两个非表字段） |
-| 新增 `business/.../mapper/SgjNoteDraftMapper.java` + `resources/mapper/business/SgjNoteDraftMapper.xml` | 草稿 CRUD，按 `create_by` 过滤；列表只取 `excerpt` 所需列（不取 `content`）、左联 `sgj_item` 带 `item_name`；含 `deleteByNoteIds` 与「按 item_id 反查 note_id 删草稿」 |
-| `business/.../resources/mapper/business/SgjNoteMapper.xml` | `selectSgjNoteList` 的检索条件改为 `match(title, content) against(#{keyword} in boolean mode)`；列表列清单改为只取「命中窗口 / 前缀」短文本（结论 32）；新增按 `noteId` 判断存活 / 按 `itemId` 取 `note_id` 的查询 |
+| 新增 `business/.../mapper/SgjNoteDraftMapper.java` + `resources/mapper/business/SgjNoteDraftMapper.xml` | 草稿 CRUD，按 `create_by` 过滤；列表取回正文用于生成摘要（剥离 Markdown 无法用 SQL 表达，响应前置空 `content`）、左联 `sgj_item` 带 `item_name`；另有只回计数的 `selectBoxDraftCount`（入口条用）；含 `deleteByNoteIds` 与「按 item_id 反查 note_id 删草稿」 |
+| `business/.../resources/mapper/business/SgjNoteMapper.xml` | `selectSgjNoteList` 的检索条件改为 `match(title, content) against(#{keyword} in boolean mode)`；前台列表 `selectSgjNoteFrontList` 取回正文供 Java 侧生成摘要（窗口与截断都在剥离后的纯文本上做，结论 32 作废），响应前置空 `content`；新增按 `noteId` 判断存活 / 按 `itemId` 取 `note_id` 的查询 |
 | `business/.../service/impl/SgjNoteServiceImpl.java` | 新增静态摘要方法（含标题去重与 front-matter 剥离）；`CONTENT_MAX_LENGTH` 20000 → 100000（结论 32）；检索前剔除布尔运算符字符（结论 33）；**`deleteSgjNoteByIds` / `purgeSgjNoteByIds` 加 `@Transactional` 并调 `deleteByNoteIds`**（结论 25）；`add` / `edit` 的 `draftId` 归属校验与同事务删除（结论 15） |
 | `business/.../service/impl/SgjItemServiceImpl.java` | **`purgeSgjItemByIds` 加 `@Transactional`，并在删除条目前先删该条目下所有笔记的草稿**（结论 25，顺序不能反）。原文件清单漏了此文件 |
 | 新增 `business/.../service/ISgjNoteDraftService.java` + `impl/SgjNoteDraftServiceImpl.java` | 草稿服务：归属校验、存活校验（结论 40）、按 owner + noteId 的 upsert 与唯一键冲突转更新、`deleteByNoteIds` 共用清理；**不加 `@Transactional`** |
@@ -410,7 +413,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | `SgjNoteExcerptTest`（新增，纯单测，无 Spring / 无 DB） | 剥离各类语法；**正文以同级 H1 开头时摘要不重复标题**；**YAML front-matter 整块移除**；窗口以命中处为中心；无命中取开头；命中标题时取开头；**先剥离再截断时不留半截语法**；纯代码块笔记的回退；空正文；命中在首 / 尾 |
 | `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除） |
-| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问六个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**同一身份收敛**：空白草稿连推两次（中间换了 `item_id` 也只算同一份）、编辑态每篇笔记一行，同一 `(create_by, note_id)` 不带 `draftId` 连推不产生第二行（空白草稿写 `0`）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、**不带 `draftId` 也按 `note_id` 清掉那份草稿（新增 = 空白草稿；且不误删别的笔记的编辑态草稿）**、不带 `draftId` 的笔记写入行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
+| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问六个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；入口条份数与列表长度一致；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**同一身份收敛**：空白草稿连推两次（中间换了 `item_id` 也只算同一份）、编辑态每篇笔记一行，同一 `(create_by, note_id)` 不带 `draftId` 连推不产生第二行（空白草稿写 `0`）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、**不带 `draftId` 也按 `note_id` 清掉那份草稿（新增 = 空白草稿；且不误删别的笔记的编辑态草稿）**、不带 `draftId` 的笔记写入行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
 
 **前端**
 
