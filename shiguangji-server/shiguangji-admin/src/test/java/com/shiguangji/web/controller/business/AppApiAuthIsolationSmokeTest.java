@@ -756,6 +756,15 @@ class AppApiAuthIsolationSmokeTest
         assertThat(titleOnlyRow.path("excerpt").asText())
                 .as("正文无命中时摘要退化为取开头").isEqualTo("甲".repeat(120));
 
+        // 半截语法：截断点正好落在 ![alt](url) 内部（图片起始于第 116 字），摘要不得留下半截标记
+        // —— 先截断再剥离会原样留下 "![截图]"；先剥离再截断则整张图片消失
+        createNoteWithContent(adminToken, "qat10 半截语法笔记", "1",
+                "甲".repeat(115) + "![截图](/images/2026/qa.png) 图片后的正文。", null);
+        JsonNode halfSyntaxRow = listNotesByTitle(adminToken, TAG_MAIN, "qat10 半截语法笔记").path("data").get(0);
+        assertThat(halfSyntaxRow.path("excerpt").asText())
+                .as("摘要不得残留被截断的 Markdown 语法")
+                .doesNotContain("![").doesNotContain("](");
+
         // 后台列表仍回传完整正文（CSV / JSON 导出分页拉取该接口在浏览器侧生成）
         String adminApiToken = createTokenFor(PUBLIC_OWNER, "*:*:*");
         JsonNode adminList = bodyOf(mockMvc.perform(get("/business/note/list")

@@ -66,6 +66,16 @@ class SgjNoteExcerptTest
         assertEquals("一段 带标签 文字", SgjNoteUtils.stripMarkdown("<p>一段</p>\n\n  带标签<br/>文字"));
     }
 
+    @Test
+    void stripBeforeTruncateLeavesNoHalfSyntax()
+    {
+        // 截断点落在 ![alt](url) 内部：先截断再剥离会原样留下 "![截图]" 这类半截语法；
+        // 先剥离再截断则整张图片消失，摘要里不存在被切断的标记
+        String body = "甲".repeat(115) + "![截图](/images/a.png) 图片后的正文。";
+        assertEquals("甲".repeat(115) + " 图片后的",
+                SgjNoteUtils.truncateAtWordBoundary(SgjNoteUtils.stripMarkdown(body), 120));
+    }
+
     // ===== buildBody：详情正文的前言剥离与标题去重（须与 SQL fmEnd 口径一致） =====
 
     @Test

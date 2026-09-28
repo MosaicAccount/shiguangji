@@ -64,11 +64,14 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
         List<SgjNote> list = sgjNoteMapper.selectSgjNoteFrontList(sgjNote);
         if (!list.isEmpty()) {
             for (SgjNote note : list) {
-                String body = SgjNoteUtils.buildBody(note.getContent(), note.getTitle());
+                // 必须先剥离 Markdown 再截窗：截断点落在语法内部会留下半截标记（如 ![x](h），
+                // 而剥离正则要求分隔符成对，匹配不上就会原样展示到卡片上
+                String body = SgjNoteUtils.stripMarkdown(
+                        SgjNoteUtils.buildBody(note.getContent(), note.getTitle()));
 
                 String keyword = sgjNote.getKeyword();
-                List<String> excerptList = SgjNoteUtils.extractSnippets(body, sgjNote.getKeyword());
-                if (StringUtils.isNotBlank(sgjNote.getKeyword())) {
+                List<String> excerptList = SgjNoteUtils.extractSnippets(body, keyword);
+                if (StringUtils.isNotBlank(keyword)) {
 
                     long hitTotal = excerptList.stream()
                             .map(item -> StringUtils.countMatches(item.toLowerCase(), keyword.toLowerCase()))
@@ -77,8 +80,17 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
                     note.setHitTotal(hitTotal);
                 }
 
-                note.setExcerpt(SgjNoteUtils.stripMarkdown(CollectionUtils.isNotEmpty(excerptList) ? excerptList.get(0)
-                        : SgjNoteUtils.truncateAtWordBoundary(body, SgjNoteConstants.EXCERPT_WINDOW_LENGTH)));
+                String excerpt;
+                if (CollectionUtils.isNotEmpty(excerptList)) {
+                    excerpt = excerptList.get(0);
+                } else if (StringUtils.isNotEmpty(body)) {
+                    excerpt = SgjNoteUtils.truncateAtWordBoundary(body, SgjNoteConstants.EXCERPT_WINDOW_LENGTH);
+                } else {
+                    // 剥离后为空（整篇只有代码块 / 只有 front-matter）：回退原始文本开头，卡片不空白
+                    excerpt = SgjNoteUtils.truncateAtWordBoundary(note.getContent(),
+                            SgjNoteConstants.EXCERPT_WINDOW_LENGTH);
+                }
+                note.setExcerpt(excerpt);
             }
 
         }
