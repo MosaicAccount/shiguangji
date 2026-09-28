@@ -3,10 +3,19 @@ import type { AjaxResult } from '@/types/api/common'
 import type { SgjNoteDraft, NoteDraftPayload, NoteDraftSaved } from '@/types/api/front/noteDraft'
 
 // 草稿箱列表（当前用户的新笔记草稿；后端只回 excerpt，不下发正文）
-// silent=true 用于笔记列表页的入口条：该页免登录，失效 token 也不得弹「登录状态已过期」（设计结论 21）
 export function listNoteDrafts(silent = false): Promise<AjaxResult<SgjNoteDraft[]>> {
   return request({
     url: '/app/note/draft/list',
+    method: 'get',
+    headers: silent ? { silent: true } : {}
+  })
+}
+
+// 草稿份数（笔记列表页入口条用）：只回一个数字，不把草稿正文拉下来
+// silent=true 用于该入口条：列表页免登录，失效 token 也不得弹「登录状态已过期」（设计结论 21）
+export function countNoteDrafts(silent = false): Promise<AjaxResult<number>> {
+  return request({
+    url: '/app/note/draft/count',
     method: 'get',
     headers: silent ? { silent: true } : {}
   })

@@ -104,7 +104,7 @@ import { getToken } from '@/utils/auth'
 import { Delete } from '@element-plus/icons-vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, delFrontNote } from '@/api/front/note'
-import { listNoteDrafts } from '@/api/front/noteDraft'
+import { countNoteDrafts } from '@/api/front/noteDraft'
 import { getFrontItem } from '@/api/front/item'
 import { splitByKeyword } from '@/utils/sgj'
 import { ElMessageBox } from 'element-plus'
@@ -147,15 +147,16 @@ const draftCount = ref(0)
 
 /**
  * 拉草稿份数：匿名访客不发（本页免登录，拉了会因失效 token 弹「登录状态已过期」）；
- * 请求带静默标记，失败只当作没有草稿，不弹任何提示
+ * 请求带静默标记，失败只当作没有草稿，不弹任何提示。
+ * 只订阅份数接口，不为这一行文案把草稿箱列表（含每份草稿正文）拉下来
  */
 function loadDraftCount(): void {
   if (!isLogin.value) {
     draftCount.value = 0
     return
   }
-  listNoteDrafts(true).then(response => {
-    draftCount.value = response.data?.length || 0
+  countNoteDrafts(true).then(response => {
+    draftCount.value = Number(response.data) || 0
   }).catch(() => {
     draftCount.value = 0
   })
