@@ -40,6 +40,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by d.update_time desc, d.draft_id desc
     </select>
 
+    <!-- 草稿份数：笔记列表页入口条只要这个数字，不该为它把每份草稿正文取回来 -->
+    <select id="selectBoxDraftCount" parameterType="String" resultType="int">
+        select count(1) from sgj_note_draft d where d.create_by = #{createBy}
+    </select>
+
     <!-- 按「写作对象」取本人的那份草稿（取最新一行）：身份就是 note_id，null 即 0（空白草稿） -->
     <select id="selectDraftByNoteId" resultMap="SgjNoteDraftResult">
         <include refid="selectDraftVo"/>

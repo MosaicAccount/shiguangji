@@ -27,6 +27,17 @@ public interface SgjNoteDraftMapper
     public List<SgjNoteDraft> selectBoxDraftList(String createBy);
 
     /**
+     * 草稿份数（笔记列表页入口条用）
+     *
+     * 入口条每次页面加载都要这个数字，所以单开一条只回计数的查询：
+     * {@link #selectBoxDraftList} 为了生成摘要把每份草稿正文都取了回来，不能拿它当计数用
+     *
+     * @param createBy 当前登录用户
+     * @return 份数
+     */
+    public int selectBoxDraftCount(String createBy);
+
+    /**
      * 按「写作对象」取本人的那份草稿（取最新一行）：身份就是 note_id，传 null 即 0（空白草稿）
      *
      * @param createBy 当前登录用户

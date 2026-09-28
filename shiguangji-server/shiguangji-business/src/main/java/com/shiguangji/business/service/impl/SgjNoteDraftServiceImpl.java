@@ -57,6 +57,11 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService {
         return list;
     }
 
+    @Override
+    public int countBox(String createBy) {
+        return sgjNoteDraftMapper.selectBoxDraftCount(createBy);
+    }
+
     /**
      * 空白草稿在库里用 0 表示（唯一键要能管住它），对外一律当作 null：
      * 前端只认「noteId 为空 = 新建态」，不必知道 0 这个哨兵存在
