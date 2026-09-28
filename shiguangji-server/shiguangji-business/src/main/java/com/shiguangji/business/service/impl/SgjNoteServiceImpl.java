@@ -83,12 +83,12 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
                 String excerpt;
                 if (CollectionUtils.isNotEmpty(excerptList)) {
                     excerpt = excerptList.get(0);
-                } else if (StringUtils.isNotEmpty(body)) {
-                    excerpt = SgjNoteUtils.truncateAtWordBoundary(body, SgjNoteConstants.EXCERPT_WINDOW_LENGTH);
                 } else {
-                    // 剥离后为空（整篇只有代码块 / 只有 front-matter）：回退原始文本开头，卡片不空白
-                    excerpt = SgjNoteUtils.truncateAtWordBoundary(note.getContent(),
-                            SgjNoteConstants.EXCERPT_WINDOW_LENGTH);
+                    // 剥离后为空（整篇只有代码块 / 只有 front-matter）：回退原始文本开头，卡片不空白；
+                    // content 可空（DDL 允许），defaultString 兜住后 excerpt 落成空串
+                    String fallback = StringUtils.isNotEmpty(body) ? body
+                            : StringUtils.defaultString(note.getContent());
+                    excerpt = SgjNoteUtils.truncateAtWordBoundary(fallback, SgjNoteConstants.EXCERPT_WINDOW_LENGTH);
                 }
                 note.setExcerpt(excerpt);
                 // 前台列表不下发正文：正文只走详情接口

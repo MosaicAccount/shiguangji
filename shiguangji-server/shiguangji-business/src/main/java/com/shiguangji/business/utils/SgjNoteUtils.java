@@ -145,6 +145,9 @@ public class SgjNoteUtils {
      * @return 删除掉 yaml-front-format 块的正文内容
      */
     public static String removeYamlFrontFormat(String body) {
+        if (body == null) {
+            return null;
+        }
         return FRONT_MATTER_PATTERN.matcher(body).replaceFirst("");
     }
 
@@ -160,7 +163,8 @@ public class SgjNoteUtils {
             return body;
         }
         Matcher m = FIRST_LINE_TITLE.matcher(body);
-        if (m.find() && title.trim().equals(m.group(1).trim())) {
+        // 大小写不敏感：标题「Hello」与正文首行「# hello」是同一句，不该因为大小写再显示两遍
+        if (m.find() && title.trim().equalsIgnoreCase(m.group(1).trim())) {
             return body.substring(m.end()); // 直接从匹配结束处截断
         }
         return body;
