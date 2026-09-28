@@ -91,6 +91,8 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
                             SgjNoteConstants.EXCERPT_WINDOW_LENGTH);
                 }
                 note.setExcerpt(excerpt);
+                // 前台列表不下发正文：正文只走详情接口
+                note.setContent(null);
             }
 
         }
