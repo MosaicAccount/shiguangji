@@ -229,7 +229,8 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
         content = SgjNoteUtils.writeYaml(content, "title", note.getTitle());
         content = SgjNoteUtils.writeYaml(content, "tags", note.getTags());
 
-        return content;
+        // .md 文件以换行收尾：否则「最后一行」在部分查看器与再导入时会与后续内容黏在一起
+        return content.endsWith("\n") ? content : content + "\n";
     }
 
 }

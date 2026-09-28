@@ -188,7 +188,7 @@ public class SgjNoteUtils {
 
         Matcher matcher = FRONT_MATTER_PATTERN.matcher(body);
 
-        String yamlValue = yamlString(value.toString());
+        String yamlValue = yamlString(value);
 
         String newLine = key + ": " + yamlValue;
 
@@ -243,7 +243,7 @@ public class SgjNoteUtils {
         for (String l : yamlLines) {
             out.append(l).append('\n');
         }
-        out.append("---\n");
+        out.append("---\n\n"); // 结尾的 --- 与正文之间留一个空行（与「新建前言」那条分支保持一致）
         if (!rest.isEmpty()) {
             out.append(rest);
         }
@@ -251,13 +251,18 @@ public class SgjNoteUtils {
     }
 
     /**
-     * 将数据转位可写入 yaml 中的文本
+     * 将数据转位可写入 yaml 中的文本。
+     * 数字保持裸标量（`noteId: 9104`，加引号会把它变成字符串类型），
+     * 其余一律加引号并转义，避免冒号 / 井号 / 逗号把标量解析成别的东西
      * 
-     * @param value 源文本
+     * @param value 源数据
      * @return 可写如 yaml 中的文本
      */
-    private static String yamlString(String value) {
-        String text = value == null ? "" : value;
+    private static String yamlString(Object value) {
+        if (value instanceof Number) {
+            return value.toString();
+        }
+        String text = value == null ? "" : value.toString();
         StringBuilder sb = new StringBuilder(text.length() + 2).append('"');
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
