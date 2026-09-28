@@ -728,6 +728,15 @@ class AppApiAuthIsolationSmokeTest
                 .as("无关键词时摘要取正文开头约 120 字，不拼省略号（尾部溢出由前端排版表达）")
                 .isEqualTo("甲".repeat(120));
 
+        // 新建的笔记必须写入 update_time：列表按更新时间倒序，漏写就会沉到列表最后
+        assertThat(jdbcTemplate.queryForObject(
+                "select date_format(update_time, '%Y-%m-%d %H:%i:%s') from sgj_note where note_id = ?",
+                String.class, longNoteId))
+                .as("新建笔记必须写入 update_time").isNotNull();
+        // 而且它必须排在列表首位——只靠 coalesce 兜底、漏写 update_time 也不该沉底
+        assertThat(listNotesBody(adminToken, TAG_MAIN, null, null, 1, 10).path("data").get(0).path("noteId").asLong())
+                .as("新建笔记应排在列表首位（按更新时间倒序）").isEqualTo(longNoteId);
+
         // 详情仍回传完整正文
         JsonNode detail = bodyOf(mockMvc.perform(get("/app/note/" + longNoteId))
                 .andExpect(status().isOk())

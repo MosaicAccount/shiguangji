@@ -67,6 +67,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
            1)
     </sql>
 
+    <!-- 列表排序口径：更新时间倒序。update_time 为空的行（历史数据 / 手工 SQL）回落 create_time,
+         否则 MySQL 的 NULL 在 desc 里排最后，新写的笔记会沉到列表底部（前台 / 后台 / 回收站共用） -->
+    <sql id="listOrder">
+        order by coalesce(n.update_time, n.create_time) desc, n.note_id desc
+    </sql>
+
     <select id="selectSgjNoteById" parameterType="Long" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
         where n.note_id = #{noteId} and n.del_flag = '0'
@@ -80,7 +86,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectSgjNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
         <include refid="listWhere"/>
-        order by n.update_time desc, n.note_id desc
+        <include refid="listOrder"/>
     </select>
 
     <resultMap type="SgjNote" id="SgjNoteFrontResult">
@@ -103,7 +109,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from sgj_note n
         left join sgj_item i on i.item_id = n.item_id
         <include refid="listWhere"/>
-        order by n.update_time desc, n.note_id desc
+        <include refid="listOrder"/>
     </select>
 
     <resultMap type="SgjNote" id="SgjNoteExcerptResult">
@@ -122,6 +128,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remark != null and remark != ''">remark,</if>
             <if test="createBy != null and createBy != ''">create_by,</if>
             create_time,
+            update_time,
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="itemId != null">#{itemId},</if>
@@ -131,6 +138,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isPublic != null and isPublic != ''">#{isPublic},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
             <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate(),
             sysdate(),
         </trim>
     </insert>
@@ -164,7 +172,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 and n.title like concat('%', #{title}, '%')
             </if>
         </where>
-        order by n.update_time desc, n.note_id desc
+        <include refid="listOrder"/>
     </select>
 
     <!-- 软删除：标记 del_flag = '2' -->
