@@ -716,8 +716,8 @@ class AppApiAuthIsolationSmokeTest
         assertThat(noKeywordRows.get(0).hasNonNull("content"))
                 .as("前台列表不应下发 content（正文只在详情接口）").isFalse();
         assertThat(noKeywordRows.get(0).path("excerpt").asText())
-                .as("无关键词时摘要取正文开头约 120 字，片段外还有正文故补省略号")
-                .isEqualTo("甲".repeat(120) + "…");
+                .as("无关键词时摘要取正文开头约 120 字，不拼省略号（尾部溢出由前端排版表达）")
+                .isEqualTo("甲".repeat(120));
 
         // 详情仍回传完整正文
         JsonNode detail = bodyOf(mockMvc.perform(get("/app/note/" + longNoteId))
@@ -754,7 +754,7 @@ class AppApiAuthIsolationSmokeTest
                 .filter(n -> n.path("noteId").asLong() == longNoteId)
                 .findFirst().orElseThrow();
         assertThat(titleOnlyRow.path("excerpt").asText())
-                .as("正文无命中时摘要退化为取开头").isEqualTo("甲".repeat(120) + "…");
+                .as("正文无命中时摘要退化为取开头").isEqualTo("甲".repeat(120));
 
         // 后台列表仍回传完整正文（CSV / JSON 导出分页拉取该接口在浏览器侧生成）
         String adminApiToken = createTokenFor(PUBLIC_OWNER, "*:*:*");
