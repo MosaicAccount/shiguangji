@@ -71,7 +71,7 @@
 
 | # | 性质 | 议题 | 结论 |
 | --- | --- | --- | --- |
-| 20 | 缺陷 | 摘要与标题去重 | 后端摘要须承接 `previewContent()` 的职责：在剥离后、截窗前，移除与 `title` 相同的首个一级标题（仅当其为正文首个 H1 且文本 trim 后与标题全等）。否则改吃 `excerpt` 后每张卡片标题重复两次。同批处理卡片的底部渐隐（改为仅在溢出时显示） |
+| 20 | 缺陷 | 摘要与标题去重 | 后端摘要须承接 `previewContent()` 的职责：在剥离后、截窗前，移除与 `title` 相同的首个一级标题（仅当其为正文首个 H1 且文本 trim 后与标题全等）。否则改吃 `excerpt` 后每张卡片标题重复两次。同批处理卡片摘要的溢出表达（最多 2 行、超出以省略号收尾；定稿见结论 45） |
 | 21 | 缺陷 | 草稿请求对匿名 / 失效 token 静默 | `/note` 是免登录路由，且 `isLogin` 只判断 token 是否存在（过期 token 同样为真）。入口条与草稿请求必须：`isLogin` 为假时不发；失败也不触发全局提示与「登录状态已过期」弹窗 |
 | 22 | 已拍板 | 同步静默 + 重推 + 关防重 | 后台自动同步（15s 定时、`pagehide`、`online`）带静默标记与 `repeatSubmit: false`；`online` 事件立即重推一次；离开时的推送为**尽力而为**，先同步写本地缓冲，未送达由下次进编辑器补推兜底 |
 | 23 | 已拍板 | 编辑页同步状态条三态 | 三态：**已同步到草稿箱** / **仅本地待同步**（离线或失败）/ **已恢复未保存的草稿**。恢复提示优先且可关闭，关闭后显示同步态 |
@@ -96,6 +96,9 @@
 | 42 | 已拍板 | 导入与空白草稿的冲突 | 新增态编辑页 `editorKey = 'new'`，与空白草稿是同一个槽位（`note_id = 0`）。而 `initEditor()` 的顺序是：预填 → 取 `baseline` → `getBlankNoteDraft()` → `restoreFormData()` 非空就**无条件 `applyForm(restoredForm)` 整份套回表单**。所以导入前必须先查一次空白草稿，非空就弹确认框「编辑页里有一份未保存的草稿（约 N 字 / 更新于 X），导入会覆盖它。[继续导入] [先去看看草稿]」——不查的话两份内容抢同一个槽位，**必有一份静默消失** |
 | 43 | 已拍板 | 后台弹窗与前台共用同一份草稿 | 后台笔记编辑弹窗接上同一张 `sgj_note_draft` 与同一份本地缓冲（key 仍是 `{username}:{editorKey}`），**不新开槽位**：草稿行按 `(create_by, note_id)` 归属，所以后台「新增」恢复的就是前台「写笔记」那份空白草稿。代价是两边同时编辑同一篇时后写覆盖（与结论 24 一致），好处是「同一篇笔记的未保存内容」只有一个地方。判定链复用 `utils/noteDraftBuffer`，后台只重写视图接线（watch / 定时器 / 弹窗生命周期）——等两条分支都合入后，两处接线可以收成一份 composable |
 | 44 | 已拍板 | 导入的两道前置检查只有一份实现 | 「目标槽位的草稿冲突」与「`noteId` 往返识别」抽在 `utils/noteImportGuards`，前台列表页与后台弹窗共用。判据必须一致：不一致的话，同一份文件在两条入口上前台会问你一句、后台静默顶掉；或者前台认得出是同一篇、后台多存一篇。「是不是自己的」严格按 `create_by` 比对（不看「能不能看到」），所以**管理员导入别人的导出文件同样静默新建**，不写他人数据 |
+| 45 | 已拍板 | 列表卡片改为限宽网格、创建动作合并 | 评审稿与对照：`docs/design/mockups/note-0.0.2/note-list-redesign.html`。① **内容栏 1080px 居中**、卡片网格 `minmax(min(320px, 100%), 1fr)`：卡片过宽时 120 字摘要只占一行、边界无处可断，两行截断永不触发（省略号不出现）；收窄后摘要自然落到 2 行以上。`min()` 兜住窄屏，避免 320px 撑破容器。② **同行等高 + meta 贴底**：网格**不写 `align-items: start`**（写了各卡按内容高度排、底边参差），卡片改竖直 flex、`.note-meta { margin-top: auto }`，让同行卡片的「独立笔记 / 标签 / 时间」落在一条基线上。③ **创建动作合并到 banner**（`导入 md` + `＋ 写笔记`），筛选栏只留搜索。④ 命中次数由摘要下方独立一行移入 meta 行右端。**瀑布流已评审不采用**：参差的底边正是它的特征，而本页按时间倒序扫描靠的是横向对齐；且 CSS 多栏的阅读顺序是先竖后横，要用就得引 JS 瀑布（按最短列定位）把顺序摆正 |
+| 46 | 缺陷 | 新建笔记沉底 | `insertSgjNote` 只写 `create_time`，`update_time` 留空；而列表（前台 / 后台 / 回收站三处共用一种排序）是 `order by update_time desc`，MySQL 的 NULL 在 desc 里排最后——**新写的笔记沉在列表底部，时间倒序对它们失效**（导入、手工 SQL 同理）。两侧一起修：写入侧 `insert` 显式写 `update_time = sysdate()`，DDL 给 `default current_timestamp` 兜住漏写；排序侧抽成 `listOrder` 片段并改 `order by coalesce(update_time, create_time) desc`，历史空值也不沉底。存量回填见 `sql/update/20260928_note_update_time.sql` |
+| 47 | 缺陷 | 导出 .md 形状与导入侧的往返契约不一致 | 前端导入侧（`utils/noteImport.ts`）一直是按「`noteId` **裸数字** + `title` / `tags` 双引号转义 + `---` 后**空一行** + 文件**以换行收尾**」解析的，后端导出有三处对不上：① `yamlString()` 对**所有**值一律加引号，`noteId: "9104"` 变成字符串；② `writeYaml()` 的「重建前言」分支只写 `---\n`，比「新建前言」分支少那个空行——于是键多于一个时空行被吃掉；③ 正文末尾不补换行。三处一并对齐，形状由两侧测试钉住（`AppNoteExportSmokeTest` / `noteImport.spec.ts`） |
 
 ### 2.3 检索的两条安全与语义边界
 
@@ -175,7 +178,8 @@ create table sgj_note_draft (
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/app/note/draft/list` | 无参：当前用户的**全部**草稿（空白草稿 + 编辑态），供草稿箱。**只回 `excerpt`，不回 `content`**；`itemName` 左联 `sgj_item` 带出（查不到回退 `#id`，与笔记列表一致）；`noteId` 标明来源笔记（空白草稿为 `null`） |
+| GET | `/app/note/draft/list` | 无参：当前用户的**全部**草稿（空白草稿 + 编辑态），供草稿箱。**只回 `excerpt`，不回 `content`**；`itemName` 左联 `sgj_item` 带出（查不到回退 `#id`，与笔记列表一致）；`noteId` 标明来源笔记（空白草稿为 `null`）。正文只在服务端用于生成摘要，响应前置空 |
+| GET | `/app/note/draft/count` | 当前用户的**草稿份数**（笔记列表页入口条用）。入口条每次页面加载都要这个数字，所以单开一条只回计数的查询：列表接口为了生成摘要把每份草稿正文都取了回来，不能拿它当计数用 |
 | GET | `/app/note/draft/blank` | 本人的**空白草稿**（每人一份，含正文）：进「写笔记」时按身份取回来——本机 localStorage 里没有 `draftId`（换设备 / 清过缓存）也接得住，否则写第二篇会静默覆盖第一篇 |
 | GET | `/app/note/draft/list?noteId=` | 有参：该篇笔记的未保存改动（供编辑页静默恢复），取最新一行 |
 | GET | `/app/note/draft/{draftId}` | 按 id 取单条草稿（**含完整 `content`**），供草稿箱「继续写」与冷启动的 `/note/edit?draftId=`。字面量 `/list` 优先于 `/{draftId}` 匹配，不冲突 |
@@ -205,7 +209,7 @@ create table sgj_note_draft (
 | --- | --- | --- |
 | `keyword` | 入参 | 标题 **OR** 正文模糊匹配；`title` 保持「仅标题」原义 |
 | `excerpt` | 出参 | 前台列表摘要，纯文本（**草稿列表也用它**） |
-| `hitTotal` | 出参 | 出现次数，供「文中出现 N 次」小字（仅 >1 处时显示，评审结论见 §2.9：多命中不轮播）。统计口径 = 标题 + 剥离前言后的正文、并去除与标题重复的首个一级标题行——与详情页「标题 + 正文」高亮口径一致，列表次数 = 详情可跳转处数 |
+| `hitTotal` | 出参 | 出现次数，供「文中出现 N 次」小字（有命中即显示，**1 次也显示**；评审结论见 §2.9：多命中不轮播）。统计口径 = 标题 + 剥离前言后的正文、并去除与标题重复的首个一级标题行——与详情页「标题 + 正文」高亮口径一致，列表次数 = 详情可跳转处数 |
 | `draftId` | 入参 | 保存笔记时携带，用于同事务删除对应草稿 |
 
 `SgjNoteDraft` 域对象同样需要 `itemName`（左联 `sgj_item` 带出）与 `excerpt`（无标题草稿展示首行）两个**非表字段**，复用 §2.6 的静态摘要方法，不另写一份。
@@ -236,25 +240,29 @@ create table sgj_note_draft (
 
 | 情形 | 取值 |
 | --- | --- |
-| 有关键词且命中 | 以命中处为中心，前后各约 40 字，两端加省略号 |
+| 有关键词且命中 | 以命中处为中心，前后各约 60 字（窗口 120 字）；**不拼省略号**（超出由卡片行截断表达） |
 | 有关键词但只命中标题 | 取正文**开头**约 120 字（标题本身由前端高亮） |
 | 无关键词 | 取正文开头约 120 字 |
-| 剥离后为空（如整篇只有代码块） | 回退为**原始文本**开头约 120 字，保证卡片不空白 |
+| 剥离后为空（如整篇只有代码块） | 回退为**原始文本**开头约 120 字，保证卡片不空白（FR-002-2 边界 3） |
 | `content` 为空 | `excerpt` 为空串 |
 
-边界若落在英文单词中间，最多向外扩 10 字符至最近的空白或标点（中文按字符切即可）。命中定位在**剥离后的纯文本**上做，大小写不敏感。
+边界若落在英文单词中间，最多向外扩 10 字符至最近的空白或标点（中文按字符切即可）。命中定位在**剥离后的纯文本**上做，大小写不敏感；因此必须**先剥离 Markdown 再截窗**，否则半截语法（被切断的 `` ` `` 、`![` ）会原样留在摘要里。
 
-**命中位置怎么算**：`MATCH ... AGAINST` 只回答「哪一行命中」，不回答「在第几个字」——所以命中窗口仍由 `locate()` + `substring()` 在 SQL 里算（结论 32），`MATCH` 只负责筛选出行。两件事互相独立，实测可组合使用。命中总数 `hitTotal` 由同一趟 `locate()` 循环向后数出，不额外查库。
+摘要只给纯文本片段，**不拼接省略号**——省略号属排版，由前端负责：卡片**最多展示 2 行**（`-webkit-line-clamp`；约 120 字，字数上限由后端摘要窗口决定），超出由浏览器在行尾渲染省略号。检索态与浏览态同一套，不单独补头部或尾部省略号字符。**卡片必须限宽**（结论 45）：全宽 1248px 时 120 字只占一行，2 行截断永不触发、省略号根本不出现。
 
-**列表查询取哪一段（结论 32 已定）**
+**命中位置怎么算**：`MATCH ... AGAINST` 只回答「哪一行命中」，不回答「在第几个字」——命中窗口由 Java 侧在**剥离后的纯文本**上定位（`SgjNoteUtils.extractSnippets`），`MATCH` 只负责筛选出行，两件事互相独立。命中总数 `hitTotal` 由同一趟定位顺带数出，不额外查库。
 
-前台列表**不再取全文**，改由 SQL 算出「命中窗口 + 无命中前缀」两段短文本，回传几百字符。这与上面的摘要在 Java 侧剥离并不矛盾：**SQL 负责定位与截取，Java 负责剥离 Markdown 标记**（块级剥离无法用 SQL 表达，摘要在 Java 侧仍是必需的）。
+**列表查询取哪一段**
+
+前台列表**取回正文、在 Java 侧生成摘要**：剥离 Markdown → 定位命中窗口 → 截 120 字（顺序不可颠倒，见上）。剥离与窗口都依赖 Markdown 语义，SQL 表达不了，所以「SQL 侧 `locate()` + `substring()` 截短文本、Java 只剥离」的旧方案已**废弃（结论 32 作废）**。SQL 只做 `MATCH` 筛选与可见范围过滤；响应前把 `content` 置空，正文不下发。草稿箱（§2.7）走同一套口径。
 
 实现上要注意：`selectSgjNoteVo` 是列表 / 详情 / 后台共用的片段，而**后台列表与导出仍需要全文**，所以前台列表要单开一份列清单。
 
 **草稿列表返回什么**（§2.7 也用）：草稿列表**只回 `excerpt`**（标题为空时显示正文首行）与 `itemName`，**不回 `content`**；「继续写」与冷启动的 `/note/edit?draftId=` 改由 `GET /app/note/draft/{draftId}` 取全文。
 
 **已采纳的原升级路径（原 ponytail 取舍作废）**：原方案让草稿列表顺带返回完整 `content`，省掉一个按 id 取单条草稿的接口；代价是每份草稿 × 单篇 100,000 字（原来的 20 份上限已取消，见结论 14）≈ 最坏 6MB，而这个 6MB 会落在**笔记列表页每次加载**上——入口条要知道数量就得先拉列表，且该页免登录、是访客最常打开的页面。现改为：列表只回 `excerpt`（约 2KB 量级），另加按 id 取单条。
+
+**入口条不订阅列表**：它单独订阅 `GET /app/note/draft/count`（只回计数、不取正文），所以「列表要不要取回正文」这件事已经与列表页每次加载脱钩——列表只为草稿箱页面服务，而那个页面本就要展示每份草稿，读回正文生成摘要是它自己的成本。
 
 ### 2.7 草稿写入与同步
 
@@ -309,14 +317,16 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 
 - 预览数据源由 `note.content` 改为 `note.excerpt`；
 - 卡片不再渲染 Markdown，改为纯文本摘要；关键词高亮：把摘要按关键词切成片段数组，模板里用 `span` 循环渲染。**不拼 HTML 字符串、不走 `v-html`**，因此不产生 `escapeHtml` 需求，也不新增绕过 DOMPurify 的路径；
-- **多命中轮播已评审不采用**（2026-09-18）：文字的阅读节奏与自动播放冲突，动的卡片还会干扰相邻卡片的阅读；多命中场景以摘要下方的「文中出现 N 次」小字提示（统一自然语言表述，不用「命中」这类实现术语；仅 >1 处时显示），查看全部进详情页。完整规格留档于 `docs/design/mockups/note-0.0.2/note-search-carousel.html`，落地样式见同目录 `note-search-excerpt.html`；
-- 底部渐隐改为**仅在内容溢出时**显示（需求 FR-002-2 边界 6）；
+- **多命中轮播已评审不采用**（2026-09-18）：文字的阅读节奏与自动播放冲突，动的卡片还会干扰相邻卡片的阅读；多命中场景以摘要下方的「文中出现 N 次」小字提示（统一自然语言表述，不用「命中」这类实现术语；有命中即显示，1 次也显示），查看全部进详情页。完整规格留档于 `docs/design/mockups/note-0.0.2/note-search-carousel.html`，落地样式见同目录 `note-search-excerpt.html`；
+- 摘要卡片改为**最多 2 行、超出以省略号收尾**（需求 FR-002-2 边界 6，替代原底部渐隐方案）；
+- **列表改为限宽网格**（结论 45）：内容栏 1080px 居中，卡片 `repeat(auto-fill, minmax(min(320px, 100%), 1fr))`，同行等高、meta 行贴底对齐。收窄是为了让 120 字摘要有正常的行宽——全宽 1248px 时它只占一行，读起来像裸文本，两行截断也永不触发、省略号根本不出现；
+- **创建类动作合并**（结论 45）：`导入 md` 与 `＋ 写笔记` 收进 banner 右端一组，筛选栏只留搜索——两个都是「创建」，而筛选栏是「找」；
 - 搜索框 placeholder 由「搜索笔记标题」改为「搜索标题与正文」；传参由 `title` 改为 `keyword`；
 - 删除 `previewContent()`——该职责已由后端摘要承担（结论 20）；
 - 修复移动端断点选择器 `.toolbar` → `.filter-bar`（结论 28）；
-- 插入草稿入口条，仅登录且草稿数 > 0 时渲染；**数量取草稿列表长度**（列表只回 `excerpt`，不再为这个数字拉下全部草稿正文，§2.6）。
+- 插入草稿入口条，仅登录且草稿数 > 0 时渲染；**数量取 `GET /app/note/draft/count`**（只回计数，不为这一行文案拉下草稿箱列表与每份草稿正文，§2.6/§2.7）。
 
-> 上面这一条「改吃 `excerpt`」在本版是**半成品状态**：develop 上 `SgjNote` 还没有 `excerpt` 字段，`SgjNoteMapper.xml` 的 `selectAppNoteList` 把短文本塞进了 `content`，而本页仍在用 `MarkdownViewer` + `previewContent()` 渲染。这段迁移**算在 #39 范围内**（不另开 issue），与入口条一起改到干净，否则会出现「草稿箱用 `excerpt`、笔记列表用 `content`」的同一字段两种语义并存。
+> 「改吃 `excerpt`」已落地（#39）：`SgjNote` 有 `excerpt` 字段，前台列表生成摘要后把 `content` 置空、正文不下发，卡片不再依赖 `MarkdownViewer` / `previewContent()`（`previewContent()` 已删除）。**草稿箱与笔记列表共用同一套摘要口径**（先剥离 Markdown 再截 120 字），不再有「同一字段两种语义」。
 
 `components/ItemNotes/index.vue` 同源改造：直接使用 `excerpt`，删除本地 `noteSummary()`。至此前端三份重复的「Markdown 转纯文本」中，前台两份消失，仅后台摘要列保留一份（结论 2 的既定代价）。
 
@@ -369,8 +379,8 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 | --- | --- |
 | `business/.../domain/SgjNote.java` | 新增 `keyword`、`excerpt`、`draftId` 三个非表字段 |
 | 新增 `business/.../domain/SgjNoteDraft.java` | 草稿实体（另需 `itemName`、`excerpt` 两个非表字段） |
-| 新增 `business/.../mapper/SgjNoteDraftMapper.java` + `resources/mapper/business/SgjNoteDraftMapper.xml` | 草稿 CRUD，按 `create_by` 过滤；列表只取 `excerpt` 所需列（不取 `content`）、左联 `sgj_item` 带 `item_name`；含 `deleteByNoteIds` 与「按 item_id 反查 note_id 删草稿」 |
-| `business/.../resources/mapper/business/SgjNoteMapper.xml` | `selectSgjNoteList` 的检索条件改为 `match(title, content) against(#{keyword} in boolean mode)`；列表列清单改为只取「命中窗口 / 前缀」短文本（结论 32）；新增按 `noteId` 判断存活 / 按 `itemId` 取 `note_id` 的查询 |
+| 新增 `business/.../mapper/SgjNoteDraftMapper.java` + `resources/mapper/business/SgjNoteDraftMapper.xml` | 草稿 CRUD，按 `create_by` 过滤；列表取回正文用于生成摘要（剥离 Markdown 无法用 SQL 表达，响应前置空 `content`）、左联 `sgj_item` 带 `item_name`；另有只回计数的 `selectBoxDraftCount`（入口条用）；含 `deleteByNoteIds` 与「按 item_id 反查 note_id 删草稿」 |
+| `business/.../resources/mapper/business/SgjNoteMapper.xml` | `selectSgjNoteList` 的检索条件改为 `match(title, content) against(#{keyword} in boolean mode)`；前台列表 `selectSgjNoteFrontList` 取回正文供 Java 侧生成摘要（窗口与截断都在剥离后的纯文本上做，结论 32 作废），响应前置空 `content`；`insertSgjNote` 补写 `update_time`、列表排序抽成 `listOrder` 片段并改 `coalesce(update_time, create_time)`（结论 46）；新增按 `noteId` 判断存活 / 按 `itemId` 取 `note_id` 的查询 |
 | `business/.../service/impl/SgjNoteServiceImpl.java` | 新增静态摘要方法（含标题去重与 front-matter 剥离）；`CONTENT_MAX_LENGTH` 20000 → 100000（结论 32）；检索前剔除布尔运算符字符（结论 33）；**`deleteSgjNoteByIds` / `purgeSgjNoteByIds` 加 `@Transactional` 并调 `deleteByNoteIds`**（结论 25）；`add` / `edit` 的 `draftId` 归属校验与同事务删除（结论 15） |
 | `business/.../service/impl/SgjItemServiceImpl.java` | **`purgeSgjItemByIds` 加 `@Transactional`，并在删除条目前先删该条目下所有笔记的草稿**（结论 25，顺序不能反）。原文件清单漏了此文件 |
 | 新增 `business/.../service/ISgjNoteDraftService.java` + `impl/SgjNoteDraftServiceImpl.java` | 草稿服务：归属校验、存活校验（结论 40）、按 owner + noteId 的 upsert 与唯一键冲突转更新、`deleteByNoteIds` 共用清理；**不加 `@Transactional`** |
@@ -384,7 +394,7 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 
 | 文件 | 变更 |
 | --- | --- |
-| `views/front/note/index.vue` | 改吃 `excerpt`、切片段高亮、删 `previewContent()`、改 placeholder 与传参、加草稿入口条、修移动端断点、渐隐仅在溢出时显示（属 #39 范围） |
+| `views/front/note/index.vue` | 改吃 `excerpt`、切片段高亮、删 `previewContent()`、改 placeholder 与传参、加草稿入口条、修移动端断点、限宽网格 + 摘要 2 行超出以省略号收尾、创建动作合并进 banner（结论 45，属 #39 范围） |
 | 新增 `views/front/note/draft.vue` + `router/index.ts` 路由 | 草稿箱页（已登录才能进，走现有守卫） |
 | 新增 `api/front/noteDraft.ts` + `types/api/front/noteDraft.ts` | 草稿接口与类型 |
 | `components/ItemNotes/index.vue` | 改吃 `excerpt`，删 `noteSummary()` |
@@ -403,9 +413,9 @@ key : sgj:note:buf:{username}:{editorKey}   // editorKey = note:{noteId} | draft
 
 | 测试 | 内容 |
 | --- | --- |
-| `SgjNoteExcerptTest`（新增，纯单测，无 Spring / 无 DB） | 剥离各类语法；**正文以同级 H1 开头时摘要不重复标题**；**YAML front-matter 整块移除**；窗口以命中处为中心；无命中取开头；命中标题时取开头；纯代码块笔记的回退；空正文；命中在首 / 尾 |
+| `SgjNoteExcerptTest`（新增，纯单测，无 Spring / 无 DB） | 剥离各类语法；**正文以同级 H1 开头时摘要不重复标题（大小写不敏感）**；**YAML front-matter 整块移除（CRLF 前言不残留换行）**；窗口以命中处为中心；无命中取开头；命中标题时取开头；**先剥离再截断时不留半截语法**；纯代码块笔记的回退；空正文与 null 正文；命中在首 / 尾 |
 | `AppApiAuthIsolationSmokeTest`（补用例） | ①私密笔记正文含独有标记 → 匿名带 `keyword` 请求 → **0 命中**；回收站笔记同样不可命中。②检索语义：`mysql` 不命中只含 `sql` 的笔记（布尔模式）；**单字查询返回 0 行**（ngram 约束）；含 `-` / `+` 的输入不报错且不产生空结果（运算符已被剔除） |
-| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问六个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**同一身份收敛**：空白草稿连推两次（中间换了 `item_id` 也只算同一份）、编辑态每篇笔记一行，同一 `(create_by, note_id)` 不带 `draftId` 连推不产生第二行（空白草稿写 `0`）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、**不带 `draftId` 也按 `note_id` 清掉那份草稿（新增 = 空白草稿；且不误删别的笔记的编辑态草稿）**、不带 `draftId` 的笔记写入行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
+| `AppNoteDraftSmokeTest`（新增，#37/#38 的用例单独成类，不挤进上面那个带 `@Order` 的类） | ①**匿名访问六个草稿端点返回 401 业务码**（`ServletUtils.renderString` 写死 HTTP 200，断言要断 body 里的 `code`，不是 HTTP 状态；否则「不是 200 空列表」这句会被误读成 HTTP 断言）。②新建返回 `draftId` + **与库里那行一致的 `updateTime`**（不能用 JVM 时钟，结论 10）；草稿箱列表只回 `excerpt` 不回 `content`；入口条份数与列表长度一致；按 id 取单条含正文；带 `draftId` 更新不新建行；删除即时消失。③无标题草稿用正文首行兜底。④草稿隔离：A 用户草稿对 B 不可见；按他人 `draftId` 更新 / 删除被拒；**管理员也读不到他人草稿**（不沿用 `AppScopeHelper`）。⑤首页 `noteTotal` 与最近笔记不受草稿影响。⑥**同一身份收敛**：空白草稿连推两次（中间换了 `item_id` 也只算同一份）、编辑态每篇笔记一行，同一 `(create_by, note_id)` 不带 `draftId` 连推不产生第二行（空白草稿写 `0`）；**存活校验（结论 40）**：往软删掉的、以及已物理删除的笔记写草稿都被拒。⑦发布语义：带自己的 `draftId` 保存后草稿行消失、**不带 `draftId` 也按 `note_id` 清掉那份草稿（新增 = 空白草稿；且不误删别的笔记的编辑态草稿）**、不带 `draftId` 的笔记写入行为不变、**带他人 `draftId` 整个请求失败且没有写入任何数据**。⑧**三条清理路径各一条用例**：笔记软删 / 笔记彻底删除 / **条目彻底删除**（结论 25 第 ③ 处，原清单整个没有这条）后，该笔记的草稿行都消失 |
 
 **前端**
 

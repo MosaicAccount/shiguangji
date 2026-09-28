@@ -46,9 +46,10 @@ import com.shiguangji.system.service.ISysUserService;
  *
  * <p>覆盖场景：</p>
  * <ol>
- *   <li>anonymousDraftEndpointsRejected        —— 匿名访问四个草稿端点均为业务码 401（不是 200 空列表）</li>
+ *   <li>anonymousDraftEndpointsRejected        —— 匿名访问六个草稿端点（列表 / 份数 / 空白 / 按 id / 保存 / 删除）均为业务码 401（不是 200 空列表）</li>
  *   <li>createUpdateDeleteBoxDraft             —— 新建返回 draftId + 数据库里的 updateTime；
- *       草稿箱列表只回 excerpt 不回 content；按 id 取单条含正文；更新不新建行；删除即时消失</li>
+ *       草稿箱列表只回 excerpt 不回 content；入口条份数与列表长度一致（且不取正文）；
+ *       按 id 取单条含正文；更新不新建行；删除即时消失</li>
  *   <li>boxExcerptFallsBackToContent           —— 无标题草稿用正文首行兜底（摘要复用笔记列表那套剥离逻辑）</li>
  *   <li>draftsAreVisibleToOwnerOnly            —— 他人（含管理员）既看不到也改不了 / 删不了别人的草稿</li>
  *   <li>homeStatsIgnoreDrafts                  —— 首页笔记总数与最近笔记不受草稿影响（独立表的直接收益）</li>
@@ -141,6 +142,12 @@ class AppNoteDraftSmokeTest
         mockMvc.perform(get("/app/note/draft/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(401));
+        mockMvc.perform(get("/app/note/draft/blank"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(401));
+        mockMvc.perform(get("/app/note/draft/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(401));
         mockMvc.perform(put("/app/note/draft").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"qat35 匿名\"}"))
                 .andExpect(status().isOk())
@@ -171,6 +178,9 @@ class AppNoteDraftSmokeTest
         assertThat(row).as("草稿箱应包含新建的草稿").isNotNull();
         assertThat(row.path("excerpt").asText()).contains(MARK + " 正文第一行");
         assertThat(row.hasNonNull("content")).as("草稿箱列表不应下发正文").isFalse();
+        // 入口条只订阅份数接口，它必须与草稿箱列表长度一致（否则入口条数字会与实际不符）
+        assertThat(countBox(adminToken)).as("入口条份数应与草稿箱列表长度一致")
+                .isEqualTo(boxList(adminToken).size());
 
         // 按 id 取单条：含完整正文（草稿箱「继续写」用）
         mockMvc.perform(get("/app/note/draft/" + draftId).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
@@ -191,6 +201,8 @@ class AppNoteDraftSmokeTest
                 .andExpect(jsonPath("$.code").value(200));
         assertThat(findById(boxList(adminToken), draftId)).as("删掉的草稿不应再出现在草稿箱").isNull();
         assertThat(draftRowExists(draftId)).isFalse();
+        assertThat(countBox(adminToken)).as("删除后入口条份数同步减少")
+                .isEqualTo(boxList(adminToken).size());
     }
 
     // ------------------------------------------------------------------
@@ -493,6 +505,16 @@ class AppNoteDraftSmokeTest
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(500));
         assertThat(countDraftsOfNote(noteId)).as("已删笔记不得再写入草稿").isZero();
+    }
+
+    /** 入口条用的草稿份数（只回计数，不取正文） */
+    private int countBox(String token) throws Exception
+    {
+        MvcResult result = mockMvc.perform(get("/app/note/draft/count").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        return bodyOf(result).path("data").asInt();
     }
 
     private JsonNode boxList(String token) throws Exception

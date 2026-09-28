@@ -150,7 +150,7 @@ create table sgj_note (
   create_by    varchar(64)     default ''                 comment '创建者',
   create_time  datetime                                   comment '创建时间',
   update_by    varchar(64)     default ''                 comment '更新者',
-  update_time  datetime                                   comment '更新时间',
+  update_time  datetime      default current_timestamp    comment '更新时间（插入时显式写入；默认值兜底）',
   remark       varchar(500)    default null               comment '备注',
   primary key (note_id),
   key idx_sgj_note_item (item_id),

@@ -20,6 +20,14 @@ public interface ISgjNoteDraftService
     public List<SgjNoteDraft> selectBoxList(String createBy);
 
     /**
+     * 草稿份数（笔记列表页入口条用；不取正文）
+     *
+     * @param createBy 当前登录用户
+     * @return 份数
+     */
+    public int countBox(String createBy);
+
+    /**
      * 查询某篇笔记未保存完的改动（当前用户，最新一行，含正文）
      *
      * @param createBy 当前登录用户

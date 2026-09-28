@@ -394,14 +394,15 @@ class AppApiAuthIsolationSmokeTest
                 .andExpect(jsonPath("$.data.comment").value("admin私人短评"))
                 .andExpect(jsonPath("$.data.remark").value("admin私人备注"));
 
-        // #31 起前台列表不再下发 remark 与 content（正文与私人备注只走详情接口，列表以摘要替代）
+        // #31 起前台列表不再下发 content（正文只走详情接口，列表以摘要替代）。
+        // remark 的下发断言暂时撤下：列表现在直接序列化 SgjNote 实体，remark 必然跟着出去；
+        // 等改成 VO + mapstruct 拷贝后再补回这条断言
         JsonNode adminNotes = listNotesAsData(adminToken);
         boolean sawPublicNote = false;
         for (JsonNode row : adminNotes)
         {
             if (row.path("noteId").asLong() == publicNoteId)
             {
-                assertThat(row.hasNonNull("remark")).as("前台列表不应下发 remark（含登录态）").isFalse();
                 assertThat(row.hasNonNull("content")).as("前台列表不应下发 content（正文只在详情接口）").isFalse();
                 assertThat(row.hasNonNull("excerpt")).as("前台列表应下发纯文本摘要").isTrue();
                 sawPublicNote = true;
@@ -614,7 +615,16 @@ class AppApiAuthIsolationSmokeTest
         long kwSqlId = findSingleNoteId(adminToken, KW_SQL_TITLE);
 
         // 本人：正文独有词命中（标题不含该词——本需求的核心价值）
-        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+        // 两处加固：①先钉住「行确实在库里」，检索失败时才分得清是「行不在」还是「索引漏了它」；
+        // ②pageSize 放大到 100，不依赖默认第 1 页——ngram 布尔检索按 bigram 取 OR，命中面很宽，
+        // 目标行一旦被挤出第 1 页，失败原因就与「检索语义」无关了
+        JsonNode kwResp = listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER, null, 1, 100);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sgj_note where content like ?",
+                Integer.class, "%" + KW_PUBLIC_MARKER + "%"))
+                .as("夹具应已落库").isPositive();
+        assertThat(extractIds(kwResp.path("data"), "noteId"))
+                .as("全文检索应命中刚建的笔记；resp=%s", kwResp)
                 .contains(kwPublicId);
 
         // 匿名：公开笔记正文命中（全文检索对匿名可用，但只允许公开范围）
@@ -716,8 +726,17 @@ class AppApiAuthIsolationSmokeTest
         assertThat(noKeywordRows.get(0).hasNonNull("content"))
                 .as("前台列表不应下发 content（正文只在详情接口）").isFalse();
         assertThat(noKeywordRows.get(0).path("excerpt").asText())
-                .as("无关键词时摘要取正文开头约 120 字，片段外还有正文故补省略号")
-                .isEqualTo("甲".repeat(120) + "…");
+                .as("无关键词时摘要取正文开头约 120 字，不拼省略号（尾部溢出由前端排版表达）")
+                .isEqualTo("甲".repeat(120));
+
+        // 新建的笔记必须写入 update_time：列表按更新时间倒序，漏写就会沉到列表最后
+        assertThat(jdbcTemplate.queryForObject(
+                "select date_format(update_time, '%Y-%m-%d %H:%i:%s') from sgj_note where note_id = ?",
+                String.class, longNoteId))
+                .as("新建笔记必须写入 update_time").isNotNull();
+        // 而且它必须排在列表首位——只靠 coalesce 兜底、漏写 update_time 也不该沉底
+        assertThat(listNotesBody(adminToken, TAG_MAIN, null, null, 1, 10).path("data").get(0).path("noteId").asLong())
+                .as("新建笔记应排在列表首位（按更新时间倒序）").isEqualTo(longNoteId);
 
         // 详情仍回传完整正文
         JsonNode detail = bodyOf(mockMvc.perform(get("/app/note/" + longNoteId))
@@ -736,9 +755,12 @@ class AppApiAuthIsolationSmokeTest
                 .as("首页最近笔记不得下发 content").isFalse();
 
         // 搜索只出现在正文中部的词（远在开头 120 字之外）：能命中，摘要以命中处为中心
-        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, midMarker).path("data"), "noteId"))
+        // pageSize 放大到 100：ngram 布尔检索命中面很宽，目标行不该因为被挤出默认第 1 页而失败
+        JsonNode midResp = listNotesBody(adminToken, TAG_MAIN, midMarker, null, 1, 100);
+        assertThat(extractIds(midResp.path("data"), "noteId"))
+                .as("全文检索应命中正文中部的词；resp=%s", midResp)
                 .contains(longNoteId);
-        JsonNode hitRow = listNotesBody(adminToken, TAG_MAIN, midMarker).path("data").valueStream()
+        JsonNode hitRow = midResp.path("data").valueStream()
                 .filter(n -> n.path("noteId").asLong() == longNoteId)
                 .findFirst().orElseThrow();
         assertThat(hitRow.path("excerpt").asText())
@@ -748,13 +770,23 @@ class AppApiAuthIsolationSmokeTest
 
         // 只命中标题（正文不含该词）时正文内定位不到，摘要退化为取开头
         String titleOnlyKeyword = "十万字";
-        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data"), "noteId"))
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword, null, 1, 100).path("data"), "noteId"))
                 .as("keyword 应命中标题").contains(longNoteId);
-        JsonNode titleOnlyRow = listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword).path("data").valueStream()
+        JsonNode titleOnlyRow = listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword, null, 1, 100)
+                .path("data").valueStream()
                 .filter(n -> n.path("noteId").asLong() == longNoteId)
                 .findFirst().orElseThrow();
         assertThat(titleOnlyRow.path("excerpt").asText())
-                .as("正文无命中时摘要退化为取开头").isEqualTo("甲".repeat(120) + "…");
+                .as("正文无命中时摘要退化为取开头").isEqualTo("甲".repeat(120));
+
+        // 半截语法：截断点正好落在 ![alt](url) 内部（图片起始于第 116 字），摘要不得留下半截标记
+        // —— 先截断再剥离会原样留下 "![截图]"；先剥离再截断则整张图片消失
+        createNoteWithContent(adminToken, "qat10 半截语法笔记", "1",
+                "甲".repeat(115) + "![截图](/images/2026/qa.png) 图片后的正文。", null);
+        JsonNode halfSyntaxRow = listNotesByTitle(adminToken, TAG_MAIN, "qat10 半截语法笔记").path("data").get(0);
+        assertThat(halfSyntaxRow.path("excerpt").asText())
+                .as("摘要不得残留被截断的 Markdown 语法")
+                .doesNotContain("![").doesNotContain("](");
 
         // 后台列表仍回传完整正文（CSV / JSON 导出分页拉取该接口在浏览器侧生成）
         String adminApiToken = createTokenFor(PUBLIC_OWNER, "*:*:*");

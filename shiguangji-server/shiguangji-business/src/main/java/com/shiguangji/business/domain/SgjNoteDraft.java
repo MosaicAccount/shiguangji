@@ -39,9 +39,6 @@ public class SgjNoteDraft extends BaseEntity
     /** 公开状态（0私密 1公开，保存后沿用到笔记） */
     private String isPublic;
 
-    /** 草稿箱展示用摘要原文片段（SQL 截出的正文前缀，生成 excerpt 后置空不下发，非表字段） */
-    private String excerptSrc;
-
     /** 草稿箱展示用摘要（纯文本；标题为空时展示它，非表字段） */
     private String excerpt;
 
@@ -125,17 +122,6 @@ public class SgjNoteDraft extends BaseEntity
     public void setIsPublic(String isPublic)
     {
         this.isPublic = isPublic;
-    }
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public String getExcerptSrc()
-    {
-        return excerptSrc;
-    }
-
-    public void setExcerptSrc(String excerptSrc)
-    {
-        this.excerptSrc = excerptSrc;
     }
 
     public String getExcerpt()
