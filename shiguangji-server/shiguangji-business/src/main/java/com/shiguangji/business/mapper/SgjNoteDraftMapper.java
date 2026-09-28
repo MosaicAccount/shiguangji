@@ -18,11 +18,11 @@ public interface SgjNoteDraftMapper
     /**
      * 查询草稿箱列表（当前用户的全部草稿：新建态 + 编辑态，每个写作对象一行），按更新时间倒序
      *
-     * 只取摘要所需的正文前缀（excerpt_src），不取全文——列表页免登录即可打开，
-     * 入口条每次都要拉这份列表，不能把每份十万字的正文带上
+     * 取回正文用于生成摘要——剥离 Markdown 无法用 SQL 表达，只能取回后再裁 120 字；
+     * 响应前 content 会被置空（见 SgjNoteDraftServiceImpl.selectBoxList），列表不下发正文
      *
      * @param createBy 当前登录用户
-     * @return 草稿集合（含 itemName，content 为空）
+     * @return 草稿集合（含 itemName 与 excerpt，content 为空）
      */
     public List<SgjNoteDraft> selectBoxDraftList(String createBy);
 

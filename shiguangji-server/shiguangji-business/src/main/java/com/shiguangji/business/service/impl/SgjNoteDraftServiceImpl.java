@@ -43,9 +43,15 @@ public class SgjNoteDraftServiceImpl implements ISgjNoteDraftService {
         List<SgjNoteDraft> list = sgjNoteDraftMapper.selectBoxDraftList(createBy);
         for (SgjNoteDraft draft : list) {
             // 草稿正文有可能为空，所以要提前排除
-            if(StringUtils.isNotEmpty(draft.getContent())) {
-                draft.setExcerpt(SgjNoteUtils.truncateAtWordBoundary(draft.getContent(), SgjNoteConstants.EXCERPT_WINDOW_LENGTH));
+            if (StringUtils.isNotEmpty(draft.getContent())) {
+                // 摘要口径与笔记列表一致：先剥离 Markdown 再截 120 字（顺序反了会留下半截语法）
+                draft.setExcerpt(SgjNoteUtils.truncateAtWordBoundary(
+                        SgjNoteUtils.stripMarkdown(
+                                SgjNoteUtils.buildBody(draft.getContent(), draft.getTitle())),
+                        SgjNoteConstants.EXCERPT_WINDOW_LENGTH));
             }
+            // 草稿箱列表不下发正文：只在按 id / noteId 取单条时给
+            draft.setContent(null);
             clearBlankNoteId(draft);
         }
         return list;
