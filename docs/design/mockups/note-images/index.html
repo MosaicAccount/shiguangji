@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 带图笔记的图片搬运 — 拾光记</title>
+<style>
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sgj-bg);color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:15px;line-height:1.7}
+a{color:var(--sgj-primary);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1080px;margin:0 auto;padding:44px 20px 70px}
+.banner{position:relative;background:#282e2c;color:#e7ece9;border-radius:24px;padding:34px 40px;overflow:hidden;margin-bottom:26px}
+.banner .blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:140px;bottom:-100px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .in{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.3}
+.banner p{margin:12px 0 0;font-size:14px;color:#aeb8b3;letter-spacing:.4px;max-width:640px}
+h2{font-family:var(--sgj-font-serif);font-size:19px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--sgj-border)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px 20px;
+  box-shadow:var(--sgj-shadow-sm);display:block;color:inherit}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px);transition:box-shadow .16s,transform .16s;text-decoration:none}
+.card h3{margin:0 0 6px;font-family:var(--sgj-font-serif);font-size:17px}
+.card .route{font-size:12px;color:var(--sgj-text-4);font-family:ui-monospace,Menlo,monospace}
+.card p{margin:8px 0 0;font-size:13px;color:var(--sgj-text-2)}
+.card ul{margin:8px 0 0;padding-left:20px;font-size:12.5px;color:var(--sgj-text-3)}
+.card li{margin:3px 0}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.tag.new{background:var(--sgj-primary-soft);color:var(--sgj-primary)}
+.tag.chg{background:var(--sgj-amber-soft);color:var(--sgj-amber)}
+.box{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 20px}
+.box ul{margin:0;padding-left:20px}
+.box li{margin:5px 0;font-size:14px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--sgj-bg-deep);border-radius:4px;padding:1px 5px;color:var(--sgj-primary)}
+.note{font-size:12.5px;color:var(--sgj-text-4);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner">
+    <div class="blob"></div><div class="blob2"></div>
+    <div class="in">
+      <h1>带图笔记的图片搬运</h1>
+      <p>承接 FR-002-8 导入链路的<b>边界 3</b>：带图 md 导入后图片引用会整片失效。本组图把「用户自己指出图在哪」这条补回来的路上，两个新界面画出来。</p>
+    </div>
+  </div>
+
+  <h2>怎么用</h2>
+  <div class="box">
+    <ul>
+      <li>每屏一页，页内用顶部工具条切换：<b>状态</b>、<b>深色模式</b>、<b>桌面 / 移动端</b>、<b>标注</b>。</li>
+      <li>橙色数字气泡与页脚「本屏标注」一一对应；关掉「标注」是无打扰观感。</li>
+      <li>设备框是<b>可滚动的真视口</b>：弹窗里的文件清单、编辑器的分屏预览都能滚，可以据此判断遮挡与留白。</li>
+      <li>视觉基线取自 <code>shiguangji-web/src/assets/styles/front-tokens.scss</code>（冷雾胶片 v3.3）；弹窗与编辑器沿用 Element Plus 结构，但配色走 <code>--sgj-*</code>（前台主题下的 Element Plus）。</li>
+    </ul>
+    <p class="note">本组图是<b>静态保真</b>，不连接真实接口：按钮可点、弹窗可关、状态可切，但文件选择器、上传与插入均为示意。这些是刻意的边界，不是缺失。</p>
+  </div>
+
+  <h2>各屏</h2>
+  <div class="grid">
+    <a class="card" href="carry-images.html">
+      <h3>搬运笔记里的图片</h3>
+      <span class="route">/note · 导入后的搬运弹窗</span>
+      <p><span class="tag new">新增</span>弹窗整页；指出图片在哪、按文件名匹配、改写正文引用</p>
+      <ul><li>状态：默认 / 上传中 / 部分未命中 / 全部未命中 / 有文件被忽略 / 跳过后的列表页提示</li></ul>
+    </a>
+    <a class="card" href="editor-image.html">
+      <h3>编辑器插图入口</h3>
+      <span class="route">/note/edit</span>
+      <p><span class="tag new">新增</span><code>MarkdownEditor</code> 工具栏「插图」按钮 + 粘贴截图上传</p>
+      <ul><li>状态：默认 / 上传中 / 插入成功 / 粘贴截图 / 失败</li></ul>
+    </a>
+  </div>
+
+  <h2>出图口径</h2>
+  <div class="box">
+    <ul>
+      <li><b>覆盖</b>：FR-002-8 边界 3 的「图片引用无法转存」所说的两条出路——导入时<b>搬运</b>（屏 1）与导入后<b>手工补图</b>（屏 2）。0.0.2 已发布的导入拦截框、超长拦截框、草稿冲突框均不变，不重复出图。</li>
+      <li><b>每屏都有</b>移动端（≤768px）与深色模式两个变体——页内切换，不另存文件。屏 1 的移动端差异是弹窗近满宽、按钮竖排；屏 2 的移动端差异是编辑器单栏 + 顶部「预览」按钮。</li>
+      <li><b>文案即定稿</b>：两屏里的中文文案按 [设计定稿] 逐字使用，会与实现逐字对齐；图里的说明性文字只出现在标注与页脚，不混进界面文案。</li>
+      <li><b>图片占位</b>：全部用 CSS / SVG 画的灰色圆角块（带「图」字），<b>不引用任何外部图片</b>；插入成功后正文里的 <code>/profile/upload/…</code> 与预览里的 <code>/dev-api/profile/upload/…</code> 都是真实行为（<code>photoUrl()</code> 给站内相对路径补 <code>VITE_APP_BASE_API</code> 前缀）。</li>
+      <li><b>本组图不含</b>：搬运的后端接口与存储形态、图片去重与孤儿文件对账、<code>data:</code> base64 内嵌图（明确不处理）、docx 里的内嵌图片（转后续版本）、条目标题里的图片与相册（走既有上传）。</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

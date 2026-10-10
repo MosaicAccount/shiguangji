@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 编辑器插图 — 拾光记</title>
+<style>
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台布局 ===== */
+.fh{height:72px;display:flex;align-items:center;gap:26px;padding:0 36px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;display:flex;gap:12px;align-items:center;color:var(--sgj-text-3)}
+.page{padding:36px}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:76px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-xl);padding:24px 28px}
+.chead{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.back{width:34px;height:34px;border-radius:50%;border:1px solid var(--sgj-border-card);background:var(--sgj-bg);color:var(--sgj-text-2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ctitle{flex:1;margin:0;font-family:var(--sgj-font-serif);font-size:22px;font-weight:700}
+.hacts{display:flex;gap:10px}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 18px;height:36px;background:var(--sgj-primary);color:#fff;font-size:13px}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;color:var(--sgj-text-2);margin-bottom:6px}
+.inp{border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);background:var(--sgj-bg-card);padding:8px 12px;color:var(--sgj-text);font:inherit;width:100%}
+
+/* ===== MarkdownEditor（既有结构 + 本次新增的工具栏左端）===== */
+.markdown-editor{width:100%}
+.md-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.md-toolbar-left{display:flex;align-items:center;gap:10px;min-width:0}
+.md-toolbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.md-hint,.md-count{font-size:12px;color:var(--sgj-text-4)}
+
+/* Element Plus 按钮观感（前台主题：主色走 --sgj-primary） */
+.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;
+  padding:6px 12px;font-size:12px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
+.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .el-button--primary{color:#171B1A}
+.el-button--small{padding:5px 11px;font-size:12px}
+.el-button.is-disabled,.el-button[disabled]{opacity:.55;cursor:not-allowed}
+.el-button--plain{background:var(--sgj-bg-card);border-color:var(--sgj-primary);color:var(--sgj-primary)}
+.spin{width:12px;height:12px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+html.dark .spin{border-color:rgba(23,27,26,.35);border-top-color:#171B1A}
+.spin.dark{border-color:var(--sgj-border);border-top-color:var(--sgj-primary)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ic{display:inline-flex;flex-shrink:0}
+
+/* 交错的第二行提示（新增） */
+.md-subhint{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sgj-text-4);margin:0 0 10px}
+.paste-note{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sgj-warning);
+  background:var(--sgj-amber-soft);border-radius:999px;padding:2px 10px}
+
+/* 上传失败提示（Element Plus message · error） */
+.el-message{display:flex;align-items:center;gap:8px;border-radius:6px;padding:8px 14px;font-size:13px;
+  background:#FEF0F0;border:1px solid #FDE2E2;color:#F56C6C;margin:0 0 10px}
+html.dark .el-message{background:#3A2624;border-color:#5A2E2C;color:#D67870}
+
+.md-panes{display:flex;gap:12px;height:320px}
+.md-panes textarea{flex:1;min-width:0;height:100%;resize:none;font-family:var(--sgj-font-mono);font-size:12.5px;line-height:1.75;
+  color:var(--sgj-text-2);background:var(--sgj-bg-card);border:1px solid var(--sgj-border);border-radius:6px;padding:10px 12px;outline:0}
+.md-preview{flex:1;min-width:0;height:100%;border:1px solid var(--sgj-border-card);border-radius:4px;padding:5px 14px;
+  overflow-y:auto;background:var(--sgj-bg-card)}
+body[data-vp=mobile] .md-panes{flex-direction:column;height:52vh}
+body[data-vp=mobile] .md-preview{display:none}
+
+/* ===== MarkdownViewer（与 markdown-viewer 组件样式一致）===== */
+.markdown-body{font-size:14px;line-height:1.75;color:var(--sgj-text-2);word-break:break-word}
+.markdown-body h2{font-size:18px;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--sgj-border-card);
+  font-weight:600;line-height:1.4;color:var(--sgj-text);font-family:var(--sgj-font-serif)}
+.markdown-body p{margin:8px 0}
+.markdown-body ul{margin:8px 0;padding-left:24px}
+.markdown-body li{margin:4px 0}
+.markdown-body code{font-family:var(--sgj-font-mono);background:var(--sgj-cover);border-radius:4px;padding:2px 5px;font-size:13px;color:var(--sgj-primary)}
+.markdown-body pre{background:#282c34;color:#e6e6e6;border-radius:10px;padding:14px 16px;overflow-x:auto;margin:12px 0;line-height:1.6}
+.markdown-body pre code{background:transparent;color:inherit;padding:0;font-size:13px}
+.markdown-body img{max-width:100%;border-radius:8px;display:block;margin:10px auto}
+
+/* 图片占位（纯 CSS，不引用任何外部图片） */
+.ph-img{border-radius:8px;background:linear-gradient(160deg,var(--sgj-cover),var(--sgj-bg-deep));color:var(--sgj-text-3);
+  display:flex;align-items:center;justify-content:center;font-family:var(--sgj-font-serif);font-size:22px;user-select:none}
+.ph-inline{width:120px;height:80px;display:inline-flex;vertical-align:middle;font-size:16px;margin:0 4px}
+
+/* ===== 弹窗（移动端 Markdown 预览 + 桌面端无关）===== */
+.mask{position:absolute;inset:0;background:rgba(23,27,26,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.el-dialog{background:var(--sgj-bg-card);border-radius:var(--sgj-r-lg);width:94%;max-width:100%;box-shadow:0 12px 32px rgba(0,0,0,.18)}
+.el-dialog__header{display:flex;align-items:center;padding:14px 18px 8px}
+.el-dialog__title{margin:0;font-size:15px;font-family:var(--sgj-font-serif);font-weight:700;flex:1}
+.el-dialog__headerbtn{border:0;background:transparent;color:var(--sgj-text-4);font-size:16px;cursor:pointer;padding:2px 4px}
+.el-dialog__body{padding:4px 18px 18px;max-height:70vh;overflow-y:auto}
+
+/* ===== 标注 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.2 设计图</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="carry-images.html">搬运图片</a>
+      <a href="editor-image.html" aria-current="page">编辑器插图</a>
+      <a href="../note-0.0.2/note-edit.html" class="here">0.0.2 编辑页</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="default" aria-pressed="true">默认</button>
+      <button data-state="uploading" aria-pressed="false">上传中</button>
+      <button data-state="inserted" aria-pressed="false">插入成功</button>
+      <button data-state="paste" aria-pressed="false">粘贴截图</button>
+      <button data-state="fail" aria-pressed="false">失败</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device" style="position:relative">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <div class="card">
+        <div class="chead">
+          <span class="back">←</span>
+          <h1 class="ctitle">编辑笔记</h1>
+          <div class="hacts">
+            <button class="btn line">取消</button>
+            <button class="btn">保存</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="t">标题</label>
+          <input id="t" class="inp" value="Obsidian 到拾光记的笔记迁移" readonly>
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <label>内容</label>
+          <div class="markdown-editor">
+            <div class="md-toolbar">
+              <div class="md-toolbar-left">
+                <button class="el-button el-button--small" type="button" id="insBtn">
+                  <span class="ic" id="insIcon">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.6" cy="9.6" r="1.5"/><path d="M21 15.5 16.2 11 6 20.6"/>
+                    </svg>
+                  </span>
+                  <span id="insText">插图</span>
+                </button>
+                <span class="an" data-n="1"></span>
+              </div>
+              <div class="md-toolbar-right">
+                <button class="el-button el-button--small el-button--plain only-mobile" type="button" id="pvBtn">预览</button>
+                <span class="md-hint"><span class="only-desktop">支持 Markdown 语法，右侧实时预览</span><span class="only-mobile">支持 Markdown 语法</span></span>
+                <span class="md-count" id="count">412 字</span>
+              </div>
+            </div>
+
+            <p class="md-subhint" style="margin-top:-2px">
+              上传后插入到光标处；也可以直接粘贴截图<span class="an" data-n="2"></span>
+              <span class="paste-note" id="pasteNote" hidden>
+                <span class="ic">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M9 13l2 2 4-4"/>
+                  </svg>
+                </span>
+                已从剪贴板取到图片，正在上传
+              </span>
+            </p>
+
+            <div class="el-message" id="failMsg" hidden>
+              <span class="ic">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.2v.2"/>
+                </svg>
+              </span>
+              图片上传失败：文件格式不支持
+            </div>
+
+            <div class="md-panes">
+              <textarea id="src" spellcheck="false" readonly></textarea>
+              <div class="md-preview"><div class="markdown-body" id="pv"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mask" id="pmask" hidden>
+      <div class="el-dialog" role="dialog" aria-modal="true" aria-labelledby="pvTitle">
+        <div class="el-dialog__header">
+          <h3 class="el-dialog__title" id="pvTitle">Markdown 预览</h3>
+          <button class="el-dialog__headerbtn" type="button" aria-label="关闭" onclick="closePv()">✕</button>
+        </div>
+        <div class="el-dialog__body"><div class="markdown-body" id="pvModal"></div></div>
+      </div>
+    </div>
+
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<code>MarkdownEditor</code> 工具栏左端新增<b>「插图」</b>按钮——这是 0.0.2 设计结论 35 里「笔记编辑器根本没有插图入口」的那条缺口的补法。按钮在<b>右侧预览之前</b>、文字提示的左侧，与既有「支持 Markdown 语法…N 字」各自成组，不挤掉字数统计。<br>位置选在一行两端的左端、而不是塞进右侧：右侧已被预览按钮（移动端）与字数占满，再加一个按钮会让移动端工具栏换行。</li>
+    <li><span class="new">新增</span>：按钮下方一行小字说明<b>插入位置</b>与<b>粘贴入口</b>。两件事都要说：光标不在末尾时用户不知道插到哪，而粘贴截图是拿到截图后最自然的那条路（比先存盘再选文件快）。小字常驻，不是 hover 提示——hover 提示在触屏上等于不存在。</li>
+    <li><span class="new">新增</span>：<b>上传中按钮转 loading 并禁止重复点</b>，正文与右侧预览都不动。上传是异步的，光标位置会随用户继续打字漂移——实现按「点击那一刻记录的光标位置」插入，而不是完成时刻的；否则用户等上传时随手打两个字，图片就插到了句子里。</li>
+    <li><span class="new">新增</span>：<b>插入成功</b>后正文出现 <code>![](/profile/upload/2026/10/10/9f3c1a….png)</code>，右侧预览同步出现图片。这里有个真实行为要留神：预览里的 <code>src</code> 带 <code>/dev-api</code> 前缀——<code>photoUrl()</code> 给站内相对路径补 <code>VITE_APP_BASE_API</code>，所以正文里存的是 <code>/profile/…</code>，预览请求的是 <code>/dev-api/profile/…</code>。生产环境下前缀换成真实网关前缀，<b>存进正文的永远是 <code>/profile/…</code></b>。</li>
+    <li><span class="new">新增</span>：<b>粘贴截图</b>。剪贴板里有图片时拦截粘贴、自动上传并插入；<b>纯文本粘贴必须先原样放行</b>——拦截时只看 <code>clipboardData.items</code> 里有没有 <code>image/*</code>，不看 <code>text/plain</code> 在不在，两者可以同时存在（从浏览器复制带图内容时就是如此），优先级给图片、同时把文本也照常插入到别处即可，但绝不能因为「带图」就把整段文本粘贴吞掉。</li>
+    <li><span class="new">新增</span>：<b>失败不动正文</b>。格式不支持 / 超限 / 网络错误都在编辑器上方给一条红字（Element Plus message · error 观感），正文与预览保持原样——否则用户无法判断「图片到底进去没有」，而失败的占位语法会留在正文里污染内容。</li>
+    <li><span class="new">既有</span>：移动端隐藏右侧预览、收进顶部「预览」按钮的弹窗（<code>useMediaQuery('(max-width: 768px)')</code> + <code>el-dialog width="94%"</code>），编辑器高度固定 <code>55vh</code>。本屏不改这条，只把「插图」放进工具栏左端——移动端单栏下它同样可用，选文件走系统选择器，截图走输入法粘贴。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实上传接口与进度、光标的精确插入实现、多图连续插入、拖拽图片到编辑器的落点（本版不做）、图片删除与回收（正文里删掉 <code>![]()</code> 不等于删文件）。<br><b>既有不改</b>：分屏预览结构、字数统计口径（<code>innerValue.length</code>，含 Markdown 标记）、草稿自动保存与同步三态状态条、离开确认。本屏左上角的「← / 取消 / 保存」与标题栏是既有样式，未改动；为聚焦工具栏，本屏<b>省略了状态条</b>（见 0.0.2 编辑页设计图）。</p>
+</section>
+
+<script>
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+
+const IMG_SGJ = '/profile/upload/2026/10/10/9f3c1a2b7e4d5c6f8091a2b3c4d5e6f7.png';
+const IMG_DEV = '/dev-api/profile/upload/2026/10/10/9f3c1a2b7e4d5c6f8091a2b3c4d5e6f7.png';
+const HEAD = `## 导入的产物长什么样
+
+- front-matter 整块剥离，只留正文；
+- 图片引用原样保留，指向本地相对路径。`;
+
+const TAIL = `
+\`\`\`sql
+select id, title from sgj_note
+where match(title, content) against('ngram' in boolean mode);
+\`\`\`
+
+> 图片是导入后最需要手工补的一块：本地相对路径系统拿不到，得自己在编辑器里插图。`;
+
+const SRC_BASE = `## 导入的产物长什么样
+
+图示：`;
+
+const PV_HEAD = `<h2>导入的产物长什么样</h2>
+<ul><li>front-matter 整块剥离，只留正文；</li><li>图片引用原样保留，指向本地相对路径。</li></ul>
+<p>图示：`;
+
+const PV_TAIL = `</p>
+<pre>select id, title from sgj_note
+where match(title, content) against('ngram' in boolean mode);</pre>
+<blockquote style="border-left:4px solid var(--sgj-amber);background:var(--sgj-amber-soft);padding:8px 14px;border-radius:0 8px 8px 0;margin:10px 0">
+图片是导入后最需要手工补的一块：本地相对路径系统拿不到，得自己在编辑器里插图。</blockquote>`;
+
+const PH = '<div class="ph-img" style="width:180px;height:120px">图</div>';
+const PH_SMALL = '<span class="ph-img ph-inline">图</span>';
+
+function srcText(withImg){
+  if(!withImg) return SRC_BASE + TAIL;
+  return `## 导入的产物长什么样
+
+图示：![](${IMG_SGJ})
+
+- front-matter 整块剥离，只留正文；
+- 图片引用原样保留，指向本地相对路径。` + TAIL;
+}
+function pvHtml(withImg){
+  if(!withImg) return PV_HEAD + PH + PV_TAIL;
+  return `<h2>导入的产物长什么样</h2>
+<p>图示：<img src="${IMG_DEV}" alt="" style="width:180px;height:120px;margin:10px auto"></p>
+<ul><li>front-matter 整块剥离，只留正文；</li><li>图片引用原样保留，指向本地相对路径。</li></ul>` + PV_TAIL;
+}
+/* 粘贴态：文本未变，只是剪贴板里的图片被接走并上传 */
+function pvHtmlPaste(){
+  return `<h2>导入的产物长什么样</h2>
+<p>图示：${PH_SMALL}</p>
+<ul><li>front-matter 整块剥离，只留正文；</li><li>图片引用原样保留，指向本地相对路径。</li></ul>` + PV_TAIL;
+}
+
+/* 状态 → 视图 */
+const STATES = {
+  default: {src:srcText(false), pv:pvHtml(false), btn:['插图',0], count:'412 字'},
+  uploading:{src:srcText(false), pv:pvHtml(false), btn:['上传中…',1], count:'412 字'},
+  inserted:{src:srcText(true),  pv:pvHtml(true),  btn:['插图',0], count:'462 字'},
+  paste:   {src:srcText(false), pv:pvHtmlPaste(), btn:['插图',0], count:'412 字', paste:1},
+  fail:    {src:srcText(false), pv:pvHtml(false), btn:['插图',0], count:'412 字', fail:1}
+};
+
+let state='default';
+function render(){
+  const c = STATES[state] || STATES.default;
+  document.getElementById('src').value = c.src;
+  setHTML(document.getElementById('pv'), c.pv);
+  setHTML(document.getElementById('pvModal'), c.pv);
+  document.getElementById('insText').textContent = c.btn[0];
+  const ib = document.getElementById('insBtn');
+  const loading = !!c.btn[1];
+  ib.disabled = loading;
+  ib.classList.toggle('is-disabled', loading);
+  setHTML(document.getElementById('insIcon'), loading
+    ? '<span class="spin"></span>'
+    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.6" cy="9.6" r="1.5"/><path d="M21 15.5 16.2 11 6 20.6"/></svg>');
+  document.getElementById('count').textContent = c.count;
+  show('pasteNote', !!c.paste);
+  show('failMsg', !!c.fail);
+}
+function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+function closePv(){ show('pmask', false); }
+
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+document.getElementById('pvBtn').addEventListener('click',()=>show('pmask', true));
+document.getElementById('pmask').addEventListener('click',e=>{ if(e.target.id==='pmask') closePv(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePv(); });
+render();
+</script>
+</body>
+</html>
