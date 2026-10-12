@@ -8,6 +8,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js/lib/common'
 import { markedHighlight } from 'marked-highlight'
+import { photoUrl } from '@/utils/sgj'
 import 'highlight.js/styles/atom-one-dark.css'
 
 const props = defineProps<{
@@ -32,6 +33,20 @@ if (!markedSingleton.__sgjHighlightRegistered) {
       }
     })
   )
+}
+
+// 站内相对路径（/profile/...）必须补上 API 前缀才取得到图：dev 的 vite 代理只有 /dev-api 与
+// /v3/api-docs，直接请求 /profile/** 会落回前端源（404）。钩子挂在 DOMPurify 单例上，
+// 守卫理由同上面的 marked：dev HMR 会重复执行本模块，重复 addHook 会把前缀加两次
+// （/dev-api/dev-api/...）。外链与 data:/blob: 由 photoUrl 原样放行。
+const purifySingleton = DOMPurify as typeof DOMPurify & { __sgjImagePrefixHook?: boolean }
+if (!purifySingleton.__sgjImagePrefixHook) {
+  purifySingleton.__sgjImagePrefixHook = true
+  DOMPurify.addHook('afterSanitizeAttributes', node => {
+    if (!(node instanceof Element) || node.tagName !== 'IMG') return
+    const src = node.getAttribute('src')
+    if (src) node.setAttribute('src', photoUrl(src))
+  })
 }
 
 marked.setOptions({
