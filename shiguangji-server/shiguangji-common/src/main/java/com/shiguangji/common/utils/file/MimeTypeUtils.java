@@ -19,6 +19,16 @@ public class MimeTypeUtils
     
     public static final String[] IMAGE_EXTENSION = { "bmp", "gif", "jpg", "jpeg", "png" };
 
+    /**
+     * 笔记正文插图允许的图片扩展名（0.0.2 FR-002-9）
+     *
+     * <p>在 {@link #IMAGE_EXTENSION} 基础上放行 webp——它已是网页图片与截图的常见格式。
+     * 注意 {@code FileUploadUtils.assertAllowed} 用引用相等挑「图片格式」专用异常文案，
+     * 所以传本常量会走通用异常（提示里仍会列出允许的后缀）；要统一文案应扩展 IMAGE_EXTENSION 本身，
+     * 那会同时放宽封面 / 头像，属另一个 issue（#67）。</p>
+     */
+    public static final String[] NOTE_IMAGE_EXTENSION = { "bmp", "gif", "jpg", "jpeg", "png", "webp" };
+
     public static final String[] FLASH_EXTENSION = { "swf", "flv" };
 
     public static final String[] MEDIA_EXTENSION = { "swf", "flv", "mp3", "wav", "wma", "wmv", "mid", "avi", "mpg",
