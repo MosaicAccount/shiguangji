@@ -24,6 +24,9 @@ public abstract class AbstractFileStorage implements FileStorageService
     {
         try
         {
+            // 请求不是 multipart（例如前端把 FormData 序列化成了 JSON）时 Spring 会把参数解析成 null，
+            // 这里给一句能看懂的错，别让调用方收到一行 NPE 文案（#56 实测踩到）
+            Objects.requireNonNull(file, "上传文件为空：请求不是 multipart/form-data，或缺少 file 部分");
             int fileNameLength = Objects.requireNonNull(file.getOriginalFilename()).length();
             if (fileNameLength > FileUploadUtils.DEFAULT_FILE_NAME_LENGTH)
             {

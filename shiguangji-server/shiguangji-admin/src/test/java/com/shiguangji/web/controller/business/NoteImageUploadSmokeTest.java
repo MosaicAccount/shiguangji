@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
@@ -39,6 +40,7 @@ import com.shiguangji.system.service.ISysUserService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * 笔记正文插图上传（0.0.2 FR-002-9，issue #56）的接口契约
@@ -169,6 +171,21 @@ class NoteImageUploadSmokeTest
     // ------------------------------------------------------------------
     // 3. 拒收：不登记台账
     // ------------------------------------------------------------------
+
+    @Test
+    void nonMultipartRequestRejectedWithReadableError() throws Exception
+    {
+        // 前端若把 FormData 序列化成 JSON（axios 默认 Content-Type=application/json 时的坑，
+        // 见 utils/request.ts 的拦截器），后端 MultipartFile 参数会是 null——
+        // 必须回一句能看懂的错，而不是一行 NPE 文案
+        MvcResult result = mockMvc.perform(post("/common/upload/note-image")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))).andReturn();
+
+        assertThat(code(result)).as(body(result)).isNotEqualTo(200);
+        assertThat(body(result)).as("错误信息必须可读").contains("上传文件为空").doesNotContain("NullPointerException");
+    }
 
     @Test
     void txtRejected() throws Exception

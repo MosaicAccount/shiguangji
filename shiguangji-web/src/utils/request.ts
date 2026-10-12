@@ -38,6 +38,13 @@ service.interceptors.request.use((config: any) => {
   if (getToken() && !isToken) {
     config.headers['Authorization'] = 'Bearer ' + getToken() // 让每个请求携带自定义token 请根据实际情况自行修改
   }
+  // FormData 必须显式标成 multipart：实例默认 Content-Type 是 application/json，
+  // 而 axios 在 JSON Content-Type 下会把 FormData 序列化成 '{}'（lib/defaults transformRequest），
+  // 后端于是收不到 multipart 请求、MultipartFile 参数解析为 null（NPE）。
+  // 标成 multipart 后 axios 原样透传 FormData，浏览器适配器再把它换成带 boundary 的真值。
+  if (config.data instanceof FormData) {
+    config.headers['Content-Type'] = 'multipart/form-data'
+  }
   // get请求映射params参数
   if (config.method === 'get' && config.params) {
     let url = config.url + '?' + tansParams(config.params)
