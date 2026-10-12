@@ -13,6 +13,7 @@
  */
 import { load as parseYaml } from 'js-yaml'
 import { NOTE_CONTENT_MAX_LENGTH } from '@/utils/note'
+import { collectImageRefs, type NoteImageRef } from '@/utils/noteImages'
 
 /** 标签个数上限：Obsidian 一篇挂几十个标签并不稀奇，但 `sgj_note.tags` 只有 500 字符 */
 export const NOTE_TAG_MAX_COUNT = 20
@@ -35,7 +36,17 @@ export interface NoteImportPrefill {
 export type NoteImportErrorCode = 'not-md' | 'too-long'
 
 export type NoteImportResult =
-  | { ok: true; prefill: NoteImportPrefill; droppedTagCount: number; localImageCount: number }
+  | {
+      ok: true
+      prefill: NoteImportPrefill
+      droppedTagCount: number
+      /** 本地图片引用处数（= localImageRefs.length，保留这个字段是既有断言与两处提示文案的依据） */
+      localImageCount: number
+      /** 逐条列出的本地图片引用（搬运弹窗的输入；见 utils/noteImages） */
+      localImageRefs: NoteImageRef[]
+      /** 外链图片处数：不搬运但要计数并明说（结论 62），否则「已搬运 N 张」会被读成其余的失败了 */
+      externalImageCount: number
+    }
   | { ok: false; code: NoteImportErrorCode; length?: number }
 
 interface FrontMatterSplit {
@@ -135,16 +146,9 @@ function firstH1(body: string): string {
 }
 
 /**
- * 指向**本地文件**的图片引用：标准 `![](./a.png)` 与 Obsidian 的 `![[a.png]]`。
- *
- * 外链（`http(s):`）与 `data:` 内嵌刻意不算：那些导入后仍然显示得出来，提醒了反而是噪声
+ * 图片引用的收集在 utils/noteImages（#56 起它要支撑搬运，不只是计数）：
+ * 本地引用逐条列出、外链只计数、`data:` 与已搬过的 `/profile/` 都不算。
  */
-const LOCAL_IMAGE_PATTERN = /!\[\[[^\]]+\]\]|!\[[^\]]*\]\((?!https?:|data:)[^)]+\)/g
-
-/** 正文里本地图片引用的处数（用于「本版不搬图片」的提示） */
-export function countLocalImageRefs(content: string): number {
-  return content.match(LOCAL_IMAGE_PATTERN)?.length || 0
-}
 
 /** 把 front-matter 的某个标量键读成字符串（`title: 2024` 会被 YAML 解析成数字） */
 function scalarText(value: unknown): string {
@@ -180,6 +184,7 @@ export function parseNoteMarkdown(text: string, fileName: string): NoteImportRes
   const title = scalarText(data.title) || firstH1(content) || fileName.replace(/\.md$/i, '').trim()
   const allTags = normalizeTags(data.tags)
   const kept = allTags.slice(0, NOTE_TAG_MAX_COUNT)
+  const imageRefs = collectImageRefs(content)
 
   return {
     ok: true,
@@ -190,9 +195,10 @@ export function parseNoteMarkdown(text: string, fileName: string): NoteImportRes
       noteId: identityNoteId(data.noteId)
     },
     droppedTagCount: allTags.length - kept.length,
-    // 图片文件不在 md 里（系统拿不到相对路径指向的文件），而且编辑器没有插图入口，
-    // 所以带图笔记导入后那些引用必然失效——不能静默，也不能把外链算进来虚报
-    localImageCount: countLocalImageRefs(content)
+    // 本地引用逐条交给搬运弹窗（#56）；用户跳过或未命中时由入口提示，不再说「本版不搬图片」
+    localImageCount: imageRefs.local.length,
+    localImageRefs: imageRefs.local,
+    externalImageCount: imageRefs.externalCount
   }
 }
 

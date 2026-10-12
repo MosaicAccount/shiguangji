@@ -210,8 +210,9 @@ describe('front-matter 的 noteId（往返识别的依据）', () => {  const no
 })
 
 /**
- * 图片文件不在 md 里，本版也不搬（#56）：导入时必须提示，不能静默丢。
- * 只算指向本地文件的两种写法，外链与 data: 不算（那些导完仍然显示得出来）。
+ * 图片引用的计数（#56 起搬运弹窗的输入）。只算指向本地文件的两种写法，
+ * 外链与 data: 不算（外链导入后仍显示得出来，data: 不会失效）；
+ * 已搬过的 /profile 也不算——这是导出再导入能无损往返的前提。
  */
 describe('本地图片引用的计数（「本版不搬图片」提示的依据）', () => {
   const imagesOf = (content: string) => prefillOf(content).localImageCount

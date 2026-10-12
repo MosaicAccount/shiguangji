@@ -69,6 +69,9 @@
 
     <input ref="importInputRef" type="file" accept=".md" hidden @change="onImportFileChange" />
 
+    <!-- 图片搬运（#56）：正文有本地图片引用时的第二步，与前台共用同一个组件 -->
+    <note-image-carry-dialog ref="carryRef" />
+
     <el-table v-loading="loading" :data="noteList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="笔记ID" align="center" prop="noteId" width="80" />
@@ -199,6 +202,7 @@ import {
 } from '@/utils/noteDraftBuffer'
 import { NOTE_CONTENT_MAX_LENGTH } from '@/utils/note'
 import { NOTE_TAG_MAX_COUNT, parseNoteMarkdown, type NoteImportPrefill } from '@/utils/noteImport'
+import NoteImageCarryDialog from '@/components/NoteImageCarryDialog/index.vue'
 import { findDraftConflict, findRoundTripTarget } from '@/utils/noteImportGuards'
 import { getToken } from '@/utils/auth'
 import useUserStore from '@/store/modules/user'
@@ -625,6 +629,9 @@ function handleUpdate(row?: SgjNote) {
 /** 导入 md 的文件选择器（真实的 input 藏在模板里，按钮只是它的代理） */
 const importInputRef = ref<HTMLInputElement>()
 
+/** 图片搬运弹窗（#56）：open() 返回 Promise，导入流程得以保持线性 */
+const carryRef = ref<InstanceType<typeof NoteImageCarryDialog>>()
+
 function pickImportFile(): void {
   importInputRef.value?.click()
 }
@@ -688,9 +695,19 @@ async function onImportFileChange(event: Event): Promise<void> {
   if (result.droppedTagCount > 0) {
     proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
   }
-  // 与前台同一条提示：图片文件不在 md 里，本版也还没做搬运（#56）
-  if (result.localImageCount > 0) {
-    proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用；本版不搬图片，导入后那些图会失效`)
+  // 图片搬运（#56）：与前台同一套（守卫与文案只有一份实现，见设计 结论 44 的同款约定）
+  if (result.localImageRefs.length > 0) {
+    const carried = await carryRef.value?.open(
+      result.prefill.content,
+      result.localImageRefs,
+      result.externalImageCount,
+      file.name
+    )
+    if (carried) {
+      result.prefill.content = carried.content
+    } else {
+      proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用未搬运，导入后那些图会显示不出来`)
+    }
   }
 
   await openEditor(targetNoteId)

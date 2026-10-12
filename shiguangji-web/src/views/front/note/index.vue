@@ -37,6 +37,8 @@
       </el-input>
     </div>
     <input ref="importInputRef" type="file" accept=".md" hidden @change="onImportFileChange" />
+    <!-- 图片搬运（#56）：正文有本地图片引用时的第二步，放在两个既有确认框之后、预填之前 -->
+    <note-image-carry-dialog ref="carryRef" />
 
     <!-- 标签筛选：豆瓣式标签行（NOTE 模块），点击选中、再点取消 -->
     <tag-pills v-model="searchTag" module="NOTE" @update:model-value="loadData" />
@@ -111,6 +113,7 @@ import { ElMessageBox } from 'element-plus'
 import useUserStore from '@/store/modules/user'
 import { NOTE_CONTENT_MAX_LENGTH } from '@/utils/note'
 import { NOTE_TAG_MAX_COUNT, parseNoteMarkdown, setPendingImport } from '@/utils/noteImport'
+import NoteImageCarryDialog from '@/components/NoteImageCarryDialog/index.vue'
 import { findDraftConflict, findRoundTripTarget } from '@/utils/noteImportGuards'
 import type { SgjNote } from '@/types/api/business/note'
 
@@ -168,6 +171,9 @@ function openDrafts(): void {
 
 /** 导入的文件选择器（真实的 input 藏在模板里，按钮只是它的代理） */
 const importInputRef = ref<HTMLInputElement>()
+
+/** 图片搬运弹窗（#56）：open() 返回 Promise，导入流程得以保持线性 */
+const carryRef = ref<InstanceType<typeof NoteImageCarryDialog>>()
 
 function pickImportFile(): void {
   importInputRef.value?.click()
@@ -242,9 +248,20 @@ async function onImportFileChange(event: Event): Promise<void> {
   if (result.droppedTagCount > 0) {
     proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
   }
-  // 图片文件不在 md 里，本版也还没做搬运（#56）：不静默，明说这一版会失效
-  if (result.localImageCount > 0) {
-    proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用；本版不搬图片，导入后那些图会失效`)
+  // 图片搬运（#56）：只在正文有本地图片引用时出现；跳过或未命中的引用原样保留并提示。
+  // 跳过时不弹「已搬运 N 张」这类计数，所以只报本地引用的处数
+  if (result.localImageRefs.length > 0) {
+    const carried = await carryRef.value?.open(
+      result.prefill.content,
+      result.localImageRefs,
+      result.externalImageCount,
+      file.name
+    )
+    if (carried) {
+      result.prefill.content = carried.content
+    } else {
+      proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用未搬运，导入后那些图会显示不出来`)
+    }
   }
   setPendingImport(result.prefill)
   // 带 noteId 进去 = 更新那篇（编辑页会把它当编辑态），不带 = 新建一篇
