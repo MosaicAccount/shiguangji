@@ -1,9 +1,10 @@
 <template>
   <el-dialog
     v-model="visible"
+    class="carry-dialog"
     title="搬运笔记里的图片"
-    width="560px"
-    top="10vh"
+    width="520px"
+    align-center
     append-to-body
     :close-on-click-modal="false"
     @close="resolveSkip"
@@ -24,19 +25,33 @@
 
     <!-- 上传中 -->
     <template v-else-if="stage === 'uploading'">
-      <el-progress :percentage="progressPercent" :stroke-width="8" />
-      <p class="pmeta">正在上传 <b>{{ doneCount }} / {{ totalToUpload }}</b>…<br />已完成 {{ successCount }} 张，失败 {{ failCount }} 张</p>
+      <el-progress :percentage="progressPercent" :stroke-width="8" :show-text="false" />
+      <p class="pmeta">
+        <span>正在上传 <b>{{ doneCount }} / {{ totalToUpload }}</b>…</span>
+        <span>已完成 {{ successCount }} 张，失败 {{ failCount }} 张</span>
+      </p>
     </template>
 
     <!-- 结果态（含全部未命中） -->
     <template v-else>
-      <p :class="matchedRefCount > 0 ? 'okline' : 'warnline'">
-        <template v-if="matchedRefCount > 0">已搬运 <b>{{ matchedRefCount }}</b> 张图片，正文引用已改写。</template>
-        <template v-else>没有匹配到任何图片（已保留原引用）。</template>
+      <p v-if="matchedRefCount > 0" class="okline">已搬运 <b>{{ matchedRefCount }}</b> 张图片，正文引用已改写。</p>
+      <p v-else class="warnline">
+        <svg class="warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 3 2 20h20L12 3Z" /><path d="M12 9v5" /><path d="M12 17.2v.2" />
+        </svg>
+        没有匹配到任何图片（已保留原引用）。
       </p>
-      <p v-if="failedRefCount > 0" class="warnline">{{ failedRefCount }} 张上传失败，保留了原引用。</p>
+      <p v-if="failedRefCount > 0" class="warnline">
+        <svg class="warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 3 2 20h20L12 3Z" /><path d="M12 9v5" /><path d="M12 17.2v.2" />
+        </svg>
+        {{ failedRefCount }} 张上传失败，保留了原引用。
+      </p>
       <template v-if="unmatchedRefs.length > 0">
         <p class="warnline">
+          <svg class="warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 3 2 20h20L12 3Z" /><path d="M12 9v5" /><path d="M12 17.2v.2" />
+          </svg>
           {{ unmatchedRefs.length }} 处没找到对应文件，保留了原引用：
         </p>
         <ul class="misses">
@@ -47,34 +62,25 @@
       <p v-if="ignoredOversize > 0" class="ignored">已忽略 {{ ignoredOversize }} 个超过 10MB 的文件。</p>
       <p v-if="ignoredOvercount > 0" class="ignored">一次最多搬运 {{ NOTE_IMAGE_MAX_COUNT }} 张，超出的已忽略。</p>
       <p v-if="rewrite && rewrite.tooLong" class="warnline">
+        <svg class="warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 3 2 20h20L12 3Z" /><path d="M12 9v5" /><path d="M12 17.2v.2" />
+        </svg>
         搬运后正文 {{ rewrite.length }} 字，超过上限 {{ NOTE_CONTENT_MAX_LENGTH }} 字——已照常填入，保存前请先精简。
       </p>
     </template>
 
     <template #footer>
       <div class="carry-footer">
-        <template v-if="stage === 'pick'">
-          <div class="btn-row">
-            <el-button type="primary" @click="folderInput?.click()">选择图片文件夹</el-button>
-            <el-button @click="fileInput?.click()">选择图片文件</el-button>
-          </div>
-        </template>
-        <template v-else-if="stage === 'uploading'">
-          <div class="btn-row">
-            <el-button type="primary" loading disabled>正在上传…</el-button>
-          </div>
-        </template>
-        <template v-else-if="matchedRefCount === 0">
-          <div class="btn-row">
-            <el-button type="primary" @click="folderInput?.click()">选择图片文件夹</el-button>
-            <el-button @click="fileInput?.click()">选择图片文件</el-button>
-          </div>
-        </template>
-        <template v-else>
-          <div class="btn-row">
-            <el-button type="primary" @click="finish()">完成，去编辑</el-button>
-          </div>
-        </template>
+        <div v-if="stage !== 'uploading' && !(stage === 'result' && matchedRefCount > 0)" class="btn-row">
+          <el-button type="primary" @click="folderInput?.click()">选择图片文件夹</el-button>
+          <el-button @click="fileInput?.click()">选择图片文件</el-button>
+        </div>
+        <div v-else-if="stage === 'uploading'" class="btn-row">
+          <el-button type="primary" loading disabled>正在上传…</el-button>
+        </div>
+        <div v-else class="btn-row">
+          <el-button type="primary" @click="finish()">完成，去编辑</el-button>
+        </div>
         <el-button text @click="skip()">{{ stage === 'pick' ? '跳过，只导入文字' : '放弃搬运，只导入文字' }}</el-button>
       </div>
     </template>
@@ -308,71 +314,200 @@ function resolveSkip(): void {
 defineExpose({ open })
 </script>
 
+<style lang="scss">
+/**
+ * 弹窗 chrome 由 Element Plus 渲染，append-to-body 之后不在本组件的 scoped 作用域里，
+ * 所以这一段不加 scoped，统一挂 .carry-dialog 前缀。数值逐条对齐设计图
+ * docs/design/mockups/note-images/carry-images.html（§ 弹窗），颜色一律走 --sgj-* 令牌，
+ * 深浅主题各自定义，因而两套主题都自动成立。
+ */
+.carry-dialog {
+  background: var(--sgj-bg-card);
+  border-radius: var(--sgj-radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+
+  .el-dialog__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 0;
+    padding: 18px 20px 10px;
+  }
+
+  .el-dialog__title {
+    font-family: var(--sgj-font-serif);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--sgj-text);
+  }
+
+  .el-dialog__headerbtn {
+    top: 16px;
+    right: 16px;
+    font-size: 16px;
+    color: var(--sgj-text-4);
+
+    &:hover .el-dialog__close {
+      color: var(--sgj-text-2);
+    }
+  }
+
+  .el-dialog__body {
+    padding: 4px 20px 8px;
+  }
+
+  .el-dialog__footer {
+    padding: 12px 20px 20px;
+  }
+
+  .el-button {
+    font: inherit;
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  .el-button--primary {
+    color: #fff;
+  }
+
+  html.dark & .el-button--primary {
+    color: #171b1a;
+  }
+
+  .el-button.is-text {
+    padding: 4px 8px;
+    font-size: 12.5px;
+    color: var(--sgj-text-3);
+
+    &:hover {
+      color: var(--sgj-primary);
+      background: transparent;
+    }
+  }
+
+  /* 进度条：设计图是 8px 圆角、底 --sgj-bg-deep、进度 --sgj-primary（EP 真实类名是 el-progress-bar__*） */
+  .el-progress {
+    margin: 2px 0 10px;
+  }
+
+  .el-progress-bar__outer {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--sgj-bg-deep);
+  }
+
+  .el-progress-bar__inner {
+    border-radius: 999px;
+    background: var(--sgj-primary);
+  }
+}
+</style>
+
 <style scoped lang="scss">
 .dtxt {
-  margin: 0 0 8px;
-  line-height: 1.7;
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--sgj-text-2);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .desc {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 0 0 10px;
+  font-size: 12.5px;
   line-height: 1.7;
-  color: var(--el-text-color-secondary);
+  color: var(--sgj-text-3);
 }
 
 .pmeta {
-  margin: 12px 0 0;
-  line-height: 1.8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--sgj-text-3);
+
+  b {
+    color: var(--sgj-text-2);
+  }
 }
 
 .okline {
   margin: 0 0 8px;
-  color: var(--el-color-success);
+  font-size: 13px;
+  color: var(--sgj-text);
 }
 
 .warnline {
-  margin: 0 0 8px;
-  color: var(--el-color-warning);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--sgj-warning);
+}
+
+.warn-icon {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
 }
 
 .misses {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   max-height: 160px;
-  margin: 4px 0 0;
-  padding-left: 20px;
+  margin: 0;
+  padding: 0;
   overflow-y: auto;
-  font-family: Consolas, Menlo, monospace;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  list-style: none;
 
   li {
-    margin: 2px 0;
+    align-self: flex-start;
+    padding: 3px 9px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    color: var(--sgj-text-2);
     word-break: break-all;
+    background: var(--sgj-bg-deep);
+    border-radius: 5px;
   }
 }
 
 .morecount {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--sgj-text-4);
 }
 
 .ignored {
-  margin: 8px 0 0;
-  font-size: 13px;
-  color: var(--el-color-warning);
+  margin: 10px 0 0;
+  padding-top: 10px;
+  font-size: 12.5px;
+  color: var(--sgj-text-3);
+  border-top: 1px dashed var(--sgj-border-card);
 }
 
 .carry-footer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   align-items: center;
+}
 
-  .btn-row {
-    display: flex;
-    justify-content: center;
-    width: 100%;
+.btn-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+
+  :deep(.el-button) {
+    flex: 1;
   }
 }
 </style>
