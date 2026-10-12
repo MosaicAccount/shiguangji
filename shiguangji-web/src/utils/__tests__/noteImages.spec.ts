@@ -145,6 +145,26 @@ describe('resolveImageFiles：匹配', () => {
     expect(mdDirOf([{ name: 'a.png', relPath: 'vault/a.png' }], '观影笔记.md')).toBe('')
     expect(mdDirOf([{ name: 'Note.MD', relPath: 'vault/sub/Note.MD' }], 'note.md')).toBe('vault/sub')
   })
+
+  /**
+   * 回归（#56 实测踩到）：拿不到 md 目录时（平铺多选 / md 不在所选树），
+   * 带目录的引用必须靠「路径后缀唯一匹配」对上，不能只靠文件名——否则同名文件会让它静默不搬。
+   */
+  it('拿不到 md 目录时，带目录的引用靠路径后缀唯一匹配命中（T-59 回归）', () => {
+    const candidates = [cand('a.png', 'vault/attachments/a.png'), cand('a.png', 'vault/dup/a.png')]
+
+    // 平铺多选：relPath 全为空 → 后缀规则也无从下手，带目录的引用只能判未命中（安全方向）
+    const flat = [cand('a.png'), cand('a.png')]
+    expect(resolveImageFiles([refOf('attachments/a.png')], flat, '').unresolved).toHaveLength(1)
+
+    // 选了文件夹但 md 不在树里（mdDir 为空）：后缀唯一 → 命中
+    const outcome = resolveImageFiles([refOf('attachments/a.png')], candidates, '')
+    expect(outcome.matched.map(m => m.candidate.relPath)).toEqual(['vault/attachments/a.png'])
+
+    // 同名的 attachments/a.png 分处两个父目录 → 后缀也歧义，不猜
+    const twoDirs = [cand('a.png', 'noteA/attachments/a.png'), cand('a.png', 'noteB/attachments/a.png')]
+    expect(resolveImageFiles([refOf('attachments/a.png')], twoDirs, '').unresolved).toHaveLength(1)
+  })
 })
 
 describe('rewriteNoteImageRefs：改写', () => {

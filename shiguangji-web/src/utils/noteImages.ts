@@ -190,10 +190,11 @@ export function mdDirOf(files: Array<{ name: string; relPath: string }>, mdFileN
 }
 
 /**
- * 给每条引用找它指向的候选文件，四级优先、歧义不猜（设计 结论 50）：
+ * 给每条引用找它指向的候选文件，优先级从高到低、歧义不猜（设计 结论 50 / 63）：
  * ① md 同目录的精确相对路径（目录由 {@link mdDirOf} 从完整文件树里取）
- * ② 相对所选根目录的路径 ③ 文件名唯一匹配（大小写不敏感，兜住 Obsidian 短引用与平铺多选）
- * ④ 文件名命中多个 → 未命中。命中 0 个候选的引用原样保留（结论 51）。
+ * ② 相对所选根目录的路径 ②.5 路径后缀唯一匹配
+ * ③ 文件名唯一匹配（大小写不敏感，兜住 Obsidian 短引用与平铺多选）
+ * ④ 命中多个 → 未命中。命中 0 个候选的引用原样保留（结论 51）。
  */
 export function resolveImageFiles(refs: NoteImageRef[], candidates: ImageCandidate[], mdDir: string): ResolveOutcome {
   const matched: NoteImageMatch[] = []
@@ -204,6 +205,7 @@ export function resolveImageFiles(refs: NoteImageRef[], candidates: ImageCandida
     const hit =
       (relative && !!mdDir && candidates.find(c => normKey(joinPath(mdDir, target)) === normKey(c.relPath))) ||
       (relative && candidates.find(c => normKey(target) === normKey(c.relPath))) ||
+      findByUniquePathSuffix(candidates, target) ||
       findByUniqueBasename(candidates, target)
     if (hit) matched.push({ ref, candidate: hit })
     else unresolved.push(ref)
@@ -214,6 +216,24 @@ export function resolveImageFiles(refs: NoteImageRef[], candidates: ImageCandida
 function findByUniqueBasename(candidates: ImageCandidate[], target: string): ImageCandidate | undefined {
   const wanted = basename(target).toLowerCase()
   const hits = candidates.filter(c => (c.name || basename(c.relPath)).toLowerCase() === wanted)
+  return hits.length === 1 ? hits[0] : undefined
+}
+
+/**
+ * 规则②.5：候选路径**以引用路径结尾**（按路径段对齐）且唯一。
+ *
+ * 为什么需要它：规则①依赖「知道 md 在所选树里的位置」，而两个真实场景都拿不到这个信息——
+ * ① 用户用「选择图片文件」平铺多选（`webkitRelativePath` 为空）；
+ * ② md 不在所选树里。此时带目录的引用（`attachments/a.png`）若只靠文件名匹配，
+ * 一旦有同名文件就会被判歧义而静默不搬（#56 实测：`attachments/a.png` 撞上 `dup/a.png`）。
+ * 后缀匹配不猜——它要求**唯一**，两个 `attachments/a.png` 分处不同父目录时照样判歧义。
+ */
+function findByUniquePathSuffix(candidates: ImageCandidate[], target: string): ImageCandidate | undefined {
+  const wanted = normKey(target)
+  const hits = candidates.filter(c => {
+    const rel = normKey(c.relPath)
+    return rel !== '' && (rel === wanted || rel.endsWith('/' + wanted))
+  })
   return hits.length === 1 ? hits[0] : undefined
 }
 

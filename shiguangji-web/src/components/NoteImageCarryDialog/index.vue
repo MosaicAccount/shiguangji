@@ -209,6 +209,15 @@ async function onFilesChange(event: Event): Promise<void> {
   }
 
   const { matched, unresolved } = resolveImageFiles(refs.value, candidates, mdDir)
+  // 诊断留痕：定位「为什么某张没搬」时，mdDir 与候选数是第一现场（这类静默降级不看日志很难查）
+  console.debug('[note-image-carry] 选择结果', {
+    mdFileName: mdFileName.value,
+    mdDir,
+    选中文件: files.length,
+    图片候选: candidates.length,
+    命中: matched.length,
+    未命中: unresolved.map(ref => ref.target)
+  })
   if (matched.length === 0) {
     unmatchedRefs.value = unresolved
     stage.value = 'result'

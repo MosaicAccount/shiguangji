@@ -41,6 +41,7 @@
 | T-12 | 完全不匹配 | 候选为空 | 未命中，不抛异常 | 设计 51 |
 | T-57 | **md 目录从完整文件树取（回归）** | 文件树含 `vault/观影笔记.md`、`vault/attachments/a.png`、`vault/dup/a.png`；候选表只留图片（md 不在其中）；引用 `attachments/a.png` 与 `a.png` | `mdDirOf` 返回 `vault`；前者由**精确相对路径**命中 `vault/attachments/a.png`，后者因同名歧义未命中 | 结论 63 |
 | T-58 | md 不在所选树里 | 树里没有该 md 文件名 | `mdDirOf` 返回空串，规则①跳过、退回规则②③，不抛异常 | 结论 63 |
+| T-59 | **路径后缀唯一匹配（回归）** | 候选含 `vault/attachments/a.png` 与 `vault/dup/a.png`，mdDir 为空，引用 `attachments/a.png`；另一组把 `attachments/a.png` 放在 `noteA/` 与 `noteB/` 两个父目录下 | 前者命中 `vault/attachments/a.png`（后缀唯一）；后者两个后缀相同 → 未命中不猜；平铺多选（relPath 全空）时带目录的引用同样安全地判未命中 | 结论 63 第二半 |
 
 ### 2.3 改写（同文件）
 
