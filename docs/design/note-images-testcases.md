@@ -39,6 +39,8 @@
 | T-10 | basename 唯一匹配（大小写不敏感） | 候选只有 `vault/attachments/A.PNG`，引用 `![[a.png]]` | 命中 | 设计 50 |
 | T-11 | basename 歧义不猜 | 候选含 `x/a.png` 与 `y/a.png`，引用 `![[a.png]]` | 未命中（保留原引用） | 设计 50、51 |
 | T-12 | 完全不匹配 | 候选为空 | 未命中，不抛异常 | 设计 51 |
+| T-57 | **md 目录从完整文件树取（回归）** | 文件树含 `vault/观影笔记.md`、`vault/attachments/a.png`、`vault/dup/a.png`；候选表只留图片（md 不在其中）；引用 `attachments/a.png` 与 `a.png` | `mdDirOf` 返回 `vault`；前者由**精确相对路径**命中 `vault/attachments/a.png`，后者因同名歧义未命中 | 结论 63 |
+| T-58 | md 不在所选树里 | 树里没有该 md 文件名 | `mdDirOf` 返回空串，规则①跳过、退回规则②③，不抛异常 | 结论 63 |
 
 ### 2.3 改写（同文件）
 

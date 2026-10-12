@@ -175,26 +175,34 @@ export interface ResolveOutcome {
 }
 
 /**
+ * 从用户选中的**完整文件树**里取出 md 所在目录（相对所选根），供规则①做精确相对匹配。
+ *
+ * 必须传完整文件列表而不是「已过滤成图片」的候选表：md 自己不是图片，
+ * 若先滤掉它，规则①会静默失效，引用只能退到文件名匹配——同名歧义时就会误判成未命中
+ * （#56 实测踩到：`attachments/a.png` 因 `dup/a.png` 同名而被漏搬）。
+ *
+ * @returns md 所在目录；md 不在所选树里时返回空串（规则①跳过，退回规则②③）
+ */
+export function mdDirOf(files: Array<{ name: string; relPath: string }>, mdFileName: string): string {
+  if (!mdFileName) return ''
+  const hit = files.find(f => f.name.toLowerCase() === mdFileName.toLowerCase())
+  return hit && hit.relPath ? parentDir(hit.relPath) : ''
+}
+
+/**
  * 给每条引用找它指向的候选文件，四级优先、歧义不猜（设计 结论 50）：
- * ① md 同目录的精确相对路径（md 在候选树里按文件名定位，拿到它的目录）
+ * ① md 同目录的精确相对路径（目录由 {@link mdDirOf} 从完整文件树里取）
  * ② 相对所选根目录的路径 ③ 文件名唯一匹配（大小写不敏感，兜住 Obsidian 短引用与平铺多选）
  * ④ 文件名命中多个 → 未命中。命中 0 个候选的引用原样保留（结论 51）。
  */
-export function resolveImageFiles(
-  refs: NoteImageRef[],
-  candidates: ImageCandidate[],
-  mdFileName: string
-): ResolveOutcome {
-  const mdEntry = mdFileName ? candidates.find(c => c.name.toLowerCase() === mdFileName.toLowerCase()) : undefined
-  const mdDir = mdEntry && mdEntry.relPath ? parentDir(mdEntry.relPath) : ''
-
+export function resolveImageFiles(refs: NoteImageRef[], candidates: ImageCandidate[], mdDir: string): ResolveOutcome {
   const matched: NoteImageMatch[] = []
   const unresolved: NoteImageRef[] = []
   for (const ref of refs) {
     const target = normalizePath(ref.target)
     const relative = !target.startsWith('/')
     const hit =
-      (relative && mdDir && candidates.find(c => normKey(joinPath(mdDir, target)) === normKey(c.relPath))) ||
+      (relative && !!mdDir && candidates.find(c => normKey(joinPath(mdDir, target)) === normKey(c.relPath))) ||
       (relative && candidates.find(c => normKey(target) === normKey(c.relPath))) ||
       findByUniqueBasename(candidates, target)
     if (hit) matched.push({ ref, candidate: hit })
@@ -215,7 +223,9 @@ function normalizePath(path: string): string {
 }
 
 function joinPath(dir: string, path: string): string {
-  return `${dir.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`
+  const cleanDir = dir.replace(/\/+$/, '')
+  const cleanPath = path.replace(/^\/+/, '')
+  return cleanDir ? `${cleanDir}/${cleanPath}` : cleanPath
 }
 
 function parentDir(path: string): string {

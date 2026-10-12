@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   collectImageRefs,
+  mdDirOf,
   resolveImageFiles,
   rewriteNoteImageRefs,
   uniqueTargetCount,
@@ -88,32 +89,61 @@ describe('resolveImageFiles：匹配', () => {
   const refOf = (target: string): NoteImageRef => ({ raw: `![x](${target})`, target, kind: 'markdown', index: 0, alt: 'x' })
 
   it('md 同目录的精确相对路径优先（T-08）', () => {
-    const candidates = [cand('note.md', 'vault/note.md'), cand('a.png', 'vault/attachments/a.png'), cand('a.png', 'other/a.png')]
-    const outcome = resolveImageFiles([refOf('attachments/a.png')], candidates, 'note.md')
+    const candidates = [cand('a.png', 'vault/attachments/a.png'), cand('a.png', 'vault/dup/a.png')]
+    const outcome = resolveImageFiles([refOf('attachments/a.png')], candidates, 'vault')
     expect(outcome.matched[0].candidate.relPath).toBe('vault/attachments/a.png')
     expect(outcome.unresolved).toHaveLength(0)
   })
 
-  it('md 不在候选树里时退到相对所选根（T-09）', () => {
+  it('md 不在候选树里（mdDir 为空）时退到相对所选根（T-09）', () => {
     const candidates = [cand('a.png', 'attachments/a.png')]
-    const outcome = resolveImageFiles([refOf('attachments/a.png')], candidates, 'note.md')
+    const outcome = resolveImageFiles([refOf('attachments/a.png')], candidates, '')
     expect(outcome.matched[0].candidate.relPath).toBe('attachments/a.png')
   })
 
   it('文件名唯一匹配兜底，且大小写不敏感（T-10）', () => {
-    const outcome = resolveImageFiles([refOf('a.png')], [cand('A.PNG')], 'note.md')
+    const outcome = resolveImageFiles([refOf('a.png')], [cand('A.PNG')], 'vault')
     expect(outcome.matched[0].candidate.name).toBe('A.PNG')
   })
 
   it('文件名命中多个不猜，按未命中处理（T-11）', () => {
-    const outcome = resolveImageFiles([refOf('a.png')], [cand('a.png', 'x/'), cand('a.png', 'y/')], 'note.md')
+    const outcome = resolveImageFiles([refOf('a.png')], [cand('a.png', 'x/'), cand('a.png', 'y/')], 'vault')
     expect(outcome.matched).toHaveLength(0)
     expect(outcome.unresolved).toHaveLength(1)
   })
 
   it('没有候选时全部未命中且不报错（T-12）；带 ./ 前缀的目标能对上', () => {
-    expect(resolveImageFiles([refOf('a.png')], [], 'note.md').unresolved).toHaveLength(1)
-    expect(resolveImageFiles([refOf('./a.png')], [cand('a.png')], 'note.md').matched).toHaveLength(1)
+    expect(resolveImageFiles([refOf('a.png')], [], 'vault').unresolved).toHaveLength(1)
+    expect(resolveImageFiles([refOf('./a.png')], [cand('a.png')], 'vault').matched).toHaveLength(1)
+  })
+
+  /**
+   * 回归（#56 实测踩到）：md 自己不是图片，弹窗若先把非图片文件滤掉再定位 md，
+   * mdDir 就成了空串，规则①静默失效——`attachments/a.png` 只能退到文件名匹配，
+   * 而它与 `dup/a.png` 同名 → 被误判成未命中、图不搬。
+   * 这里同时钉住两件事：mdDirOf 从完整树里取得到目录；拿到目录后歧义由精确路径解开。
+   */
+  it('md 被排除出图片候选后仍能靠 mdDirOf 走精确相对匹配（T-57 回归）', () => {
+    const selectedTree = [
+      { name: '观影笔记.md', relPath: 'vault/观影笔记.md' },
+      { name: 'a.png', relPath: 'vault/attachments/a.png' },
+      { name: 'a.png', relPath: 'vault/dup/a.png' },
+      { name: 'b.png', relPath: 'vault/attachments/b.png' }
+    ]
+    const mdDir = mdDirOf(selectedTree, '观影笔记.md')
+    expect(mdDir).toBe('vault')
+
+    // 候选表只留图片（md 不在其中）——这是弹窗的真实形态
+    const candidates = selectedTree.filter(f => f.name.endsWith('.png')).map(f => cand(f.name, f.relPath))
+    const outcome = resolveImageFiles([refOf('attachments/a.png'), refOf('a.png')], candidates, mdDir)
+
+    expect(outcome.matched.map(m => m.candidate.relPath)).toEqual(['vault/attachments/a.png'])
+    expect(outcome.unresolved.map(r => r.target)).toEqual(['a.png'])
+  })
+
+  it('mdDirOf：md 不在所选树里时返回空串（退回规则②③），文件名大小写不敏感', () => {
+    expect(mdDirOf([{ name: 'a.png', relPath: 'vault/a.png' }], '观影笔记.md')).toBe('')
+    expect(mdDirOf([{ name: 'Note.MD', relPath: 'vault/sub/Note.MD' }], 'note.md')).toBe('vault/sub')
   })
 })
 

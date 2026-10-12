@@ -268,7 +268,7 @@ html.dark .legend .new{color:#D67870}
           <button class="el-dialog__headerbtn" type="button" aria-label="关闭" onclick="closeDlg()">✕</button>
         </div>
         <div class="el-dialog__body">
-          <p class="dtxt" id="dBody">正文里有 <b>12</b> 处本地图片引用（去重后 <b>9</b> 个文件）。这些文件不在 md 里，需要你指出它们在哪。<span class="an" data-n="1"></span></p>
+          <p class="dtxt" id="dBody">正文里有 <b>12</b> 处本地图片引用（去重后 <b>9</b> 处不同路径）。这些文件不在 md 里，需要你指出它们在哪。<span class="an" data-n="1"></span></p>
 
           <p class="desc" id="dDesc" hidden>选笔记所在的文件夹最准（相对路径能对上）；也可以直接多选图片文件，按文件名匹配。找不到的会保留原引用。<span class="an" data-n="2"></span></p>
 
@@ -325,7 +325,7 @@ html.dark .legend .new{color:#D67870}
 <section class="legend">
   <h2>本屏标注</h2>
   <ol>
-    <li><span class="new">新增</span>：<b>搬运弹窗的默认态</b>。承接 FR-002-8 边界 3——相对路径 <code>![](./img/a.png)</code> 与 Obsidian 的 <code>![[shot 2.png]]</code> 指向的文件系统拿不到，必须由用户指出位置。计数分两档：<b>12 处引用</b>是正文里出现的次数（同一张图引用两次算两处），<b>9 个文件</b>是去重后真正要上传的数量——只报一个数会让「已搬运 9 张」和「12 处引用」对不上账。</li>
+    <li><span class="new">新增</span>：<b>搬运弹窗的默认态</b>。承接 FR-002-8 边界 3——相对路径 <code>![](./img/a.png)</code> 与 Obsidian 的 <code>![[shot 2.png]]</code> 指向的文件系统拿不到，必须由用户指出位置。计数分两档：<b>12 处引用</b>是正文里出现的次数（同一张图引用两次算两处），<b>9 处不同路径</b>是去重后的路径数——注意它<b>不是文件数</b>（<code>![[a.png]]</code> 与 <code>![x](attachments/a.png)</code> 是两处不同路径，可能指向同一个文件，也可能像同名歧义那样指向两个），真正上传了几个文件要等选完文件，结果态才报「已搬运 N 张」。</li>
     <li><span class="new">新增</span>：<b>两种指认方式的分工</b>。「选择图片文件夹」最准：能拿到 <code>webkitRelativePath</code>，<code>./img/a.png</code> 这类相对路径可以直接对上；「选择图片文件」只有文件名，按名字匹配——同名不同目录时可能配错，所以文案里明说「最准」而不是「推荐」。两者都不阻断流程，找不到的保留原引用。</li>
     <li><span class="new">新增</span>：<b>未命中清单逐条列出并保留原引用</b>。列表用等宽字体原样回显引用串（含 <code>./</code> 与 <code>![[ ]]</code> 两种写法），让用户能对着去本地找。只报「3 处没找到」而不给名字，用户没有任何可执行的下一步。超过三条时折叠为「等 3 处」。</li>
     <li><span class="new">新增</span>：<b>「跳过，只导入文字」始终可见</b>，是纯文字按钮而不是第三个实底按钮——搬运是<b>可选</b>补救，不该和「继续」抢视觉权重，也不该被藏进右上角关闭图标里（那样用户以为整篇导入被取消了）。跳过后的后果见状态 6 的列表页提示。</li>

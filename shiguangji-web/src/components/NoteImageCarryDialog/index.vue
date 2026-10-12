@@ -11,7 +11,7 @@
     <!-- 默认态：指出图片在哪 -->
     <template v-if="stage === 'pick'">
       <p class="dtxt">
-        正文里有 <b>{{ refs.length }}</b> 处本地图片引用（去重后 <b>{{ uniqueCount }}</b> 个文件）。
+        正文里有 <b>{{ refs.length }}</b> 处本地图片引用（去重后 <b>{{ uniqueCount }}</b> 处不同路径）。
         这些文件不在 md 里，需要你指出它们在哪。
       </p>
       <p class="desc">
@@ -94,6 +94,7 @@ import {
   NOTE_IMAGE_EXTENSIONS,
   NOTE_IMAGE_MAX_COUNT,
   NOTE_IMAGE_MAX_SIZE,
+  mdDirOf,
   resolveImageFiles,
   rewriteNoteImageRefs,
   uniqueTargetCount,
@@ -178,7 +179,14 @@ async function onFilesChange(event: Event): Promise<void> {
   input.value = ''
   if (files.length === 0) return
 
-  // 只收图片、滤掉超限的（忽略并提示，不中断整次搬运）
+  // 只收图片、滤掉超限的（忽略并提示，不中断整次搬运）。
+  // 注意：md 所在目录必须从**未过滤**的完整文件树里取（utils/noteImages 的 mdDirOf）——
+  // 若在这里先把非图片文件滤掉，md 自己也被滤掉，匹配规则①会静默失效，
+  // 引用只能退到「文件名唯一匹配」，同名歧义时就被误判成未命中（#56 实测踩到）
+  const mdDir = mdDirOf(
+    files.map(file => ({ name: file.name, relPath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || '' })),
+    mdFileName.value
+  )
   ignoredOversize.value = 0
   ignoredOvercount.value = 0
   const candidates: ImageCandidate[] = []
@@ -200,7 +208,7 @@ async function onFilesChange(event: Event): Promise<void> {
     })
   }
 
-  const { matched, unresolved } = resolveImageFiles(refs.value, candidates, mdFileName.value)
+  const { matched, unresolved } = resolveImageFiles(refs.value, candidates, mdDir)
   if (matched.length === 0) {
     unmatchedRefs.value = unresolved
     stage.value = 'result'
