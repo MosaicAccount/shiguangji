@@ -117,3 +117,11 @@
 | T-51 | 孤儿清理既有用例全绿（保护期 / 比例兜底 / 列举失败中止） | `mvn -pl shiguangji-quartz test`（`FileCleanupTaskTest`）、`mvn -pl shiguangji-file test`（`OrphanFileReconcilerTest`、`LocalFileStorageTest`） |
 | T-52 | 笔记检索 / 摘要 / 草稿箱 / 回收站 / 导出全绿 | `mvn -pl shiguangji-admin -am test`（`AppApiAuthIsolationSmokeTest`、`AppNoteDraftSmokeTest`、`AppNoteExportSmokeTest`） |
 | T-53 | 前台详情页代码高亮与大纲导航不受渲染钩子影响 | 人工打开一篇带代码块的笔记 |
+
+## 6. 外链图片（结论 62）
+
+| 编号 | 用例 | 输入 / 步骤 | 期望 | 对应 |
+| --- | --- | --- | --- | --- |
+| T-54 | 外链计数（纯逻辑） | 正文含 `![](https://a/x.png)`、`![](//cdn/b.png)`、`![](data:image/png;base64,…)`、`![](.//c.png)` | `local` 只含真正本地的引用；`externalCount === 2`（`http(s):` 与 `//` 计，`data:` 不计）；外链不改写 | 结论 62、需求边界 18 |
+| T-55 | 弹窗明说（人工） | 导入一篇 7 张本地 + 3 张外链的笔记 | 弹窗默认态出现「另有 3 处是外链图片，不参与搬运…」；搬运后正文里 3 处外链一字未改；对方允许直链时详情页正常显示 | 结论 62、需求边界 18 |
+| T-56 | 全外链（人工） | 正文只有 3 张外链图 | 不弹搬运框（没有本地引用）、不产生任何上传请求，外链引用原样保留。此场景**不出现**外链说明——提示语的作用是解释搬运计数，没有计数就没有误读（结论 62 的文案只在弹窗里） | 结论 62 |

@@ -138,6 +138,13 @@ body[data-vp=mobile] .md-preview{display:none}
 .markdown-body pre code{background:transparent;color:inherit;padding:0;font-size:13px}
 .markdown-body img{max-width:100%;border-radius:8px;display:block;margin:10px auto}
 
+/* 预览里的图片占位：src 保留真实的 /dev-api 地址（标注 3 说的就是这个），
+   但静态稿并没有那张图，于是在 img 下层垫一个「图」占位块、让 img 自身透明 ——
+   这样 DOM 里的 src 如实保留，又不会渲染成破图图标 */
+.md-imgwrap{position:relative;display:block;width:180px;height:120px;margin:10px auto}
+.md-imgwrap .ph-img{position:absolute;inset:0;font-size:22px}
+.md-imgwrap img{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0}
+
 /* 图片占位（纯 CSS，不引用任何外部图片） */
 .ph-img{border-radius:8px;background:linear-gradient(160deg,var(--sgj-cover),var(--sgj-bg-deep));color:var(--sgj-text-3);
   display:flex;align-items:center;justify-content:center;font-family:var(--sgj-font-serif);font-size:22px;user-select:none}
@@ -349,7 +356,7 @@ function srcText(withImg){
 function pvHtml(withImg){
   if(!withImg) return PV_HEAD + PH + PV_TAIL;
   return `<h2>导入的产物长什么样</h2>
-<p>图示：<img src="${IMG_DEV}" alt="" style="width:180px;height:120px;margin:10px auto"></p>
+<p>图示：<span class="md-imgwrap"><span class="ph-img">图</span><img src="${IMG_DEV}" alt="" width="180" height="120"></span></p>
 <ul><li>front-matter 整块剥离，只留正文；</li><li>图片引用原样保留，指向本地相对路径。</li></ul>` + PV_TAIL;
 }
 /* 粘贴态：文本未变，只是剪贴板里的图片被接走并上传 */

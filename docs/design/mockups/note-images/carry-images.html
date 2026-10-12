@@ -272,6 +272,8 @@ html.dark .legend .new{color:#D67870}
 
           <p class="desc" id="dDesc" hidden>选笔记所在的文件夹最准（相对路径能对上）；也可以直接多选图片文件，按文件名匹配。找不到的会保留原引用。<span class="an" data-n="2"></span></p>
 
+          <p class="desc" id="dExt" hidden>另有 <b>3</b> 处是外链图片（https://…），不参与搬运；若显示不出来，可用编辑器的「插图」手动替换。<span class="an" data-n="7"></span></p>
+
           <div class="el-progress" id="dProg" hidden>
             <div class="el-progress__bar"><div class="el-progress__inner" id="progInner"></div></div>
           </div>
@@ -329,6 +331,7 @@ html.dark .legend .new{color:#D67870}
     <li><span class="new">新增</span>：<b>「跳过，只导入文字」始终可见</b>，是纯文字按钮而不是第三个实底按钮——搬运是<b>可选</b>补救，不该和「继续」抢视觉权重，也不该被藏进右上角关闭图标里（那样用户以为整篇导入被取消了）。跳过后的后果见状态 6 的列表页提示。</li>
     <li><span class="new">新增</span>：<b>上限与忽略提示</b>。超 10MB 的单文件、以及一次超过 50 张的部分被跳过，但<b>已经搬上去的不回滚</b>——所以提示是「已忽略」而不是「失败」，并说明上限值，用户才知道要分批。被忽略的文件在结果态一并显示（本屏状态 5 展示了它与结果态共存的样子）。</li>
     <li><span class="new">新增</span>：<b>跳过后的列表页 warning</b>。弹窗关掉后不能就这么算了：正文里的引用还在，图就是显示不出来。提示常驻在列表页顶部，与既有 admin/前台 alert 样式同族（warning 色 <code>#FDF6EC</code> / <code>#B88230</code>），内容含处数与后果，可关闭。这与 0.0.2 里「本版不搬图片」的旧提示是<b>同一处</b>的改写——旧文案说明「本版不搬」，新文案说明「这次没搬，点进来可以补」。</li>
+    <li><span class="new">新增</span>：<b>外链图片只说明、不搬运</b>。<code>http(s):</code> / <code>//</code> 开头的是绝对地址，导入后浏览器直接去对方服务器取图，本来就能显示，没有可搬的东西——所以它<b>不</b>出现在「12 处本地引用」里。但必须说一句，否则 7 本地 + 3 外链的笔记只报「已搬运 7 张」，用户会以为另 3 张失败了。真要救防盗链 / 对方删图 / <code>http</code> 混合内容，得把外链下载到自己服务器（转存），那要服务器替用户访问任意网址，属另一主题（设计 结论 62 / 需求 D-31，另立 #68）。</li>
   </ol>
   <p class="scope"><b>未建模</b>：真实的文件夹 / 文件选择器、上传接口与进度推送、同名文件的匹配算法（按 basename 还是含相对路径后缀优先）、去重与孤儿文件对账、<code>data:</code> base64 内嵌图（明确不处理）。<br><b>既有不改</b>：列表页 banner、卡片、筛选栏、导入 md 入口、0.0.2 的三个导入拦截弹窗，视觉与行为都不变；本屏只新增搬运弹窗与顶部 warning。<b>移动端差异</b>：弹窗近满宽、按钮竖排（见工具条「移动端」）。</p>
 </section>
@@ -344,7 +347,7 @@ const OK_TEXT = '已搬运 <b>9</b> 张图片，正文引用已改写。';
 const OK_EMPTY = '没有匹配到任何图片（已保留原引用）。';
 
 const STATES = {
-  default:  {dlg:1, body:1, primary:1, skip:1, desc:1},
+  default:  {dlg:1, body:1, primary:1, skip:1, desc:1, ext:1},
   uploading:{dlg:1, body:1, prog:1, busy:1},
   partial:  {dlg:1, result:1, warn:1, list:1, more:1, done:1},
   allmiss:  {dlg:1, result:1, primary:1, skip:1},
@@ -364,6 +367,7 @@ function render(){
   show('skipAlert', !!c.alert);
   show('dBody', !!c.body);
   show('dDesc', !!c.desc);
+  show('dExt', !!c.ext);
   show('dProg', !!c.prog);
   show('dProgText', !!c.prog);
   show('dResult', !!c.result);
