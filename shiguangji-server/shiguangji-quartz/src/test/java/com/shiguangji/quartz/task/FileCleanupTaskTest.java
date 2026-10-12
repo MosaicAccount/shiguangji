@@ -63,6 +63,7 @@ class FileCleanupTaskTest
         when(fileStorageService.list("avatar")).thenReturn(Map.of());
         when(fileStorageService.list("cover")).thenReturn(Map.of());
         when(fileReferenceMapper.selectReferencedStorageKeys()).thenReturn(List.of());
+        when(fileReferenceMapper.selectContentsWithProfileRefs()).thenReturn(List.of());
         when(sysFileMapper.selectAllFileRecords()).thenReturn(List.of());
     }
 
@@ -141,6 +142,61 @@ class FileCleanupTaskTest
 
         // 单个文件删除失败不应中断整轮
         verify(fileStorageService).delete(otherKey);
+    }
+
+    // ------------------------------------------------------------------
+    // 正文引用（0.0.2 FR-002-9）：独立列之外的第二类引用来源
+    // ------------------------------------------------------------------
+
+    @Test
+    void keepsFileReferencedFromNoteContent() throws Exception
+    {
+        // 三列都不引用它，只有笔记正文里引用了——转存进来的图片就是这种形态
+        when(fileStorageService.list("upload")).thenReturn(Map.of(ORPHAN_KEY, OLD));
+        when(fileReferenceMapper.selectContentsWithProfileRefs())
+                .thenReturn(List.of("正文一 ![图](" + ORPHAN_PATH + ")，结尾"));
+
+        task.cleanupOrphanFiles();
+
+        verify(fileStorageService, never()).delete(anyString());
+        verify(sysFileMapper, never()).deleteFileRecordsByStorageKeys(anyList());
+    }
+
+    @Test
+    void keepsFileReferencedFromDraftContent() throws Exception
+    {
+        // 草稿没有过期机制：编辑了多日还没保存的笔记，其图只能靠草稿正文保住
+        when(fileStorageService.list("upload")).thenReturn(Map.of(ORPHAN_KEY, OLD));
+        when(fileReferenceMapper.selectContentsWithProfileRefs())
+                .thenReturn(List.of("![[/profile/upload/2026/08/01/orphan_1.jpg]]"));
+
+        task.cleanupOrphanFiles();
+
+        verify(fileStorageService, never()).delete(anyString());
+    }
+
+    @Test
+    void abortsWithoutDeletingWhenContentQueryFails() throws Exception
+    {
+        when(fileStorageService.list("upload")).thenReturn(Map.of(ORPHAN_KEY, OLD));
+        when(fileReferenceMapper.selectContentsWithProfileRefs()).thenThrow(new RuntimeException("库不可读"));
+
+        assertThrows(IllegalStateException.class, () -> task.cleanupOrphanFiles());
+
+        // 抽取失败按空集处理会把正文引用的图全部误删，必须一个都不删
+        verify(fileStorageService, never()).delete(anyString());
+        verify(sysFileMapper, never()).deleteFileRecordsByStorageKeys(anyList());
+    }
+
+    @Test
+    void abortsWithoutDeletingWhenContentQueryReturnsNull() throws Exception
+    {
+        when(fileStorageService.list("upload")).thenReturn(Map.of(ORPHAN_KEY, OLD));
+        when(fileReferenceMapper.selectContentsWithProfileRefs()).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> task.cleanupOrphanFiles());
+
+        verify(fileStorageService, never()).delete(anyString());
     }
 
     private static SysFile record(String storageKey)

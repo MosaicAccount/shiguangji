@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import com.shiguangji.business.mapper.FileReferenceMapper;
 import com.shiguangji.common.constant.Constants;
 import com.shiguangji.file.cleanup.OrphanFileReconciler;
+import com.shiguangji.file.cleanup.ProfileRefExtractor;
 import com.shiguangji.file.domain.SysFile;
 import com.shiguangji.file.mapper.SysFileMapper;
 import com.shiguangji.file.storage.FileStorageService;
@@ -76,12 +77,14 @@ public class FileCleanupTask
     {
         Instant now = Instant.now();
 
-        Set<String> referenced = new HashSet<>(fileReferenceMapper.selectReferencedStorageKeys());
         Map<String, Instant> stored = listStored();
         Map<String, Instant> recorded = listRecorded();
 
         Set<String> candidates = new HashSet<>(stored.keySet());
         candidates.addAll(recorded.keySet());
+
+        Set<String> referenced = new HashSet<>(fileReferenceMapper.selectReferencedStorageKeys());
+        referenced.addAll(listReferencedFromContents(candidates));
 
         Set<String> orphans = OrphanFileReconciler.findOrphans(stored, recorded, referenced, now, GRACE);
 
@@ -113,6 +116,30 @@ public class FileCleanupTask
 
         log.info("孤儿文件清理完成：候选 {}（存储 {} / 台账 {}），被引用 {}，回收文件 {}（失败 {}），清理台账 {} 条",
                 candidates.size(), stored.size(), recorded.size(), referenced.size(), deleted, failed, recordCount);
+    }
+
+    /**
+     * 正文里的 /profile 引用（笔记 + 草稿）
+     *
+     * 候选集必须先算出来：抽取是以候选集为字典做前缀匹配，而不是用正则猜路径边界（设计 结论 56）。
+     * 查询失败或返回 null 都中止本轮——按空集处理会把正文引用的图全部误删。
+     */
+    private Set<String> listReferencedFromContents(Set<String> candidates)
+    {
+        List<String> contents;
+        try
+        {
+            contents = fileReferenceMapper.selectContentsWithProfileRefs();
+        }
+        catch (Exception e)
+        {
+            throw new IllegalStateException("读取笔记正文引用失败，已中止本次清理", e);
+        }
+        if (contents == null)
+        {
+            throw new IllegalStateException("读取笔记正文引用返回 null，已中止本次清理");
+        }
+        return ProfileRefExtractor.selectReferenced(contents, candidates);
     }
 
     /**
