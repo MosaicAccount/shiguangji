@@ -1,11 +1,13 @@
 package com.shiguangji.business.service.impl;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
 
 import com.shiguangji.business.constants.SgjNoteConstants;
 import com.shiguangji.business.domain.SgjNote;
@@ -14,6 +16,7 @@ import com.shiguangji.business.service.ISgjNoteDraftService;
 import com.shiguangji.business.service.ISgjNoteService;
 import com.shiguangji.business.utils.SgjNoteUtils;
 import com.shiguangji.common.exception.ServiceException;
+import com.shiguangji.common.utils.PageUtils;
 import com.shiguangji.common.utils.StringUtils;
 
 /**
@@ -55,13 +58,13 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
     @Override
     public List<SgjNote> selectSgjNoteList(SgjNote sgjNote) {
         SgjNoteUtils.cleanKeyword(sgjNote);
-        return sgjNoteMapper.selectSgjNoteList(sgjNote);
+        return listWithKeywordLikeFallback(sgjNote, () -> sgjNoteMapper.selectSgjNoteList(sgjNote));
     }
 
     @Override
     public List<SgjNote> selectSgjNoteFrontList(SgjNote sgjNote) {
         SgjNoteUtils.cleanKeyword(sgjNote);
-        List<SgjNote> list = sgjNoteMapper.selectSgjNoteFrontList(sgjNote);
+        List<SgjNote> list = listWithKeywordLikeFallback(sgjNote, () -> sgjNoteMapper.selectSgjNoteFrontList(sgjNote));
         if (!list.isEmpty()) {
             for (SgjNote note : list) {
                 // 必须先剥离 Markdown 再截窗：截断点落在语法内部会留下半截标记（如 ![x](h），
@@ -95,6 +98,32 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
                 note.setContent(null);
             }
 
+        }
+        return list;
+    }
+
+    /**
+     * 关键词全文检索 0 命中时用 like 复核一次（issue #66）。
+     *
+     * <p>InnoDB 的 ngram 全文索引在 deleted-doc 比例升高后会自动重建，重建窗口内新写入的
+     * 文档可能 match 不到（like 能查到、重跑即恢复，偶发时红时绿——排查记录见 issue）。
+     * 兜底只在「带关键词且全文 0 命中」时触发：换 like 条件重查一次，可见范围过滤
+     * （del_flag/is_public/create_by）原样复用。索引健康时 like 命中是 ngram 命中的子集，
+     * 结果不变；索引处于重建窗口时结果从 0 行恢复为实际命中。</p>
+     *
+     * <p>ponytail: 0 命中那次复核是全表扫（content 为 longtext），个人项目量级可接受；
+     * 笔记到十万级再换「索引健康探测」或放弃 ngram。首查已消费控制器 startPage() 的
+     * 分页线程变量，复核前按同一请求参数重建分页，使返回形状（Page/total）与首查一致；
+     * 无请求上下文（内部调用）时跳过重建，复核不截断。</p>
+     */
+    private List<SgjNote> listWithKeywordLikeFallback(SgjNote sgjNote, Supplier<List<SgjNote>> query) {
+        List<SgjNote> list = query.get();
+        if (list.isEmpty() && StringUtils.isNotEmpty(sgjNote.getKeyword())) {
+            if (RequestContextHolder.getRequestAttributes() != null) {
+                PageUtils.startPage();
+            }
+            sgjNote.getParams().put("keywordLike", Boolean.TRUE);
+            list = query.get();
         }
         return list;
     }
