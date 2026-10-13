@@ -46,9 +46,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             </if>
             <!-- 标题+正文全文检索：布尔模式（自然语言模式会把 mysql 命中到只含 sql 的行）；
                  标题与正文在同一 match 条件里，无 or，不会短路 create_by/is_public 等过滤；
-                 布尔运算符已在服务层剔除。回收站不纳入（见 selectRecycleNoteList） -->
+                 布尔运算符已在服务层剔除。回收站不纳入（见 selectRecycleNoteList）。
+                 params.keywordLike 是服务层的 0 命中复核分支（issue #66）：全文索引重建窗口内
+                 match 可能漏掉新写入的行，此时换 like 再查一次；like 与 title 过滤同样不转义 %/_ -->
             <if test="keyword != null and keyword != ''">
-                and match(n.title, n.content) against(#{keyword} in boolean mode)
+                <choose>
+                    <when test="params.keywordLike == true">
+                        and (n.title like concat('%', #{keyword}, '%')
+                             or n.content like concat('%', #{keyword}, '%'))
+                    </when>
+                    <otherwise>
+                        and match(n.title, n.content) against(#{keyword} in boolean mode)
+                    </otherwise>
+                </choose>
             </if>
             <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中；replace 兼容手输期的“逗号+空格”写法 -->
             <if test="tags != null and tags != ''">
