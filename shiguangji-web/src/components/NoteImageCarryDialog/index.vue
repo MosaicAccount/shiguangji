@@ -9,8 +9,8 @@
     :close-on-click-modal="false"
     @close="resolveSkip"
   >
-    <!-- 默认态：指出图片在哪 -->
-    <template v-if="stage === 'pick'">
+    <!-- 默认态：指出图片在哪（有本地引用时） -->
+    <template v-if="stage === 'pick' && refs.length > 0">
       <p class="dtxt">
         正文里有 <b>{{ refs.length }}</b> 处本地图片引用（去重后 <b>{{ uniqueCount }}</b> 处不同路径）。
         这些文件不在 md 里，需要你指出它们在哪。
@@ -18,8 +18,27 @@
       <p class="desc">
         选笔记所在的文件夹最准（相对路径能对上）；也可以直接多选图片文件，按文件名匹配。找不到的会保留原引用。
       </p>
-      <p v-if="externalCount > 0" class="desc">
-        另有 <b>{{ externalCount }}</b> 处是外链图片（https://…），不参与搬运；若显示不出来，可用编辑器的「插图」手动替换。
+      <template v-if="externalRefs.length > 0">
+        <el-checkbox v-model="transferExternal" class="ext-check">
+          顺带转存外链图片（{{ externalRefs.length }} 处）
+        </el-checkbox>
+        <p class="desc">
+          <template v-if="transferExternal">
+            将把 {{ externalRefs.length }} 处外链下载到本站备份，引用改指本站——不再受对方删图 / 防盗链影响。
+          </template>
+          <template v-else>
+            另有 <b>{{ externalRefs.length }}</b> 处是外链图片（https://…），不参与搬运；若显示不出来，可用编辑器的「插图」手动替换，
+            或在完成后回到这里补转存。
+          </template>
+        </p>
+      </template>
+    </template>
+
+    <!-- 默认态：只有外链（结论 67） -->
+    <template v-else-if="stage === 'pick'">
+      <p class="dtxt">正文里的 {{ externalRefs.length }} 处图片都是外链（https://…）。</p>
+      <p class="desc">
+        外链现在能显示，但它依赖对方服务器：删图 / 关站 / 防盗链之后无从找回。可转存一份到本站，引用改指本站。
       </p>
     </template>
 
@@ -35,11 +54,15 @@
     <!-- 结果态（含全部未命中） -->
     <template v-else>
       <p v-if="matchedRefCount > 0" class="okline">已搬运 <b>{{ matchedRefCount }}</b> 张图片，正文引用已改写。</p>
-      <p v-else class="warnline">
+      <p v-if="extSuccessRefCount > 0" class="okline">已转存外链 <b>{{ extSuccessRefCount }}</b> 处，引用改指本站。</p>
+      <p
+        v-if="matchedRefCount === 0 && extSuccessRefCount === 0"
+        class="warnline"
+      >
         <svg class="warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M12 3 2 20h20L12 3Z" /><path d="M12 9v5" /><path d="M12 17.2v.2" />
         </svg>
-        没有匹配到任何图片（已保留原引用）。
+        没有搬运或转存任何图片（已保留原引用）。
       </p>
       <p v-if="failedRefCount > 0" class="warnline">
         <svg class="warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -59,6 +82,19 @@
         </ul>
         <p v-if="unmatchedRefs.length > 5" class="morecount">等 {{ unmatchedRefs.length }} 处</p>
       </template>
+      <template v-if="extFailedItems.length > 0">
+        <p class="warnline">
+          <svg class="warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 3 2 20h20L12 3Z" /><path d="M12 9v5" /><path d="M12 17.2v.2" />
+          </svg>
+          {{ extFailedItems.length }} 处外链转存失败，保留了原引用：
+        </p>
+        <ul class="misses">
+          <li v-for="item in extFailedItems.slice(0, 5)" :key="item.target">{{ item.target }} —— {{ item.reason }}</li>
+        </ul>
+        <p v-if="extFailedItems.length > 5" class="morecount">等 {{ extFailedItems.length }} 处</p>
+      </template>
+      <p v-if="extRemainingCount > 0" class="ignored">另有 {{ extRemainingCount }} 处外链未转存。</p>
       <p v-if="ignoredOversize > 0" class="ignored">已忽略 {{ ignoredOversize }} 个超过 10MB 的文件。</p>
       <p v-if="ignoredOvercount > 0" class="ignored">一次最多搬运 {{ NOTE_IMAGE_MAX_COUNT }} 张，超出的已忽略。</p>
       <p v-if="rewrite && rewrite.tooLong" class="warnline">
@@ -71,14 +107,18 @@
 
     <template #footer>
       <div class="carry-footer">
-        <div v-if="stage !== 'uploading' && !(stage === 'result' && matchedRefCount > 0)" class="btn-row">
+        <div v-if="stage === 'pick' && refs.length > 0" class="btn-row">
           <el-button type="primary" @click="folderInput?.click()">选择图片文件夹</el-button>
           <el-button @click="fileInput?.click()">选择图片文件</el-button>
+        </div>
+        <div v-else-if="stage === 'pick'" class="btn-row">
+          <el-button type="primary" @click="transferAllExternal()">转存外链图片</el-button>
         </div>
         <div v-else-if="stage === 'uploading'" class="btn-row">
           <el-button type="primary" loading disabled>正在上传…</el-button>
         </div>
         <div v-else class="btn-row">
+          <el-button v-if="extRemainingCount > 0" @click="transferAllExternal()">补转存外链</el-button>
           <el-button type="primary" @click="finish()">完成，去编辑</el-button>
         </div>
         <el-button text @click="skip()">{{ stage === 'pick' ? '跳过，只导入文字' : '放弃搬运，只导入文字' }}</el-button>
@@ -94,15 +134,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { uploadNoteImage } from '@/api/common/upload'
+import { fetchExternalImage, uploadNoteImage } from '@/api/common/upload'
 import { NOTE_CONTENT_MAX_LENGTH } from '@/utils/note'
 import {
   NOTE_IMAGE_EXTENSIONS,
   NOTE_IMAGE_MAX_COUNT,
   NOTE_IMAGE_MAX_SIZE,
+  collectImageRefs,
   mdDirOf,
   resolveImageFiles,
   rewriteNoteImageRefs,
+  toAbsoluteExternalUrl,
   uniqueTargetCount,
   type NoteImageRef,
   type ImageCandidate,
@@ -122,7 +164,8 @@ const emit = defineEmits<{
 const visible = ref(false)
 const stage = ref<'pick' | 'uploading' | 'result'>('pick')
 const refs = ref<NoteImageRef[]>([])
-const externalCount = ref(0)
+const externalRefs = ref<NoteImageRef[]>([])
+const transferExternal = ref(false)
 const mdFileName = ref('')
 const content = ref('')
 
@@ -140,6 +183,13 @@ const ignoredOversize = ref(0)
 const ignoredOvercount = ref(0)
 const rewrite = ref<RewriteResult | null>(null)
 
+/** 外链转存：URL → 站内路径（成功）/ URL → 失败原因（最近一次尝试） */
+const extUrlPath = ref(new Map<string, string>())
+const extFailedItems = ref<Array<{ target: string; reason: string }>>([])
+/** 累计改写成功的外链引用处数（补转存可多轮，弹窗在结果态之间不重开） */
+const extSuccessRefCount = ref(0)
+const extRemainingCount = computed(() => externalRefs.value.length - extSuccessRefCount.value)
+
 const folderInput = ref<HTMLInputElement>()
 const fileInput = ref<HTMLInputElement>()
 
@@ -150,14 +200,21 @@ const progressPercent = computed(() => (totalToUpload.value === 0 ? 0 : Math.rou
 /**
  * 打开弹窗并等待结果（调用方线性 await，导入流程不用被拆到回调里）。
  *
+ * @param externalRefsList 外链引用（#68 转存；空数组 = 正文没有外链，与 #56 行为一致）
  * @returns 搬运结果；跳过 / 关闭弹窗 / 全部失败时返回 null，正文保持原样
  */
-function open(sourceContent: string, imageRefs: NoteImageRef[], external: number, fileName: string): Promise<CarryOutcome | null> {
+function open(
+  sourceContent: string,
+  imageRefs: NoteImageRef[],
+  externalRefsList: NoteImageRef[],
+  fileName: string
+): Promise<CarryOutcome | null> {
   content.value = sourceContent
   refs.value = imageRefs
-  externalCount.value = external
+  externalRefs.value = externalRefsList
   mdFileName.value = fileName
   stage.value = 'pick'
+  transferExternal.value = false
   resetResult()
   visible.value = true
   return new Promise(resolvePromise => {
@@ -176,6 +233,9 @@ function resetResult(): void {
   ignoredOversize.value = 0
   ignoredOvercount.value = 0
   rewrite.value = null
+  extUrlPath.value = new Map()
+  extFailedItems.value = []
+  extSuccessRefCount.value = 0
 }
 
 async function onFilesChange(event: Event): Promise<void> {
@@ -183,7 +243,7 @@ async function onFilesChange(event: Event): Promise<void> {
   const files = Array.from(input.files ?? [])
   // 先清空：连着选同一个文件夹不会再触发 change
   input.value = ''
-  if (files.length === 0) return
+  if (files.length === 0 && externalRefs.value.length === 0) return
 
   // 只收图片、滤掉超限的（忽略并提示，不中断整次搬运）。
   // 注意：md 所在目录必须从**未过滤**的完整文件树里取（utils/noteImages 的 mdDirOf）——
@@ -222,9 +282,11 @@ async function onFilesChange(event: Event): Promise<void> {
     选中文件: files.length,
     图片候选: candidates.length,
     命中: matched.length,
-    未命中: unresolved.map(ref => ref.target)
+    未命中: unresolved.map(ref => ref.target),
+    勾选转存外链: transferExternal.value
   })
-  if (matched.length === 0) {
+  // 勾了「顺带转存外链」时，本地 0 命中也要继续走上传阶段（外链队列在跑）
+  if (matched.length === 0 && !(transferExternal.value && externalRefs.value.length > 0)) {
     unmatchedRefs.value = unresolved
     stage.value = 'result'
     if (ignoredOversize.value > 0 || ignoredOvercount.value > 0) {
@@ -236,7 +298,8 @@ async function onFilesChange(event: Event): Promise<void> {
   // 同一文件被多处引用只上传一次；它的上传失败会让所有指向它的引用保留原样
   stage.value = 'uploading'
   const uploads = dedupeByCandidate(matched)
-  totalToUpload.value = uploads.length
+  const extTargets = transferExternal.value ? dedupeExternalTargets(externalRefs.value) : []
+  totalToUpload.value = uploads.length + extTargets.length
   doneCount.value = 0
   successCount.value = 0
   failCount.value = 0
@@ -259,14 +322,86 @@ async function onFilesChange(event: Event): Promise<void> {
       doneCount.value++
     }
   })
+  await transferUrls(extTargets)
 
-  const replaced = matched.filter(m => succeeded.has(m.candidate)).map(m => ({ ref: m.ref, path: succeeded.get(m.candidate)! }))
-  rewrite.value = rewriteNoteImageRefs(content.value, replaced)
-  matchedRefCount.value = replaced.length
+  // 本地与外链的替换都基于**原始正文**的引用位置，合并成一次改写（从后往前替换互不干扰）
+  const localReplaced = matched.filter(m => succeeded.has(m.candidate)).map(m => ({ ref: m.ref, path: succeeded.get(m.candidate)! }))
+  const extReplaced = refsForTargets(externalRefs.value, extUrlPath.value)
+  rewrite.value = rewriteNoteImageRefs(content.value, [...localReplaced, ...extReplaced])
+  matchedRefCount.value = localReplaced.length
+  extSuccessRefCount.value = extReplaced.length
   failedRefCount.value = new Set(failedRefs).size
   const failedSet = new Set(failedRefs)
   unmatchedRefs.value = [...unresolved, ...matched.map(m => m.ref).filter(ref => failedSet.has(ref))]
   stage.value = 'result'
+}
+
+/** 只有外链 / 结果态补做：转存全部未成功的外链引用（#68 FR-006-2 / FR-006-4） */
+async function transferAllExternal(): Promise<void> {
+  if (extRemainingCount.value === 0 || stage.value === 'uploading') return
+  // 补做基于**当前已改写的正文**重新收集外链位置——本地搬运改写过正文，原 index 已失效
+  const base = rewrite.value?.content ?? content.value
+  const fresh = collectImageRefs(base).external.filter(ref => !extUrlPath.value.has(externalKey(ref.target)))
+  if (fresh.length === 0) return
+
+  stage.value = 'uploading'
+  const targets = dedupeExternalTargets(fresh)
+  totalToUpload.value = targets.length
+  doneCount.value = 0
+  successCount.value = 0
+  failCount.value = 0
+  await transferUrls(targets)
+
+  const replaced = refsForTargets(fresh, extUrlPath.value)
+  const result = rewriteNoteImageRefs(base, replaced)
+  rewrite.value = { content: result.content, length: result.length, tooLong: result.tooLong }
+  extSuccessRefCount.value += replaced.length
+  stage.value = 'result'
+}
+
+/** 逐张转存（限并发 3）：成功记 extUrlPath，失败记原因（逐条可见，结论 69） */
+async function transferUrls(targets: string[]): Promise<void> {
+  extFailedItems.value = []
+  await runWithConcurrency(targets, 3, async target => {
+    try {
+      const res = await fetchExternalImage(toAbsoluteExternalUrl(target))
+      if (res.code === 200 && res.path) {
+        extUrlPath.value.set(externalKey(target), res.path)
+        successCount.value++
+      } else {
+        extFailedItems.value.push({ target, reason: res.msg || '转存失败' })
+        failCount.value++
+      }
+    } catch (e) {
+      extFailedItems.value.push({ target, reason: e instanceof Error ? e.message : '转存失败' })
+      failCount.value++
+    } finally {
+      doneCount.value++
+    }
+  })
+}
+
+/** 转存目标的去重键：协议相对归一后按小写比较（结论 66） */
+function externalKey(target: string): string {
+  return toAbsoluteExternalUrl(target).toLowerCase()
+}
+
+function dedupeExternalTargets(list: NoteImageRef[]): string[] {
+  const seen = new Set<string>()
+  const targets: string[] = []
+  for (const ref of list) {
+    const key = externalKey(ref.target)
+    if (!seen.has(key)) {
+      seen.add(key)
+      targets.push(ref.target)
+    }
+  }
+  return targets
+}
+
+/** 转存成功后，把**所有**指向该 URL 的引用都换掉（同一张图多处引用只转存一次） */
+function refsForTargets(list: NoteImageRef[], urlPath: Map<string, string>): Array<{ ref: NoteImageRef; path: string }> {
+  return list.filter(ref => urlPath.has(externalKey(ref.target))).map(ref => ({ ref, path: urlPath.get(externalKey(ref.target))! }))
 }
 
 /** 按候选文件去重：一个候选带它服务的全部引用 */

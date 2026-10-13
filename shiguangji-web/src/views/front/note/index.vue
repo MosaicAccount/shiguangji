@@ -248,18 +248,18 @@ async function onImportFileChange(event: Event): Promise<void> {
   if (result.droppedTagCount > 0) {
     proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
   }
-  // 图片搬运（#56）：只在正文有本地图片引用时出现；跳过或未命中的引用原样保留并提示。
-  // 跳过时不弹「已搬运 N 张」这类计数，所以只报本地引用的处数
-  if (result.localImageRefs.length > 0) {
+  // 图片搬运（#56 / #68）：正文有本地图片引用**或**外链图片引用时出现；跳过或未命中的引用原样保留并提示。
+  // 跳过时不弹「已搬运 N 张」这类计数，所以只报本地引用的处数（外链不转存也能显示，不告警）
+  if (result.localImageRefs.length > 0 || result.externalImageRefs.length > 0) {
     const carried = await carryRef.value?.open(
       result.prefill.content,
       result.localImageRefs,
-      result.externalImageCount,
+      result.externalImageRefs,
       file.name
     )
     if (carried) {
       result.prefill.content = carried.content
-    } else {
+    } else if (result.localImageCount > 0) {
       proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用未搬运，导入后那些图会显示不出来`)
     }
   }
