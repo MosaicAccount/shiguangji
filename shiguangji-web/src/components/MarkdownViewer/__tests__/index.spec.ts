@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import MarkdownViewer from '../index.vue'
 
@@ -83,5 +84,36 @@ describe('MarkdownViewer 站内图片前缀（0.0.2 FR-002-9）', () => {
     const second = srcOf(renderHtml('![图](/profile/upload/2026/10/10/abc.png)'))
     expect(second).toBe(`${base}/profile/upload/2026/10/10/abc.png`)
     expect(second).not.toContain(`${base}${base}`)
+  })
+})
+
+describe('MarkdownViewer 失效图片的降级显示（0.0.2 FR-002-9 后续补强）', () => {
+  it('图片加载失败时换成「图片已失效」标记，原地址留在 title 里', async () => {
+    const wrapper = mount(MarkdownViewer, { props: { content: '![图](/profile/upload/2026/10/10/gone.png)' } })
+
+    // jsdom 不会真的去加载图片，手动派发 error 模拟「取不到」（error 不冒泡，靠捕获阶段接住）
+    wrapper.find('img').element.dispatchEvent(new Event('error'))
+    await nextTick()
+
+    const marker = wrapper.find('.md-img-missing')
+    expect(marker.exists()).toBe(true)
+    expect(marker.text()).toBe('图片已失效')
+    expect(marker.attributes('title')).toBe('/dev-api/profile/upload/2026/10/10/gone.png')
+    expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  it('正文不因失效图片而中断：其他图片与文字照常渲染', async () => {
+    const wrapper = mount(MarkdownViewer, {
+      props: { content: '前面\n\n![坏](/profile/upload/a.png)\n\n![好](https://example.com/a.png)\n\n后面' }
+    })
+
+    const [broken] = wrapper.findAll('img')
+    broken.element.dispatchEvent(new Event('error'))
+    await nextTick()
+
+    expect(wrapper.find('.md-img-missing').exists()).toBe(true)
+    expect(wrapper.findAll('img')).toHaveLength(1)
+    expect(wrapper.text()).toContain('前面')
+    expect(wrapper.text()).toContain('后面')
   })
 })

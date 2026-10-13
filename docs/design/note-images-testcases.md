@@ -120,6 +120,7 @@
 | T-51 | 孤儿清理既有用例全绿（保护期 / 比例兜底 / 列举失败中止） | `mvn -pl shiguangji-quartz test`（`FileCleanupTaskTest`）、`mvn -pl shiguangji-file test`（`OrphanFileReconcilerTest`、`LocalFileStorageTest`） |
 | T-52 | 笔记检索 / 摘要 / 草稿箱 / 回收站 / 导出全绿 | `mvn -pl shiguangji-admin -am test`（`AppApiAuthIsolationSmokeTest`、`AppNoteDraftSmokeTest`、`AppNoteExportSmokeTest`） |
 | T-53 | 前台详情页代码高亮与大纲导航不受渲染钩子影响 | 人工打开一篇带代码块的笔记 |
+| T-60 | **失效图片的降级显示**（渲染） | 手动派发 `error` 到正文里的 `<img>`（jsdom 不真加载图片）；另一条用例混排「失效图 + 正常外链图」 | 失败的 `<img>` 被换成 `.md-img-missing` 标记、文案「图片已失效」、`title` 为补过前缀的原地址；正常图与前后文字不受影响 | 结论 64 |
 
 ## 6. 外链图片（结论 62）
 
