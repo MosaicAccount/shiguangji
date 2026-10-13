@@ -17,4 +17,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select avatar from sys_user where avatar like '/profile/%'
     </select>
 
+    <!--
+      正文里的 /profile 引用（笔记 + 草稿，0.0.2 FR-002-9）。正文不是「一列一个文件」，
+      只能把可能命中的文本取回来，交给 ProfileRefExtractor 以候选集为字典抽键（设计 结论 55 / 56）。
+      union all 不去重：正文可能很长，为去重而比较全文不值当，重复项在抽取结果里自然是同一个键。
+      不过滤 del_flag：回收站里的笔记可恢复，其图必须留；草稿没有过期机制，同样要认。
+    -->
+    <select id="selectContentsWithProfileRefs" resultType="java.lang.String">
+        select content from sgj_note where content like '%/profile/%'
+        union all
+        select content from sgj_note_draft where content like '%/profile/%'
+    </select>
+
 </mapper>

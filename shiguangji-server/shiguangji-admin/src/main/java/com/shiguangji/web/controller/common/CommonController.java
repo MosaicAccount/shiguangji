@@ -140,6 +140,33 @@ public class CommonController
     }
 
     /**
+     * 笔记正文插图上传（0.0.2 FR-002-9，issue #56）
+     *
+     * <p>与 {@link #uploadFile} 有三处刻意的差别：只收图片（额外放行 webp）、**uuid 命名**、只回站内相对路径。
+     * uuid 命名是关键——笔记正文里保存的是这条路径，正文引用必须落在安全字符集内，
+     * 孤儿清理的引用抽取（ProfileRefExtractor）与前端改写才无歧义。</p>
+     *
+     * <p>需登录（与 /common/upload 一致，本类不加 @Anonymous）。返回 {@code {path: /profile/upload/...}}，
+     * 前端用它改写正文，不要用绝对 URL（换端口 / dev↔prod 即失效）。</p>
+     */
+    @PostMapping("/upload/note-image")
+    public AjaxResult uploadNoteImage(MultipartFile file) throws Exception
+    {
+        try
+        {
+            String path = fileStorageService.upload("upload", file, MimeTypeUtils.NOTE_IMAGE_EXTENSION, true);
+            recordSysFile(file, path);
+            AjaxResult ajax = AjaxResult.success();
+            ajax.put("path", path);
+            return ajax;
+        }
+        catch (Exception e)
+        {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
      * 登记文件台账（登记失败不影响上传结果）
      */
     private void recordSysFile(MultipartFile file, String storageKey)

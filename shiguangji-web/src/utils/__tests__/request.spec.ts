@@ -32,6 +32,33 @@ function res(code: number, headers: Record<string, any> = {}) {
   return { data: { code, msg: `code-${code}` }, config: { headers, url: '/app/note/draft' }, request: {} }
 }
 
+/** 取请求拦截器的成功分支（axios 的 InterceptorManager.handlers[0].fulfilled） */
+function requestHandler(): (config: any) => any {
+  return ((service.interceptors.request as any).handlers[0] as any).fulfilled
+}
+
+/**
+ * #56 实测踩到的坑：实例默认 Content-Type 是 application/json，axios 在 JSON Content-Type 下会把
+ * FormData 序列化成 '{}'，后端收不到 multipart、MultipartFile 解析成 null 而报 NPE。
+ * 拦截器必须给 FormData 请求标上 multipart；普通 JSON 请求不受影响。
+ */
+describe('request 对 FormData 的处理', () => {
+  it('FormData 请求被标记为 multipart（否则会被序列化成 {}）', () => {
+    const form = new FormData()
+    form.append('file', new File(['x'], 'a.png'))
+
+    const config = requestHandler()({ method: 'post', url: '/common/upload/note-image', headers: {}, data: form })
+
+    expect(config.headers['Content-Type']).toBe('multipart/form-data')
+  })
+
+  it('普通 JSON 请求不被打上 multipart（默认 Content-Type 不变）', () => {
+    const config = requestHandler()({ method: 'post', url: '/app/note', headers: {}, data: { title: 'x' } })
+
+    expect(config.headers['Content-Type']).toBeUndefined()
+  })
+})
+
 /**
  * issue #32 结论 22：编辑页的自动同步必须静默。
  * 静默请求（config.headers.silent）在 401 / 500 / 601 / 网络异常时都只压掉全局提示，

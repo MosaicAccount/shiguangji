@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.2 设计图 · 搬运笔记里的图片 — 拾光记</title>
+<style>
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台布局 ===== */
+.fh{height:72px;display:flex;align-items:center;gap:26px;padding:0 36px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;display:flex;gap:12px;align-items:center;color:var(--sgj-text-3)}
+.page{padding:36px}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:76px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+/* 页面头 banner（既有样式，未改动） */
+.banner{position:relative;display:flex;align-items:center;justify-content:space-between;height:176px;padding:0 56px;
+  background:#282e2c;color:#e7ece9;border-radius:24px;overflow:hidden;margin-bottom:24px}
+html.dark .banner{background:var(--sgj-bg-deep)}
+.banner .blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:140px;bottom:-90px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .txt{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:36px;line-height:1.3}
+.banner p{margin:12px 0 0;font-size:14px;color:#aeb8b3;letter-spacing:.5px}
+.banner .acts{position:relative;z-index:1;display:flex;gap:10px}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;font-size:13px;font-weight:500;letter-spacing:.5px}
+.btn.ghost{background:transparent;color:#e7ece9;border:1px solid rgba(231,236,233,.4)}
+body[data-vp=mobile] .banner{height:auto;padding:22px 18px;flex-direction:column;align-items:flex-start;gap:16px;border-radius:18px}
+body[data-vp=mobile] .banner h1{font-size:26px}
+
+/* ===== 跳过搬运后的列表页 warning（状态 6）===== */
+.el-alert{display:flex;align-items:flex-start;gap:10px;border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.6;margin-bottom:14px}
+.el-alert--warning{background:#FDF6EC;color:#B88230}
+html.dark .el-alert--warning{background:#3C3329;color:#C69A67}
+.el-alert__icon{flex-shrink:0;margin-top:1px;display:flex}
+.el-alert__content{flex:1;min-width:0;color:var(--sgj-text-2)}
+.el-alert__content .t{font-weight:600;color:inherit}
+
+/* 筛选与卡片（既有样式，未改动） */
+.filter{display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px}
+.search{display:flex;width:260px;border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);overflow:hidden;background:var(--sgj-bg-card)}
+.search .pfx{display:flex;align-items:center;padding:0 10px;color:var(--sgj-text-4)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--sgj-text);font:inherit;padding:9px 0}
+.search .go{border:0;border-left:1px solid var(--sgj-border);background:var(--sgj-bg);color:var(--sgj-text-2);font:inherit;padding:0 14px;cursor:pointer}
+.imp{flex:none;margin-left:10px;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);
+  font:inherit;font-size:12px;border-radius:var(--sgj-r-pill);padding:7px 15px;cursor:pointer;white-space:nowrap}
+.list{display:flex;flex-direction:column;gap:16px}
+.ncard{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px;box-shadow:var(--sgj-shadow-sm)}
+.c-head{display:flex;align-items:flex-start;gap:10px}
+.c-title{flex:1;min-width:0;font-family:var(--sgj-font-serif);font-weight:500;font-size:16px;line-height:24px}
+.pub{margin-left:8px;font-size:11px;font-weight:400;color:var(--sgj-success);border:1px solid var(--sgj-success);border-radius:4px;padding:0 5px}
+.c-excerpt{margin-top:8px;font-size:13px;color:var(--sgj-text-3);line-height:1.6}
+.c-meta{margin-top:10px;display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sgj-text-4)}
+.c-meta .tg{color:var(--sgj-amber)}
+
+/* ===== 弹窗（Element Plus 结构 · 前台主题）===== */
+.mask{position:absolute;inset:0;background:rgba(23,27,26,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.el-dialog{background:var(--sgj-bg-card);border-radius:var(--sgj-r-lg);width:520px;max-width:100%;
+  box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden;position:relative;display:flex;flex-direction:column;max-height:100%}
+.el-dialog__header{display:flex;align-items:center;gap:10px;padding:18px 20px 10px;flex-shrink:0}
+.el-dialog__title{margin:0;font-size:16px;font-family:var(--sgj-font-serif);font-weight:700;color:var(--sgj-text);flex:1;min-width:0}
+.el-dialog__headerbtn{border:0;background:transparent;color:var(--sgj-text-4);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px;border-radius:4px}
+.el-dialog__headerbtn:hover{color:var(--sgj-text-2)}
+.el-dialog__body{padding:4px 20px 8px;overflow:auto;flex:1;min-height:0}
+.el-dialog__footer{padding:12px 20px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}
+.dtxt{font-size:13px;color:var(--sgj-text-2);line-height:1.75;margin:0 0 10px}
+.dtxt:last-child{margin-bottom:0}
+.desc{font-size:12.5px;color:var(--sgj-text-3);line-height:1.7;margin:0 0 10px}
+
+.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px;
+  padding:8px 16px;font-size:13px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
+.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .el-button--primary{color:#171B1A}
+.el-button--text{border:0;background:transparent;color:var(--sgj-text-3);padding:4px 8px;font-size:12.5px}
+.el-button--text:hover{color:var(--sgj-primary)}
+.el-button.is-loading{opacity:.75;cursor:default}
+.el-button__row{display:flex;gap:10px}
+.el-button__row .el-button{flex:1}
+.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+html.dark .spin{border-color:rgba(23,27,26,.35);border-top-color:#171B1A}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.el-progress{margin:2px 0 10px}
+.el-progress__bar{height:8px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
+.el-progress__inner{height:100%;width:33%;border-radius:999px;background:var(--sgj-primary)}
+.el-progress--success .el-progress__inner{background:var(--sgj-moss)}
+.pmeta{font-size:12.5px;color:var(--sgj-text-3);display:flex;flex-wrap:wrap;gap:4px 14px}
+.pmeta b{color:var(--sgj-text-2)}
+
+/* 结果态 */
+.okline{font-size:13px;color:var(--sgj-text);margin:0 0 8px}
+.warnline{font-size:12.5px;color:var(--sgj-warning);margin:0 0 6px;display:flex;align-items:center;gap:6px}
+.misses{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.misses li{font-family:var(--sgj-font-mono);font-size:12px;color:var(--sgj-text-2);background:var(--sgj-bg-deep);
+  border-radius:5px;padding:3px 9px;display:inline-block;align-self:flex-start}
+.morecount{font-size:12px;color:var(--sgj-text-4);margin:6px 0 0}
+.ignored{font-size:12.5px;color:var(--sgj-text-3);margin:10px 0 0;padding-top:10px;border-top:1px dashed var(--sgj-border-card)}
+
+/* ===== 标注 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.2 设计图</b>
+    <nav class="screens">
+      <a href="index.html">索引</a>
+      <a href="carry-images.html" aria-current="page">搬运图片</a>
+      <a href="editor-image.html">编辑器插图</a>
+      <a href="../note-0.0.2/note-edit.html" class="here">0.0.2 编辑页</a>
+      <a href="../note-0.0.2/note-list.html" class="here">0.0.2 列表页</a>
+    </nav>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="default" aria-pressed="true">默认</button>
+      <button data-state="uploading" aria-pressed="false">上传中</button>
+      <button data-state="partial" aria-pressed="false">部分未命中</button>
+      <button data-state="allmiss" aria-pressed="false">全部未命中</button>
+      <button data-state="ignored" aria-pressed="false">有文件被忽略</button>
+      <button data-state="skip" aria-pressed="false">跳过后的列表页提示</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <!-- 状态 6：跳过搬运后的列表页提示 -->
+      <div class="el-alert el-alert--warning" id="skipAlert" hidden>
+        <span class="el-alert__icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2v.2"/>
+          </svg>
+        </span>
+        <div class="el-alert__content">
+          正文里有 <b>12</b> 处图片引用未搬运，导入后那些图会显示不出来。
+          <span class="an" data-n="6"></span>
+        </div>
+      </div>
+
+      <div class="banner">
+        <div class="blob"></div><div class="blob2"></div>
+        <div class="txt">
+          <h1>笔记</h1>
+          <p>记录你的思考与学习笔记。</p>
+        </div>
+        <div class="acts">
+          <button class="btn ghost">⤒ 导入 md</button>
+          <button class="btn">＋ 写笔记</button>
+        </div>
+      </div>
+
+      <div class="filter">
+        <label class="search">
+          <span class="pfx">⌕</span>
+          <input type="search" placeholder="搜索标题与正文" readonly>
+          <button class="go" type="button">搜索</button>
+        </label>
+        <button class="imp" type="button">导入 md</button>
+      </div>
+
+      <div class="list">
+        <article class="ncard">
+          <div class="c-head"><div class="c-title">Obsidian 到拾光记的笔记迁移<span class="pub">公开</span></div></div>
+          <div class="c-excerpt">导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 ngram 索引变成垃圾 token。配图原来散在 img/ 与 attachments/ 两个目录里。</div>
+          <div class="c-meta"><span>📝 独立笔记</span><span class="tg">迁移</span><span>2026-09-18 09:41</span></div>
+        </article>
+        <article class="ncard">
+          <div class="c-head"><div class="c-title">MySQL 全文索引与 ngram 分词</div></div>
+          <div class="c-excerpt">实测结论：ngram 自然语言模式会把 mysql 命中到只含 sql 的行，必须用布尔模式；ngram_token_size=2 时单个汉字搜不到，属硬约束。</div>
+          <div class="c-meta"><span>📝 独立笔记</span><span class="tg">数据库, 笔记</span><span>2026-09-18 10:23</span></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- ===== 搬运弹窗 ===== -->
+    <div class="mask" id="cmask">
+      <div class="el-dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+        <div class="el-dialog__header">
+          <h3 class="el-dialog__title" id="dlgTitle">搬运笔记里的图片</h3>
+          <button class="el-dialog__headerbtn" type="button" aria-label="关闭" onclick="closeDlg()">✕</button>
+        </div>
+        <div class="el-dialog__body">
+          <p class="dtxt" id="dBody">正文里有 <b>12</b> 处本地图片引用（去重后 <b>9</b> 处不同路径）。这些文件不在 md 里，需要你指出它们在哪。<span class="an" data-n="1"></span></p>
+
+          <p class="desc" id="dDesc" hidden>选笔记所在的文件夹最准（相对路径能对上）；也可以直接多选图片文件，按文件名匹配。找不到的会保留原引用。<span class="an" data-n="2"></span></p>
+
+          <p class="desc" id="dExt" hidden>另有 <b>3</b> 处是外链图片（https://…），不参与搬运；若显示不出来，可用编辑器的「插图」手动替换。<span class="an" data-n="7"></span></p>
+
+          <div class="el-progress" id="dProg" hidden>
+            <div class="el-progress__bar"><div class="el-progress__inner" id="progInner"></div></div>
+          </div>
+          <p class="pmeta" id="dProgText" hidden>正在上传 <b id="progNum">3 / 9</b>…<br><span id="progDone">已完成 2 张，失败 0 张</span></p>
+
+          <div id="dResult" hidden>
+            <p class="okline" id="rOk"></p>
+            <p class="warnline" id="rWarn" hidden>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0">
+                <path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2v.2"/>
+              </svg>
+              3 处没找到对应文件，保留了原引用：<span class="an" data-n="3"></span>
+            </p>
+            <ul class="misses" id="rList" hidden>
+              <li>./img/a.png</li>
+              <li>![[shot 2.png]]</li>
+              <li>attachments/diagram.svg</li>
+            </ul>
+            <p class="morecount" id="rMore" hidden>等 3 处</p>
+          </div>
+
+          <p class="ignored" id="dIgnored" hidden>已忽略 1 个超过 10MB 的文件；一次最多搬运 50 张<span class="an" data-n="5"></span></p>
+        </div>
+        <div class="el-dialog__footer">
+          <div class="el-button__row" id="dPrimary" hidden>
+            <button class="el-button el-button--primary" type="button" onclick="goUpload()">选择图片文件夹</button>
+            <button class="el-button" type="button" onclick="goUpload()">选择图片文件</button>
+          </div>
+          <div class="el-button__row" id="dBusy" hidden>
+            <button class="el-button el-button--primary is-loading" type="button" disabled>
+              <span class="spin"></span>正在上传…
+            </button>
+            <button class="el-button" type="button" disabled>取消</button>
+          </div>
+          <div class="el-button__row" id="dDone" hidden>
+            <button class="el-button el-button--primary" type="button" onclick="finish()">完成，去编辑</button>
+          </div>
+          <button class="el-button el-button--text" type="button" id="dSkip" onclick="finish()" style="align-self:center">
+            跳过，只导入文字<span class="an" data-n="4"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>搬运弹窗的默认态</b>。承接 FR-002-8 边界 3——相对路径 <code>![](./img/a.png)</code> 与 Obsidian 的 <code>![[shot 2.png]]</code> 指向的文件系统拿不到，必须由用户指出位置。计数分两档：<b>12 处引用</b>是正文里出现的次数（同一张图引用两次算两处），<b>9 处不同路径</b>是去重后的路径数——注意它<b>不是文件数</b>（<code>![[a.png]]</code> 与 <code>![x](attachments/a.png)</code> 是两处不同路径，可能指向同一个文件，也可能像同名歧义那样指向两个），真正上传了几个文件要等选完文件，结果态才报「已搬运 N 张」。</li>
+    <li><span class="new">新增</span>：<b>两种指认方式的分工</b>。「选择图片文件夹」最准：能拿到 <code>webkitRelativePath</code>，<code>./img/a.png</code> 这类相对路径可以直接对上；「选择图片文件」只有文件名，按名字匹配——同名不同目录时可能配错，所以文案里明说「最准」而不是「推荐」。两者都不阻断流程，找不到的保留原引用。</li>
+    <li><span class="new">新增</span>：<b>未命中清单逐条列出并保留原引用</b>。列表用等宽字体原样回显引用串（含 <code>./</code> 与 <code>![[ ]]</code> 两种写法），让用户能对着去本地找。只报「3 处没找到」而不给名字，用户没有任何可执行的下一步。超过三条时折叠为「等 3 处」。</li>
+    <li><span class="new">新增</span>：<b>「跳过，只导入文字」始终可见</b>，是纯文字按钮而不是第三个实底按钮——搬运是<b>可选</b>补救，不该和「继续」抢视觉权重，也不该被藏进右上角关闭图标里（那样用户以为整篇导入被取消了）。跳过后的后果见状态 6 的列表页提示。</li>
+    <li><span class="new">新增</span>：<b>上限与忽略提示</b>。超 10MB 的单文件、以及一次超过 50 张的部分被跳过，但<b>已经搬上去的不回滚</b>——所以提示是「已忽略」而不是「失败」，并说明上限值，用户才知道要分批。被忽略的文件在结果态一并显示（本屏状态 5 展示了它与结果态共存的样子）。</li>
+    <li><span class="new">新增</span>：<b>跳过后的列表页 warning</b>。弹窗关掉后不能就这么算了：正文里的引用还在，图就是显示不出来。提示常驻在列表页顶部，与既有 admin/前台 alert 样式同族（warning 色 <code>#FDF6EC</code> / <code>#B88230</code>），内容含处数与后果，可关闭。这与 0.0.2 里「本版不搬图片」的旧提示是<b>同一处</b>的改写——旧文案说明「本版不搬」，新文案说明「这次没搬，点进来可以补」。</li>
+    <li><span class="new">新增</span>：<b>外链图片只说明、不搬运</b>。<code>http(s):</code> / <code>//</code> 开头的是绝对地址，导入后浏览器直接去对方服务器取图，本来就能显示，没有可搬的东西——所以它<b>不</b>出现在「12 处本地引用」里。但必须说一句，否则 7 本地 + 3 外链的笔记只报「已搬运 7 张」，用户会以为另 3 张失败了。真要救防盗链 / 对方删图 / <code>http</code> 混合内容，得把外链下载到自己服务器（转存），那要服务器替用户访问任意网址，属另一主题（设计 结论 62 / 需求 D-31，另立 #68）。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实的文件夹 / 文件选择器、上传接口与进度推送、同名文件的匹配算法（按 basename 还是含相对路径后缀优先）、去重与孤儿文件对账、<code>data:</code> base64 内嵌图（明确不处理）。<br><b>既有不改</b>：列表页 banner、卡片、筛选栏、导入 md 入口、0.0.2 的三个导入拦截弹窗，视觉与行为都不变；本屏只新增搬运弹窗与顶部 warning。<b>移动端差异</b>：弹窗近满宽、按钮竖排（见工具条「移动端」）。</p>
+</section>
+
+<script>
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+
+const OK_TEXT = '已搬运 <b>9</b> 张图片，正文引用已改写。';
+const OK_EMPTY = '没有匹配到任何图片（已保留原引用）。';
+
+const STATES = {
+  default:  {dlg:1, body:1, primary:1, skip:1, desc:1, ext:1},
+  uploading:{dlg:1, body:1, prog:1, busy:1},
+  partial:  {dlg:1, result:1, warn:1, list:1, more:1, done:1},
+  allmiss:  {dlg:1, result:1, primary:1, skip:1},
+  ignored:  {dlg:1, result:1, warn:1, list:1, more:1, done:1, ign:1},
+  skip:     {alert:1}
+};
+
+let state='default';
+let timer=null;
+
+function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+
+function render(){
+  clearTimeout(timer);
+  const c = STATES[state] || {};
+  show('cmask', !!c.dlg);
+  show('skipAlert', !!c.alert);
+  show('dBody', !!c.body);
+  show('dDesc', !!c.desc);
+  show('dExt', !!c.ext);
+  show('dProg', !!c.prog);
+  show('dProgText', !!c.prog);
+  show('dResult', !!c.result);
+  show('dPrimary', !!c.primary);
+  show('dBusy', !!c.busy);
+  show('dDone', !!c.done);
+  show('dSkip', !!c.skip);
+  show('rWarn', !!c.warn);
+  show('rList', !!c.list);
+  show('rMore', !!c.more);
+  show('dIgnored', !!c.ign);
+  /* 「全部未命中」复用同一个结果块，只把结果行换成空结果文案 */
+  setHTML(document.getElementById('rOk'), state==='allmiss' ? OK_EMPTY : OK_TEXT);
+  document.getElementById('progInner').style.width = c.prog ? '33%' : '0%';
+}
+
+/* 弹窗内的主按钮：文件夹 / 文件两个入口都走同一段演示流程，1.4s 后落到「部分未命中」 */
+function goUpload(){
+  state='uploading'; sync(); render();
+  timer = setTimeout(function(){ state='partial'; sync(); render(); }, 1400);
+}
+function finish(){ state='skip'; sync(); render(); }
+function closeDlg(){ state='skip'; sync(); render(); }
+
+function sync(){ document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.state===state))); }
+
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state; sync(); render();
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+document.getElementById('cmask').addEventListener('click',e=>{ if(e.target.id==='cmask') closeDlg(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDlg(); });
+render();
+</script>
+</body>
+</html>
