@@ -63,6 +63,8 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>noteKeywordSearchScope                   —— keyword 全文检索（标题+正文）：正文独有词命中；
  *       匿名/越权不可经 keyword 命中私密与回收站笔记（or 短路防线）；title 仍仅标题；
  *       布尔模式（mysql 不命中只含 sql）；布尔运算符剔除；回收站不纳入 keyword</li>
+ *   <li>keywordMissRunsLikeFallbackWithoutError —— keyword 0 命中触发 like 复核分支（#66）：
+ *       兜底 SQL 在真库可执行且返回空列表，可见范围过滤不被 like 分支绕过</li>
  *   <li>contentLimitAndAppListExcerpt            —— 正文上限 10 万字（2 万放行）；前台列表不下发
  *       content，改回传纯文本摘要 excerpt（以命中处为中心，未命中取开头）；首页 recentNotes 不下发
  *       content；后台列表与详情仍回传完整正文（导出依赖）</li>
@@ -667,8 +669,10 @@ class AppApiAuthIsolationSmokeTest
         assertThat(listNotesBody(adminToken, TAG_MAIN, "++").path("data").size())
                 .as("纯运算符输入视为未输入关键词，不参与过滤").isPositive();
 
-        // ngram_token_size=2：单个汉字切不出 token，返回 0 行（前端以最小长度提示承接）
-        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "雾").path("data"), "noteId")).isEmpty();
+        // 单字关键词：ngram 切不出 2 字 token、FTS 0 命中后由 like 复核兜底（#66），单字按子串命中
+        // （前端输入层仍拦「至少 2 个字」，这里钉的是 API 语义：不报错、范围过滤照常）
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "独").path("data"), "noteId"))
+                .as("单字关键词经 like 复核应命中含该字的笔记").contains(kwPublicId);
 
         // 软删除后不从 keyword 漏出
         mockMvc.perform(delete("/app/note/" + kwPublicId)
@@ -691,6 +695,22 @@ class AppApiAuthIsolationSmokeTest
                 .andExpect(jsonPath("$.code").value(200));
         assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
                 .contains(kwPublicId);
+    }
+
+    /**
+     * keyword 0 命中走 like 复核分支（#66）：全文索引重建窗口内 match 会漏行，服务层在
+     * 「带关键词且 0 命中」时换 like 重查。用一个 like 也匹配不到的关键词触发该分支：
+     * 断言兜底 SQL 在真库上可执行、返回空列表且 total=0（上面匿名/越权的 0 命中断言
+     * 现在同样走兜底路径，顺带钉住 like 分支不破坏 is_public / create_by 过滤）。
+     */
+    @Test
+    @Order(12)
+    void keywordMissRunsLikeFallbackWithoutError() throws Exception
+    {
+        JsonNode miss = listNotesBody(adminToken, null, "qazwsx不存在的关键词xyz");
+        assertThat(miss.path("code").asInt()).isEqualTo(200);
+        assertThat(miss.path("data").size()).as("0 命中关键词返回空列表，resp=%s", miss).isZero();
+        assertThat(miss.path("total").asLong()).isZero();
     }
 
     // ------------------------------------------------------------------
