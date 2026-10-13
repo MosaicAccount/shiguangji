@@ -4,6 +4,7 @@ import {
   mdDirOf,
   resolveImageFiles,
   rewriteNoteImageRefs,
+  toAbsoluteExternalUrl,
   uniqueTargetCount,
   imageMarkdown,
   insertAtCursorPosition,
@@ -62,6 +63,29 @@ describe('collectImageRefs：收集', () => {
     const refs = collectImageRefs('![a](https://a/1.png)\n![b](//cdn/2.png)\n![c](data:image/png;base64,AA)\n![d](/profile/upload/x.png)\n![e](./e.png)')
     expect(refs.externalCount).toBe(2)
     expect(refs.local.map(r => r.target)).toEqual(['e.png'])
+  })
+
+  it('外链逐条带 raw/index/alt，kind 标记来源（#68 T-62）', () => {
+    const refs = collectImageRefs('前 ![说明文字](https://a/1.png)\n中 ![[https://b/2.png]]\n后 ![d](data:image/png;base64,AA)')
+    expect(refs.external).toHaveLength(2)
+    expect(refs.externalCount).toBe(refs.external.length)
+    expect(refs.external[0]).toMatchObject({ target: 'https://a/1.png', kind: 'external', alt: '说明文字' })
+    expect(refs.external[0].raw).toBe('![说明文字](https://a/1.png)')
+    expect(refs.external[0].index).toBe('前 '.length)
+    expect(refs.external[1].target).toBe('https://b/2.png')
+    // data: 不进外链列表（随正文显示，不会失效）
+    expect(refs.external.some(r => r.target.startsWith('data:'))).toBe(false)
+  })
+
+  it('toAbsoluteExternalUrl：协议相对补 https:，其余原样（#68 T-63 / 结论 66）', () => {
+    expect(toAbsoluteExternalUrl('//cdn/x.png')).toBe('https://cdn/x.png')
+    expect(toAbsoluteExternalUrl('https://a/x.png')).toBe('https://a/x.png')
+    expect(toAbsoluteExternalUrl('http://a/x.png')).toBe('http://a/x.png')
+  })
+
+  it('代码块与行内代码里的外链同样不收集（#68 T-65，掩码口径沿 #56）', () => {
+    const refs = collectImageRefs('```\n![a](https://a/1.png)\n```\n`![b](https://a/2.png)`\n![c](https://a/3.png)')
+    expect(refs.external.map(r => r.target)).toEqual(['https://a/3.png'])
   })
 
   it('%xx 编码的目标先解码再匹配（T-05）', () => {
@@ -188,6 +212,19 @@ describe('rewriteNoteImageRefs：改写', () => {
     const dupRefs = collectImageRefs(dup).local
     const result = rewriteNoteImageRefs(dup, dupRefs.map((ref, i) => ({ ref, path: `/p/${i}.png` })))
     expect(result.content).not.toContain('a.png)')
+  })
+
+  it('本地与外链引用混在一篇时，基于原始位置合并一次改写互不干扰；失败的外链原样保留（#68 T-64）', () => {
+    const content = '![a](./a.png)\n\n![e1](https://cdn/1.png)\n\n![e2](//cdn/2.png)\n\n![d](https://cdn/1.png)'
+    const collected = collectImageRefs(content)
+    expect(collected.local).toHaveLength(1)
+    expect(collected.external).toHaveLength(3)
+    const result = rewriteNoteImageRefs(content, [
+      { ref: collected.local[0], path: '/p/local.png' },
+      // https://cdn/1.png 两处引用一起换；协议相对的 //cdn/2.png 模拟转存失败：不在替换列表里
+      ...collected.external.filter(r => r.target !== '//cdn/2.png').map(r => ({ ref: r, path: '/p/ext.png' }))
+    ])
+    expect(result.content).toBe('![a](/p/local.png)\n\n![e1](/p/ext.png)\n\n![e2](//cdn/2.png)\n\n![d](/p/ext.png)')
   })
 
   it('改写后超长给出信号（含实际字数），不静默截断（T-15）', () => {

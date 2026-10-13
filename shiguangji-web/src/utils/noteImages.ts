@@ -30,17 +30,19 @@ export interface NoteImageRef {
   raw: string
   /** 引用指向的目标（已去掉 title / |alias / #heading / <> 包裹，并做了 %xx 解码） */
   target: string
-  /** 语法形态：标准 markdown 或 Obsidian 短引用（后者站点不渲染，搬运时必须转成 markdown） */
-  kind: 'markdown' | 'wikilink'
+  /** 语法形态：标准 markdown / Obsidian 短引用（后者站点不渲染，搬运时必须转成 markdown）/ 外链（#68 转存） */
+  kind: 'markdown' | 'wikilink' | 'external'
   /** raw 在正文中的起始位置（改写按它替换） */
   index: number
   /** 改写后的替代文本用它做 alt（wikilink 用目标文件名兜底） */
   alt: string
 }
 
-/** 一次收集的结果：本地引用逐条列出，外链只计数（提示语用，见结论 62） */
+/** 一次收集的结果：本地引用与外链引用逐条列出（外链供 #68 转存），`data:` 内嵌两边都不算 */
 export interface ImageRefCollection {
   local: NoteImageRef[]
+  external: NoteImageRef[]
+  /** 外链处数（= external.length，保留这个字段是既有断言与提示文案的依据，结论 65） */
   externalCount: number
 }
 
@@ -74,7 +76,7 @@ export interface RewriteResult {
  */
 export function collectImageRefs(content: string): ImageRefCollection {
   const local: NoteImageRef[] = []
-  let externalCount = 0
+  const external: NoteImageRef[] = []
   let fence: { marker: string } | null = null
   let offset = 0
 
@@ -88,11 +90,11 @@ export function collectImageRefs(content: string): ImageRefCollection {
     } else if (fenceMark) {
       fence = { marker: fenceMark[1] }
     } else {
-      collectInLine(maskInlineCode(line), line, offset, local, refs => (externalCount += refs))
+      collectInLine(maskInlineCode(line), line, offset, local, external)
     }
     offset += line.length + 1
   }
-  return { local, externalCount }
+  return { local, external, externalCount: external.length }
 }
 
 /** 在一行里找两种语法的引用；masked 用于匹配（代码段被掩掉），原文用于取值（长度一致，索引不变） */
@@ -101,7 +103,7 @@ function collectInLine(
   original: string,
   offset: number,
   local: NoteImageRef[],
-  countExternal: (n: number) => void
+  external: NoteImageRef[]
 ): void {
   for (const pattern of [MARKDOWN_IMAGE_PATTERN, WIKILINK_PATTERN]) {
     pattern.lastIndex = 0
@@ -113,14 +115,20 @@ function collectInLine(
       if (!target) continue
 
       if (EXTERNAL_PATTERN.test(target)) {
-        countExternal(1)
+        // 外链也带 raw/index/alt 进列表（#68 转存按位置改写复用同一形状）
+        external.push({
+          raw: original.slice(hit.index, hit.index + hit[0].length),
+          target,
+          kind: 'external',
+          index: offset + hit.index,
+          alt: isMarkdown ? hit[1] : basename(target)
+        })
       } else if (!DATA_PATTERN.test(target) && !PROFILE_PATTERN.test(target)) {
-        const index = offset + hit.index
         local.push({
           raw: original.slice(hit.index, hit.index + hit[0].length),
           target,
           kind: isMarkdown ? 'markdown' : 'wikilink',
-          index,
+          index: offset + hit.index,
           alt: isMarkdown ? hit[1] : basename(target)
         })
       }
@@ -281,6 +289,14 @@ export function rewriteNoteImageRefs(
 /** 引用去重后的目标文件数（弹窗默认态「去重后 M 个文件」的那个 M） */
 export function uniqueTargetCount(refs: NoteImageRef[]): number {
   return new Set(refs.map(ref => normKey(ref.target))).size
+}
+
+/**
+ * 外链转存前的归一（#68 结论 66）：协议相对 `//cdn/x.png` 补 `https:`，
+ * 其余原样（`http://` 不升级协议——转存不改语义，混合内容由转存本身解决）
+ */
+export function toAbsoluteExternalUrl(target: string): string {
+  return target.startsWith('//') ? `https:${target}` : target
 }
 
 /** 生成一条站内图片语法（编辑器「插图」入口共用，保证与搬运改写的产物同一形状） */
