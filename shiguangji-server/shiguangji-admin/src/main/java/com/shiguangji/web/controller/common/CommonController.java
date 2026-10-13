@@ -10,11 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import com.shiguangji.common.annotation.RateLimiter;
 import com.shiguangji.common.config.ShiGuangJiConfig;
 import com.shiguangji.common.core.domain.AjaxResult;
+import com.shiguangji.common.enums.LimitType;
 import com.shiguangji.common.utils.SecurityUtils;
 import com.shiguangji.common.utils.StringUtils;
 import com.shiguangji.common.utils.file.FileUtils;
@@ -23,6 +26,8 @@ import com.shiguangji.file.domain.SysFile;
 import com.shiguangji.file.storage.FileStorageService;
 import com.shiguangji.file.service.ISysFileService;
 import com.shiguangji.framework.config.ServerConfig;
+import com.shiguangji.web.service.image.ExternalImageTransferService;
+import com.shiguangji.web.service.image.FetchImageRequest;
 
 /**
  * 通用请求处理
@@ -43,6 +48,9 @@ public class CommonController
 
     @Autowired
     private ISysFileService sysFileService;
+
+    @Autowired
+    private ExternalImageTransferService externalImageTransferService;
 
     private static final String FILE_DELIMITER = ",";
 
@@ -167,12 +175,44 @@ public class CommonController
     }
 
     /**
+     * 转存外链图片（0.0.6 FR-006-1，issue #68）：服务端抓取 → 落 upload 分类（uuid 命名）→ 回站内路径
+     *
+     * <p>需登录；IP 维度限流 30 次/分钟（@RateLimiter，Redis 固定窗口）。抓取 / 校验失败不是系统错误，
+     * 走业务码 500 + 可读 msg，前端逐条展示（结论 69）。台账的 fileName 记外链原始地址，便于溯源。</p>
+     */
+    @RateLimiter(time = 60, count = 30, limitType = LimitType.IP)
+    @PostMapping("/upload/fetch-image")
+    public AjaxResult fetchImage(@RequestBody FetchImageRequest request) throws Exception
+    {
+        try
+        {
+            ExternalImageTransferService.TransferResult result = externalImageTransferService.transfer(request.url());
+            recordSysFile(result.file(), result.path(), request.url());
+            AjaxResult ajax = AjaxResult.success();
+            ajax.put("path", result.path());
+            return ajax;
+        }
+        catch (Exception e)
+        {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
      * 登记文件台账（登记失败不影响上传结果）
      */
     private void recordSysFile(MultipartFile file, String storageKey)
     {
+        recordSysFile(file, storageKey, null);
+    }
+
+    /**
+     * 登记文件台账；fileNameOverride 非空时以它为台账文件名（外链转存记原始 URL 便于溯源）
+     */
+    private void recordSysFile(MultipartFile file, String storageKey, String fileNameOverride)
+    {
         SysFile sysFile = new SysFile();
-        sysFile.setFileName(file.getOriginalFilename());
+        sysFile.setFileName(StringUtils.isNotEmpty(fileNameOverride) ? fileNameOverride : file.getOriginalFilename());
         sysFile.setStorageKey(storageKey);
         sysFile.setStorageType(fileStorageService.type());
         sysFile.setFileSize(file.getSize());
