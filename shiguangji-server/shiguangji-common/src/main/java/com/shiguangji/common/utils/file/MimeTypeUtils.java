@@ -16,16 +16,17 @@ public class MimeTypeUtils
     public static final String IMAGE_BMP = "image/bmp";
 
     public static final String IMAGE_GIF = "image/gif";
-    
-    public static final String[] IMAGE_EXTENSION = { "bmp", "gif", "jpg", "jpeg", "png" };
+
+    public static final String IMAGE_WEBP = "image/webp";
+
+    /** webp 已是网页图片与截图的常见格式，主流浏览器都能显示（issue #67 起与前端选择器口径一致） */
+    public static final String[] IMAGE_EXTENSION = { "bmp", "gif", "jpg", "jpeg", "png", "webp" };
 
     /**
      * 笔记正文插图允许的图片扩展名（0.0.2 FR-002-9）
      *
-     * <p>在 {@link #IMAGE_EXTENSION} 基础上放行 webp——它已是网页图片与截图的常见格式。
-     * 注意 {@code FileUploadUtils.assertAllowed} 用引用相等挑「图片格式」专用异常文案，
-     * 所以传本常量会走通用异常（提示里仍会列出允许的后缀）；要统一文案应扩展 IMAGE_EXTENSION 本身，
-     * 那会同时放宽封面 / 头像，属另一个 issue（#67）。</p>
+     * <p>#67 起 {@link #IMAGE_EXTENSION} 也放行 webp，两个常量内容一致；
+     * 保留本常量是因为前端 {@code utils/noteImages.ts} 的 NOTE_IMAGE_EXTENSIONS 按它对齐（改一侧同步另一侧）。</p>
      */
     public static final String[] NOTE_IMAGE_EXTENSION = { "bmp", "gif", "jpg", "jpeg", "png", "webp" };
 
@@ -37,8 +38,8 @@ public class MimeTypeUtils
     public static final String[] VIDEO_EXTENSION = { "mp4", "avi", "rmvb" };
 
     public static final String[] DEFAULT_ALLOWED_EXTENSION = {
-            // 图片
-            "bmp", "gif", "jpg", "jpeg", "png",
+            // 图片（与 IMAGE_EXTENSION 同步放行 webp，相册 / 通用上传与前端选择器口径一致，issue #67）
+            "bmp", "gif", "jpg", "jpeg", "png", "webp",
             // word excel powerpoint
             "doc", "docx", "xls", "xlsx", "ppt", "pptx", "html", "htm", "txt",
             // 压缩文件
@@ -62,6 +63,8 @@ public class MimeTypeUtils
                 return "bmp";
             case IMAGE_GIF:
                 return "gif";
+            case IMAGE_WEBP:
+                return "webp";
             default:
                 return "";
         }
