@@ -52,6 +52,7 @@ import com.shiguangji.web.service.cover.CoverFetchClient;
  *   <li>searchReturnsProxiedCandidates   —— 搜索候选返回代理路径，源地址经白名单校验</li>
  *   <li>proxyServesWhitelistedImage      —— 匿名代理白名单图片；非白名单域名拒绝</li>
  *   <li>importStoresCoverToOwnStorage    —— 转存写入 /profile/cover 并可回读原字节</li>
+ *   <li>importStoresWebpCoverAsWebp    —— webp 来源封面以 .webp 扩展名落盘（#67）</li>
  *   <li>importRejectsNonWhitelistedUrl   —— 非白名单来源拒绝且不触发外呼</li>
  *   <li>backfillFillsMissingCover        —— 批量补全为无封面条目落封面与豆瓣编号</li>
  * </ol>
@@ -79,6 +80,14 @@ class ItemCoverApiSmokeTest
     /** 桩候选的原始封面地址（s_ratio_poster 小图，服务端应升级 l_ratio_poster 大图） */
     private static final String STUB_COVER_URL =
             "https://img1.doubanio.com/view/photo/s_ratio_poster/public/p1910924212.jpg";
+
+    /** webp 来源封面地址（issue #67：webp 必须原样落盘，不能再静默降级成 .jpg） */
+    private static final String STUB_COVER_WEBP_URL =
+            "https://img1.doubanio.com/view/photo/s_ratio_poster/public/p_webp.webp";
+
+    /** 桩返回的 webp 内容（RIFF/WEBP 魔数开头的占位字节） */
+    private static final byte[] FAKE_WEBP = new byte[] {
+            'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x10, 'W', 'E', 'B', 'P', 0x00, 0x01 };
 
     @Autowired
     private MockMvc mockMvc;
@@ -196,6 +205,28 @@ class ItemCoverApiSmokeTest
         mockMvc.perform(get(coverUrl))
                 .andExpect(status().isOk())
                 .andExpect(content().bytes(FAKE_JPEG));
+    }
+
+    /** webp 来源封面以 .webp 扩展名落盘（issue #67：白名单缺 webp 时会静默降级成 .jpg） */
+    @org.junit.jupiter.api.Test
+    void importStoresWebpCoverAsWebp() throws Exception
+    {
+        String request = objectMapper.writeValueAsString(Map.of(
+                "itemType", "MOVIE",
+                "sourceUrl", STUB_COVER_WEBP_URL,
+                "sourceId", STUB_DOUBAN_ID));
+        String coverUrl = objectMapper.readTree(mockMvc.perform(post("/app/item/cover/import")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request.getBytes(StandardCharsets.UTF_8)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("url").asText();
+
+        assertThat(coverUrl).startsWith("/profile/cover/").endsWith(".webp");
+        mockMvc.perform(get(coverUrl))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(FAKE_WEBP));
     }
 
     // ------------------------------------------------------------------
@@ -335,7 +366,8 @@ class ItemCoverApiSmokeTest
         public Image fetch(String imageUrl)
         {
             fetchedUrls.add(imageUrl);
-            return new Image(FAKE_JPEG, "image/jpeg");
+            return imageUrl.endsWith(".webp") ? new Image(FAKE_WEBP, "image/webp")
+                    : new Image(FAKE_JPEG, "image/jpeg");
         }
     }
 }
