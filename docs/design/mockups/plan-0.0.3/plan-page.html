@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.3 设计图 · 计划页 /plan — 拾光记</title>
+<style>
+
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+button{font-family:inherit}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台导航（既有样式，未改动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px;text-decoration:none}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:18px}
+.nav span{position:relative;padding:8px 0;color:var(--sgj-text-2);font-size:14px;text-decoration:none}
+.nav span.on{font-weight:700;color:var(--sgj-primary)}
+.nav span.on::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--sgj-primary)}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px;flex-shrink:0}
+.page{padding:36px;max-width:1320px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh-in{padding:0 12px;gap:12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en{display:none}
+body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .theme-toggle{width:32px;height:32px;font-size:13px}
+body[data-vp=mobile] .page{padding:16px 12px 76px}
+body[data-vp=mobile] .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:60px;z-index:6;
+  background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+
+/* ===== 前台页脚（既有样式，未改动）===== */
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep);margin-top:32px}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .ff{padding:16px 14px 76px}
+body[data-vp=mobile] .ff-line{font-size:12px}
+
+/* ===== 标注气泡 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .fix{color:#5D6F66;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .fix{color:#7F9B8D}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+
+/* ===== 前台共用控件 ===== */
+.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;padding:6px 12px;
+  font-size:12px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
+.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .el-button--primary{color:#171B1A}
+.el-button--warning{background:var(--sgj-amber);border-color:var(--sgj-amber);color:#fff}
+html.dark .el-button--warning{color:#171B1A}
+.el-button--text{border:0;background:transparent;color:var(--sgj-primary);padding:4px 6px}
+.el-button[disabled]{opacity:.55;cursor:not-allowed}
+.el-button.is-loading{opacity:.75;cursor:default}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;
+  font-size:13px;font-weight:500;letter-spacing:.5px;display:inline-flex;align-items:center;justify-content:center}
+html.dark .btn{color:#171B1A}
+.btn.ghost{background:transparent;color:#e7ece9;border:1px solid rgba(231,236,233,.4)}
+html.dark .btn.ghost{color:var(--sgj-text-2);border-color:var(--sgj-border)}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.only-desktop{display:block}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin{width:13px;height:13px;border:2px solid var(--sgj-border);border-top-color:var(--sgj-primary);border-radius:50%;animation:sp .7s linear infinite;flex:none}
+html.dark .spin{border-color:var(--sgj-border);border-top-color:var(--sgj-primary)}
+.sk{background:var(--sgj-bg-deep);border-radius:6px;animation:sk 1.2s ease-in-out infinite}
+html.dark .sk{background:var(--sgj-bg-deep)}
+@keyframes sk{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+
+
+.pg-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
+.pg-head h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:32px;line-height:1.25;color:var(--sgj-text)}
+.pg-sub{margin:10px 0 0;font-size:13px;color:var(--sgj-text-3)}
+.pg-sub b{font-family:var(--sgj-font-serif);font-size:15px;color:var(--sgj-text)}
+.pg-sub .sep{margin:0 8px;color:var(--sgj-text-4)}
+.plan-groups{display:flex;flex-direction:column;gap:26px}
+.grp-head{display:flex;align-items:center;gap:10px;position:sticky;top:72px;z-index:3;background:var(--sgj-bg);padding:6px 0}
+.grp-head h2{margin:0;font-family:var(--sgj-font-serif);font-size:17px;font-weight:700;color:var(--sgj-text)}
+.grp-count{font-size:12px;color:var(--sgj-text-3);background:var(--sgj-bg-deep);border-radius:999px;padding:1px 9px}
+.grp-rule{flex:1;height:1px;background:var(--sgj-border-card)}
+.grp-hint{font-size:12px;color:var(--sgj-text-4)}
+.grp.overdue .grp-head h2{color:var(--sgj-brick)}
+html.dark .grp.overdue .grp-head h2{color:var(--sgj-brick)}
+.grp.thisweek .grp-head{background:var(--sgj-bg)}
+.grp.thisweek .grp-head h2{color:var(--sgj-primary)}
+.grp.thisweek .grp-head .grp-count{background:var(--sgj-primary-soft);color:var(--sgj-primary)}
+.plan-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.plan-card{display:flex;align-items:center;gap:14px;background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);
+  border-radius:var(--sgj-r-lg);padding:12px 16px;box-shadow:var(--sgj-shadow-sm);transition:box-shadow .16s,transform .16s}
+.plan-card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px)}
+.pc-cover{width:52px;height:52px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;
+  font-family:var(--sgj-font-serif);font-size:22px;line-height:1}
+.pc-body{flex:1;min-width:0}
+.pc-title{font-family:var(--sgj-font-serif);font-weight:700;font-size:15px;color:var(--sgj-text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-meta{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap}
+.pc-meta .seg-txt{font-size:12px;color:var(--sgj-text-3)}
+.st{font-size:11px;border-radius:999px;padding:1px 9px;font-weight:600;white-space:nowrap}
+.st.WANT{background:var(--sgj-amber-soft);color:var(--sgj-amber)}
+.st.DOING{background:var(--sgj-primary-soft);color:var(--sgj-primary)}
+.st.DONE{background:var(--sgj-moss-soft);color:var(--sgj-moss)}
+.pc-date{font-size:12px;color:var(--sgj-text-3);display:inline-flex;align-items:center;gap:5px}
+.pc-date.warn{color:var(--sgj-brick);font-weight:600}
+.pc-date.soon{color:var(--sgj-primary);font-weight:600}
+.pc-date.none{color:var(--sgj-text-4)}
+.pc-acts{display:flex;gap:8px;flex:none}
+.mini{font:inherit;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);border-radius:999px;
+  height:30px;padding:0 14px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.mini.primary{border-color:var(--sgj-primary);color:var(--sgj-primary)}
+.mini.done{border-color:var(--sgj-moss);color:var(--sgj-moss)}
+
+.empty{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-xl);
+  padding:56px 24px;text-align:center;box-shadow:var(--sgj-shadow-sm)}
+.empty .big{font-size:44px;line-height:1;color:var(--sgj-text-4);font-family:var(--sgj-font-serif)}
+.empty p{margin:18px 0 0;font-size:14px;color:var(--sgj-text-2)}
+.empty .eacts{display:flex;gap:10px;justify-content:center;margin-top:22px}
+.sk-group{margin-bottom:26px}
+.sk-row{display:flex;align-items:center;gap:14px;background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);
+  border-radius:var(--sgj-r-lg);padding:12px 16px;margin-top:10px}
+.sk-cover{width:52px;height:52px;border-radius:12px;flex:none}
+.sk-lines{flex:1;display:flex;flex-direction:column;gap:8px}
+.sk-l1{height:13px;width:38%}
+.sk-l2{height:11px;width:22%}
+.sk-btn{width:82px;height:30px;border-radius:999px;flex:none}
+body[data-vp=mobile] .pg-head{flex-direction:column;align-items:flex-start;gap:6px}
+body[data-vp=mobile] .pg-head h1{font-size:26px}
+body[data-vp=mobile] .grp-head{top:60px}
+body[data-vp=mobile] .plan-card{gap:10px;padding:10px 12px;flex-wrap:wrap}
+body[data-vp=mobile] .pc-cover{width:44px;height:44px;font-size:18px}
+body[data-vp=mobile] .pc-acts{width:100%;justify-content:flex-end}
+body[data-vp=mobile] .pc-acts .mini{height:28px;padding:0 12px;font-size:12px}
+
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.3 设计图</b>
+    <nav class="screens"><a href="index.html">索引</a><a href="plan-page.html" aria-current="page">计划页</a><a href="status-flow.html">三态流转</a><a href="wishlist-home.html">首页心愿单</a><a href="place-map.html">足迹地图</a></nav>
+    <span class="seg" role="group" aria-label="状态"><button data-state="default" aria-pressed="true">默认</button><button data-state="empty" aria-pressed="false">空态</button><button data-state="loading" aria-pressed="false">加载中</button></span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <div class="fh-in">
+        <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+        <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span><span class="on">计划</span></nav>
+        <span class="theme-toggle">☾</span>
+      </div>
+    </header>
+
+
+    <div class="page">
+      <div class="pg-head">
+        <div>
+          <h1>计划</h1>
+          <p class="pg-sub" id="pgSub"><b>2026 年 10 月</b><span class="sep">·</span>共 <b>12</b> 项<span class="sep">·</span>在想 <b>8</b><span class="sep">·</span>在做 <b>4</b><span class="an" data-n="1"></span></p>
+        </div>
+      </div>
+
+      <div id="planMain">
+        <div class="plan-groups">
+          <!-- ===== 逾期 ===== -->
+          <section class="grp overdue">
+            <div class="grp-head"><h2>逾期</h2><span class="grp-count">2</span><span class="grp-rule"></span></div>
+            <div class="plan-list">
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span>
+          <div class="pc-body">
+            <div class="pc-title">置身事内：中国政府与经济发展</div>
+            <div class="pc-meta">
+              <span class="st DOING">在读</span>
+              <span class="pc-date warn">逾期 3 天</span><span class="an" data-n="2"></span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini " type="button">标记已读</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span>
+          <div class="pc-body">
+            <div class="pc-title">花样年华</div>
+            <div class="pc-meta">
+              <span class="st WANT">想看</span>
+              <span class="pc-date warn">逾期 1 天</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini primary" type="button">开始 →</button></div>
+        </article>
+            </div>
+          </section>
+
+          <!-- ===== 本周 ===== -->
+          <section class="grp thisweek">
+            <div class="grp-head"><h2>本周</h2><span class="grp-count">4</span><span class="grp-rule"></span></div>
+            <div class="plan-list">
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span>
+          <div class="pc-body">
+            <div class="pc-title">肖申克的救赎</div>
+            <div class="pc-meta">
+              <span class="st WANT">想看</span>
+              <span class="pc-date soon">今天</span><span class="an" data-n="3"></span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini primary" type="button">开始 →</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">地</span>
+          <div class="pc-body">
+            <div class="pc-title">京都 · 岚山竹林</div>
+            <div class="pc-meta">
+              <span class="st WANT">想去</span>
+              <span class="pc-date soon">明天</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini " type="button">标记去过</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">剧</span>
+          <div class="pc-body">
+            <div class="pc-title">漫长的季节</div>
+            <div class="pc-meta">
+              <span class="st DOING">在看</span>
+              <span class="pc-date soon">周五</span><span class="an" data-n="4"></span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini done" type="button">标记看过</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span>
+          <div class="pc-body">
+            <div class="pc-title">献给阿尔吉侬的花束</div>
+            <div class="pc-meta">
+              <span class="st WANT">想读</span>
+              <span class="pc-date soon">周日</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini primary" type="button">开始 →</button></div>
+        </article>
+            </div>
+          </section>
+
+          <!-- ===== 以后 ===== -->
+          <section class="grp later">
+            <div class="grp-head"><h2>以后</h2><span class="grp-count">3</span><span class="grp-rule"></span></div>
+            <div class="plan-list">
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">地</span>
+          <div class="pc-body">
+            <div class="pc-title">冰岛 · 环岛公路</div>
+            <div class="pc-meta">
+              <span class="st WANT">想去</span>
+              <span class="pc-date ">2027-02-14</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini " type="button">标记去过</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span>
+          <div class="pc-body">
+            <div class="pc-title">奥本海默</div>
+            <div class="pc-meta">
+              <span class="st WANT">想看</span>
+              <span class="pc-date ">2026-11-02</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini primary" type="button">开始 →</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span>
+          <div class="pc-body">
+            <div class="pc-title">万历十五年</div>
+            <div class="pc-meta">
+              <span class="st WANT">想读</span>
+              <span class="pc-date ">2026-12-01</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini primary" type="button">开始 →</button></div>
+        </article>
+            </div>
+          </section>
+
+          <!-- ===== 未排期 ===== -->
+          <section class="grp unscheduled">
+            <div class="grp-head"><h2>未排期</h2><span class="grp-count">3</span><span class="grp-rule"></span>
+              <span class="grp-hint">这些还没有日期，点「定个日子」补上<span class="an" data-n="5"></span></span></div>
+            <div class="plan-list">
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span>
+          <div class="pc-body">
+            <div class="pc-title">海边的曼彻斯特</div>
+            <div class="pc-meta">
+              <span class="st WANT">想看</span>
+              <span class="pc-date none">＋ 定个日子</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini " type="button">定个日子</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span>
+          <div class="pc-body">
+            <div class="pc-title">城市与狗</div>
+            <div class="pc-meta">
+              <span class="st WANT">想读</span>
+              <span class="pc-date none">＋ 定个日子</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini " type="button">定个日子</button></div>
+        </article>
+              
+        <article class="plan-card">
+          <span class="pc-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">地</span>
+          <div class="pc-body">
+            <div class="pc-title">泉州 · 西街</div>
+            <div class="pc-meta">
+              <span class="st WANT">想去</span>
+              <span class="pc-date none">＋ 定个日子</span>
+            </div>
+          </div>
+          <div class="pc-acts"><button class="mini " type="button">定个日子</button></div>
+        </article>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ===== 空态 ===== -->
+      <div id="planEmpty" hidden>
+        <div class="empty">
+          <div class="big">○</div>
+          <p>还没有计划 —— 去影单 / 书单挑一个，填上打算哪天看。<span class="an" data-n="6"></span></p>
+          <div class="eacts">
+            <button class="btn" type="button">去影单</button>
+            <button class="btn line" type="button">去书单</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 加载中骨架 ===== -->
+      <div id="planSk" hidden>
+        <div class="sk-group">
+          <div class="sk" style="height:18px;width:110px"></div>
+          <div class="sk-row"><span class="sk sk-cover"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span><span class="sk sk-btn"></span></div>
+          <div class="sk-row"><span class="sk sk-cover"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span><span class="sk sk-btn"></span></div>
+        </div>
+        <div class="sk-group">
+          <div class="sk" style="height:18px;width:110px"></div>
+          <div class="sk-row"><span class="sk sk-cover"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span><span class="sk sk-btn"></span></div>
+          <div class="sk-row"><span class="sk sk-cover"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span><span class="sk sk-btn"></span></div>
+          <div class="sk-row"><span class="sk sk-cover"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span><span class="sk sk-btn"></span></div>
+        </div>
+      </div>
+    </div>
+
+<nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>页头一行给全四个数</b>——月份、总数、在想、在做。「在想」= <code>WANT</code> 数，「在做」= <code>DOING</code> 数，两者相加等于总数（<code>/plan</code> 的集合就是 <code>WANT + DOING</code>，<code>DONE</code> 不进此页）。页面本身不再重复筛选控件：四组已经把「什么时候」分完了，再加一排状态胶囊会把两套分法混在一起。</li>
+    <li><span class="new">新增</span>：<b>逾期用危险色 + 相对天数</b>，而不是绝对日期。计划日期早于今天就是逾期，写「逾期 3 天」比 <code>2026-10-11</code> 更能回答「欠了多久」。绝对日期在悬停/详情里仍可查，本屏不铺开。</li>
+    <li><span class="new">新增</span>：<b>本周是当前关注区</b>。「今天 / 明天 / 周五」这类相对文案是本周组专用的读法，越靠近今天越具体；组头与计数胶囊换主色，让它在一屏里第一眼被看到。跨到「以后」组就退回绝对日期（<code>2026-11-02</code>）——远处的事情说「还有 23 天」没有意义。</li>
+    <li><span class="new">新增</span>：<b>操作按钮按状态只给下一步</b>。<code>WANT</code> 给「开始 →」（<code>WANT → DOING</code>），<code>DOING</code> 给「标记看过 / 读过」（<code>DOING → DONE</code>，走完成弹窗，见首页屏）。<b>不并排给两个按钮</b>：从「想看」直接跳到「看过」是既有的 <code>标记看过</code> 那条路，在各自的模块页里已经存在，计划页只承担「推进一格」。</li>
+    <li><span class="new">新增</span>：<b>未排期组置底并自带解释</b>。没有日期的条目不是二等公民，它缺的只是一个日期——所以组头直说「点『定个日子』补上」，每张卡片的右侧也是同一个动作。列排在这里，用户才知道自己的心愿没有丢。</li>
+    <li><span class="new">新增</span>：<b>空态给两条出口而不是一句「暂无数据」</b>。新用户第一次点进 <code>/plan</code> 必然是空的（还没有任何条目有日期），此时最该做的是去挑一个——所以两个入口按钮直达影单与书单。<b>空态也有页头</b>（四个数都是 0），页头恒在、只换主体，避免整页跳变成一句提示。</li>
+    <li><span class="new">新增</span>：<b>加载中是骨架而不是转圈</b>。<code>/plan</code> 一屏四组、每组数条，骨架能提前交代版式（封面块 + 标题 + 状态 + 按钮），加载完成时不跳版。骨架克制到两组，不做整屏假数据。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实接口与分页（<code>/plan</code> 一次拉全量，量大时的分页或虚拟滚动未定）、拖动改期、组内手动排序、批量改期、提醒与通知（需求 §4 非目标）、<code>完成弹窗</code>本体（见 <a href="wishlist-home.html">首页屏</a>）。<br><b>既有不改</b>：前台页头与移动底部 tab——<b>移动端 tab 仍是四项（首页 / 影单 / 足迹 / 笔记）</b>，<code>/plan</code> 不进移动 tab，从首页心愿单卡片进入（D-7 建议：桌面导航加一项，移动端不动）。<b>移动端差异</b>：单列、组头吸顶（top 60px 让开页头）、卡片操作按钮换行到右下。本屏<b>省略了前台页脚</b>（滚动到底才可见，与四组列表无关）。</p>
+
+</section>
+
+<script>
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+/* 遮罩是绝对定位在设备框内的：页面滚下去再开弹窗，遮罩中心会跑到可视区外。
+   打开时把设备框滚回顶部——静态稿的取巧，真实实现里是 fixed 遮罩。 */
+function deviceTop(instant){
+  const d=document.querySelector('.device'); if(!d) return;
+  if(d.scrollTop>0) d.scrollTo({ top:0, behavior: instant ? 'auto' : 'smooth' });
+}
+
+const SUB_FULL = '<b>2026 年 10 月</b><span class="sep">·</span>共 <b>12</b> 项<span class="sep">·</span>在想 <b>8</b><span class="sep">·</span>在做 <b>4</b><span class="an" data-n="1"></span>';
+const SUB_ZERO = '<b>2026 年 10 月</b><span class="sep">·</span>共 <b>0</b> 项<span class="sep">·</span>在想 <b>0</b><span class="sep">·</span>在做 <b>0</b>';
+const STATES = {
+  default: { main:1, sub:SUB_FULL },
+  empty:   { empty:1, sub:SUB_ZERO },
+  loading: { sk:1, sub:SUB_FULL }
+};
+let state='default';
+function render(){
+  const c = STATES[state] || STATES.default;
+  show('planMain', !!c.main);
+  show('planEmpty', !!c.empty);
+  show('planSk', !!c.sk);
+  setHTML(document.getElementById('pgSub'), c.sub);
+}
+function closeAll(){}
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+  /* 遮罩锚在设备框内容顶部，滚动位置不对就会「点了没反应」——切状态后回到顶部 */
+  deviceTop(true);
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAll(); } });
+render();
+
+</script>
+</body>
+</html>

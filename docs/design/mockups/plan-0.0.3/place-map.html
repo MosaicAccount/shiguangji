@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.3 设计图 · 足迹地图两态（现状核实）— 拾光记</title>
+<style>
+
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+button{font-family:inherit}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台导航（既有样式，未改动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px;text-decoration:none}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:18px}
+.nav span{position:relative;padding:8px 0;color:var(--sgj-text-2);font-size:14px;text-decoration:none}
+.nav span.on{font-weight:700;color:var(--sgj-primary)}
+.nav span.on::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--sgj-primary)}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px;flex-shrink:0}
+.page{padding:36px;max-width:1320px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh-in{padding:0 12px;gap:12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en{display:none}
+body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .theme-toggle{width:32px;height:32px;font-size:13px}
+body[data-vp=mobile] .page{padding:16px 12px 76px}
+body[data-vp=mobile] .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:60px;z-index:6;
+  background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+
+/* ===== 前台页脚（既有样式，未改动）===== */
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep);margin-top:32px}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .ff{padding:16px 14px 76px}
+body[data-vp=mobile] .ff-line{font-size:12px}
+
+/* ===== 标注气泡 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .fix{color:#5D6F66;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .fix{color:#7F9B8D}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+
+/* ===== 前台共用控件 ===== */
+.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;padding:6px 12px;
+  font-size:12px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
+.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .el-button--primary{color:#171B1A}
+.el-button--warning{background:var(--sgj-amber);border-color:var(--sgj-amber);color:#fff}
+html.dark .el-button--warning{color:#171B1A}
+.el-button--text{border:0;background:transparent;color:var(--sgj-primary);padding:4px 6px}
+.el-button[disabled]{opacity:.55;cursor:not-allowed}
+.el-button.is-loading{opacity:.75;cursor:default}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;
+  font-size:13px;font-weight:500;letter-spacing:.5px;display:inline-flex;align-items:center;justify-content:center}
+html.dark .btn{color:#171B1A}
+.btn.ghost{background:transparent;color:#e7ece9;border:1px solid rgba(231,236,233,.4)}
+html.dark .btn.ghost{color:var(--sgj-text-2);border-color:var(--sgj-border)}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.only-desktop{display:block}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin{width:13px;height:13px;border:2px solid var(--sgj-border);border-top-color:var(--sgj-primary);border-radius:50%;animation:sp .7s linear infinite;flex:none}
+html.dark .spin{border-color:var(--sgj-border);border-top-color:var(--sgj-primary)}
+.sk{background:var(--sgj-bg-deep);border-radius:6px;animation:sk 1.2s ease-in-out infinite}
+html.dark .sk{background:var(--sgj-bg-deep)}
+@keyframes sk{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+
+
+.page-banner{position:relative;display:flex;align-items:center;justify-content:space-between;height:176px;padding:0 56px;
+  background:#282e2c;color:#e7ece9;border-radius:24px;overflow:hidden;margin-bottom:24px}
+html.dark .page-banner{background:var(--sgj-bg-deep)}
+.banner-blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner-blob2{position:absolute;right:140px;bottom:-90px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner-text{position:relative;z-index:1}
+.banner-text h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:36px;line-height:1.3}
+.banner-text p{margin:12px 0 0;font-size:14px;color:#aeb8b3;letter-spacing:.5px}
+.banner-stats{position:relative;z-index:1;flex:1;min-width:0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin:0 20px}
+.stat-chip{padding:7px 14px;border-radius:999px;background:rgba(231,236,233,.1);border:1px solid rgba(231,236,233,.22);font-size:12.5px;color:#d8e0db}
+.stat-chip b{color:#f0c9a8;font-family:var(--sgj-font-serif);font-size:15px;margin:0 3px}
+.banner-add{position:relative;z-index:1;height:46px;padding:0 28px;border-radius:23px;font-size:13px;font-weight:500;letter-spacing:1px}
+.filter-bar{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.filter-group{display:flex;gap:8px}
+.filter-pill{padding:0 20px;height:34px;border:1px solid var(--sgj-border);border-radius:17px;background:var(--sgj-bg-card);
+  color:var(--sgj-text-2);font-size:13px;font-weight:500;cursor:pointer}
+html.dark .filter-pill{border-color:var(--sgj-border-card)}
+.filter-pill.active{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .filter-pill.active{color:#171B1A}
+.notice{background:var(--sgj-moss-soft);color:var(--sgj-moss);border-radius:var(--sgj-radius-md);padding:10px 14px;font-size:12.5px;line-height:1.7;margin-bottom:16px}
+.notice b{color:inherit}
+
+/* ===== 地图（纯 CSS 示意底，不是真实瓦片）===== */
+.map-wrap{position:relative;height:540px;border-radius:16px;overflow:hidden;background:#EAEEEC;border:1px solid var(--sgj-border-card);
+  box-shadow:0 4px 16px rgba(23,27,26,.06)}
+html.dark .map-wrap{background:#1A201E}
+.map-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(23,27,26,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(23,27,26,.05) 1px,transparent 1px);background-size:56px 56px}
+html.dark .map-grid{background-image:linear-gradient(rgba(238,242,240,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(238,242,240,.05) 1px,transparent 1px)}
+.map-water{position:absolute;background:#D6E2E6;border-radius:46% 54% 60% 40%/50% 45% 55% 50%;opacity:.9}
+html.dark .map-water{background:#22302F}
+.map-land{position:absolute;background:#E2E7E3;border-radius:40% 60% 55% 45%/55% 40% 60% 45%}
+html.dark .map-land{background:#232B28}
+.map-road{position:absolute;background:rgba(168,95,82,.28);height:3px;border-radius:2px;transform-origin:left center}
+html.dark .map-road{background:rgba(194,122,109,.32)}
+.map-label{position:absolute;font-size:11px;letter-spacing:2px;color:rgba(38,43,42,.42);font-family:var(--sgj-font-serif)}
+html.dark .map-label{color:rgba(238,242,240,.38)}
+.map-tip{position:absolute;top:14px;right:14px;z-index:170;font-size:12px;color:var(--sgj-text-2);background:var(--sgj-bg-card);
+  padding:6px 12px;border-radius:999px;border:1px solid var(--sgj-border-card)}
+.map-legend{position:absolute;left:14px;bottom:14px;z-index:170;display:flex;gap:14px;font-size:12px;color:var(--sgj-text-2);
+  background:var(--sgj-bg-card);padding:6px 12px;border-radius:999px;border:1px solid var(--sgj-border-card)}
+.legend-pin{display:inline-block;width:11px;height:11px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  border:2px solid var(--sgj-bg-card);margin:0 7px 0 2px;vertical-align:1px}
+.legend-pin.visited{background:var(--sgj-moss)}
+.legend-pin.want{background:var(--sgj-amber)}
+
+/* 图钉（两态同屏：去过=鼠尾草实心 / 想去=灰铜实心） */
+.pin{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;gap:5px;transform:translate(-50%,-100%)}
+.tm-pin{display:block;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  border:3px solid var(--sgj-bg-card);box-shadow:0 3px 8px rgba(23,27,26,.35);position:relative}
+html.dark .tm-pin{border-color:var(--sgj-bg-deep)}
+.tm-pin.visited{background:var(--sgj-moss)}
+.tm-pin.want{background:var(--sgj-amber)}
+.tm-pin i{position:absolute;inset:0;margin:auto;width:8px;height:8px;border-radius:50%;background:#fff;transform:rotate(45deg)}
+.tm-pill{font-size:12px;font-weight:600;white-space:nowrap;padding:2px 10px;border-radius:999px;background:var(--sgj-bg-card);
+  border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);box-shadow:0 2px 6px rgba(23,27,26,.12)}
+.tm-pill.em{color:var(--sgj-primary);border-color:var(--sgj-primary)}
+/* 聚合牌 */
+.pin.cluster{transform:translate(-50%,-100%)}
+.tm-deck{position:relative;display:block;width:46px;height:52px}
+.tm-deck i{position:absolute;bottom:0;left:50%;width:34px;height:44px;border:3px solid var(--sgj-bg-card);border-radius:7px;
+  box-shadow:0 2px 6px rgba(23,27,26,.25);transform:translateX(-50%) rotate(-16deg);transform-origin:50% 115%;display:block;
+  background:linear-gradient(160deg,var(--sgj-cover),var(--sgj-bg-deep))}
+html.dark .tm-deck i{border-color:var(--sgj-bg-deep)}
+.tm-deck i:nth-child(2){transform:translateX(-50%) rotate(-3deg);z-index:1}
+.tm-deck i:nth-child(3){transform:translateX(-50%) rotate(11deg);z-index:2}
+.tm-coin{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;border:2.5px solid #fff;
+  box-shadow:0 2px 6px rgba(23,27,26,.25);color:#fff;font-size:12.5px;font-weight:700}
+.tm-coin.visited{background:var(--sgj-moss)}
+.tm-coin.want{background:var(--sgj-amber)}
+html.dark .tm-coin{border-color:var(--sgj-bg-deep)}
+
+/* 弹卡（InfoWindow isCustom） */
+.tm-pop{position:absolute;z-index:200;width:268px;background:var(--sgj-bg-card);border-radius:14px;
+  box-shadow:0 10px 28px rgba(23,27,26,.16);border:1px solid var(--sgj-border-card);padding:12px;color:var(--sgj-text)}
+.tm-pop-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.tm-pop-title{font:700 14px/1.3 var(--sgj-font-serif)}
+.tm-pop-sub{font-size:11px;color:var(--sgj-text-4);margin-top:2px}
+.tm-pop-close{width:24px;height:24px;border-radius:50%;color:var(--sgj-text-2);font-size:14px;line-height:1;background:none;border:0;cursor:pointer}
+.tm-pop-group{width:100%;text-align:left;border-radius:10px;padding:8px;display:block;background:none;border:0;cursor:pointer;color:var(--sgj-text)}
+.tm-pop-group:hover{background:var(--sgj-bg-deep)}
+.tm-pop-name{display:flex;justify-content:space-between;align-items:baseline;width:100%}
+.tm-pop-name b{font-size:13px}
+.tm-pop-name>span{font-size:11px;color:var(--sgj-text-4)}
+.tm-pop-tag{font-style:normal;font-size:10px;font-weight:400;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.tm-pop-tag.done{background:var(--sgj-moss-soft);color:var(--sgj-moss)}
+.tm-pop-tag.want{background:var(--sgj-amber-soft);color:var(--sgj-amber)}
+.tm-pop-thumbs{display:flex;gap:5px;margin-top:6px}
+.tm-pop-thumbs i{width:34px;height:34px;border-radius:7px;border:2px solid var(--sgj-bg-card);box-shadow:0 1px 4px rgba(23,27,26,.2);
+  display:block;background:linear-gradient(160deg,var(--sgj-cover),var(--sgj-bg-deep))}
+html.dark .tm-pop-thumbs i{border-color:var(--sgj-bg-deep)}
+.tm-pop-thumbs i.more{display:flex;align-items:center;justify-content:center;background:var(--sgj-bg-deep);color:var(--sgj-text-3);
+  font-size:10px;border:1px dashed var(--sgj-border-card);box-shadow:none;font-style:normal}
+
+/* 旅行时间线 */
+.timeline{margin-top:18px}
+.tl-title{font:700 15px/1 var(--sgj-font-serif);color:var(--sgj-text-2);margin-bottom:12px}
+.tl-title .tl-sub{font:400 12px/1 var(--sgj-font-sans);color:var(--sgj-text-4);margin-left:8px}
+.tl-track{position:relative;display:flex;gap:26px;overflow-x:auto;padding:6px 4px 14px}
+.tl-track::before{content:'';position:absolute;left:30px;right:30px;top:34px;border-top:2px dashed rgba(168,95,82,.35)}
+.tl-item{position:relative;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:92px;background:none;border:0;cursor:pointer}
+.tl-thumb{width:56px;height:56px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;
+  font-family:var(--sgj-font-serif);font-size:18px;box-shadow:0 2px 8px rgba(23,27,26,.14)}
+html.dark .tl-thumb{border-color:var(--sgj-bg-deep)}
+.tl-name{font-size:12px;color:var(--sgj-text-2)}
+.tl-date{font-size:11px;color:var(--sgj-text-4)}
+body[data-vp=mobile] .page-banner{height:auto;padding:22px 20px;flex-direction:column;align-items:flex-start;gap:14px;border-radius:18px}
+body[data-vp=mobile] .page-banner h1{font-size:26px}
+body[data-vp=mobile] .banner-stats{justify-content:flex-start;margin:0}
+body[data-vp=mobile] .map-wrap{height:420px}
+body[data-vp=mobile] .tm-pop{width:min(268px,calc(100% - 24px))}
+
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.3 设计图</b>
+    <nav class="screens"><a href="index.html">索引</a><a href="plan-page.html">计划页</a><a href="status-flow.html">三态流转</a><a href="wishlist-home.html">首页心愿单</a><a href="place-map.html" aria-current="page">足迹地图</a></nav>
+    <span class="seg" role="group" aria-label="状态"><button data-state="two" aria-pressed="true">地图模式（两态同屏）</button><button data-state="cluster" aria-pressed="false">聚合态</button><button data-state="mobile" aria-pressed="false">移动端</button></span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <div class="fh-in">
+        <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+        <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span class="on">足迹</span><span>笔记</span><span>计划</span></nav>
+        <span class="theme-toggle">☾</span>
+      </div>
+    </header>
+
+<div id="pmTwo" hidden>
+    <div class="page">
+      
+      <div class="page-banner">
+        <div class="banner-blob"></div><div class="banner-blob2"></div>
+        <div class="banner-text">
+          <h1>足迹 · 地图模式</h1>
+          <p>记录你去过和想去的地方。</p>
+        </div>
+        <div class="banner-stats">
+          <span class="stat-chip">去过<b>23</b>城</span>
+          <span class="stat-chip">留下<b>418</b>张照片</span>
+          <span class="stat-chip">最近<b>大理</b></span>
+        </div>
+        <button class="btn banner-add" type="button">＋ 添加想去</button>
+      </div>
+      
+      <div class="filter-bar">
+        <div class="filter-group">
+          <button class="filter-pill" type="button">卡片模式</button>
+          <button class="filter-pill active" type="button">地图模式</button>
+        </div>
+      </div>
+      <div class="notice">本屏用于核实「地图已同时展示两态」这一现状（对应需求 <b>FR-003-6</b>）：<b>本期无代码改动</b>，只留回归依据。<span class="an" data-n="1"></span></div>
+
+      <div class="map-wrap">
+        <div class="map-grid"></div>
+        <div class="map-water" style="left:-40px;top:120px;width:420px;height:260px"></div>
+        <div class="map-water" style="right:-30px;top:300px;width:360px;height:220px"></div>
+        <div class="map-land" style="left:260px;top:40px;width:420px;height:300px"></div>
+        <div class="map-road" style="left:120px;top:210px;width:520px;transform:rotate(9deg)"></div>
+        <div class="map-road" style="left:330px;top:60px;width:300px;transform:rotate(78deg)"></div>
+        <div class="map-road" style="left:520px;top:380px;width:360px;transform:rotate(-14deg)"></div>
+        <div class="map-label" style="left:40px;top:60px">青海</div>
+        <div class="map-label" style="left:600px;top:120px">华东</div>
+        <div class="map-label" style="left:300px;top:430px">西南</div>
+        <div class="map-label" style="left:150px;top:300px">西藏</div>
+
+        <div class="map-tip">📷 照片按就近区域聚合 · 点击聚合牌翻看回忆</div>
+
+        <!-- 去过（鼠尾草） -->
+        <div class="pin" style="left:190px;top:170px"><span class="tm-pin visited"><i></i></span><span class="tm-pill">大理 · 去过</span></div>
+        <div class="pin" style="left:430px;top:120px"><span class="tm-pin visited"><i></i></span><span class="tm-pill">北京 · 去过</span></div>
+        <div class="pin" style="left:620px;top:250px"><span class="tm-pin visited"><i></i></span><span class="tm-pill">厦门 · 去过</span></div>
+        <!-- 想去（灰铜） -->
+        <div class="pin" style="left:300px;top:330px"><span class="tm-pin want"><i></i></span><span class="tm-pill">京都 · 想去</span></div>
+        <div class="pin" style="left:540px;top:400px"><span class="tm-pin want"><i></i></span><span class="tm-pill">泉州 · 想去</span></div>
+        <div class="pin" style="left:760px;top:150px"><span class="tm-pin want"><i></i></span><span class="tm-pill em">冰岛 · 想去<span class="an" data-n="2"></span></span></div>
+
+        <div class="map-legend">
+          <span><i class="legend-pin visited"></i>去过</span>
+          <span><i class="legend-pin want"></i>想去</span>
+          <span>🂠 照片聚合</span>
+        </div>
+
+        <!-- 弹卡：点「北京 · 去过」聚合点 -->
+        <div class="tm-pop" style="left:440px;top:150px">
+          <div class="tm-pop-head">
+            <div><div class="tm-pop-title">北京的<span class="an" data-n="3"></span></div><div class="tm-pop-sub">2 个地点 · 共 48 张</div></div>
+            <button class="tm-pop-close" type="button">✕</button>
+          </div>
+          <button class="tm-pop-group" type="button">
+            <span class="tm-pop-name"><b>故宫博物院<i class="tm-pop-tag done">去过</i></b><span>31 张 →</span></span>
+            <span class="tm-pop-thumbs"><i></i><i></i><i class="more">+28</i></span>
+          </button>
+          <button class="tm-pop-group" type="button">
+            <span class="tm-pop-name"><b>798 艺术区<i class="tm-pop-tag want">想去</i></b><span>0 张</span></span>
+            <span class="tm-pop-thumbs"><i class="more">暂无</i></span>
+          </button>
+          <p style="font-size:11px;color:var(--sgj-text-4);margin:8px 0 0">弹卡里每条都带 <b>去过 / 想去</b> 标签，两态在卡内也分得开。<span class="an" data-n="4"></span></p>
+        </div>
+      </div>
+
+      
+      <div class="timeline">
+        <div class="tl-title">旅行时间线 <span class="tl-sub">按到访年份 · 点击回看</span></div>
+        <div class="tl-track">
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">大</span><span class="tl-name">大理</span><span class="tl-date">2026-09-20</span></button>
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">成</span><span class="tl-name">成都</span><span class="tl-date">2026-05-02</span></button>
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">京</span><span class="tl-name">北京</span><span class="tl-date">2025-11-11</span></button>
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-cover);color:var(--sgj-text-2)">厦</span><span class="tl-name">厦门</span><span class="tl-date">2025-04-06</span></button>
+        </div>
+      </div>
+    </div></div><div id="pmCluster" hidden>
+    <div class="page">
+      
+      <div class="page-banner">
+        <div class="banner-blob"></div><div class="banner-blob2"></div>
+        <div class="banner-text">
+          <h1>足迹 · 地图模式</h1>
+          <p>记录你去过和想去的地方。</p>
+        </div>
+        <div class="banner-stats">
+          <span class="stat-chip">去过<b>23</b>城</span>
+          <span class="stat-chip">留下<b>418</b>张照片</span>
+          <span class="stat-chip">最近<b>大理</b></span>
+        </div>
+        <button class="btn banner-add" type="button">＋ 添加想去</button>
+      </div>
+      
+      <div class="filter-bar">
+        <div class="filter-group">
+          <button class="filter-pill" type="button">卡片模式</button>
+          <button class="filter-pill active" type="button">地图模式</button>
+        </div>
+      </div>
+      <div class="notice">聚合态：低缩放下按省 / 市聚成一簇。<b>有照片的用扇形牌（最多 3 张预览）</b>，无照片的退回数字圆片，圆片颜色仍按簇内有没有「去过」着色——所以「两态同时展示」在聚合层也成立。<span class="an" data-n="5"></span></div>
+
+      <div class="map-wrap">
+        <div class="map-grid"></div>
+        <div class="map-water" style="left:-40px;top:120px;width:420px;height:260px"></div>
+        <div class="map-land" style="left:260px;top:40px;width:520px;height:340px"></div>
+        <div class="map-road" style="left:120px;top:210px;width:560px;transform:rotate(9deg)"></div>
+        <div class="map-label" style="left:40px;top:60px">西北</div>
+        <div class="map-label" style="left:600px;top:120px">华北</div>
+        <div class="map-label" style="left:300px;top:430px">华南</div>
+
+        <div class="map-tip">📷 照片按就近区域聚合 · 点击聚合牌翻看回忆</div>
+
+        <!-- 扇形牌：有照片的省簇 -->
+        <div class="pin cluster" style="left:250px;top:200px">
+          <span class="tm-deck"><i></i><i></i><i></i></span>
+          <span class="tm-pill">云南 · 4地 · 96张</span>
+        </div>
+        <div class="pin cluster" style="left:520px;top:140px">
+          <span class="tm-deck"><i></i><i></i></span>
+          <span class="tm-pill">北京 · 2地 · 48张</span>
+        </div>
+        <!-- 数字圆片：无照片的省簇，颜色按簇内是否含「去过」 -->
+        <div class="pin cluster" style="left:680px;top:330px">
+          <span class="tm-coin want">3</span>
+          <span class="tm-pill">福建 · 3地</span>
+        </div>
+        <div class="pin cluster" style="left:150px;top:400px">
+          <span class="tm-coin visited">6</span>
+          <span class="tm-pill">四川 · 6地</span>
+        </div>
+
+        <div class="map-legend">
+          <span><i class="legend-pin visited"></i>去过</span>
+          <span><i class="legend-pin want"></i>想去</span>
+          <span>🂠 照片聚合</span>
+        </div>
+      </div>
+
+      
+      <div class="timeline">
+        <div class="tl-title">旅行时间线 <span class="tl-sub">按到访年份 · 点击回看</span></div>
+        <div class="tl-track">
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">大</span><span class="tl-name">大理</span><span class="tl-date">2026-09-20</span></button>
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">成</span><span class="tl-name">成都</span><span class="tl-date">2026-05-02</span></button>
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">京</span><span class="tl-name">北京</span><span class="tl-date">2025-11-11</span></button>
+          <button class="tl-item" type="button"><span class="tl-thumb" style="background:var(--sgj-cover);color:var(--sgj-text-2)">厦</span><span class="tl-name">厦门</span><span class="tl-date">2025-04-06</span></button>
+        </div>
+      </div>
+    </div></div>
+<nav class="tabbar"><div>首页</div><div>影单</div><div class="on">足迹</div><div>笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="fix">核实</span>：<b>这一屏不是新功能，是现状核实页</b>。需求 <b>FR-003-6</b> 写的是「地图上『想去』与『去过』用不同图钉样式同时展示，不再依赖状态筛选切换」——查代码：<code>TravelMap</code> 同时接收 <code>visited</code> 与 <code>wish</code> 两个数组，各自标 <code>status: 'DONE' | 'WANT'</code>，图钉样式 <code>.tm-pin.visited</code>（鼠尾草 <code>--sgj-moss</code>）与 <code>.tm-pin.want</code>（灰铜 <code>--sgj-amber</code>）是两套，图例也已有三枚。<b>结论：该需求在 0.0.3 之前就已满足，本期无代码改动</b>（D-9 的结论是「纳入本期范围」，纳入的是<b>回归依据</b>，不是改动）。</li>
+    <li><span class="new">新增</span>：<b>两态同屏</b>——左下图例三枚（去过 / 想去 / 照片聚合），画布上两种图钉同时存在，没有任何筛选控件参与。这一屏存在的意义是把它固定成回归基线：日后若有人把图钉合并成一种、或让「想去」依赖筛选才出现，对照本屏即可判定为回归。</li>
+    <li><span class="new">新增</span>：<b>弹卡内的标注同样分两态</b>。点聚合点后每条地点带 <code>去过 / 想去</code> 标签（<code>.tm-pop-tag.done</code> / <code>.tm-pop-tag.want</code>），且「想去但没照片」的条目会显示「暂无」而不是空白缩略图。弹卡是本屏唯一展示「两态在同一个地点分组里共存」的地方。</li>
+    <li><span class="new">新增</span>：<b>聚合点的两态也分得开</b>（见「聚合态」）。聚合牌优先用照片扇形牌，没有照片时退回数字圆片，圆片颜色按<b>簇内是否存在「去过」</b>着色（<code>cluster.points.some(p =&gt; p.status === 'DONE')</code>）。所以「想去」为主的城市簇不会显示成绿色——这条容易被误读成「聚合后状态丢失」，图上明确画出来。</li>
+    <li><span class="new">新增</span>：<b>聚合粒度是缩放驱动的</b>：≤6 按省（境外回退国家）、6~9.5 按市、9.5~11.5 邻域（约 8km）、更高逐点。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实高德底图与瓦片（图上浅灰网格、水域与道路色块均为 CSS 示意，<b>不加载任何外部资源</b>）、缩放与拖拽交互、聚合牌点击后的视野自适应、照片相册弹窗、地图选点。<br><b>本期不改</b>：<code>TravelMap</code> 组件本体、<code>/travel</code> 的地图 / 卡片模式切换、banner 统计、地图下方旅行时间线。本屏与 <a href="status-flow.html">三态流转屏</a> 的足迹部分是<b>两个不同页面</b>：那边是卡片模式的胶囊与计划日期，这边是地图模式的两态图钉。<br><b>移动端差异</b>：地图高度由 540px 降为 420px（既有断点），弹卡宽度收窄到容器内，页头 banner 变纵向，见工具条「移动端」。</p>
+
+</section>
+
+<script>
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+/* 遮罩是绝对定位在设备框内的：页面滚下去再开弹窗，遮罩中心会跑到可视区外。
+   打开时把设备框滚回顶部——静态稿的取巧，真实实现里是 fixed 遮罩。 */
+function deviceTop(instant){
+  const d=document.querySelector('.device'); if(!d) return;
+  if(d.scrollTop>0) d.scrollTo({ top:0, behavior: instant ? 'auto' : 'smooth' });
+}
+
+const STATES = { two:{}, cluster:{}, mobile:{} };
+let state='two';
+function render(){
+  show('pmTwo', state!=='cluster');
+  show('pmCluster', state==='cluster');
+  if (state==='mobile'){ document.body.dataset.vp='mobile'; show('pmTwo', true); show('pmCluster', false); }
+}
+function closeAll(){}
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+  /* 遮罩锚在设备框内容顶部，滚动位置不对就会「点了没反应」——切状态后回到顶部 */
+  deviceTop(true);
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAll(); } });
+render();
+
+</script>
+</body>
+</html>
