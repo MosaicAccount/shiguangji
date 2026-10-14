@@ -77,6 +77,18 @@ A worktree has no `node_modules` of its own: symlink the main checkout's in (`ln
 
 **A finished branch becomes a pull request.** Commit → push the branch → open the PR against `develop`. A branch that only exists locally is not finished work. The PR body carries what the title cannot: the behavior change, the verification commands you actually ran with their results, the linked issue(s), any SQL / configuration change, and for visible UI work the design mockup it implements plus the manual steps nobody-but-a-human can run (say plainly when you could not run them).
 
+### PR 提交时的 GitHub 元数据：受理人 / 项目 / 里程碑 / 优先级
+
+`gh pr create` 开出 PR 只算提交了一半，元数据补齐才算完成。缺任何一项，这个 PR 不算「已提交」：
+
+- **受理人（Assignees）**：默认指定 `MosaicAccount`（使用者本人），除非其另有交代；
+- **项目**：把 PR 加进 GitHub Project「拾光记」；
+- **里程碑**：选所属版本的里程碑（`0.0.3` / `0.0.4` / `0.0.5`…，以 `docs/requirements/README.md` 的版本总览为准；不属于任何已排期版本的 PR 不选）；
+- **优先级**：在 Project「拾光记」的「优先级」字段上选定 —— 优先级与「PR 进展」都是 Project 字段，不是仓库标签；
+- **关联 issue 的「PR 进展」**：PR 开出后，把它关联的 issue 在 Project 里的「PR 进展」字段选成当前状态，并随 PR 推进更新（已提交 → 评审中 → 已合并）。
+
+操作路径：受理人、项目、里程碑可一并 `gh pr edit <PR> --add-assignee "@me" --add-project "拾光记" --milestone <版本>`；Project 字段（优先级、PR 进展）走 `gh project item-edit`，token 需具备 `project` 权限（缺时 `gh auth refresh -s project`），无权限时在网页上手动补齐并在回复中说明，不得静默跳过。
+
 ### Pull request：描述按模板，审查意见走评论
 
 - **描述必须按 `.github/pull_request_template.md` 的章节写**（变更说明 / 关联任务 / 验证方式 / SQL 与配置变更 / 界面变化 / 检查清单），章节标题与顺序不自行增删；「界面变化」只在确实没有可见 UI 变更时才删。
