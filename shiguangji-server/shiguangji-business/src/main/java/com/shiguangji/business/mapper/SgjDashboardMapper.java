@@ -62,7 +62,9 @@ public interface SgjDashboardMapper
     public List<SgjItem> selectRecentItems(@Param("limit") int limit);
 
     /**
-     * 查询待办条目（想看/想读/想去）
+     * 查询心愿单条目（想看/想读/想去 + 在看/在读；0.0.3 纳入 DOING，D-8）
+     *
+     * <p>排序：有计划日期的按日期升序在前，无日期的按添加时间兜底置后。</p>
      *
      * @param limit 数量限制
      * @param createBy 创建者过滤（null/空 表示不限制）

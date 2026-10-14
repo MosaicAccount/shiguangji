@@ -285,8 +285,88 @@ class AppPlanApiSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 6. T-73：buildSummary 显式三态（提交 fix(business) 统计与心愿单）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(6)
+    void summaryThreeWayInvariant() throws Exception
+    {
+        JsonNode summary = homeIndexSummary();
+        long itemTotal = summary.path("itemTotal").asLong();
+        long doneTotal = summary.path("doneTotal").asLong();
+        long wishTotal = summary.path("wishTotal").asLong();
+        long doingTotal = summary.path("doingTotal").asLong();
+
+        // 自洽：总数 == 三态之和（原先的 else 兜底会破坏这条）
+        assertThat(itemTotal).as("itemTotal 应等于三态之和").isEqualTo(doneTotal + wishTotal + doingTotal);
+
+        // 与库内实际分布逐态对账（admin 视角不限制 create_by，统计的是全库未删条目）
+        assertThat(doneTotal).isEqualTo(countByStatus("DONE"));
+        assertThat(wishTotal).isEqualTo(countByStatus("WANT"));
+        assertThat(doingTotal).as("DOING 必须独立成列，不得混入 wish").isEqualTo(countByStatus("DOING"));
+    }
+
+    // ------------------------------------------------------------------
+    // 7. T-74：心愿单纳入 DOING 且按计划日期排
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(7)
+    void wishlistIncludesDoingSortedByPlanDate() throws Exception
+    {
+        JsonNode wishlist = objectMapper.readTree(mockMvc.perform(get("/app/home/index")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andReturn().getResponse().getContentAsString()).path("data").path("wishlist");
+
+        int idxA = indexOfTitle(wishlist, TITLE_A);
+        int idxB = indexOfTitle(wishlist, TITLE_B);
+        int idxC = indexOfTitle(wishlist, TITLE_C);
+        assertThat(idxA).as("WANT 夹具应在心愿单").isGreaterThanOrEqualTo(0);
+        assertThat(idxB).as("DOING 夹具应在心愿单（D-8）").isGreaterThanOrEqualTo(0);
+        assertThat(idxC).as("未排期夹具应在心愿单").isGreaterThanOrEqualTo(0);
+        assertThat(indexOfTitle(wishlist, TITLE_D)).as("DONE 不得进入心愿单").isLessThan(0);
+
+        // 相对顺序：有日期的按日期升序在前，无日期置后（不依赖库内其他数据的日期）
+        assertThat(idxA).as("10-13 应排在 10-15 之前").isLessThan(idxB);
+        assertThat(idxB).as("有日期应排在无日期之前").isLessThan(idxC);
+        assertThat(wishlist.get(idxA).path("status").asText()).isEqualTo("DOING");
+        assertThat(wishlist.get(idxC).path("startDate").isMissingNode()
+                || wishlist.get(idxC).path("startDate").isNull()).as("未排期夹具不带日期").isTrue();
+    }
+
+    // ------------------------------------------------------------------
     // 辅助方法
     // ------------------------------------------------------------------
+
+    /** 首页 summary 节点（admin 视角 = 全库口径） */
+    private JsonNode homeIndexSummary() throws Exception
+    {
+        return objectMapper.readTree(mockMvc.perform(get("/app/home/index")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andReturn().getResponse().getContentAsString()).path("data").path("summary");
+    }
+
+    /** 库内未删条目按状态计数（对账用，绕开被测的聚合逻辑本身） */
+    private long countByStatus(String status)
+    {
+        Long cnt = jdbcTemplate.queryForObject(
+                "select count(*) from sgj_item where del_flag = '0' and status = ?", Long.class, status);
+        return cnt == null ? 0 : cnt;
+    }
+
+    /** 在数组里按 title 找下标，找不到返回 -1 */
+    private int indexOfTitle(JsonNode array, String title)
+    {
+        for (int i = 0; i < array.size(); i++)
+        {
+            if (title.equals(array.get(i).path("title").asText()))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
 
     /** 取计划页 data 数组（admin 视角，可带分页参数） */
     private JsonNode planList(Integer pageNum, Integer pageSize) throws Exception

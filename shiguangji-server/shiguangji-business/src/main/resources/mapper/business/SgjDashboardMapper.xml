@@ -78,6 +78,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit #{limit}
     </select>
 
+    <!-- 0.0.3 心愿单：纳入 DOING，有计划日期的按日期升序在前、无日期按添加时间兜底（设计 结论 76） -->
     <select id="selectTodoItems" resultType="SgjItem">
         select item_id as itemId,
                item_type as itemType,
@@ -86,6 +87,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                rating,
                tags,
                cover_url as coverUrl,
+               start_date as startDate,
                create_by as createBy,
                create_time as createTime,
                update_by as updateBy,
@@ -93,11 +95,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                remark
         from sgj_item
         where del_flag = '0'
-          and status = 'WANT'
+          and status in ('WANT', 'DOING')
         <if test="createBy != null and createBy != ''">
           and create_by = #{createBy}
         </if>
-        order by create_time desc, item_id desc
+        order by (start_date is null), start_date asc, create_time desc, item_id desc
         limit #{limit}
     </select>
 
