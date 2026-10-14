@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | T-72 | 状态白名单放行 `DOING` | `PUT /app/item/{id}` body `{status:'DOING'}` → code 200；回读该条目 `status == 'DOING'`；`status:'PAUSED'` 仍被拒且 msg 含「仅支持WANT/DOING/DONE」；新增条目缺省仍是 `WANT` | `AppPlanApiSmokeTest` |
 | T-73 | `buildSummary` 三态自洽 | 造 1 `WANT` + 1 `DOING` + 1 `DONE` 后：`wishTotal==1`、`doingTotal==1`、`doneTotal==1`、`itemTotal==3`，且 **`itemTotal == doneTotal + wishTotal + doingTotal`**；`doing`/`wish`/`done` 三个按类型的 map 之和各自等于对应 total（`DOING` 不得再出现在 `wish` 里） | `AppPlanApiSmokeTest` |
-| T-74 | 心愿单纳入 `DOING` 且按计划日期排 | `/app/home/index` 的 `wishlist` 含 `WANT` 与 `DOING`、不含 `DONE`；有 `start_date` 的排在无日期之前；两个都有日期时按日期升序；`wishlist.length` 与 `wishTotal + doingTotal` 在同一分页口径下一致（上限 20 时只断言 `<=`） | 同上 |
+| T-74 | 心愿单单一数据源与分页边界 | `/app/home/index` **不再**下发 `wishlist`；心愿单走 plan/list：`page1 ∪ page2` 覆盖全部夹具且两页之间无重复（结论 92）；排序与状态同计划页 | 同上 |
 | T-75 | 计划接口集合 / 排序 / 分页 | `GET /app/item/plan/list`：只含 `WANT` ∪ `DOING`（无 `DONE`）；无日期的排在最后；`start_date` 升序；`total` 等于符合条件的总数而非当前页长度；`pageSize=2` 翻页无重复无遗漏 | 同上 |
 | T-76 | 计划接口的可见范围 | 匿名 → 只见 `publicOwner` 的数据；登录用户 → 只见自己的；`?pageNum=0` 等异常入参不 500（照既有分页接口的口径） | 同上 |
 | T-77 | 计划接口访客脱敏 | 匿名请求返回的条目 `comment` 为空（与 `/app/item/list` 的 `maskItemsForGuest` 口径一致），`title` / `status` / `startDate` 保留 | 同上 |
@@ -27,7 +27,7 @@
 | T-81 | `planDateLabel` 日期文案 | `逾期 1 天`（昨天）、`今天`、`明天`、本周内的 `周六`、更远的 `10月20日`；跨月跨年不出负数天数（`逾期 0 天` 视为 `今天`） | 同上 |
 | T-82 | `ItemCompleteDialog` 分类型形态 | MOVIE → 标题「标记看过：」+「看完日期」+ 评分 +「短评」；BOOK →「标记已读：」+「读完日期」+ 评分 +「读后感」；PLACE →「标记去过：」+「去过日期」+ **无评分** +「回忆」；打开时 `finishDate` 默认**本地今天** | `components/ItemCompleteDialog/__tests__/index.spec.ts` |
 | T-83 | 完成弹窗提交用用户选的日期 | 把日期改成 `2026-10-01` 后提交 → 以 `{finishDate:'2026-10-01'}` 调用 `completeFrontItem`（断言出参而不是只断言被调用）；成功后 `emit('submitted')` | 同上 |
-| T-84 | 首页心愿条与状态文案 | 心愿条数字 = `wishTotal + doingTotal`；`DOING` 条目的状态文案是「在看 / 在读」而不是「想看 / 想读」；心愿条链接指向 `/plan`（回归：改前误指向 `/note`） | `views/front/home/__tests__/wishlist.spec.ts` |
+| T-84 | 首页心愿条、状态文案与心愿单分页 | 心愿条数字 = `wishTotal + doingTotal`；`DOING` 条目状态文案是「在看 / 在读」；心愿条链接指向 `/plan`（回归：改前误指 `/note`）；心愿单展示计划日期，底部「已展示 X / 共 N 项」，点「加载更多」以 `pageNum=2` 追加（结论 92） | `views/front/home/__tests__/wishlist.spec.ts` |
 
 ## 2. 人工用例（只有人能跑）
 
@@ -36,7 +36,9 @@
 | T-85 | 三模块状态流转与筛选 | 影单：`想看 → 在看（开始看）→ 看过（标记，选日期）→ 取消看过 → 想看`，每一步列表筛选、卡片按钮、详情状态三处一致；书籍同理；足迹只有 `想去 / 去过` 两枚胶囊，`想去` 卡片有「定个日子」。另核对「计划日期」三处露出：新增表单留空仍为纯心愿、编辑弹窗可改、详情抽屉可见 |
 | T-86 | 首页补记日期（FR-003-7） | 首页心愿单点「完成 →」→ 弹窗日期默认今天 → 改成昨天 → 确认后进时间线，`finishDate` 是昨天而不是今天 |
 | T-87 | 地图两态同屏（FR-003-6 现状核实，D-9 交付依据） | 足迹页切地图模式：`去过` 与 `想去` 图钉**同时**出现且样式不同、图例两者都在；点击弹卡的标签与图钉一致；缩放到聚合层时聚合牌着色不把两态混为一谈 |
-| T-88 | 导航与移动端 | 桌面顶部导航 6 项（首页 / 影单 / 书单 / 足迹 / 笔记 / 计划），`计划` 可进；移动端底部仍 4 项（首页 / 影单 / 足迹 / 笔记）；移动端从首页心愿条能进 `/plan` 且页面单列可读 |
+| T-88 | 导航与移动端 | 桌面顶部导航 6 项（首页 / 影单 / 书单 / 足迹 / 笔记 / 计划），`计划` 可进；移动端底部仍 4 项（首页 / 影单 / 足迹 / 笔记）；移动端从首页心愿条能进 `/plan` 且页面单列可读；**计划页底部常驻「已展示 X / 共 N 项」**（结论 89，数据不足一页时也要看得见） |
+| T-91 | 地点不得被置成 `DOING` + 状态文案三层兜底 | 后端：`PUT {status:'DOING'}` 到地点条目 → code 500 且 msg 含「地点不支持」，状态不变；地点仍可写计划日期（结论 87）。前端：`itemStatusLabel` 字典优先 → 类型中文兜底 → 通用兜底，**任何分支都不返回裸枚举**（地点 `DOING` → 「进行中」而非 `DOING`）（结论 88） | `AppPlanApiSmokeTest` + `utils/__tests__/itemStatus.spec.ts` |
+| T-92 | 计划页分页可见与按钮可点性 | 计划页 `pageSize = 10`：15 条数据时出现「加载更多」，点击后追加且「已展示 X / 共 N」更新；三个操作按钮为真实按钮（实心主操作 + 描边次操作），地点卡片不出现「开始」（结论 89/90） | 人工 T-88 扩展（自动化只覆盖纯函数与文案） |
 | T-89 | 后台条目与回收站 | 后台「全部条目」筛选下拉出现「在看 / 在读」且能筛出 `DOING`；回收站条目的状态文案不出现空白或 `undefined` |
 | T-90 | 字典缓存刷新 | 执行增量 SQL 后，前台首次进入仍可能看不到「在看」（`useDictStore` 缓存）；清缓存或重登后胶囊出现第三枚，顺序为 想看 / 在看 / 看过 |
 
