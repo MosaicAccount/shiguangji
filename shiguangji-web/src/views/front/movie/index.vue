@@ -67,12 +67,16 @@
           <div class="card-title">{{ item.title }}</div>
           <div class="card-meta">
             <span class="card-meta-text">{{ cardMeta(item) }}</span>
+            <plan-date-badge :item="item" @saved="loadData" />
             <span v-if="item.rating" class="rating-pill">★ {{ item.rating }}</span>
           </div>
           <div v-if="item.comment" class="card-comment">{{ item.comment }}</div>
         </div>
         <div class="card-actions" @click.stop>
-          <el-button v-if="item.status === 'WANT' && isLogin" type="primary" size="small" round @click="openComplete(item)">
+          <el-button v-if="item.status === 'WANT' && isLogin" size="small" round @click="startDoing(item)">
+            开始看 →
+          </el-button>
+          <el-button v-if="item.status !== 'DONE' && isLogin" type="primary" size="small" round @click="openComplete(item)">
             标记看过
           </el-button>
           <el-button v-if="item.status === 'DONE' && isLogin" type="warning" size="small" round @click="handleUncomplete(item)">
@@ -126,6 +130,9 @@
           <!-- 标签来自后台标签管理，按条目类型区分，禁止自由输入 -->
           <tag-select v-model="addForm.tags" :module="activeType" placeholder="选择标签（可选）" />
         </el-form-item>
+        <el-form-item label="计划日期">
+          <el-date-picker v-model="addForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="打算哪天看（可选）" :clearable="false" style="width: 100%" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -143,6 +150,7 @@
       :glyph="activeType === 'MOVIE' ? '影' : '剧'"
       done-label="看过"
       want-label="想看"
+      doing-label="在看"
       :hero-meta="heroMeta"
       memory-label="MY THOUGHTS · 我的短评"
       :can-operate="isLogin"
@@ -176,11 +184,13 @@ import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
+import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, updateFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
-import type { SgjItem } from '@/types/api/business/item'
+import type { SgjItem, ItemStatus } from '@/types/api/business/item'
+import { planDateLabel, localDateKey } from '@/utils/plan'
 
 const { sgj_item_type, sgj_movie_status, sgj_movie_genre, sgj_region, sgj_language } = useDict('sgj_item_type', 'sgj_movie_status', 'sgj_movie_genre', 'sgj_region', 'sgj_language')
 
@@ -195,8 +205,8 @@ const isLogin = computed(() => !!getToken())
 const movieTypes = computed(() => (sgj_item_type.value || []).filter(t => t.value === 'MOVIE' || t.value === 'TV'))
 
 const activeType = ref<'MOVIE' | 'TV'>('MOVIE')
-/** 访客默认只看已完成内容 */
-const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
+/** 访客默认只看已完成内容；登录后含三态胶囊（字典驱动，0.0.3 起多一枚「在看」） */
+const activeStatus = ref<ItemStatus>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
 /** 标签筛选（选择即查询；切换类型时由 switchType 清空并随列表刷新） */
 const searchTag = ref('')
@@ -228,7 +238,9 @@ const addForm = reactive({
   seasonCount: undefined,
   episodeCount: undefined,
   genre: undefined,
-  tags: undefined as string | undefined
+  tags: undefined as string | undefined,
+  /** 计划日期（0.0.3）：留空即纯心愿 */
+  startDate: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -303,25 +315,40 @@ function switchType(type: 'MOVIE' | 'TV'): void {
   handleTypeChange()
 }
 
-/** 状态胶囊切换 */
-function switchStatus(status: 'WANT' | 'DONE'): void {
+/** 状态胶囊切换（字典驱动，三枚：想看 / 在看 / 看过） */
+function switchStatus(status: ItemStatus): void {
   if (activeStatus.value === status) return
   activeStatus.value = status
   loadData()
 }
 
+/** WANT → DOING：开始看（0.0.3 状态流转复用 PUT /app/item/{id}，不新增端点） */
+function startDoing(item: SgjItem): void {
+  if (!item.itemId) return
+  updateFrontItem(item.itemId, { status: 'DOING' }).then(() => {
+    proxy.$modal.msgSuccess(`开始看：${item.title || ''}`)
+    loadData()
+  }).catch(() => {})
+}
+
 /** 封面占位衬线字 */
 const coverGlyph = computed(() => (activeType.value === 'MOVIE' ? '影' : '剧'))
 
-/** 详情抽屉 hero meta：评分之外追加年份信息 */
+/** 详情抽屉 hero meta：评分之外追加年份与计划日期 */
 const heroMeta = computed<string[]>(() => {
   const d = detail.value
   if (!d) return []
-  if (activeType.value === 'MOVIE') {
-    return d.releaseYear ? [`${d.releaseYear} 年上映`] : []
+  const meta: string[] = []
+  if (d.startDate) {
+    meta.push(`计划 ${planDateLabel(d.startDate.slice(0, 10), localDateKey(new Date()))}`)
   }
-  const span = [d.startYear, d.endYear].filter(Boolean).join('-')
-  return span ? [`${span} 年`] : []
+  if (activeType.value === 'MOVIE') {
+    if (d.releaseYear) meta.push(`${d.releaseYear} 年上映`)
+  } else {
+    const span = [d.startYear, d.endYear].filter(Boolean).join('-')
+    if (span) meta.push(`${span} 年`)
+  }
+  return meta
 })
 
 /** 详情抽屉分类 chips：类型/地区/语言（script 内调用需手动解包字典 ref） */

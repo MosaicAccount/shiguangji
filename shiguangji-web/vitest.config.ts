@@ -1,13 +1,15 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
-import autoImport from 'unplugin-auto-import/vite'
 import path from 'path'
+import createAutoImport from './vite/plugins/auto-import'
 
 export default defineConfig({
   plugins: [
     vue(),
-    // SFC 内 Vue API 依赖自动导入（与 vite.config.ts 保持一致）
-    autoImport({ imports: ['vue'], dts: false })
+    // SFC 自动导入与应用侧共用同一份配置（vite/plugins/auto-import.ts）。
+    // 原先此处自行写 imports: ['vue']，漏了 vue-router 与 useDict/selectDictLabel，
+    // 于是「挂载用到 useRouter 的页面」的用例会以 useRouter is not defined 失败。
+    createAutoImport()
   ],
   resolve: {
     alias: {

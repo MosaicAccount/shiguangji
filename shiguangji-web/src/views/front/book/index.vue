@@ -58,13 +58,17 @@
           <div class="card-title">{{ item.title }}</div>
           <div v-if="item.author" class="card-author">{{ item.author }}</div>
           <div class="card-meta">
+            <plan-date-badge :item="item" @saved="loadData" />
             <span v-if="item.rating" class="rating-pill">★ {{ item.rating }}</span>
           </div>
           <div v-if="item.comment" class="card-comment">{{ item.comment }}</div>
         </div>
         <!-- ：整卡点击已开详情，操作区只留高频操作（去重「查看详情」按钮） -->
         <div class="card-actions" @click.stop>
-          <el-button v-if="item.status === 'WANT' && isLogin" type="primary" size="small" round @click="openComplete(item)">
+          <el-button v-if="item.status === 'WANT' && isLogin" size="small" round @click="startDoing(item)">
+            开始读 →
+          </el-button>
+          <el-button v-if="item.status !== 'DONE' && isLogin" type="primary" size="small" round @click="openComplete(item)">
             标记已读
           </el-button>
           <el-button v-if="item.status === 'DONE' && isLogin" type="warning" size="small" round @click="handleUncomplete(item)">
@@ -105,6 +109,9 @@
           <!-- 标签来自后台标签管理（BOOK 模块），禁止自由输入 -->
           <tag-select v-model="addForm.tags" module="BOOK" placeholder="选择标签（可选）" />
         </el-form-item>
+        <el-form-item label="计划日期">
+          <el-date-picker v-model="addForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="打算哪天读（可选）" :clearable="false" style="width: 100%" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -122,6 +129,7 @@
       glyph="书"
       done-label="已读"
       want-label="想读"
+      doing-label="在读"
       :hero-meta="heroMeta"
       memory-label="MY THOUGHTS · 我的读后感"
       :can-operate="isLogin"
@@ -155,11 +163,13 @@ import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
+import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
-import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
-import type { SgjItem } from '@/types/api/business/item'
+import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
+import type { SgjItem, ItemStatus } from '@/types/api/business/item'
+import { planDateLabel, localDateKey } from '@/utils/plan'
 
 const { sgj_book_status, sgj_book_genre } = useDict('sgj_book_status', 'sgj_book_genre')
 
@@ -170,7 +180,7 @@ const route = useRoute()
 /** 是否登录（访客只读，登录后可管理） */
 const isLogin = computed(() => !!getToken())
 
-const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
+const activeStatus = ref<ItemStatus>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
 /** 标签筛选（选择即查询） */
 const searchTag = ref('')
@@ -199,7 +209,9 @@ const addForm = reactive({
   publishDate: undefined,
   isbn: undefined,
   genre: undefined,
-  tags: undefined as string | undefined
+  tags: undefined as string | undefined,
+  /** 计划日期（0.0.3）：留空即纯心愿 */
+  startDate: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -214,10 +226,19 @@ function isCoverError(item: SgjItem): boolean {
 }
 
 /** 状态胶囊切换 */
-function switchStatus(status: 'WANT' | 'DONE'): void {
+function switchStatus(status: ItemStatus): void {
   if (activeStatus.value === status) return
   activeStatus.value = status
   loadData()
+}
+
+/** WANT → DOING：开始读（0.0.3 状态流转复用 PUT /app/item/{id}，不新增端点） */
+function startDoing(item: SgjItem): void {
+  if (!item.itemId) return
+  updateFrontItem(item.itemId, { status: 'DOING' }).then(() => {
+    proxy.$modal.msgSuccess(`开始读：${item.title || ''}`)
+    loadData()
+  }).catch(() => {})
 }
 
 /** 卡片封面占位色块：按索引轮换灰陶浅/鼠尾草浅/灰铜浅/中性 */
@@ -229,7 +250,15 @@ function coverStyle(index: number): Record<string, string> {
 }
 
 /** 详情抽屉 hero meta：评分之外追加作者 */
-const heroMeta = computed<string[]>(() => (detail.value?.author ? [detail.value.author] : []))
+/** 详情抽屉 hero meta：作者之外追加计划日期 */
+const heroMeta = computed<string[]>(() => {
+  const meta: string[] = []
+  if (detail.value?.author) meta.push(detail.value.author)
+  if (detail.value?.startDate) {
+    meta.push(`计划 ${planDateLabel(detail.value.startDate.slice(0, 10), localDateKey(new Date()))}`)
+  }
+  return meta
+})
 
 /** 详情抽屉分类 chips（script 内调用需手动解包字典 ref） */
 const chipList = computed<string[]>(() => {

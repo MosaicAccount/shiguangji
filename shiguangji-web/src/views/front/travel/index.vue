@@ -71,7 +71,10 @@
             <div v-if="item.city || item.country" class="card-location">
               {{ [item.city, item.country].filter(Boolean).join(' · ') }}
             </div>
-            <div v-if="item.bestSeason" class="card-season">{{ item.bestSeason }}</div>
+            <div class="card-meta-row">
+              <plan-date-badge :item="item" @saved="onPlanDateSaved" />
+              <span v-if="item.bestSeason" class="card-season">{{ item.bestSeason }}</span>
+            </div>
             <div v-if="item.comment" class="card-comment">{{ item.comment }}</div>
           </div>
           <!-- ：整卡点击已开详情，操作区只留高频操作（去重「查看详情」按钮） -->
@@ -179,6 +182,9 @@
             <!-- 标签来自后台标签管理（PLACE 模块），禁止自由输入 -->
             <tag-select v-model="addForm.tags" module="PLACE" placeholder="选择标签（可选）" />
           </el-form-item>
+          <el-form-item label="计划日期">
+            <el-date-picker v-model="addForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="打算哪天去（可选）" :clearable="false" style="width: 100%" />
+          </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -212,10 +218,11 @@
         </div>
 
         <div class="d-body">
-          <!-- 分类 / 最佳季节 -->
-          <div v-if="detail.placeCategory || detail.bestSeason" class="d-chips">
+          <!-- 分类 / 最佳季节 / 计划日期 -->
+          <div v-if="detail.placeCategory || detail.bestSeason || detail.startDate" class="d-chips">
             <span v-if="detail.placeCategory" class="chip">{{ selectDictLabel(sgj_place_category, detail.placeCategory) || detail.placeCategory }}</span>
             <span v-if="detail.bestSeason" class="chip chip-season">🍂 {{ selectDictLabel(sgj_best_season, detail.bestSeason) || detail.bestSeason }}</span>
+            <span v-if="detail.startDate" class="chip chip-plan">📅 计划 {{ detail.startDate.slice(0, 10) }}</span>
           </div>
 
           <!-- 详细地址 -->
@@ -288,11 +295,12 @@ import TravelMap from '@/components/TravelMap/index.vue'
 import PhotoDeck from '@/components/PhotoDeck/index.vue'
 import PhotoAlbumDialog from '@/components/PhotoAlbumDialog/index.vue'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
+import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
 import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel, photoUrl } from '@/utils/sgj'
-import type { SgjItem } from '@/types/api/business/item'
+import type { SgjItem, ItemStatus } from '@/types/api/business/item'
 import type { TravelPoint, TravelTrajectory } from '@/types/api/front/travel'
 
 const { sgj_place_status, sgj_place_category, sgj_best_season } = useDict('sgj_place_status', 'sgj_place_category', 'sgj_best_season')
@@ -306,7 +314,7 @@ const isLogin = computed(() => !!getToken())
 
 const mode = ref<'card' | 'map'>('card')
 /** 访客默认只看已完成内容 */
-const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
+const activeStatus = ref<ItemStatus>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
 /** 标签筛选（选择即查询，仅卡片模式） */
 const searchTag = ref('')
@@ -344,7 +352,9 @@ const addForm = reactive({
   longitude: undefined as number | undefined,
   bestSeason: undefined as string | undefined,
   placeCategory: undefined as string | undefined,
-  tags: undefined as string | undefined
+  tags: undefined as string | undefined,
+  /** 计划日期（0.0.3）：留空即纯心愿；地点不引入中间态，计划 = 想去 + 日期（D-5） */
+  startDate: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -358,10 +368,15 @@ function isCoverError(item: SgjItem): boolean {
   return item.itemId != null && coverErrorIds.value.has(item.itemId)
 }
 
-/** 状态胶囊切换 */
-function switchStatus(status: 'WANT' | 'DONE'): void {
+/** 状态胶囊切换（地点仅两态：字典未加 DOING，胶囊自动只有 想去/去过 两枚，D-5） */
+function switchStatus(status: ItemStatus): void {
   if (activeStatus.value === status) return
   activeStatus.value = status
+  loadData()
+}
+
+/** 计划日期改完刷新列表（update_time 排序会因更新而前置） */
+function onPlanDateSaved(): void {
   loadData()
 }
 
@@ -946,9 +961,16 @@ html.dark .page-banner {
       white-space: nowrap;
     }
 
+    .card-meta-row {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12.5px;
+    }
+
     .card-season {
       display: inline-block;
-      margin-top: 8px;
       padding: 1px 10px;
       border-radius: 11px;
       background: var(--sgj-moss-soft);
@@ -1239,6 +1261,11 @@ html.dark .page-banner {
   .chip-season {
     background: var(--sgj-moss-soft);
     color: var(--sgj-moss);
+  }
+
+  .chip-plan {
+    background: var(--sgj-primary-soft);
+    color: var(--sgj-primary);
   }
 }
 

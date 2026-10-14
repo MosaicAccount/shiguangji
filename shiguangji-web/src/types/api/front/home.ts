@@ -7,14 +7,18 @@ export interface FrontHomeSummary {
   total: Record<string, number>
   /** 各类型已完成数量 */
   done: Record<string, number>
-  /** 各类型心愿数量 */
+  /** 各类型心愿数量（仅 WANT；0.0.3 起三态显式拆列） */
   wish: Record<string, number>
+  /** 各类型进行中数量（仅 DOING） */
+  doing: Record<string, number>
   /** 条目总数 */
   itemTotal: number
   /** 已完成总数 */
   doneTotal: number
-  /** 心愿总数 */
+  /** 心愿总数（仅 WANT） */
   wishTotal: number
+  /** 进行中总数（仅 DOING） */
+  doingTotal: number
   /** 笔记总数 */
   noteTotal: number
   /** 全部记录数 */

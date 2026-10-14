@@ -46,10 +46,11 @@
           <span class="stat-value">{{ data?.summary?.noteTotal || 0 }}</span>
           <span class="stat-label">写过 · 笔记</span>
         </div>
-        <router-link v-if="isLogin" to="/note" class="wish-bar anim" :style="{ '--d': '288ms' }">
+        <!-- 0.0.3：心愿条数字 = 在想 + 在做，入口指向 /plan（原误指 /note，一并修） -->
+        <router-link v-if="isLogin" to="/plan" class="wish-bar anim" :style="{ '--d': '288ms' }">
           <span class="wish-bar-icon">愿</span>
-          <span class="wish-bar-num">{{ data?.summary?.wishTotal || 0 }}</span>
-          <span class="wish-bar-label">心愿 · 想去 / 想读</span>
+          <span class="wish-bar-num">{{ wishBarTotal }}</span>
+          <span class="wish-bar-label">心愿 · 在想 {{ data?.summary?.wishTotal || 0 }} / 在做 {{ data?.summary?.doingTotal || 0 }}</span>
           <span class="wish-bar-more">待完成 →</span>
         </router-link>
       </div>
@@ -111,7 +112,7 @@
             <span class="wish-icon" :class="'wish-icon-' + item.itemType">{{ wishGlyph(item.itemType) }}</span>
             <div class="wish-body">
               <div class="wish-title">{{ item.title }}</div>
-              <div class="wish-status">{{ wishLabel(item.itemType) }}</div>
+              <div class="wish-status">{{ wishLabel(item.itemType, item.status) }}</div>
             </div>
             <el-button link class="wish-complete" @click="openComplete(item)">完成 →</el-button>
           </div>
@@ -276,11 +277,18 @@ function doneTotal(type: string): number {
   return data.value?.summary?.done?.[type] || 0
 }
 
-function wishLabel(type?: string): string {
+/** 心愿单状态文案：显式三态（0.0.3 D-8 心愿单纳入 DOING），地点无中间态 */
+function wishLabel(type?: string, status?: string): string {
+  if (status === 'DOING') {
+    return type === 'BOOK' ? '在读' : '在看'
+  }
   if (type === 'BOOK') return '想读'
   if (type === 'PLACE') return '想去'
   return '想看'
 }
+
+/** 心愿条数字：在想 + 在做（summary 三态显式拆列，0.0.3 设计 结论 75/76） */
+const wishBarTotal = computed(() => (data.value?.summary?.wishTotal || 0) + (data.value?.summary?.doingTotal || 0))
 
 /** 标记完成提示文案：与各模块页逐字一致（原 handleComplete 的“读过”与书单页“已读”不一致，一并收敛） */
 function doneMessage(type?: string): string {
