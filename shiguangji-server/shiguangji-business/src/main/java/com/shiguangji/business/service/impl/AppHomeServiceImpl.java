@@ -38,8 +38,9 @@ public class AppHomeServiceImpl implements IAppHomeService
         result.put("timeline", sgjDashboardMapper.selectTimeline(TIMELINE_FIRST_PAGE_SIZE, 0, createBy));
         result.put("timelineTotal", sgjDashboardMapper.countTimeline(createBy));
 
-        // 心愿单
-        result.put("wishlist", sgjDashboardMapper.selectTodoItems(20, createBy));
+        // 心愿单不再随首页下发（0.0.3 修订）：它与计划页是同一个集合 + 同一个排序，
+        // 两份来源各带一页会在分页边界上错位；统一由 GET /app/item/plan/list 提供（含分页）。
+        // 汇总里的 wishTotal / doingTotal 仍在 summary 内，首页数字口径不变。
 
         // 最近笔记（publicOnly 时仅返回公开笔记，）
         result.put("recentNotes", sgjDashboardMapper.selectRecentNotes(5, createBy, publicOnly));

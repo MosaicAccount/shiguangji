@@ -78,7 +78,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit #{limit}
     </select>
 
-    <!-- 0.0.3 心愿单：纳入 DOING，有计划日期的按日期升序在前、无日期按添加时间兜底（设计 结论 76） -->
+    <!-- 后台仪表盘待办卡片：纳入 DOING，有计划日期的按日期升序在前、无日期按添加时间兜底（设计 结论 76）。
+         前台首页/计划页的心愿单不走这里（统一走 /app/item/plan/list 以支持分页）。 -->
     <select id="selectTodoItems" resultType="SgjItem">
         select item_id as itemId,
                item_type as itemType,

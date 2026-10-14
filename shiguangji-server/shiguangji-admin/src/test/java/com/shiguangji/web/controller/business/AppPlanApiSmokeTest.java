@@ -87,6 +87,9 @@ class AppPlanApiSmokeTest
     /** 影视夹具 D：DONE（经 /complete 流转，用于排除断言与时间线回归） */
     private static final String TITLE_D = TITLE + "-影视D";
 
+    /** 地点夹具 E：用于 T-91（地点不得被置成 DOING） */
+    private static final String TITLE_E = TITLE + "-地点E";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -313,26 +316,73 @@ class AppPlanApiSmokeTest
 
     @Test
     @Order(7)
-    void wishlistIncludesDoingSortedByPlanDate() throws Exception
+    void wishlistSingleSourceAndPaging() throws Exception
     {
-        JsonNode wishlist = objectMapper.readTree(mockMvc.perform(get("/app/home/index")
+        // 首页不再下发 wishlist：心愿单与计划页是同一个集合 + 同一个排序，
+        // 两份来源各带一页会在分页边界错位（0.0.3 修订），统一走 /app/item/plan/list
+        JsonNode home = objectMapper.readTree(mockMvc.perform(get("/app/home/index")
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
-                .andReturn().getResponse().getContentAsString()).path("data").path("wishlist");
+                .andReturn().getResponse().getContentAsString()).path("data");
+        assertThat(home.path("wishlist").isMissingNode()).as("首页响应不应再含 wishlist").isTrue();
+        assertThat(home.path("summary").path("doingTotal").asLong()).isGreaterThanOrEqualTo(0);
 
-        int idxA = indexOfTitle(wishlist, TITLE_A);
-        int idxB = indexOfTitle(wishlist, TITLE_B);
-        int idxC = indexOfTitle(wishlist, TITLE_C);
-        assertThat(idxA).as("WANT 夹具应在心愿单").isGreaterThanOrEqualTo(0);
-        assertThat(idxB).as("DOING 夹具应在心愿单（D-8）").isGreaterThanOrEqualTo(0);
-        assertThat(idxC).as("未排期夹具应在心愿单").isGreaterThanOrEqualTo(0);
-        assertThat(indexOfTitle(wishlist, TITLE_D)).as("DONE 不得进入心愿单").isLessThan(0);
+        // 分页边界：page1 ∪ page2 覆盖全部夹具且无重复（心愿单靠它翻页）
+        JsonNode page1 = planList(1, 2);
+        JsonNode page2 = planList(2, 2);
+        Set<String> seen = new HashSet<>();
+        for (JsonNode row : page1)
+        {
+            assertThat(seen.add(row.path("title").asText())).as("第一页内不得重复").isTrue();
+        }
+        int overlap = 0;
+        for (JsonNode row : page2)
+        {
+            if (!seen.add(row.path("title").asText()))
+            {
+                overlap++;
+            }
+        }
+        assertThat(overlap).as("两页之间不得重叠").isZero();
+        assertThat(seen).as("两页并集应覆盖 A/B/C，且不含 DONE 的 D")
+                .contains(TITLE_A, TITLE_B, TITLE_C).doesNotContain(TITLE_D);
 
-        // 相对顺序：有日期的按日期升序在前，无日期置后（不依赖库内其他数据的日期）
-        assertThat(idxA).as("10-13 应排在 10-15 之前").isLessThan(idxB);
-        assertThat(idxB).as("有日期应排在无日期之前").isLessThan(idxC);
-        assertThat(wishlist.get(idxA).path("status").asText()).isEqualTo("DOING");
-        assertThat(wishlist.get(idxC).path("startDate").isMissingNode()
-                || wishlist.get(idxC).path("startDate").isNull()).as("未排期夹具不带日期").isTrue();
+        // 排序与状态（心愿单展示口径）：有日期的按日期升序在前、无日期置后
+        JsonNode all = planList(1, 50);
+        assertThat(indexOfTitle(all, TITLE_A)).isLessThan(indexOfTitle(all, TITLE_B));
+        assertThat(indexOfTitle(all, TITLE_B)).isLessThan(indexOfTitle(all, TITLE_C));
+        assertThat(all.get(indexOfTitle(all, TITLE_A)).path("status").asText()).isEqualTo("DOING");
+        assertThat(indexOfTitle(all, TITLE_D)).as("DONE 不得进入心愿单").isLessThan(0);
+    }
+
+    // ------------------------------------------------------------------
+    // 8. T-91：地点不得被置成 DOING（0.0.3 D-5 的单点闸门）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(8)
+    void placeCannotBeDoing() throws Exception
+    {
+        createItem(TITLE_E, "PLACE", null);
+        long idE = findItemId(TITLE_E);
+
+        // 地点字典没有 DOING：放它落库就会得到一个「显示不出来」的状态，故在闸门处拒绝
+        mockMvc.perform(put("/app/item/{itemId}", idE)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "DOING"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg", containsString("地点不支持")));
+        assertThat(detail(idE).path("status").asText()).as("被拒后状态不变").isEqualTo("WANT");
+
+        // 计划日期对地点仍然可用（地点用日期表达计划）
+        mockMvc.perform(put("/app/item/{itemId}", idE)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("startDate", "2026-11-01"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertThat(detail(idE).path("startDate").asText()).startsWith("2026-11-01");
     }
 
     // ------------------------------------------------------------------

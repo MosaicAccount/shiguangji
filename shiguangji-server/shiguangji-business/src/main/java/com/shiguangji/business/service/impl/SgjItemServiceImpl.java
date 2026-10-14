@@ -179,6 +179,13 @@ public class SgjItemServiceImpl implements ISgjItemService
         {
             throw new ServiceException("状态值不合法，仅支持WANT/DOING/DONE");
         }
+        // 地点不引入中间态（0.0.3 D-5）：值域里虽有 DOING，但地点字典没有它，
+        // 一旦落库就是一个「显示不出来」的状态（前端只能回退到裸枚举 DOING）。
+        // 在唯一闸门处拒绝，比指望每个入口都记得隐藏更可靠。
+        if ("DOING".equals(sgjItem.getStatus()) && "PLACE".equals(sgjItem.getItemType()))
+        {
+            throw new ServiceException("地点不支持「在看」，请用计划日期表达计划");
+        }
         BigDecimal rating = sgjItem.getRating();
         if (rating != null && (rating.compareTo(BigDecimal.ZERO) < 0 || rating.compareTo(new BigDecimal("10")) > 0))
         {

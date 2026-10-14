@@ -51,9 +51,9 @@ public class AppHomeController extends BaseController
         Map<String, Object> data = appHomeService.getHomeData(appScopeHelper.resolveCreateBy(), guestMode);
         if (guestMode)
         {
-            // 访客响应脱敏：时间线/心愿单不返回 remark/comment，最近笔记不返回私人备注
+            // 访客响应脱敏：时间线不返回 remark/comment，最近笔记不返回私人备注
+            // （心愿单已改由 /app/item/plan/list 提供，其脱敏在该接口内完成）
             appScopeHelper.maskItemsForGuest((List<SgjItem>) data.get("timeline"));
-            appScopeHelper.maskItemsForGuest((List<SgjItem>) data.get("wishlist"));
             appScopeHelper.maskNotesForGuest((List<SgjNote>) data.get("recentNotes"));
         }
         return success(data);
