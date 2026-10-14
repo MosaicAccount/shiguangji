@@ -44,8 +44,10 @@ export type NoteImportResult =
       localImageCount: number
       /** 逐条列出的本地图片引用（搬运弹窗的输入；见 utils/noteImages） */
       localImageRefs: NoteImageRef[]
-      /** 外链图片处数：不搬运但要计数并明说（结论 62），否则「已搬运 N 张」会被读成其余的失败了 */
+      /** 外链图片处数：转存弹窗的计数提示（结论 62 / 65） */
       externalImageCount: number
+      /** 逐条列出的外链图片引用（#68 转存的输入；见 utils/noteImages） */
+      externalImageRefs: NoteImageRef[]
     }
   | { ok: false; code: NoteImportErrorCode; length?: number }
 
@@ -198,7 +200,8 @@ export function parseNoteMarkdown(text: string, fileName: string): NoteImportRes
     // 本地引用逐条交给搬运弹窗（#56）；用户跳过或未命中时由入口提示，不再说「本版不搬图片」
     localImageCount: imageRefs.local.length,
     localImageRefs: imageRefs.local,
-    externalImageCount: imageRefs.externalCount
+    externalImageCount: imageRefs.externalCount,
+    externalImageRefs: imageRefs.external
   }
 }
 

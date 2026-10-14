@@ -24,3 +24,24 @@ export function uploadNoteImage(file: File): Promise<NoteImageUploadResult> {
     timeout: 60000
   })
 }
+
+/** 外链图片转存的响应（0.0.6 FR-006-1）：path 是站内相对路径，改写正文用它 */
+export interface FetchImageResult extends AjaxResult {
+  path?: string
+}
+
+/**
+ * 转存一张外链图片（`POST /common/upload/fetch-image`，需登录；#68）
+ *
+ * 逐张调用（失败逐条可见，不做批量事务）；超时 60s 对齐 uploadNoteImage——
+ * 服务端要抓远端图，慢源比本地上传更容易超时
+ */
+export function fetchExternalImage(url: string): Promise<FetchImageResult> {
+  return request({
+    url: '/common/upload/fetch-image',
+    method: 'post',
+    data: { url },
+    headers: { repeatSubmit: false },
+    timeout: 60000
+  })
+}

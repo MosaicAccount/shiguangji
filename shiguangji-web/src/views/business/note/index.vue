@@ -695,17 +695,17 @@ async function onImportFileChange(event: Event): Promise<void> {
   if (result.droppedTagCount > 0) {
     proxy.$modal.msgWarning(`标签最多带 ${NOTE_TAG_MAX_COUNT} 个，已忽略 ${result.droppedTagCount} 个`)
   }
-  // 图片搬运（#56）：与前台同一套（守卫与文案只有一份实现，见设计 结论 44 的同款约定）
-  if (result.localImageRefs.length > 0) {
+  // 图片搬运（#56 / #68）：与前台同一套（守卫与文案只有一份实现，见设计 结论 44 的同款约定）
+  if (result.localImageRefs.length > 0 || result.externalImageRefs.length > 0) {
     const carried = await carryRef.value?.open(
       result.prefill.content,
       result.localImageRefs,
-      result.externalImageCount,
+      result.externalImageRefs,
       file.name
     )
     if (carried) {
       result.prefill.content = carried.content
-    } else {
+    } else if (result.localImageCount > 0) {
       proxy.$modal.msgWarning(`正文里有 ${result.localImageCount} 处图片引用未搬运，导入后那些图会显示不出来`)
     }
   }
