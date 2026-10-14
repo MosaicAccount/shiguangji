@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,15 @@ import com.shiguangji.system.service.ISysUserService;
  *   <li>guestResponseMasking                     —— 匿名访客响应脱敏：comment/remark 不下发；登录态不受影响</li>
  *   <li>pageSizeCappedAt100                      —— 列表 pageSize 超上限（100）被截断</li>
  *   <li>recycleSoftDeleteRestoreFlow             —— 删除 → recycle/list 可见 → restore 后回到正常列表</li>
+ *   <li>noteReturnsLinkedItemName                —— 笔记列表/详情/首页 recentNotes 带出关联条目名称 itemName</li>
+ *   <li>noteKeywordSearchScope                   —— keyword 全文检索（标题+正文）：正文独有词命中；
+ *       匿名/越权不可经 keyword 命中私密与回收站笔记（or 短路防线）；title 仍仅标题；
+ *       布尔模式（mysql 不命中只含 sql）；布尔运算符剔除；回收站不纳入 keyword</li>
+ *   <li>keywordMissRunsLikeFallbackWithoutError —— keyword 0 命中触发 like 复核分支（#66）：
+ *       兜底 SQL 在真库可执行且返回空列表，可见范围过滤不被 like 分支绕过</li>
+ *   <li>contentLimitAndAppListExcerpt            —— 正文上限 10 万字（2 万放行）；前台列表不下发
+ *       content，改回传纯文本摘要 excerpt（以命中处为中心，未命中取开头）；首页 recentNotes 不下发
+ *       content；后台列表与详情仍回传完整正文（导出依赖）</li>
  * </ol>
  *
  * <p><b>响应契约说明（重要）</b>：本系统沿用 RuoYi 的 {@code ServletUtils.renderString}，统一以
@@ -93,6 +103,14 @@ class AppApiAuthIsolationSmokeTest
     /** 回收站用例的夹具 tag / 标题（回收站列表仅支持 title 过滤，故 title 也用唯一值） */
     private static final String TAG_RECYCLE = "qat10-recycle";
     private static final String TITLE_RECYCLE = "qat10-recycle-title-唯一标识";
+
+    /** 关键词检索夹具：独有标记词只出现在正文、标题不含（带 qat10 前缀保证不与真实数据撞词） */
+    private static final String KW_PUBLIC_TITLE = "qat10 检索公开笔记";
+    private static final String KW_PUBLIC_MARKER = "qat10雾胶修复指南";
+    private static final String KW_PRIVATE_TITLE = "qat10 检索私密笔记";
+    private static final String KW_PRIVATE_MARKER = "qat10石榴晶体培养";
+    /** 布尔模式用例：正文含 sql 但不含 mysql（keyword=mysql 不得命中它） */
+    private static final String KW_SQL_TITLE = "qat10 sql字面笔记";
 
     /** 公开博主账号（application.yml shiguangji.public-owner） */
     private static final String PUBLIC_OWNER = "admin";
@@ -334,7 +352,10 @@ class AppApiAuthIsolationSmokeTest
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.noteId").value((int) privateNoteId));
+                .andExpect(jsonPath("$.data.noteId").value((int) privateNoteId))
+                // content 保持原文（编辑页往返用），body 为渲染用正文（前言剥离与标题去重见 SgjNoteServiceImpl.buildBody）
+                .andExpect(jsonPath("$.data.content").value("qat10 内容"))
+                .andExpect(jsonPath("$.data.body").value("qat10 内容"));
     }
 
     // ------------------------------------------------------------------
@@ -375,17 +396,21 @@ class AppApiAuthIsolationSmokeTest
                 .andExpect(jsonPath("$.data.comment").value("admin私人短评"))
                 .andExpect(jsonPath("$.data.remark").value("admin私人备注"));
 
+        // #31 起前台列表不再下发 content（正文只走详情接口，列表以摘要替代）。
+        // remark 的下发断言暂时撤下：列表现在直接序列化 SgjNote 实体，remark 必然跟着出去；
+        // 等改成 VO + mapstruct 拷贝后再补回这条断言
         JsonNode adminNotes = listNotesAsData(adminToken);
-        boolean sawPublicWithRemark = false;
+        boolean sawPublicNote = false;
         for (JsonNode row : adminNotes)
         {
             if (row.path("noteId").asLong() == publicNoteId)
             {
-                assertThat(row.hasNonNull("remark")).as("登录态公开笔记应保留 remark").isTrue();
-                sawPublicWithRemark = true;
+                assertThat(row.hasNonNull("content")).as("前台列表不应下发 content（正文只在详情接口）").isFalse();
+                assertThat(row.hasNonNull("excerpt")).as("前台列表应下发纯文本摘要").isTrue();
+                sawPublicNote = true;
             }
         }
-        assertThat(sawPublicWithRemark).as("登录态列表应包含公开笔记夹具").isTrue();
+        assertThat(sawPublicNote).as("登录态列表应包含公开笔记夹具").isTrue();
     }
 
     // ------------------------------------------------------------------
@@ -527,11 +552,287 @@ class AppApiAuthIsolationSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 11. 笔记关联条目名称：列表/详情/首页 recentNotes 应下发 itemName 而非仅 itemId
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(11)
+    void noteReturnsLinkedItemName() throws Exception
+    {
+        // 创建关联 admin 条目的公开笔记
+        String linkedTitle = "qat10 关联条目笔记";
+        mockMvc.perform(post("/app/note")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", linkedTitle,
+                                "itemId", adminItemId,
+                                "tags", TAG_MAIN,
+                                "content", "qat10 内容",
+                                "isPublic", "1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        long linkedNoteId = findSingleNoteId(adminToken, linkedTitle);
+
+        // 匿名列表：笔记应带出关联条目名称（而非仅 itemId）
+        JsonNode listData = listNotesAsData(null);
+        JsonNode linked = listData.valueStream()
+                .filter(n -> n.path("noteId").asLong() == linkedNoteId)
+                .findFirst().orElseThrow();
+        assertThat(linked.path("itemId").asLong()).isEqualTo(adminItemId);
+        assertThat(linked.path("itemName").asText())
+                .as("笔记列表应带出关联条目名称").isEqualTo("qat10 admin条目");
+
+        // 详情同样带出条目名称
+        mockMvc.perform(get("/app/note/" + linkedNoteId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.itemName").value("qat10 admin条目"));
+
+        // 首页 recentNotes 同样带出条目名称
+        JsonNode homeData = bodyOf(mockMvc.perform(get("/app/home/index"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn()).path("data");
+        JsonNode recentLinked = homeData.path("recentNotes").valueStream()
+                .filter(n -> n.path("noteId").asLong() == linkedNoteId)
+                .findFirst().orElseThrow();
+        assertThat(recentLinked.path("itemName").asText())
+                .as("首页最近笔记应带出关联条目名称").isEqualTo("qat10 admin条目");
+    }
+
+    // ------------------------------------------------------------------
+    // 12. keyword 全文检索（标题+正文）：命中、隔离、布尔模式、运算符剔除、回收站不纳入
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(12)
+    void noteKeywordSearchScope() throws Exception
+    {
+        // 夹具：公开笔记（关联条目，正文含独有标记）、私密笔记（正文含另一独有标记）、只含 sql 的笔记
+        createNoteWithContent(adminToken, KW_PUBLIC_TITLE, "1", "正文独有标记 " + KW_PUBLIC_MARKER + " 备忘", adminItemId);
+        long kwPublicId = findSingleNoteId(adminToken, KW_PUBLIC_TITLE);
+        createNoteWithContent(adminToken, KW_PRIVATE_TITLE, "0", "正文独有标记 " + KW_PRIVATE_MARKER + " 备忘", null);
+        createNoteWithContent(adminToken, KW_SQL_TITLE, "1", "sql 手册摘抄", null);
+        long kwSqlId = findSingleNoteId(adminToken, KW_SQL_TITLE);
+
+        // 本人：正文独有词命中（标题不含该词——本需求的核心价值）
+        // 两处加固：①先钉住「行确实在库里」，检索失败时才分得清是「行不在」还是「索引漏了它」；
+        // ②pageSize 放大到 100，不依赖默认第 1 页——ngram 布尔检索按 bigram 取 OR，命中面很宽，
+        // 目标行一旦被挤出第 1 页，失败原因就与「检索语义」无关了
+        JsonNode kwResp = listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER, null, 1, 100);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from sgj_note where content like ?",
+                Integer.class, "%" + KW_PUBLIC_MARKER + "%"))
+                .as("夹具应已落库").isPositive();
+        assertThat(extractIds(kwResp.path("data"), "noteId"))
+                .as("全文检索应命中刚建的笔记；resp=%s", kwResp)
+                .contains(kwPublicId);
+
+        // 匿名：公开笔记正文命中（全文检索对匿名可用，但只允许公开范围）
+        assertThat(extractIds(listNotesBody(null, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .contains(kwPublicId);
+
+        // 匿名：keyword 命中私密笔记正文 → 0 命中（正文条件不得短路 is_public 过滤）
+        JsonNode anonPrivate = listNotesBody(null, TAG_MAIN, KW_PRIVATE_MARKER);
+        assertThat(extractIds(anonPrivate.path("data"), "noteId")).isEmpty();
+        assertThat(anonPrivate.path("total").asLong()).as("匿名不得经 keyword 命中私密笔记正文").isZero();
+
+        // 非博主登录用户：keyword 命中他人笔记 → 0 命中（不得短路 create_by 过滤）
+        assertThat(extractIds(listNotesBody(otherToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .isEmpty();
+
+        // title 参数保持「仅标题」原义：不匹配正文，仍能按标题命中
+        assertThat(extractIds(listNotesByTitle(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .as("title 不得匹配正文").doesNotContain(kwPublicId);
+        assertThat(extractIds(listNotesByTitle(adminToken, TAG_MAIN, KW_PUBLIC_TITLE).path("data"), "noteId"))
+                .contains(kwPublicId);
+
+        // keyword 与 tags / itemId / 分页叠加（三者同时满足）
+        assertThat(extractIds(listNotesBody(adminToken, "qat10-not-exist-tag", KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .isEmpty();
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER, otherUserItemId).path("data"), "noteId"))
+                .isEmpty();
+        JsonNode paged = listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER, adminItemId, 1, 1);
+        assertThat(paged.path("data").size()).as("keyword+分页 应正常截断").isEqualTo(1);
+        assertThat(paged.path("total").asLong()).isEqualTo(1);
+
+        // 布尔模式：mysql 不命中只含 sql 的笔记（自然语言模式会误命中）
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "mysql").path("data"), "noteId"))
+                .as("布尔模式下 mysql 不得命中只含 sql 的笔记").doesNotContain(kwSqlId);
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "sql").path("data"), "noteId"))
+                .contains(kwSqlId);
+
+        // 布尔运算符剔除：前导 - 与纯运算符输入不报错、不产生空结果
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "-" + KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .as("前导 - 被剔除后应正常命中").contains(kwPublicId);
+        assertThat(listNotesBody(adminToken, TAG_MAIN, "++").path("data").size())
+                .as("纯运算符输入视为未输入关键词，不参与过滤").isPositive();
+
+        // 单字关键词：ngram 切不出 2 字 token、FTS 0 命中后由 like 复核兜底（#66），单字按子串命中
+        // （前端输入层仍拦「至少 2 个字」，这里钉的是 API 语义：不报错、范围过滤照常）
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, "独").path("data"), "noteId"))
+                .as("单字关键词经 like 复核应命中含该字的笔记").contains(kwPublicId);
+
+        // 软删除后不从 keyword 漏出
+        mockMvc.perform(delete("/app/note/" + kwPublicId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .as("回收站笔记不得被 keyword 命中").isEmpty();
+
+        // 回收站不纳入 keyword：title 命中 + keyword 指向该行正文不含的词，行仍返回
+        // （若 keyword 被错误纳入过滤，交集为空查不到），即回收站只按 title 过滤
+        JsonNode recycleIgnoreKeyword = listNotesRecycle(adminToken, KW_PUBLIC_TITLE, KW_PRIVATE_MARKER);
+        assertThat(extractIds(recycleIgnoreKeyword.path("data"), "noteId"))
+                .as("回收站检索不得纳入 keyword").contains(kwPublicId);
+
+        // 恢复后重新可被 keyword 命中
+        mockMvc.perform(post("/app/note/recycle/restore/" + kwPublicId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, KW_PUBLIC_MARKER).path("data"), "noteId"))
+                .contains(kwPublicId);
+    }
+
+    /**
+     * keyword 0 命中走 like 复核分支（#66）：全文索引重建窗口内 match 会漏行，服务层在
+     * 「带关键词且 0 命中」时换 like 重查。用一个 like 也匹配不到的关键词触发该分支：
+     * 断言兜底 SQL 在真库上可执行、返回空列表且 total=0（上面匿名/越权的 0 命中断言
+     * 现在同样走兜底路径，顺带钉住 like 分支不破坏 is_public / create_by 过滤）。
+     */
+    @Test
+    @Order(12)
+    void keywordMissRunsLikeFallbackWithoutError() throws Exception
+    {
+        JsonNode miss = listNotesBody(adminToken, null, "qazwsx不存在的关键词xyz");
+        assertThat(miss.path("code").asInt()).isEqualTo(200);
+        assertThat(miss.path("data").size()).as("0 命中关键词返回空列表，resp=%s", miss).isZero();
+        assertThat(miss.path("total").asLong()).isZero();
+    }
+
+    // ------------------------------------------------------------------
+    // 13. 正文上限 10 万字 + 前台列表/首页不回传全文（#42）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(13)
+    void contentLimitAndAppListExcerpt() throws Exception
+    {
+        // 夹具：10 万字正文（旧上限 2 万即被拒），独有标记埋在正文中部（400 字前缀之外）
+        String midMarker = "qat10琥珀深海信号站";
+        String longContent = "甲".repeat(5000) + midMarker + "乙".repeat(100000 - 5000 - midMarker.length());
+        String longTitle = "qat10 十万字长文笔记";
+        createNoteWithContent(adminToken, longTitle, "1", longContent, null);
+        long longNoteId = findSingleNoteId(adminToken, longTitle);
+
+        // 10 万字能保存成功；超过新上限仍被拒且提示语指向 100000
+        mockMvc.perform(post("/app/note")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "qat10 超限笔记",
+                                "tags", TAG_MAIN,
+                                "content", "字".repeat(100001)))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("笔记内容长度不能超过100000个字符"));
+
+        // 前台列表（无关键词）：正文不下发，改回传纯文本摘要（取正文开头约 120 字）
+        JsonNode noKeywordRows = listNotesByTitle(adminToken, TAG_MAIN, longTitle).path("data");
+        assertThat(noKeywordRows.size()).isEqualTo(1);
+        assertThat(noKeywordRows.get(0).hasNonNull("content"))
+                .as("前台列表不应下发 content（正文只在详情接口）").isFalse();
+        assertThat(noKeywordRows.get(0).path("excerpt").asText())
+                .as("无关键词时摘要取正文开头约 120 字，不拼省略号（尾部溢出由前端排版表达）")
+                .isEqualTo("甲".repeat(120));
+
+        // 新建的笔记必须写入 update_time：列表按更新时间倒序，漏写就会沉到列表最后
+        assertThat(jdbcTemplate.queryForObject(
+                "select date_format(update_time, '%Y-%m-%d %H:%i:%s') from sgj_note where note_id = ?",
+                String.class, longNoteId))
+                .as("新建笔记必须写入 update_time").isNotNull();
+        // 而且它必须排在列表首位——只靠 coalesce 兜底、漏写 update_time 也不该沉底
+        assertThat(listNotesBody(adminToken, TAG_MAIN, null, null, 1, 10).path("data").get(0).path("noteId").asLong())
+                .as("新建笔记应排在列表首位（按更新时间倒序）").isEqualTo(longNoteId);
+
+        // 详情仍回传完整正文
+        JsonNode detail = bodyOf(mockMvc.perform(get("/app/note/" + longNoteId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+        assertThat(detail.path("data").path("content").asText())
+                .as("详情页必须保持完整正文").isEqualTo(longContent);
+
+        // 首页 recentNotes 不下发 content（该接口从不展示正文；content 为 null 也算未下发）
+        JsonNode homeData = bodyOf(mockMvc.perform(get("/app/home/index"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn()).path("data");
+        assertThat(homeData.path("recentNotes").valueStream().anyMatch(n -> n.hasNonNull("content")))
+                .as("首页最近笔记不得下发 content").isFalse();
+
+        // 搜索只出现在正文中部的词（远在开头 120 字之外）：能命中，摘要以命中处为中心
+        // pageSize 放大到 100：ngram 布尔检索命中面很宽，目标行不该因为被挤出默认第 1 页而失败
+        JsonNode midResp = listNotesBody(adminToken, TAG_MAIN, midMarker, null, 1, 100);
+        assertThat(extractIds(midResp.path("data"), "noteId"))
+                .as("全文检索应命中正文中部的词；resp=%s", midResp)
+                .contains(longNoteId);
+        JsonNode hitRow = midResp.path("data").valueStream()
+                .filter(n -> n.path("noteId").asLong() == longNoteId)
+                .findFirst().orElseThrow();
+        assertThat(hitRow.path("excerpt").asText())
+                .as("命中窗口摘要应包含正文中部的命中词").contains(midMarker);
+        assertThat(hitRow.path("hitTotal").asLong())
+                .as("命中词只出现在正文一次，出现次数为 1").isEqualTo(1);
+
+        // 只命中标题（正文不含该词）时正文内定位不到，摘要退化为取开头
+        String titleOnlyKeyword = "十万字";
+        assertThat(extractIds(listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword, null, 1, 100).path("data"), "noteId"))
+                .as("keyword 应命中标题").contains(longNoteId);
+        JsonNode titleOnlyRow = listNotesBody(adminToken, TAG_MAIN, titleOnlyKeyword, null, 1, 100)
+                .path("data").valueStream()
+                .filter(n -> n.path("noteId").asLong() == longNoteId)
+                .findFirst().orElseThrow();
+        assertThat(titleOnlyRow.path("excerpt").asText())
+                .as("正文无命中时摘要退化为取开头").isEqualTo("甲".repeat(120));
+
+        // 半截语法：截断点正好落在 ![alt](url) 内部（图片起始于第 116 字），摘要不得留下半截标记
+        // —— 先截断再剥离会原样留下 "![截图]"；先剥离再截断则整张图片消失
+        createNoteWithContent(adminToken, "qat10 半截语法笔记", "1",
+                "甲".repeat(115) + "![截图](/images/2026/qa.png) 图片后的正文。", null);
+        JsonNode halfSyntaxRow = listNotesByTitle(adminToken, TAG_MAIN, "qat10 半截语法笔记").path("data").get(0);
+        assertThat(halfSyntaxRow.path("excerpt").asText())
+                .as("摘要不得残留被截断的 Markdown 语法")
+                .doesNotContain("![").doesNotContain("](");
+
+        // 后台列表仍回传完整正文（CSV / JSON 导出分页拉取该接口在浏览器侧生成）
+        String adminApiToken = createTokenFor(PUBLIC_OWNER, "*:*:*");
+        JsonNode adminList = bodyOf(mockMvc.perform(get("/business/note/list")
+                        .param("title", longTitle)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminApiToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+        assertThat(adminList.path("rows").size()).isEqualTo(1);
+        assertThat(adminList.path("rows").get(0).path("content").asText())
+                .as("后台列表正文必须保持完整全文（导出依赖）").isEqualTo(longContent);
+    }
+
+    // ------------------------------------------------------------------
     // 辅助方法
     // ------------------------------------------------------------------
 
     /** 为指定用户直造登录态：TokenService.createToken 与登录接口同源，绕过验证码依赖 */
     private String createTokenFor(String username)
+    {
+        return createTokenFor(username, null);
+    }
+
+    /** 带权限标记的登录态变体：/business 接口有 @PreAuthorize，需传 permission（如 *:*:*）才能访问 */
+    private String createTokenFor(String username, String permission)
     {
         // TokenService.setUserAgent 需要当前线程绑定请求；测试线程手工绑定 Mock 请求
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -543,6 +844,10 @@ class AppApiAuthIsolationSmokeTest
             SysUser user = userService.selectUserByUserName(username);
             assertThat(user).as("sys_user 中需存在用户 %s", username).isNotNull();
             Set<String> permissions = new HashSet<>();
+            if (permission != null)
+            {
+                permissions.add(permission);
+            }
             LoginUser loginUser = new LoginUser(user.getUserId(), user, permissions);
             return tokenService.createToken(loginUser);
         }
@@ -587,6 +892,94 @@ class AppApiAuthIsolationSmokeTest
                                 "remark", remark))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+    }
+
+    /** 经接口创建笔记（自定义正文与关联条目，供关键词检索用例；itemId 可空） */
+    private void createNoteWithContent(String token, String title, String isPublic, String content, Long itemId) throws Exception
+    {
+        Map<String, Object> body = new HashMap<>();
+        body.put("title", title);
+        body.put("tags", TAG_MAIN);
+        body.put("content", content);
+        body.put("isPublic", isPublic);
+        if (itemId != null)
+        {
+            body.put("itemId", itemId);
+        }
+        mockMvc.perform(post("/app/note")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    /** 以指定登录态（null=匿名）按 keyword 查询笔记列表，返回完整响应体（data + total） */
+    private JsonNode listNotesBody(String token, String tags, String keyword) throws Exception
+    {
+        return listNotesBody(token, tags, keyword, null, null, null);
+    }
+
+    private JsonNode listNotesBody(String token, String tags, String keyword, Long itemId) throws Exception
+    {
+        return listNotesBody(token, tags, keyword, itemId, null, null);
+    }
+
+    private JsonNode listNotesBody(String token, String tags, String keyword, Long itemId, Integer pageNum, Integer pageSize) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = get("/app/note/list");
+        if (tags != null)
+        {
+            builder.param("tags", tags);
+        }
+        if (keyword != null)
+        {
+            builder.param("keyword", keyword);
+        }
+        if (itemId != null)
+        {
+            builder.param("itemId", String.valueOf(itemId));
+        }
+        if (pageNum != null && pageSize != null)
+        {
+            builder.param("pageNum", String.valueOf(pageNum)).param("pageSize", String.valueOf(pageSize));
+        }
+        if (token != null)
+        {
+            builder.header(HttpHeaders.AUTHORIZATION, bearer(token));
+        }
+        return bodyOf(mockMvc.perform(builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+    }
+
+    /** 以指定登录态按 title 查询笔记列表（title 保持仅标题语义） */
+    private JsonNode listNotesByTitle(String token, String tags, String title) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = get("/app/note/list").param("tags", tags).param("title", title);
+        if (token != null)
+        {
+            builder.header(HttpHeaders.AUTHORIZATION, bearer(token));
+        }
+        return bodyOf(mockMvc.perform(builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
+    }
+
+    /** 查询回收站笔记列表（title + keyword 组合，用于验证 keyword 不参与回收站过滤） */
+    private JsonNode listNotesRecycle(String token, String title, String keyword) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = get("/app/note/recycle/list").param("title", title).param("keyword", keyword);
+        if (token != null)
+        {
+            builder.header(HttpHeaders.AUTHORIZATION, bearer(token));
+        }
+        return bodyOf(mockMvc.perform(builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn());
     }
 
     /** POST 不回传主键，通过唯一 tags(+title) 从列表接口定位条目夹具 ID */

@@ -2,7 +2,7 @@
 -- 文件存储服务增量脚本
 -- 功能：文件台账表（登记 /common/upload 与头像上传记录，供审计/清理/迁移使用）
 -- 前置：已执行 init_system.sql 与 init_business.sql
--- 幂等性：可重复执行（建表用 drop-if-exists）
+-- 幂等性：可重复执行（建表用 create table if not exists，不 drop——sys_file 是台账，drop 会清掉上传记录）
 -- ----------------------------
 
 set names utf8mb4;
@@ -12,8 +12,7 @@ set names utf8mb4;
 -- storage_key 与业务表（如 sgj_item.cover_url）保存的 /profile 前缀相对路径一致，
 -- 孤儿清理/迁移时可直接字符串比对；不记录业务关联，引用关系由业务表持有
 -- ----------------------------
-drop table if exists sys_file;
-create table sys_file (
+create table if not exists sys_file (
   file_id        bigint(20)      not null auto_increment    comment '文件ID',
   file_name      varchar(255)    default ''                 comment '原始文件名',
   storage_key    varchar(500)    not null                   comment '存储key（/profile前缀相对路径）',

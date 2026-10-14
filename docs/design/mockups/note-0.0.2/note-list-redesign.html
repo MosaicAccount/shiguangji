@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>笔记列表重设计 · 卡片宽度与摘要 — 拾光记</title>
+<style>
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-danger:#934C47;
+  --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+  /* 本次评审引入：内容栏宽度（阅读栏模式） */
+  --read-measure:880px;
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-danger:#D67870;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600}
+.seg{display:flex;gap:0}
+.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:0;border-left-width:0;cursor:pointer}
+html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.seg-label{color:#7D8783;font-size:12px}
+.hint{color:#7D8783;font-size:12px}
+
+/* ===== 设备框 ===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{background:var(--sgj-bg);border-radius:20px;overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,900px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台布局 ===== */
+.fh{height:72px;display:flex;align-items:center;gap:26px;padding:0 36px;background:var(--sgj-bg);border-bottom:1px solid var(--sgj-border-card);position:sticky;top:0;z-index:5}
+.logo{font-family:var(--sgj-font-serif);font-weight:700;font-size:19px;letter-spacing:1px}
+.nav{display:flex;gap:22px;font-size:14px;color:var(--sgj-text-2)}
+.nav .on{color:var(--sgj-primary);font-weight:600}
+.fh .right{margin-left:auto;color:var(--sgj-text-3)}
+.page{padding:36px}
+.tabbar{display:none}
+body[data-vp=mobile] .fh{height:56px;padding:0 14px}
+body[data-vp=mobile] .nav,body[data-vp=mobile] .fh .right{display:none}
+body[data-vp=mobile] .page{padding:16px 12px;padding-bottom:76px}
+body[data-vp=mobile] .tabbar{display:flex;position:sticky;bottom:0;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card);height:60px;z-index:6}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:12px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:600}
+
+/* ★ 本次评审的核心：卡片多宽 / 怎么排 */
+.page-inner{margin:0 auto;transition:max-width .18s}
+body[data-layout=read] .page-inner{max-width:var(--read-measure)}
+body[data-layout=grid] .page-inner{max-width:1080px}
+body[data-layout=waterfall] .page-inner{max-width:1040px}
+body[data-layout=full] .page-inner{max-width:none}
+
+/* ===== banner ===== */
+.banner{position:relative;display:flex;align-items:center;justify-content:space-between;height:160px;padding:0 44px;
+  background:#282e2c;color:#e7ece9;border-radius:20px;overflow:hidden;margin-bottom:20px}
+html.dark .banner{background:var(--sgj-bg-deep)}
+.banner .blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:140px;bottom:-90px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .txt{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:32px;line-height:1.3}
+.banner p{margin:10px 0 0;font-size:13px;color:#aeb8b3;letter-spacing:.5px}
+.banner .acts{position:relative;z-index:1;display:flex;gap:10px}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;font-size:13px;font-weight:500;letter-spacing:.5px}
+.btn.ghost{background:transparent;color:#e7ece9;border:1px solid rgba(231,236,233,.4)}
+/* 深色下主按钮改深色字：浅 salmon 底配白字对比度不足（与项目其它设计稿一致） */
+html.dark .btn:not(.ghost){color:#171B1A}
+body[data-vp=mobile] .banner{height:auto;padding:20px 18px;flex-direction:column;align-items:flex-start;gap:14px;border-radius:16px}
+body[data-vp=mobile] .banner h1{font-size:24px}
+
+/* ===== 草稿入口条 ===== */
+.draftbar{display:flex;align-items:center;gap:10px;background:var(--sgj-primary-soft);border:1px solid var(--sgj-border-card);
+  border-radius:14px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--sgj-text-2)}
+.draftbar b{color:var(--sgj-primary);font-weight:600}
+.draftbar .go{margin-left:auto;color:var(--sgj-primary);font-weight:600;text-decoration:none;white-space:nowrap}
+
+/* ===== 筛选 ===== */
+.filter{display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px}
+.search{display:flex;width:280px;border:1px solid var(--sgj-border);border-radius:var(--sgj-r-md);overflow:hidden;background:var(--sgj-bg-card)}
+.search .pfx{display:flex;align-items:center;padding:0 10px;color:var(--sgj-text-4)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--sgj-text);font:inherit;padding:9px 0}
+.search .go{border:0;border-left:1px solid var(--sgj-border);background:var(--sgj-bg);color:var(--sgj-text-2);font:inherit;padding:0 14px;cursor:pointer}
+body[data-vp=mobile] .filter{justify-content:flex-start;flex-wrap:wrap}
+body[data-vp=mobile] .search{width:100%}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pill{border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);border-radius:var(--sgj-r-pill);padding:4px 13px;font-size:12px;cursor:pointer}
+.pill.on{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+.tip{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--sgj-bg);border:1px solid var(--sgj-border);
+  border-radius:12px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--sgj-primary)}
+.tip a{font-size:12px;text-decoration:none;font-weight:600;color:var(--sgj-primary)}
+
+/* ===== 卡片列表 ===== */
+.list{display:flex;flex-direction:column;gap:14px}
+/* 不写 align-items:start——默认拉伸，同行卡片等高、底边对齐（start 会让各卡按内容高度排，底边参差） */
+body[data-layout=grid] .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+
+/* 瀑布流：CSS 多栏，卡片高度自然、参差收尾。
+   注意阅读顺序：多栏是「先填满一列再下一列」，不是左右横扫 */
+body[data-layout=waterfall] .list{display:block;column-width:300px;column-gap:14px}
+body[data-layout=waterfall] .card{break-inside:avoid;margin:0 0 14px}
+body[data-layout=waterfall] .c-excerpt{display:block;-webkit-line-clamp:unset;overflow:visible}
+
+.card{position:relative;display:flex;flex-direction:column;background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);
+  border-radius:var(--sgj-r-lg);padding:16px 18px;box-shadow:var(--sgj-shadow-sm);cursor:pointer;transition:box-shadow .16s,transform .16s}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px)}
+.card:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px}
+
+.c-head{display:flex;align-items:flex-start;gap:10px}
+.c-title{margin:0;flex:1;min-width:0;font-family:var(--sgj-font-serif);font-weight:600;font-size:17px;line-height:25px;word-break:break-word}
+.pub{margin-left:8px;font-family:var(--sgj-font-sans);font-size:11px;font-weight:400;color:var(--sgj-success);
+  border:1px solid var(--sgj-success);border-radius:4px;padding:0 5px;white-space:nowrap}
+.del{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--sgj-border-card);background:var(--sgj-bg);color:var(--sgj-text-3);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1}
+.del:hover{border-color:var(--sgj-danger);color:var(--sgj-danger)}
+
+/* ★ 摘要：纯文本、最多 2 行；收窄后 120 字必超 2 行，浏览器在行尾补省略号（不拼字符、不渐隐） */
+.c-excerpt{margin:8px 0 10px;font-size:13px;color:var(--sgj-text-3);line-height:1.7;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+
+mark{background:var(--sgj-amber-soft);color:var(--sgj-amber);border-radius:3px;padding:0 2px;font-weight:600}
+
+/* 贴到卡片底部：同行等高后，各卡的元信息行落在同一条基线上 */
+.c-meta{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12px;color:var(--sgj-text-4)}
+.c-tags{color:var(--sgj-amber)}
+.c-hit{margin-left:auto;display:inline-flex;align-items:center;gap:4px;color:var(--sgj-amber);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.more{display:flex;justify-content:center;margin:20px 0}
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:56px 0;color:var(--sgj-text-4);text-align:center}
+.empty .ic{font-size:28px;opacity:.55}
+.empty .sub{font-size:12px;color:var(--sgj-text-4)}
+.err{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 0;color:var(--sgj-text-4)}
+
+/* 加载骨架：与真实卡片等高，数据落地时不跳 */
+.sk{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 18px;box-shadow:var(--sgj-shadow-sm);min-height:146px}
+.sk i{display:block;height:12px;border-radius:6px;background:var(--sgj-bg-deep)}
+.sk i.t{width:38%;height:16px;margin-bottom:12px}
+.sk i.e{width:92%}
+.sk i.e2{width:64%;margin-top:8px}
+
+/* ===== 改动清单 ===== */
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:6px 0}
+.legend .new{color:#934C47;font-weight:600}
+html.dark .legend .new{color:#D67870}
+.legend .scope{margin-top:14px;font-size:12px;color:#7D8783;line-height:1.8}
+.legend code{font-size:12px}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body data-vp="desktop" data-layout="grid">
+
+<div class="review">
+  <div class="review-in">
+    <b>笔记列表重设计</b>
+    <span class="seg-label">布局</span>
+    <span class="seg" role="group" aria-label="布局">
+      <button data-layout="grid" aria-pressed="true">限宽网格</button>
+      <button data-layout="waterfall" aria-pressed="false">瀑布流</button>
+      <button data-layout="read" aria-pressed="false">单栏阅读</button>
+      <button data-layout="full" aria-pressed="false">全宽（现状）</button>
+    </span>
+    <span class="seg" role="group" aria-label="状态">
+      <button data-state="default" aria-pressed="true">无关键词</button>
+      <button data-state="search" aria-pressed="false">关键词命中</button>
+      <button data-state="empty" aria-pressed="false">无结果</button>
+      <button data-state="loading" aria-pressed="false">加载中</button>
+      <button data-state="guest" aria-pressed="false">访客</button>
+    </span>
+    <span class="seg" role="group" aria-label="主题">
+      <button id="themeBtn" aria-pressed="false">深色模式</button>
+    </span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="hint">「全宽」= 现状；「瀑布流」看参差收尾</span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <span class="logo">拾光记</span>
+      <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span class="on">笔记</span></nav>
+      <span class="right">☾</span>
+    </header>
+
+    <div class="page">
+      <div class="page-inner">
+        <div class="banner">
+          <div class="blob"></div><div class="blob2"></div>
+          <div class="txt">
+            <h1>笔记</h1>
+            <p>记录你的思考与学习笔记。</p>
+          </div>
+          <div class="acts" data-show="login">
+            <button class="btn ghost" type="button">⤒ 导入 md</button>
+            <button class="btn" type="button">＋ 写笔记</button>
+          </div>
+        </div>
+
+        <div class="draftbar" data-show="login draft">
+          你有 <b>3</b> 份未完成的草稿
+          <a class="go" href="#">去草稿箱 →</a>
+        </div>
+
+        <div class="filter">
+          <label class="search">
+            <span class="pfx">⌕</span>
+            <input id="kw" type="search" placeholder="搜索标题与正文" readonly>
+            <button class="go" type="button">搜索</button>
+          </label>
+        </div>
+
+        <div class="pills">
+          <span class="pill on">全部</span><span class="pill">读书笔记</span><span class="pill">科幻</span>
+          <span class="pill">旅行</span><span class="pill">攻略</span><span class="pill">观影笔记</span>
+          <span class="pill">计划</span><span class="pill">工具</span>
+        </div>
+
+        <div class="tip" data-show="itemfilter">
+          <span>正在查看条目「人类简史」的关联笔记</span>
+          <a href="#">查看全部笔记</a>
+        </div>
+
+        <div class="list" id="list"></div>
+
+        <div class="more" data-show="list">
+          <button class="btn ghost" style="background:var(--sgj-bg-card);color:var(--sgj-text-2);border:1px solid var(--sgj-border)" type="button">加载更多</button>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <div>首页</div><div>影单</div><div>足迹</div><div class="on">笔记</div>
+    </nav>
+  </div>
+</main>
+
+<section class="legend">
+  <h2>本稿的改动</h2>
+  <ol>
+    <li><span class="new">重设计</span>：卡片布局 4 档可切换——<b>限宽网格</b>（默认）/ <b>瀑布流</b> / <b>单栏阅读</b> / <b>全宽（现状）</b>。要拍的就是「卡片多宽、怎么排」。</li>
+    <li><span class="new">操作区合并</span>：<b>导入 md</b> 与 <b>＋ 写笔记</b> 收进 banner 右上角一组（次级 ghost + 主按钮），筛选栏只留搜索。两个都是「创建」类动作，分居两处等于让人找两遍。</li>
+    <li><span class="new">修正（上一稿的错）</span>：网格里我写了 <code>align-items:start</code>，同行卡片各按内容高度排、底边参差——「高低不同」就是这么来的。已去掉（默认拉伸等高），并把 meta 行贴到卡片底部，同行的「独立笔记 / 标签 / 时间」落在一条基线上。</li>
+    <li><span class="new">我建议网格而不是瀑布流</span>：这一屏干的是「按更新时间扫 + 搜索筛选」，扫描吃横向对齐；瀑布流拿参差的底边换密度，和这种读法冲突。而且 CSS 多栏的阅读顺序是<b>先竖后横</b>——按时间倒序时「同一横排」不再是相邻时间。要用瀑布流得引 JS 瀑布（按最短列定位）把顺序摆正，多一个依赖。</li>
+    <li><span class="new">瀑布流模式下</span>摘要放开截断，卡片高度自然、单卡最窄、密度最高。</li>
+    <li>沿用上一稿：摘要纯文本 + <b>最多 2 行</b>（超出由浏览器在行尾补省略号，不拼字符、不渐隐）；命中次数移进 meta 行右侧（琥珀色小字）；标题 17px / 600。</li>
+  </ol>
+  <p class="scope">
+    <b>本稿的已知依赖</b>：摘要里不再出现 <code>![...](...)</code> 这类半截 Markdown，前提是后端把剥离顺序改成「先剥 Markdown 再截窗」（现状是先截窗后剥，切在语法中间就剥不掉）。本稿按修好之后的样子建模。<br>
+    <b>未在本屏建模</b>：真实搜索/分页请求、删除确认弹窗、文件选择器与解析失败、条目筛选的进入路径。banner、标签 pill、搜索框视觉沿用既有样式。
+  </p>
+</section>
+
+<script>
+/* ===== 数据（静态设计稿：全部为本文件字面量）===== */
+/* 按 update_time 倒序（与后端 order by update_time desc 一致） */
+const NOTES = [
+  {t:'实现原理', pub:0, item:null, tags:'', hit:17,
+   ex:'— Spring Security 的架构。Spring Security 基于 servlet Filters，下图为 servlet 处理请求的过程：进入 FilterChain 后由 DelegatingFilterProxy 把请求交给 Spring 容器里的过滤器链。',
+   time:'2026-09-24 16:53'},
+  {t:'MySQL 全文索引与 ngram 分词', pub:1, item:null, tags:'数据库, 笔记', hit:3,
+   ex:'实测结论：ngram 自然语言模式会把 mysql 命中到只含 sql 的行，必须用布尔模式；ngram_token_size=2 时单个汉字搜不到，属硬约束。',
+   time:'2026-09-18 10:23'},
+  {t:'Obsidian 到拾光记的笔记迁移', pub:0, item:null, tags:'迁移', hit:0,
+   ex:'导入的 md 普遍带 YAML front-matter，必须整块剥离，否则摘要首行会显示成 ---，而且 title: tags: 这些键会进 ngram 索引变成垃圾 token。',
+   time:'2026-09-18 09:41'},
+  {t:'《人类简史》读书笔记', pub:1, item:'人类简史', tags:'读书', hit:0,
+   ex:'印象最深的是认知革命那一章：智人靠「虚构的故事」完成大规模协作。这一点和后面的帝国、货币、宗教是同一条线的延伸，值得单独整理成一篇。',
+   time:'2026-09-17 22:08'},
+  {t:'第 38 周复盘', pub:1, item:null, tags:'周复盘', hit:0,
+   ex:'这周把笔记模块的存储形态定下来了，正文继续留在数据库，文件只做导入导出。想清楚之后反而觉得之前纠结的问题本来就不存在——数据库也是磁盘上的文件。另外把每周的孤儿文件清理任务看了一遍，顺手发现留存原件必须登记引用。',
+   time:'2026-09-15 21:30'},
+  {t:'拾光记本地部署手记', pub:1, item:null, tags:'运维', hit:1,
+   ex:'admin.jar 起前端：npm run dev 注意环境变量必须在 shell 里注入，Spring Boot 不读 .env；上传目录由配置决定，删库不会删文件。',
+   time:'2026-08-22 14:34'}
+];
+
+/* ===== 关键词切片段：与前端 utils/sgj.ts splitByKeyword 同口径（字面量、大小写不敏感、不拼 HTML）===== */
+function appendSegments(parent, text, word){
+  if(!word){ parent.appendChild(document.createTextNode(text)); return; }
+  const lower = text.toLowerCase(), lw = word.toLowerCase();
+  let i = 0;
+  for(;;){
+    const at = lower.indexOf(lw, i);
+    if(at === -1){ if(i < text.length) parent.appendChild(document.createTextNode(text.slice(i))); break; }
+    if(at > i) parent.appendChild(document.createTextNode(text.slice(i, at)));
+    const m = document.createElement('mark');
+    m.textContent = text.slice(at, at + lw.length);
+    parent.appendChild(m);
+    i = at + lw.length;
+  }
+}
+
+function span(cls, text){
+  const el = document.createElement('span');
+  el.className = cls; el.textContent = text;
+  return el;
+}
+
+function card(n, kw, opts){
+  const el = document.createElement('article');
+  el.className = 'card'; el.tabIndex = 0;
+
+  const head = document.createElement('div'); head.className = 'c-head';
+  const h = document.createElement('h3'); h.className = 'c-title';
+  appendSegments(h, n.t, kw);
+  if(n.pub) h.appendChild(span('pub', '公开'));
+  head.appendChild(h);
+  if(opts.canDelete){
+    const del = document.createElement('button');
+    del.className = 'del'; del.type = 'button'; del.title = '删除'; del.textContent = '✕';
+    head.appendChild(del);
+  }
+  el.appendChild(head);
+
+  const p = document.createElement('p'); p.className = 'c-excerpt';
+  appendSegments(p, n.ex, kw);
+  el.appendChild(p);
+
+  const meta = document.createElement('div'); meta.className = 'c-meta';
+  meta.appendChild(span('c-src', n.item ? '🔗 ' + n.item : '📝 独立笔记'));
+  if(n.tags) meta.appendChild(span('c-tags', n.tags));
+  meta.appendChild(span('c-time', n.time));
+  if(kw && n.hit) meta.appendChild(span('c-hit', '⌕ 出现 ' + n.hit + ' 次'));
+  el.appendChild(meta);
+
+  return el;
+}
+
+function skeletons(n){
+  let out = '';
+  for(let i = 0; i < n; i++) out += '<div class="sk"><i class="t"></i><i class="e"></i><i class="e2"></i></div>';
+  return out;
+}
+
+/** range 解析字面量 HTML，不走 innerHTML（与既有设计稿一致） */
+function setHTML(node, html){
+  const r = document.createRange(); r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+
+function noteCards(kw, canDelete){
+  const frag = document.createDocumentFragment();
+  // 检索态只列出真的命中的笔记（标题或摘要含该词），与后端筛选后的结果集一致
+  const lw = (kw || '').toLowerCase();
+  const rows = kw ? NOTES.filter(n => (n.t + ' ' + n.ex).toLowerCase().includes(lw)) : NOTES;
+  rows.forEach(n => frag.appendChild(card(n, kw, {canDelete})));
+  return frag;
+}
+
+/* 每个状态返回「填充 #list 的方式」；loading / empty 直接给字面量 HTML，其余是 DOM 片段 */
+const STATES = {
+  default: {kw:'',        canDelete:true,  cards:true},
+  search:  {kw:'Spring',  canDelete:true,  cards:true},
+  guest:   {kw:'',        canDelete:false, cards:true},
+  loading: {html: skeletons(3)},
+  empty:   {html: '<div class="empty"><div class="ic">⌕</div><div>没有找到匹配的笔记</div>'
+                 + '<div class="sub">试试更长的关键词（至少 2 个字）</div></div>'}
+};
+
+const SHOW = {
+  default:{login:1, draft:1, list:1},
+  search:{login:1, draft:1, list:1},
+  guest:{login:0, draft:0, list:1},
+  loading:{login:1, draft:1, list:0},
+  empty:{login:1, list:0}
+};
+
+let state = 'default';
+function render(){
+  const cfg = STATES[state] || {};
+  const list = document.getElementById('list');
+  if(cfg.cards) list.replaceChildren(noteCards(cfg.kw, cfg.canDelete));
+  else setHTML(list, cfg.html || '');
+
+  const show = SHOW[state] || {};
+  document.querySelectorAll('[data-show]').forEach(el => {
+    el.style.display = el.dataset.show.split(' ').some(k => show[k]) ? '' : 'none';
+  });
+  document.getElementById('kw').value = cfg.kw || '';
+}
+
+document.querySelectorAll('[data-state]').forEach(b => b.addEventListener('click', () => {
+  state = b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+}));
+document.querySelectorAll('.review [data-layout]').forEach(b => b.addEventListener('click', () => {
+  document.body.dataset.layout = b.dataset.layout;
+  document.querySelectorAll('.review [data-layout]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b => b.addEventListener('click', () => {
+  document.body.dataset.vp = b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+document.getElementById('themeBtn').addEventListener('click', e => {
+  const dark = document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light', !dark);
+  e.currentTarget.setAttribute('aria-pressed', String(dark));
+  e.currentTarget.textContent = dark ? '浅色模式' : '深色模式';
+});
+
+/* 用链接直接打开某个组合，便于截图与分享：?layout=waterfall&state=search&vp=mobile&theme=dark */
+(function applyParams(){
+  const p = new URLSearchParams(location.search);
+  const layout = p.get('layout'), st = p.get('state'), vp = p.get('vp'), theme = p.get('theme');
+  if(layout && document.querySelector('.review [data-layout="' + layout + '"]')) document.body.dataset.layout = layout;
+  if(vp && document.querySelector('.review [data-vp="' + vp + '"]')) document.body.dataset.vp = vp;
+  if(st && STATES[st]) state = st;
+  if(theme === 'dark'){
+    document.documentElement.classList.add('dark'); document.documentElement.classList.remove('light');
+    const t = document.getElementById('themeBtn');
+    t.setAttribute('aria-pressed','true'); t.textContent = '浅色模式';
+  }
+  document.querySelectorAll('.review [data-layout]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.layout === document.body.dataset.layout)));
+  document.querySelectorAll('.review [data-state]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.state === state)));
+  document.querySelectorAll('.review [data-vp]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vp === document.body.dataset.vp)));
+})();
+
+render();
+</script>
+</body>
+</html>

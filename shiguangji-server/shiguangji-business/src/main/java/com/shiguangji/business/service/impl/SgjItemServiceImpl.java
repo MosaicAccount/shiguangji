@@ -16,6 +16,7 @@ import com.shiguangji.business.domain.SgjItemPhoto;
 import com.shiguangji.business.mapper.SgjItemMapper;
 import com.shiguangji.business.mapper.SgjItemPhotoMapper;
 import com.shiguangji.business.service.ISgjItemService;
+import com.shiguangji.business.service.ISgjNoteDraftService;
 import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.StringUtils;
 
@@ -47,6 +48,9 @@ public class SgjItemServiceImpl implements ISgjItemService
 
     @Autowired
     private SgjItemPhotoMapper sgjItemPhotoMapper;
+
+    @Autowired
+    private ISgjNoteDraftService sgjNoteDraftService;
 
     @Override
     public SgjItem selectSgjItemById(Long itemId)
@@ -125,8 +129,12 @@ public class SgjItemServiceImpl implements ISgjItemService
     }
 
     @Override
+    @Transactional
     public int purgeSgjItemByIds(Long[] itemIds)
     {
+        // 必须先删草稿再删条目：条目删除会经 fk_sgj_note_item 级联清掉 sgj_note，
+        // 反过来就再也按 item_id 反查不到 note_id，草稿会静默残留（不报错）
+        sgjNoteDraftService.deleteByItemIds(itemIds);
         return sgjItemMapper.purgeSgjItemByIds(itemIds);
     }
 

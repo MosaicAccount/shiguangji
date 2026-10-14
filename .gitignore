@@ -2,9 +2,11 @@
 node_modules/
 dist/
 .vite/
+.vitest/
 *.tsbuildinfo
 coverage/
 **/target/
+**/.lithe/
 logs/
 *.log
 
@@ -12,6 +14,9 @@ logs/
 .DS_Store
 *.local
 yarn.lock
+
+# 设计原型（根目录下的本地草稿，不入库；不匹配 docs/design 之类的文档目录）
+/design/
 
 # 后端本地配置（.env.example 模板除外，前端的 .env.* 为环境定义需提交）
 shiguangji-server/.env
@@ -41,3 +46,4 @@ shiguangji-server/.env.*
 .opencode/
 .zed/
 .zcode/
+.commandcode/

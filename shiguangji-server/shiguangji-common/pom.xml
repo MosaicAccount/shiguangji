@@ -5,7 +5,7 @@
     <parent>
         <artifactId>shiguangji</artifactId>
         <groupId>com.shiguangji</groupId>
-        <version>0.0.1</version>
+        <version>0.0.2</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -16,6 +16,12 @@
     </description>
 
     <dependencies>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Spring框架基本的核心工具 -->
         <dependency>

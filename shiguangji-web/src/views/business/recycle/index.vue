@@ -84,9 +84,9 @@
       </template>
       <el-table-column label="笔记ID" align="center" prop="noteId" width="80" />
       <el-table-column label="标题" align="center" prop="title" :show-overflow-tooltip="true" min-width="180" />
-      <el-table-column label="关联条目ID" align="center" prop="itemId" width="110">
+      <el-table-column label="关联条目" align="center" min-width="130" :show-overflow-tooltip="true">
         <template #default="scope">
-          <span>{{ scope.row.itemId ?? '独立笔记' }}</span>
+          <span>{{ scope.row.itemName || (scope.row.itemId != null ? '#' + scope.row.itemId : '独立笔记') }}</span>
         </template>
       </el-table-column>
       <el-table-column label="标签" align="center" prop="tags" :show-overflow-tooltip="true" min-width="120" />

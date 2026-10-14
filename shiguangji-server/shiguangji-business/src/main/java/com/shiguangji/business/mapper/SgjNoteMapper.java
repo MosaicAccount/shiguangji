@@ -20,12 +20,28 @@ public interface SgjNoteMapper
     public SgjNote selectSgjNoteById(Long noteId);
 
     /**
+     * 判断笔记是否存在且未删除（草稿写入的存活校验用，不取正文）
+     *
+     * @param noteId 笔记ID
+     * @return 存活时返回笔记ID；不存在 / 在回收站（del_flag='2'）返回 null
+     */
+    public Long selectAliveNoteId(Long noteId);
+
+    /**
      * 查询笔记列表
      *
      * @param sgjNote 笔记信息
      * @return 笔记集合
      */
     public List<SgjNote> selectSgjNoteList(SgjNote sgjNote);
+
+    /**
+     * 查询前台笔记列表（不带全文：正文与 remark 不下发；摘要片段由 selectSgjNoteExcerptFragments 补查）
+     *
+     * @param sgjNote 笔记信息
+     * @return 笔记集合
+     */
+    public List<SgjNote> selectSgjNoteFrontList(SgjNote sgjNote);
 
     /**
      * 查询回收站笔记列表（del_flag='2'）

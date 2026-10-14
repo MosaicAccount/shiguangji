@@ -1,5 +1,7 @@
 package com.shiguangji.web.controller.business;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,10 +17,16 @@ import org.springframework.web.bind.annotation.RestController;
 import com.github.pagehelper.Page;
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.business.service.ISgjNoteService;
+import com.shiguangji.business.service.impl.SgjNoteServiceImpl;
 import com.shiguangji.common.annotation.Anonymous;
 import com.shiguangji.common.core.controller.BaseController;
 import com.shiguangji.common.core.domain.AjaxResult;
+import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.SecurityUtils;
+import com.shiguangji.common.utils.StringUtils;
+import com.shiguangji.common.utils.file.FileUtils;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 前台学习笔记 操作处理
@@ -29,8 +37,7 @@ import com.shiguangji.common.utils.SecurityUtils;
  */
 @RestController
 @RequestMapping("/app/note")
-public class AppNoteController extends BaseController
-{
+public class AppNoteController extends BaseController {
     @Autowired
     private ISgjNoteService sgjNoteService;
 
@@ -40,20 +47,20 @@ public class AppNoteController extends BaseController
     /**
      * 查询前台笔记列表（按可见范围过滤 ；分页 ，默认第1页每页10条）
      *
-     * ：匿名访客仅可见公开笔记（is_public='1'），覆盖请求参数防止越权取到私密笔记
+     * ：匿名访客仅可见公开笔记（is_public='1'），覆盖请求参数防止越权取到私密笔记。
+     * 列表不带全文：SQL 截出摘要片段（excerpt_src）后剥离为纯文本 excerpt，
+     * 正文与 remark 均不下发（后台列表与导出仍带完整正文）
      */
     @Anonymous
     @GetMapping("/list")
-    public AjaxResult list(SgjNote sgjNote)
-    {
+    public AjaxResult list(SgjNote sgjNote) {
         // 强制按当前请求的可见范围过滤，防止越权查看他人数据
         sgjNote.setCreateBy(appScopeHelper.resolveCreateBy());
-        if (appScopeHelper.isAnonymous())
-        {
+        if (appScopeHelper.isAnonymous()) {
             sgjNote.setIsPublic("1");
         }
         startPage();
-        List<SgjNote> list = sgjNoteService.selectSgjNoteList(sgjNote);
+        List<SgjNote> list = sgjNoteService.selectSgjNoteFrontList(sgjNote);
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNotesForGuest(list);
         AjaxResult result = success(list);
@@ -68,12 +75,10 @@ public class AppNoteController extends BaseController
      */
     @Anonymous
     @GetMapping("/{noteId}")
-    public AjaxResult getInfo(@PathVariable Long noteId)
-    {
+    public AjaxResult getInfo(@PathVariable Long noteId) {
         SgjNote note = sgjNoteService.selectSgjNoteById(noteId);
         if (note == null || !isVisible(note.getCreateBy())
-                || (appScopeHelper.isAnonymous() && !"1".equals(note.getIsPublic())))
-        {
+                || (appScopeHelper.isAnonymous() && !"1".equals(note.getIsPublic()))) {
             return error("笔记不存在或无权访问");
         }
         // 访客响应脱敏：清空笔记私人备注
@@ -82,10 +87,40 @@ public class AppNoteController extends BaseController
     }
 
     /**
+     * 导出笔记为 Markdown 文件（#41，服务端按当前正文现场生成，不预先存一份）。
+     *
+     * 归属校验与修改 / 删除同一套 {@code canOperate}（本人或管理员）——后台笔记管理页也调这一个接口，
+     * 因此管理员那一侧同样导得出任何一篇。**必须登录**：本接口不加 {@code @Anonymous}，
+     * 匿名请求在 Security 层就被拒（业务码 401），根本走不到这里。
+     */
+    @GetMapping("/{noteId}/export")
+    public void export(@PathVariable Long noteId, HttpServletResponse response) throws IOException {
+        SgjNote note = sgjNoteService.selectSgjNoteById(noteId);
+        if (note == null || !appScopeHelper.canOperate(note.getCreateBy())) {
+            // 错误契约与其它接口一致：抛给全局异常处理器，落业务码 500
+            throw new ServiceException("笔记不存在或无权导出");
+        }
+        response.setContentType("text/markdown;charset=UTF-8");
+        FileUtils.setAttachmentResponseHeader(response, exportFileName(note));
+        response.getOutputStream().write(
+                SgjNoteServiceImpl.buildExportMarkdown(note).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * 导出文件名：标题里的路径分隔符与各类保留字符在响应头 / 保存对话框里都非法，统一换成下划线。
+     * 文件名本身还会被 {@link FileUtils#setAttachmentResponseHeader} 做百分号编码（含 RFC 5987 的
+     * filename*），
+     * 所以中文标题可用
+     */
+    private String exportFileName(SgjNote note) {
+        String title = StringUtils.isEmpty(note.getTitle()) ? "笔记" : note.getTitle();
+        return title.replaceAll("[\\\\/:*?\"<>|\\r\\n\\t]", "_") + ".md";
+    }
+
+    /**
      * 判断当前请求是否可见该创建者对应的数据
      */
-    private boolean isVisible(String createBy)
-    {
+    private boolean isVisible(String createBy) {
         String scope = appScopeHelper.resolveCreateBy();
         return scope == null || createBy == null || createBy.isEmpty() || scope.equals(createBy);
     }
@@ -94,8 +129,7 @@ public class AppNoteController extends BaseController
      * 新增前台笔记
      */
     @PostMapping
-    public AjaxResult add(@RequestBody SgjNote sgjNote)
-    {
+    public AjaxResult add(@RequestBody SgjNote sgjNote) {
         sgjNote.setCreateBy(SecurityUtils.getUsername());
         return toAjax(sgjNoteService.insertSgjNote(sgjNote));
     }
@@ -104,20 +138,16 @@ public class AppNoteController extends BaseController
      * 修改前台笔记（仅本人或管理员，）
      */
     @PutMapping
-    public AjaxResult edit(@RequestBody SgjNote sgjNote)
-    {
+    public AjaxResult edit(@RequestBody SgjNote sgjNote) {
         SgjNote oldNote = sgjNoteService.selectSgjNoteById(sgjNote.getNoteId());
-        if (oldNote == null)
-        {
+        if (oldNote == null) {
             return error("笔记不存在");
         }
-        if (!appScopeHelper.canOperate(oldNote.getCreateBy()))
-        {
+        if (!appScopeHelper.canOperate(oldNote.getCreateBy())) {
             return error("无权操作该笔记");
         }
         // 未传关联条目时保留原关联，避免被置空
-        if (sgjNote.getItemId() == null)
-        {
+        if (sgjNote.getItemId() == null) {
             sgjNote.setItemId(oldNote.getItemId());
         }
         sgjNote.setUpdateBy(SecurityUtils.getUsername());
@@ -128,15 +158,12 @@ public class AppNoteController extends BaseController
      * 删除前台笔记（仅本人或管理员，）
      */
     @DeleteMapping("/{noteId}")
-    public AjaxResult remove(@PathVariable Long noteId)
-    {
+    public AjaxResult remove(@PathVariable Long noteId) {
         SgjNote oldNote = sgjNoteService.selectSgjNoteById(noteId);
-        if (oldNote == null)
-        {
+        if (oldNote == null) {
             return error("笔记不存在");
         }
-        if (!appScopeHelper.canOperate(oldNote.getCreateBy()))
-        {
+        if (!appScopeHelper.canOperate(oldNote.getCreateBy())) {
             return error("无权操作该笔记");
         }
         return toAjax(sgjNoteService.deleteSgjNoteByIds(new Long[] { noteId }));
@@ -146,8 +173,7 @@ public class AppNoteController extends BaseController
      * 查询回收站笔记列表（需登录，按可见范围过滤，）
      */
     @GetMapping("/recycle/list")
-    public AjaxResult recycleList(SgjNote sgjNote)
-    {
+    public AjaxResult recycleList(SgjNote sgjNote) {
         sgjNote.setCreateBy(appScopeHelper.resolveCreateBy());
         List<SgjNote> list = sgjNoteService.selectRecycleNoteList(sgjNote);
         return success(list);
@@ -157,10 +183,8 @@ public class AppNoteController extends BaseController
      * 恢复回收站笔记（，仅本人或管理员）
      */
     @PostMapping("/recycle/restore/{noteId}")
-    public AjaxResult recycleRestore(@PathVariable Long noteId)
-    {
-        if (!canOperateRecycleNote(noteId))
-        {
+    public AjaxResult recycleRestore(@PathVariable Long noteId) {
+        if (!canOperateRecycleNote(noteId)) {
             return error("回收站中不存在该笔记或无权操作");
         }
         return toAjax(sgjNoteService.restoreSgjNoteByIds(new Long[] { noteId }));
@@ -170,10 +194,8 @@ public class AppNoteController extends BaseController
      * 彻底删除回收站笔记（，仅本人或管理员）
      */
     @PostMapping("/recycle/purge/{noteId}")
-    public AjaxResult recyclePurge(@PathVariable Long noteId)
-    {
-        if (!canOperateRecycleNote(noteId))
-        {
+    public AjaxResult recyclePurge(@PathVariable Long noteId) {
+        if (!canOperateRecycleNote(noteId)) {
             return error("回收站中不存在该笔记或无权操作");
         }
         return toAjax(sgjNoteService.purgeSgjNoteByIds(new Long[] { noteId }));
@@ -182,13 +204,11 @@ public class AppNoteController extends BaseController
     /**
      * 校验回收站笔记归属（本人或管理员）
      */
-    private boolean canOperateRecycleNote(Long noteId)
-    {
+    private boolean canOperateRecycleNote(Long noteId) {
         SgjNote query = new SgjNote();
         query.setNoteId(noteId);
         List<SgjNote> notes = sgjNoteService.selectRecycleNoteList(query);
-        if (notes.isEmpty())
-        {
+        if (notes.isEmpty()) {
             return false;
         }
         return appScopeHelper.canOperate(notes.get(0).getCreateBy());

@@ -6,6 +6,25 @@ This is a single Git monorepo containing two applications. `shiguangji-web/` is 
 
 `shiguangji-server/` is a Java 17, Spring Boot multi-module Maven project. `shiguangji-admin` is the executable entry point; `business`, `system`, `framework`, `common`, `quartz`, and `generator` separate domain and infrastructure concerns. MyBatis XML belongs in each module's `src/main/resources/mapper/`. Database scripts live in `sql/`.
 
+## Division of Work & Deliverables
+
+- **前后端的产品代码默认都由本 agent 实现**：前端 `views/`、`components/`、`api/`、`store/`、`types/api/` 及与后端的联调；后端 Java 产品代码、MyBatis XML、`sql/` 下的 DDL/DML。
+- **例外：这是个人项目，兼有教学用途 —— 后端某一部分若有教学意义，本 agent 把它交使用者本人实现**。判据是「练手价值」：核心域逻辑、事务与并发、算法、值得亲手搭一遍的架构点；样板 CRUD 留在本 agent 手里（那是搬运，不是教学）。交出去要在动手前说明为什么交人，并给全清单：要改的接口与签名、字段与口径、SQL 变更、验收标准与测试要点，使用者照此实现。
+- **使用者实现完成后，审查与测试仍由本 agent 负责**，这是这部分改动的验收关口：
+  - **审查**：改动落地后读 diff 给出结论 —— 正确性、接口契约（字段/口径是否与前端一致）、跨端影响、边界与异常路径、遗留映射与死代码。实现与既有断言冲突时，先判定是「实现错」还是「契约该改」，连证据与建议一起交使用者拍板；审查这一关不代改产品代码，红点与修法回给使用者自己动手。
+  - **测试**：亲自跑并贴出真实命令与输出（`mvn -pl shiguangji-admin -am test`、`npx vitest run`、`npx vue-tsc --noEmit`、`npm run build:prod`），不转述、不臆测「应该能过」。测试代码（`src/test/java` 与前端 `__tests__/`）的增改由本 agent 负责。
+  - 测试是红的，就不能把这次改动说成完成：PR 开成草稿或标出阻塞；红点、成因与修法按「Pull request：描述按模板，审查意见走评论」写进评论，不写进描述。
+- **需求阶段就要出全四份文档，缺一不开工**，讨论需求时一并谈定，评审通过后才进入编码：
+
+| 产出物 | 落盘位置 |
+| --- | --- |
+| 需求文档 | `docs/requirements/<版本>-<主题>.md`（沿用既有约定） |
+| 架构文档 | `docs/design/<主题>-architecture.md` |
+| 详细设计 | `docs/design/<主题>-design.md` |
+| 测试用例 | `docs/design/<主题>-testcases.md` |
+
+四份文档按同一主题命名以便成对查找；后续需求变更同步改文档，不留「代码与文档两张皮」。
+
 ## Build, Test, and Development Commands
 
 - `cd shiguangji-web && npm ci`: install the locked frontend dependencies.
@@ -13,7 +32,8 @@ This is a single Git monorepo containing two applications. `shiguangji-web/` is 
 - `npm run build:prod`: create the production bundle in `dist/`.
 - `npx vue-tsc --noEmit`: type-check Vue and TypeScript sources.
 - `cd shiguangji-server && mvn clean package -DskipTests`: compile and package all backend modules.
-- `mvn -pl shiguangji-admin -am test`: run backend tests and required modules.
+- `mvn -pl shiguangji-admin -am test`: run backend tests and required modules. The smoke tests use the `dev` profile against MySQL on `localhost:13306` and Redis on `localhost:16379`, so start those containers first.
+- The backend targets **Java 17**, so `mvn` itself must run on a JDK 17+. Check with `mvn -version`: a shell whose `JAVA_HOME` points at an older JDK (a jenv / asdf default, or macOS' bundled 1.8) dies with `无效的目标发行版: 17` before compiling anything. On macOS: `JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn ...`.
 - `java -jar shiguangji-admin/target/shiguangji-admin.jar`: run the packaged API (default port `18080`).
 
 ## Coding Style & Naming Conventions
@@ -31,6 +51,52 @@ Every change must be tested before it is considered complete. Run the checks rel
 Use prefixes such as `feat:`, `fix:`, `docs:`, `test:`, and `chore:`. Keep subjects concise and include task IDs when applicable. Pull requests should describe behavior changes, list verification commands, link the issue/task, note SQL or configuration changes, and include screenshots for visible UI work.
 
 Create a Git commit for every completed change. Do not leave an implemented change only in the working tree; commit it after the required tests pass.
+
+**Commit in small steps.** One commit = one reviewable change, not one issue. An issue that lands as a single 500-line diff across backend + frontend + docs cannot be reviewed, tested or reverted as a unit. Split by concern — a DDL change, one endpoint, one page's entry point, a doc alignment, the tests for one of them — and commit each once its own check passes. The issue's commit list should read as the outline of the work; if a commit message needs "and" to describe it, it is two commits.
+
+Every commit must leave the tree in a working state: the type-check, the tests and the build relevant to what it touched still pass at that commit.
+
+### Branch workflow: `develop` is receive-only
+
+`develop` accepts direct commits for exactly three things:
+
+1. **global documents that no single feature owns** — finalizing the version requirement docs, product planning, overall design diagrams, project architecture, and similar cross-cutting docs. Judging by scope, not by file path: `/docs/design/*` may belong here (整体设计图) or to the worktree branch described below (某个功能的详细设计); the test is whether the document is about the product as a whole or about one feature;
+2. version bumps / version changes;
+3. **global-impact files that no single feature owns** — `AGENTS.md`, `CLAUDE.md`, `.gitignore`, and similar repo-wide config. These are not tied to one workstream, so routing them through a feature branch only splits them across branches.
+
+Everything else — **a single feature's** design docs, code, tests, feature config — goes through a worktree branch named after that feature, cut from the latest `develop`, never a direct edit in the `develop` working tree. The feature's docs and code live in the same branch (e.g. 草稿箱: its design doc and its implementation are both in `feat/note-draft`):
+
+```bash
+git worktree add -b <type>/<topic> .worktrees/<topic> develop
+# ...work and commit inside .worktrees/<topic>...
+```
+
+Merge back with a PR. If a stray change lands in the `develop` working tree, move it onto a worktree branch before doing anything else. The worktree directory lives under `.worktrees/`, excluded locally via `.git/info/exclude` so it never shows up as untracked and `.gitignore` stays untouched.
+
+A worktree has no `node_modules` of its own: symlink the main checkout's in (`ln -s ../../../shiguangji-web/node_modules node_modules`) — `vite.config.ts` allows the repo root, so `npm run dev` works through that symlink too. Two traps cost real time here: `npm install` **replaces that symlink with a real directory** and silently strips the package out of every other worktree (add what the shared install is missing with `npm install --no-save <pkg>` in the main checkout instead), and swapping or deleting a worktree's `node_modules` **while a dev server runs from it** leaves Vite's dependency pre-bundle stale — its lazy-loaded route chunks then fail with `504 Outdated Optimize Dep`, which looks exactly like a broken app (the page never leaves its splash screen).
+
+**A finished branch becomes a pull request.** Commit → push the branch → open the PR against `develop`. A branch that only exists locally is not finished work. The PR body carries what the title cannot: the behavior change, the verification commands you actually ran with their results, the linked issue(s), any SQL / configuration change, and for visible UI work the design mockup it implements plus the manual steps nobody-but-a-human can run (say plainly when you could not run them).
+
+### PR 提交时的 GitHub 元数据：受理人 / 项目 / 里程碑 / 优先级
+
+`gh pr create` 开出 PR 只算提交了一半，元数据补齐才算完成。缺任何一项，这个 PR 不算「已提交」：
+
+- **受理人（Assignees）**：默认指定 `MosaicAccount`（使用者本人），除非其另有交代；
+- **项目**：把 PR 加进 GitHub Project「拾光记」；
+- **里程碑**：选所属版本的里程碑（`0.0.3` / `0.0.4` / `0.0.5`…，以 `docs/requirements/README.md` 的版本总览为准；不属于任何已排期版本的 PR 不选）；
+- **优先级**：在 Project「拾光记」的「优先级」字段上选定 —— 优先级与「PR 进展」都是 Project 字段，不是仓库标签；
+- **关联 issue 的「PR 进展」**：PR 开出后，把它关联的 issue 在 Project 里的「PR 进展」字段选成当前状态，并随 PR 推进更新（已提交 → 评审中 → 已合并）。
+
+操作路径：受理人、项目、里程碑可一并 `gh pr edit <PR> --add-assignee "@me" --add-project "拾光记" --milestone <版本>`；Project 字段（优先级、PR 进展）走 `gh project item-edit`，token 需具备 `project` 权限（缺时 `gh auth refresh -s project`），无权限时在网页上手动补齐并在回复中说明，不得静默跳过。
+
+### Pull request：描述按模板，审查意见走评论
+
+- **描述必须按 `.github/pull_request_template.md` 的章节写**（变更说明 / 关联任务 / 验证方式 / SQL 与配置变更 / 界面变化 / 检查清单），章节标题与顺序不自行增删；「界面变化」只在确实没有可见 UI 变更时才删。
+- **提交时默认本次改动没有问题**：描述只写「改了什么 / 为什么 / 怎么验」，不把疑虑、待办、风险猜想塞进描述 —— 描述不是第二份审查报告。检查清单据实勾选：命令跑过且通过才勾（凭据那条要先核查 diff 确实没带生产库 / Redis / JWT 凭据）。
+- **审查发现问题一律作为 PR 评论提交**：审查结论、复现步骤与证据、失败用例与成因、修法建议都走评论；描述保持提交时的样子，不因审查结果反复改写。
+- **评论只写三件事：哪里错了 / 为什么错了 / 应该是什么样** —— 位置（文件、行、接口或页面）、错在哪（失败用例、日志、复现步骤、期望值与实际值）、正确行为应该是什么。
+- **评论不写讨论过程**：不提「已拍板」「建议」「上一轮讨论」「谁写代码谁审查」这类对话产物，不写分工、待办与后续计划 —— 评论是审查意见，不是会议记录。PR 描述同理。与本 PR 改动无关的发现不进本 PR 的评论，另开 issue。
+- 问题足以阻塞合并时：评论写清 + 用 draft 或「请求变更」表达，不靠改描述。
 
 ## Security & Configuration
 
@@ -89,3 +155,47 @@ small test file; no frameworks, no fixtures). Trivial one-liners need no
  test.
 
 (Yes, this file also applies to agents working on the ponytail repo itself. Especially to them.)
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **shiguangji** (8253 symbols, 19362 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
+- NEVER commit changes without running `detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/shiguangji/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/shiguangji/clusters` | All functional areas |
+| `gitnexus://repo/shiguangji/processes` | All execution flows |
+| `gitnexus://repo/shiguangji/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->

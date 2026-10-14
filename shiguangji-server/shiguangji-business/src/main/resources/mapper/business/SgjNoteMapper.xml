@@ -7,6 +7,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="SgjNote" id="SgjNoteResult">
         <result property="noteId"      column="note_id"      />
         <result property="itemId"      column="item_id"      />
+        <result property="itemName"    column="item_name"    />
         <result property="title"       column="title"        />
         <result property="content"     column="content"      />
         <result property="tags"        column="tags"         />
@@ -18,40 +19,113 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remark"      column="remark"       />
     </resultMap>
 
+    <!-- 左联条目表带出关联条目名称（条目软删后仍回显名称） -->
     <sql id="selectSgjNoteVo">
-        select note_id, item_id, title, content, tags, is_public,
-               create_by, create_time, update_by, update_time, remark
-        from sgj_note
+        select n.note_id, n.item_id, n.title, n.content, n.tags, n.is_public,
+               n.create_by, n.create_time, n.update_by, n.update_time, n.remark,
+               i.title as item_name
+        from sgj_note n
+        left join sgj_item i on i.item_id = n.item_id
+    </sql>
+
+    <!-- 列表过滤条件：前台与后台列表共用一份，改一处两边生效 -->
+    <sql id="listWhere">
+        <where>
+            n.del_flag = '0'
+            <if test="createBy != null and createBy != ''">
+                and n.create_by = #{createBy}
+            </if>
+            <if test="itemId != null">
+                and n.item_id = #{itemId}
+            </if>
+            <if test="isPublic != null and isPublic != ''">
+                and n.is_public = #{isPublic}
+            </if>
+            <if test="title != null and title != ''">
+                and n.title like concat('%', #{title}, '%')
+            </if>
+            <!-- 标题+正文全文检索：布尔模式（自然语言模式会把 mysql 命中到只含 sql 的行）；
+                 标题与正文在同一 match 条件里，无 or，不会短路 create_by/is_public 等过滤；
+                 布尔运算符已在服务层剔除。回收站不纳入（见 selectRecycleNoteList）。
+                 params.keywordLike 是服务层的 0 命中复核分支（issue #66）：全文索引重建窗口内
+                 match 可能漏掉新写入的行，此时换 like 再查一次；like 与 title 过滤同样不转义 %/_ -->
+            <if test="keyword != null and keyword != ''">
+                <choose>
+                    <when test="params.keywordLike == true">
+                        and (n.title like concat('%', #{keyword}, '%')
+                             or n.content like concat('%', #{keyword}, '%'))
+                    </when>
+                    <otherwise>
+                        and match(n.title, n.content) against(#{keyword} in boolean mode)
+                    </otherwise>
+                </choose>
+            </if>
+            <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中；replace 兼容手输期的“逗号+空格”写法 -->
+            <if test="tags != null and tags != ''">
+                and find_in_set(#{tags}, replace(n.tags, ' ', ''))
+            </if>
+        </where>
+    </sql>
+
+    <!-- YAML 前言（front-matter）结束位置：正文从其之后开始（导入的 md 普遍带前言，
+         不跳过会进摘要与命中定位）。开场为单独一行三个连字符，找首个换行加三连字符作闭合；
+         找不到闭合按无前言处理。MySQL 字符串串接 '\n' 依赖反斜杠转义（默认 sql_mode）
+         详情页那份同款规则在 Java：SgjNoteServiceImpl.buildBody（列表不下发正文，两份须同步改） -->
+    <sql id="fmEnd">
+        if(left(n.content, 4) in ('---\n', '---\r'),
+           coalesce(nullif(locate('\n---', n.content), 0) + 5, 1),
+           1)
+    </sql>
+
+    <!-- 列表排序口径：更新时间倒序。update_time 为空的行（历史数据 / 手工 SQL）回落 create_time,
+         否则 MySQL 的 NULL 在 desc 里排最后，新写的笔记会沉到列表底部（前台 / 后台 / 回收站共用） -->
+    <sql id="listOrder">
+        order by coalesce(n.update_time, n.create_time) desc, n.note_id desc
     </sql>
 
     <select id="selectSgjNoteById" parameterType="Long" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
-        where note_id = #{noteId} and del_flag = '0'
+        where n.note_id = #{noteId} and n.del_flag = '0'
+    </select>
+
+    <!-- 草稿写入的存活校验：只回主键，不把十万字正文读出来（自动保存每 15 秒调一次） -->
+    <select id="selectAliveNoteId" parameterType="Long" resultType="Long">
+        select note_id from sgj_note where note_id = #{noteId} and del_flag = '0'
     </select>
 
     <select id="selectSgjNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
-        <where>
-            del_flag = '0'
-            <if test="createBy != null and createBy != ''">
-                and create_by = #{createBy}
-            </if>
-            <if test="itemId != null">
-                and item_id = #{itemId}
-            </if>
-            <if test="isPublic != null and isPublic != ''">
-                and is_public = #{isPublic}
-            </if>
-            <if test="title != null and title != ''">
-                and title like concat('%', #{title}, '%')
-            </if>
-            <!-- FIND_IN_SET 按逗号分段完整匹配，避免子串误命中；replace 兼容手输期的“逗号+空格”写法 -->
-            <if test="tags != null and tags != ''">
-                and find_in_set(#{tags}, replace(tags, ' ', ''))
-            </if>
-        </where>
-        order by update_time desc, note_id desc
+        <include refid="listWhere"/>
+        <include refid="listOrder"/>
     </select>
+
+    <resultMap type="SgjNote" id="SgjNoteFrontResult">
+        <result property="noteId"      column="note_id"      />
+        <result property="itemId"      column="item_id"      />
+        <result property="itemName"    column="item_name"    />
+        <result property="title"       column="title"        />
+        <result property="tags"        column="tags"         />
+        <result property="isPublic"    column="is_public"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="hitTotal"    column="hit_total"    />
+    </resultMap>
+
+    <select id="selectSgjNoteFrontList" parameterType="SgjNote" resultMap="SgjNoteFrontResult">
+        select n.note_id, n.item_id, i.title as item_name, n.title, n.tags, n.is_public,
+               n.create_by, n.create_time, n.update_by, n.update_time, n.content, n.remark, n.title
+        from sgj_note n
+        left join sgj_item i on i.item_id = n.item_id
+        <include refid="listWhere"/>
+        <include refid="listOrder"/>
+    </select>
+
+    <resultMap type="SgjNote" id="SgjNoteExcerptResult">
+        <result property="noteId"      column="note_id"      />
+        <result property="hitTotal"    column="hit_total"    />
+    </resultMap>
 
     <insert id="insertSgjNote" parameterType="SgjNote" useGeneratedKeys="true" keyProperty="noteId">
         insert into sgj_note
@@ -64,6 +138,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remark != null and remark != ''">remark,</if>
             <if test="createBy != null and createBy != ''">create_by,</if>
             create_time,
+            update_time,
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="itemId != null">#{itemId},</if>
@@ -73,6 +148,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isPublic != null and isPublic != ''">#{isPublic},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
             <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate(),
             sysdate(),
         </trim>
     </insert>
@@ -95,18 +171,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectRecycleNoteList" parameterType="SgjNote" resultMap="SgjNoteResult">
         <include refid="selectSgjNoteVo"/>
         <where>
-            del_flag = '2'
+            n.del_flag = '2'
             <if test="noteId != null">
-                and note_id = #{noteId}
+                and n.note_id = #{noteId}
             </if>
             <if test="createBy != null and createBy != ''">
-                and create_by = #{createBy}
+                and n.create_by = #{createBy}
             </if>
             <if test="title != null and title != ''">
-                and title like concat('%', #{title}, '%')
+                and n.title like concat('%', #{title}, '%')
             </if>
         </where>
-        order by update_time desc, note_id desc
+        <include refid="listOrder"/>
     </select>
 
     <!-- 软删除：标记 del_flag = '2' -->
