@@ -40,8 +40,8 @@ public class SgjItemServiceImpl implements ISgjItemService
     /** 允许的条目类型 */
     private static final java.util.List<String> ITEM_TYPES = Arrays.asList("MOVIE", "TV", "BOOK", "PLACE");
 
-    /** 允许的状态 */
-    private static final java.util.List<String> ITEM_STATUS = Arrays.asList("WANT", "DONE");
+    /** 允许的状态（0.0.3 加 DOING=在看/在读；地点条目前台不提供中间态，值域上取超集，见设计 结论 71/86） */
+    private static final java.util.List<String> ITEM_STATUS = Arrays.asList("WANT", "DOING", "DONE");
 
     @Autowired
     private SgjItemMapper sgjItemMapper;
@@ -171,7 +171,7 @@ public class SgjItemServiceImpl implements ISgjItemService
         }
         if (!StringUtils.isEmpty(sgjItem.getStatus()) && !ITEM_STATUS.contains(sgjItem.getStatus()))
         {
-            throw new ServiceException("状态值不合法，仅支持WANT/DONE");
+            throw new ServiceException("状态值不合法，仅支持WANT/DOING/DONE");
         }
         BigDecimal rating = sgjItem.getRating();
         if (rating != null && (rating.compareTo(BigDecimal.ZERO) < 0 || rating.compareTo(new BigDecimal("10")) > 0))
