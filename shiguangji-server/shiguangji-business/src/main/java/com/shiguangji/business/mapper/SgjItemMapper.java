@@ -28,6 +28,17 @@ public interface SgjItemMapper
     public List<SgjItem> selectSgjItemList(SgjItem sgjItem);
 
     /**
+     * 查询计划页条目（0.0.3：未完成 WANT/DOING 的全类型汇总，按计划日期升序、无日期置后）
+     *
+     * <p>与 {@link #selectSgjItemList} 分开而不是加排序开关：后者有前台三个列表页、后台管理页、
+     * 封面服务五类调用方，都不该背上这个排序口径（设计 结论 77）。</p>
+     *
+     * @param sgjItem 条目信息（createBy/itemType/title/tags 过滤）
+     * @return 条目集合
+     */
+    public List<SgjItem> selectPlanItems(SgjItem sgjItem);
+
+    /**
      * 查询回收站条目列表（del_flag='2'）
      *
      * @param sgjItem 条目信息（支持 itemId/createBy/itemType/title 过滤）

@@ -29,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -74,8 +75,17 @@ class AppPlanApiSmokeTest
     /** 普通登录账号（test_data.sql 的第二用户；resolveCreateBy 对其返回本名=只见自己） */
     private static final String OTHER_USER = "shiguangji";
 
-    /** 影视夹具 A：WANT + 计划日期 2026-10-13（相对今天 10-14 属「逾期」） */
+    /** 影视夹具 A：WANT + 计划日期 2026-10-13（相对今天 10-14 属「逾期」）；T-72 末尾被流转为 DOING */
     private static final String TITLE_A = TITLE + "-影视A";
+
+    /** 书籍夹具 B：DOING + 计划日期 2026-10-15（「本周」），带短评供脱敏断言 */
+    private static final String TITLE_B = TITLE + "-书籍B";
+
+    /** 影视夹具 C：WANT、无计划日期（「未排期」） */
+    private static final String TITLE_C = TITLE + "-影视C";
+
+    /** 影视夹具 D：DONE（经 /complete 流转，用于排除断言与时间线回归） */
+    private static final String TITLE_D = TITLE + "-影视D";
 
     @Autowired
     private MockMvc mockMvc;
@@ -157,8 +167,156 @@ class AppPlanApiSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 2. T-75：计划接口的集合 / 排序 / 分页（提交 feat(business) plan/list）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(2)
+    void planListCollectionOrderAndPagination() throws Exception
+    {
+        // 夹具补齐：B=DOING+日期 10-15+短评；C=WANT 无日期；D=WANT→complete→DONE
+        createItem(TITLE_B, "BOOK", null);
+        long idB = findItemId(TITLE_B);
+        mockMvc.perform(put("/app/item/{itemId}", idB)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "DOING", "startDate", "2026-10-15", "comment", "在读中，第三章"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        createItem(TITLE_C, "MOVIE", null);
+
+        createItem(TITLE_D, "MOVIE", null);
+        long idD = findItemId(TITLE_D);
+        mockMvc.perform(post("/app/item/{itemId}/complete", idD)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("finishDate", "2026-10-14"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        // 集合与排序：只含 WANT/DOING（D 被排除），有日期的按日期升序，无日期的置后
+        JsonNode rows = planList(null, null);
+        assertThat(rows.size()).as("计划页应恰含 A/B/C 三条夹具").isEqualTo(3);
+        assertThat(rows.get(0).path("title").asText()).isEqualTo(TITLE_A);
+        assertThat(rows.get(0).path("status").asText()).isEqualTo("DOING");
+        assertThat(rows.get(1).path("title").asText()).isEqualTo(TITLE_B);
+        assertThat(rows.get(2).path("title").asText()).isEqualTo(TITLE_C);
+        assertThat(rows.get(2).path("startDate").isMissingNode() || rows.get(2).path("startDate").isNull())
+                .as("未排期条目不应带计划日期").isTrue();
+
+        // 分页：total 是符合条件总数而非当前页长度；翻页无重复无遗漏
+        JsonNode page1 = planList(1, 2);
+        assertThat(page1.size()).isEqualTo(2);
+        JsonNode page2 = planList(2, 2);
+        assertThat(page2.size()).isEqualTo(1);
+        assertThat(page2.get(0).path("title").asText()).isEqualTo(TITLE_C);
+        assertThat(planListTotal(1, 2)).isEqualTo(3);
+    }
+
+    // ------------------------------------------------------------------
+    // 3. T-76：计划接口的可见范围
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(3)
+    void planListVisibilityByScope() throws Exception
+    {
+        // 匿名访客：resolveCreateBy 返回 publicOwner（admin），能看到 admin 的夹具
+        JsonNode anonymous = objectMapper.readTree(mockMvc.perform(get("/app/item/plan/list")
+                        .param("title", TITLE))
+                .andReturn().getResponse().getContentAsString()).path("data");
+        assertThat(anonymous.size()).as("匿名访客应看到 publicOwner 的计划夹具").isEqualTo(3);
+
+        // 其他登录用户：只见自己（夹具都建在 admin 名下，shiguangji 应看到 0 条）
+        String otherToken = createTokenFor(OTHER_USER);
+        JsonNode other = objectMapper.readTree(mockMvc.perform(get("/app/item/plan/list")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(otherToken))
+                        .param("title", TITLE))
+                .andReturn().getResponse().getContentAsString()).path("data");
+        assertThat(other.size()).as("其他登录用户不应看到 admin 的计划夹具").isZero();
+    }
+
+    // ------------------------------------------------------------------
+    // 4. T-77：计划接口访客脱敏（comment 不下发，title/status/startDate 保留）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(4)
+    void planListGuestMasking() throws Exception
+    {
+        JsonNode rows = objectMapper.readTree(mockMvc.perform(get("/app/item/plan/list")
+                        .param("title", TITLE_B))
+                .andReturn().getResponse().getContentAsString()).path("data");
+        assertThat(rows.size()).isEqualTo(1);
+        JsonNode row = rows.get(0);
+        assertThat(row.path("title").asText()).isEqualTo(TITLE_B);
+        assertThat(row.path("status").asText()).isEqualTo("DOING");
+        assertThat(row.path("startDate").asText()).startsWith("2026-10-15");
+        assertThat(row.path("comment").asText("")).as("匿名访客不应看到短评").isEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    // 5. T-79：时间线仍只含 DONE（回归：DOING/WANT 不进时间线）
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(5)
+    void timelineContainsOnlyDone() throws Exception
+    {
+        // pageSize=50 覆盖全库 DONE（当前约 24 条），避免“D 恰好在第二页”的偶发
+        // 响应形状与前端 listFrontHomeTimeline 的读法一致：行在 data、总数在 total
+        JsonNode timeline = objectMapper.readTree(mockMvc.perform(get("/app/home/timeline")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .param("pageNum", "1")
+                        .param("pageSize", "50"))
+                .andReturn().getResponse().getContentAsString());
+        JsonNode rows = timeline.path("data");
+        assertThat(rows.isArray() && rows.size() > 0).as("时间线应有数据").isTrue();
+        Set<String> statuses = new HashSet<>();
+        rows.forEach(r -> statuses.add(r.path("status").asText()));
+        assertThat(statuses).as("时间线只允许出现 DONE").containsExactly("DONE");
+
+        Set<String> titles = new HashSet<>();
+        rows.forEach(r -> titles.add(r.path("title").asText()));
+        assertThat(titles).as("完成的夹具 D 应出现在时间线").contains(TITLE_D);
+        assertThat(titles).as("未完成夹具不得进入时间线").doesNotContain(TITLE_A, TITLE_B, TITLE_C);
+    }
+
+    // ------------------------------------------------------------------
     // 辅助方法
     // ------------------------------------------------------------------
+
+    /** 取计划页 data 数组（admin 视角，可带分页参数） */
+    private JsonNode planList(Integer pageNum, Integer pageSize) throws Exception
+    {
+        return objectMapper.readTree(mockMvc.perform(planListRequest(pageNum, pageSize))
+                .andReturn().getResponse().getContentAsString()).path("data");
+    }
+
+    /** 取计划页 total（分页场景下 data 只含当前页，total 必须单独取） */
+    private long planListTotal(Integer pageNum, Integer pageSize) throws Exception
+    {
+        return objectMapper.readTree(mockMvc.perform(planListRequest(pageNum, pageSize))
+                .andReturn().getResponse().getContentAsString()).path("total").asLong();
+    }
+
+    private MockHttpServletRequestBuilder planListRequest(Integer pageNum, Integer pageSize)
+    {
+        MockHttpServletRequestBuilder builder = get("/app/item/plan/list")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .param("title", TITLE);
+        if (pageNum != null)
+        {
+            builder = builder.param("pageNum", String.valueOf(pageNum));
+        }
+        if (pageSize != null)
+        {
+            builder = builder.param("pageSize", String.valueOf(pageSize));
+        }
+        return builder;
+    }
 
     /** 经接口创建条目（create_by 由后端强制取当前登录人）；status 传 null 表示不带上该字段 */
     private void createItem(String title, String itemType, String status) throws Exception

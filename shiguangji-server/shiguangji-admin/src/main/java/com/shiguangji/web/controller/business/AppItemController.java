@@ -59,6 +59,27 @@ public class AppItemController extends BaseController
     }
 
     /**
+     * 查询计划页条目（0.0.3：未完成 WANT/DOING 的全类型汇总，按计划日期升序、无日期置后；分页）
+     *
+     * 可见范围与脱敏口径同 /list：匿名访客可见 publicOwner 的公开数据，comment/remark 不下发
+     */
+    @Anonymous
+    @GetMapping("/plan/list")
+    public AjaxResult planList(SgjItem sgjItem)
+    {
+        // 强制按当前请求的可见范围过滤，防止越权查看他人数据（设计 结论 79：与 /app/item/list 同口径）
+        sgjItem.setCreateBy(appScopeHelper.resolveCreateBy());
+        // 计划页不看单状态，忽略调用方误传的 status，集合固定为 WANT/DOING
+        sgjItem.setStatus(null);
+        startPage();
+        List<SgjItem> list = sgjItemService.selectPlanItems(sgjItem);
+        appScopeHelper.maskItemsForGuest(list);
+        AjaxResult result = success(list);
+        result.put("total", ((Page<?>) list).getTotal());
+        return result;
+    }
+
+    /**
      * 查询前台内容条目详情（按可见范围过滤，）
      *
      * ：匿名访客响应脱敏，不返回 remark/comment 私人字段

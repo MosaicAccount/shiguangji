@@ -67,6 +67,12 @@ public class SgjItemServiceImpl implements ISgjItemService
     }
 
     @Override
+    public List<SgjItem> selectPlanItems(SgjItem sgjItem)
+    {
+        return sgjItemMapper.selectPlanItems(sgjItem);
+    }
+
+    @Override
     public List<SgjItem> selectRecycleItemList(SgjItem sgjItem)
     {
         return sgjItemMapper.selectRecycleItemList(sgjItem);

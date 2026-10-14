@@ -28,6 +28,14 @@ public interface ISgjItemService
     public List<SgjItem> selectSgjItemList(SgjItem sgjItem);
 
     /**
+     * 查询计划页条目（0.0.3：未完成 WANT/DOING 的全类型汇总，按计划日期升序、无日期置后）
+     *
+     * @param sgjItem 条目（createBy/itemType/title/tags 过滤）
+     * @return 条目集合
+     */
+    public List<SgjItem> selectPlanItems(SgjItem sgjItem);
+
+    /**
      * 查询回收站条目列表（del_flag='2'）
      *
      * @param sgjItem 条目（支持 itemId/createBy/itemType/title 过滤）
