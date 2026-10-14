@@ -3,7 +3,8 @@ import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 import { getToken } from '@/utils/auth'
-import { isHttp, isPathMatch } from '@/utils/validate'
+import { isHttp } from '@/utils/validate'
+import { isPublicRoute } from '@/utils/publicRoutes'
 import { isRelogin } from '@/utils/request'
 import useUserStore from '@/store/modules/user'
 import useLockStore from '@/store/modules/lock'
@@ -13,17 +14,10 @@ import usePermissionStore from '@/store/modules/permission'
 NProgress.configure({ showSpinner: false })
 
 /**
- * 免登录白名单：
- * - /login /register：认证页
- * - 前台公开路由（/home /movie /book /travel /note /note/detail）：博客式公开只读，访客可直接浏览
- *   （/note/edit 需登录写笔记，不在白名单）
- *   后台管理路由（/index /admin /system 等）不在此列，未登录访问将跳转登录页
+ * 免登录白名单：清单与判定见 @/utils/publicRoutes（独立模块以便单测钉住，
+ * 0.0.3 的 /plan 曾因漏加被守卫弹去登录页）
  */
-const whiteList = ['/login', '/register', '/home', '/movie', '/book', '/travel', '/note', '/note/detail']
-
-const isWhiteList = (path: string): boolean => {
-  return whiteList.some((pattern: string) => isPathMatch(pattern, path))
-}
+const isWhiteList = (path: string): boolean => isPublicRoute(path)
 
 router.beforeEach(async (to, from) => {
   NProgress.start()
