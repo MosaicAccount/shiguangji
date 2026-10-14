@@ -233,6 +233,8 @@ const props = defineProps<{
   pageTitle: string
   wantLabel?: string
   doneLabel?: string
+  /** 进行中态覆盖文案（0.0.3 三态）；不传用字典文案（在看/在读） */
+  doingLabel?: string
 }>()
 
 const { proxy } = getCurrentInstance() as { proxy: any }
@@ -260,7 +262,13 @@ const statusOptions = computed(() => {
   const dict = dictMap.value[statusDictType.value] || []
   return dict.map((d: any) => ({
     value: d.value,
-    label: d.value === 'WANT' ? (props.wantLabel || d.label) : d.value === 'DONE' ? (props.doneLabel || d.label) : d.label
+    label: d.value === 'WANT'
+      ? (props.wantLabel || d.label)
+      : d.value === 'DOING'
+        ? (props.doingLabel || d.label)
+        : d.value === 'DONE'
+          ? (props.doneLabel || d.label)
+          : d.label
   }))
 })
 
