@@ -12,6 +12,15 @@ export function listFrontItem(query: FrontItemQuery): Promise<AjaxResult<SgjItem
   })
 }
 
+// 前台查询计划页条目（0.0.3：未完成 WANT/DOING 汇总，按计划日期升序、无日期置后；返回 data 条目集合 + total）
+export function listPlanItems(query: FrontItemQuery): Promise<AjaxResult<SgjItem[]> & { total: number }> {
+  return request({
+    url: '/app/item/plan/list',
+    method: 'get',
+    params: query
+  })
+}
+
 // 前台查询内容条目详情
 export function getFrontItem(itemId: number): Promise<AjaxResult<SgjItem>> {
   return request({
