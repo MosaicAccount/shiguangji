@@ -106,11 +106,15 @@ sgj:
 - `open()` 签名：`external: number` → `externalRefs: NoteImageRef[]`；
 - 关闭 / 跳过语义不变：返回 null 正文不动，已转存的图交孤儿清理（#56 结论 60 同款）。
 
-## 4. 交接清单 —— `HttpExternalImageFetcher` 由使用者本人实现
+## 4. 实现规格 —— `HttpExternalImageFetcher`
 
-**为什么交出去**（AGENTS 教学例外的判据是「练手价值」）：这一个类是整个 issue 的「主要成本」所在——SSRF 防护矩阵（DNS 全记录校验、rebinding 对策、重定向逐跳重验）是值得亲手搭一遍的安全架构点；其余（端点接线、速率限制、前端弹窗、文档）是搬运不是教学，留在 agent 手里。
+> **（2026-10-13 变更）**：本节原为「交接清单」——按 AGENTS.md 教学例外交使用者本人实现；
+> 使用者随后决定不写（对话中明确「我不写了」），改由 agent 按同一规格实现。验收口径不变，
+> 本节保留下列行为规格作为实现与用例（T-56 ~ T-61、装配冒烟）的对照。
 
-**要实现的东西**：新类 `shiguangji-server/shiguangji-admin/src/main/java/com/shiguangji/web/service/image/HttpExternalImageFetcher.java`，实现 `ExternalImageFetcher`（§2.2 契约），`@Component`（落地后 `NoopExternalImageFetcher` 自动退位）。不改任何其他文件——接口、配置键、端点、前端都已就位。
+**为什么曾计划交出去**（AGENTS 教学例外的判据是「练手价值」）：这一个类是整个 issue 的「主要成本」所在——SSRF 防护矩阵（DNS 全记录校验、rebinding 对策、重定向逐跳重验）是值得亲手搭一遍的安全架构点；其余（端点接线、速率限制、前端弹窗、文档）是搬运不是教学，留在 agent 手里。
+
+**实现落点**：`shiguangji-server/shiguangji-admin/src/main/java/com/shiguangji/web/service/image/HttpExternalImageFetcher.java`，实现 `ExternalImageFetcher`（§2.2 契约），`@Component`（注册后 `NoopExternalImageFetcher` 自动退位，装配冒烟断言之）。
 
 **行为规格**（验收口径，逐条对应需求 §5）：
 
@@ -143,4 +147,4 @@ sgj:
 5. `feat(web):` `noteImages.ts` 外链结构化 + `toAbsoluteExternalUrl` + API 客户端 + 单测；
 6. `feat(web):` 搬运弹窗外链转存（勾选 / 只有外链形态 / 失败逐条 / 结果态补做）+ 两个调用方。
 
-真实现（§4）落地时：`feat(file): HttpExternalImageFetcher（#68 教学交接件）` + `test(file): ExternalImageFetcherTest SSRF 矩阵`，由 agent 审查并亲自跑测试后再取消 PR 的 draft 状态。
+真实现（§4，2026-10-13 起由 agent 实现）：`feat(file): HttpExternalImageFetcher` + `test(file): ExternalImageFetcherTest SSRF 矩阵与装配冒烟`，全量回归绿后取消 PR 的 draft 状态。
