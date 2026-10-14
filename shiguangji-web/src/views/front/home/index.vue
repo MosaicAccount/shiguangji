@@ -113,7 +113,7 @@
               <div class="wish-title">{{ item.title }}</div>
               <div class="wish-status">{{ wishLabel(item.itemType) }}</div>
             </div>
-            <el-button link class="wish-complete" @click="handleComplete(item)">完成 →</el-button>
+            <el-button link class="wish-complete" @click="openComplete(item)">完成 →</el-button>
           </div>
         </section>
 
@@ -131,6 +131,9 @@
       </aside>
     </div>
     </template>
+
+    <!-- 心愿单「完成 →」统一完成弹窗（与各模块页同一份组件） -->
+    <item-complete-dialog v-model="completeOpen" :item="completeItem" @submitted="onCompleted" />
   </div>
 </template>
 
@@ -138,7 +141,7 @@
 import { getToken } from '@/utils/auth'
 import { photoUrl } from '@/utils/sgj'
 import { getFrontHomeData, listFrontHomeTimeline } from '@/api/front/home'
-import { completeFrontItem } from '@/api/front/item'
+import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
 import type { FrontHomeData } from '@/types/api/front/home'
 import type { SgjItem } from '@/types/api/business/item'
 import type { SgjNote } from '@/types/api/business/note'
@@ -155,6 +158,10 @@ const router = useRouter()
 const data = ref<FrontHomeData | null>(null)
 const loading = ref<boolean>(false)
 const loadError = ref<boolean>(false)
+
+/** 心愿单完成弹窗（统一组件） */
+const completeOpen = ref(false)
+const completeItem = ref<SgjItem | null>(null)
 
 /** 已完成时间线：首屏 + “加载更多”累积 */
 const timelineItems = ref<SgjItem[]>([])
@@ -275,25 +282,27 @@ function wishLabel(type?: string): string {
   return '想看'
 }
 
-/** 标记完成按钮文案：看过/读过/去过 */
-function doneLabel(type?: string): string {
-  if (type === 'BOOK') return '读过'
-  if (type === 'PLACE') return '去过'
-  return '看过'
+/** 标记完成提示文案：与各模块页逐字一致（原 handleComplete 的“读过”与书单页“已读”不一致，一并收敛） */
+function doneMessage(type?: string): string {
+  if (type === 'BOOK') return '已标记已读'
+  if (type === 'PLACE') return '已标记去过'
+  return '已标记看过'
 }
 
-/** 一键标记完成：默认完成日期取当天，成功后从心愿单移除并刷新 */
-function handleComplete(item: SgjItem): void {
-  if (!item.itemId) return
-  const now = new Date()
-  const finishDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  completeFrontItem(item.itemId, { finishDate }).then(() => {
-    proxy.$modal.msgSuccess(`已标记${doneLabel(item.itemType)}`)
-    if (data.value?.wishlist) {
-      data.value.wishlist = data.value.wishlist.filter(w => w.itemId !== item.itemId)
-    }
-    getData()
-  }).catch(() => {})
+/** 心愿单「完成 →」：打开统一完成弹窗（FR-003-7：日期默认今天但可改，补记不再被静默写成当天） */
+function openComplete(item: SgjItem): void {
+  completeItem.value = item
+  completeOpen.value = true
+}
+
+/** 统一完成弹窗提交成功：从心愿单移除并刷新 */
+function onCompleted(): void {
+  const type = completeItem.value?.itemType
+  if (completeItem.value?.itemId && data.value?.wishlist) {
+    data.value.wishlist = data.value.wishlist.filter(w => w.itemId !== completeItem.value!.itemId)
+  }
+  proxy.$modal.msgSuccess(doneMessage(type))
+  getData()
 }
 
 function formatDate(time?: string): string {

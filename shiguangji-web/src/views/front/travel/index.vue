@@ -189,21 +189,8 @@
     <!-- 地图选点 -->
     <map-picker v-model="pickerOpen" :latitude="addForm.latitude" :longitude="addForm.longitude" @confirm="confirmPick" />
 
-    <!-- 标记去过 -->
-    <el-dialog v-model="completeOpen" :title="'标记去过：' + (currentItem?.title || '')" width="520px" append-to-body>
-      <el-form ref="completeFormRef" :model="completeForm" label-width="90px">
-        <el-form-item label="去过日期">
-          <el-date-picker v-model="completeForm.finishDate" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="回忆">
-          <el-input v-model="completeForm.comment" type="textarea" :rows="3" placeholder="写点回忆吧（可选）" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="primary" @click="submitComplete">确 定</el-button>
-        <el-button @click="completeOpen = false">取 消</el-button>
-      </template>
-    </el-dialog>
+    <!-- 标记去过（统一完成弹窗：地点无评分，label-width 90px 的差异由组件按类型给出） -->
+    <item-complete-dialog v-model="completeOpen" :item="currentItem" @submitted="onCompleted" />
 
     <!-- 详情抽屉：照片 hero + 手账风信息卡 -->
     <el-drawer v-model="detailOpen" size="440px" :with-header="false" class="place-drawer">
@@ -300,8 +287,9 @@ import TagPills from '@/components/TagPills/index.vue'
 import TravelMap from '@/components/TravelMap/index.vue'
 import PhotoDeck from '@/components/PhotoDeck/index.vue'
 import PhotoAlbumDialog from '@/components/PhotoAlbumDialog/index.vue'
+import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
-import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
+import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import type { SgjItem } from '@/types/api/business/item'
@@ -396,11 +384,6 @@ function coverStyle(index: number): Record<string, string> {
 function themeColor(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#A85F52'
 }
-
-const completeForm = reactive({
-  finishDate: undefined,
-  comment: undefined
-})
 
 const addRules = {
   title: [{ required: true, message: '请输入地点名称', trigger: 'blur' }]
@@ -599,20 +582,15 @@ function goWriteNote(itemId: number, title: string): void {
 
 function openComplete(item: SgjItem): void {
   currentItem.value = item
-  Object.assign(completeForm, {
-    finishDate: undefined,
-    comment: undefined
-  })
   completeOpen.value = true
 }
 
-function submitComplete(): void {
-  if (!currentItem.value?.itemId) return
-  completeFrontItem(currentItem.value.itemId, completeForm).then(() => {
-    proxy.$modal.msgSuccess('已标记去过')
-    completeOpen.value = false
-    loadData()
-  }).catch(() => {})
+/** 统一完成弹窗提交成功：提示与刷新留在页面侧（文案与原页内实现逐字一致） */
+function onCompleted(): void {
+  proxy.$modal.msgSuccess('已标记去过')
+  loadData()
+  // 地图轨迹含“去过”分组，完成态变化后同步刷新
+  trajectory.value = null
 }
 
 function openDetail(item: SgjItem): void {

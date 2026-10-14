@@ -133,24 +133,8 @@
       </template>
     </el-dialog>
 
-    <!-- 标记看过 -->
-    <el-dialog v-model="completeOpen" :title="'标记看过：' + (currentItem?.title || '')" width="520px" append-to-body>
-      <el-form ref="completeFormRef" :model="completeForm" label-width="80px">
-        <el-form-item label="看完日期">
-          <el-date-picker v-model="completeForm.finishDate" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="评分">
-          <el-rate v-model="completeForm.rating" :max="10" show-score />
-        </el-form-item>
-        <el-form-item label="短评">
-          <el-input v-model="completeForm.comment" type="textarea" :rows="3" placeholder="写点短评吧（可选）" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="primary" @click="submitComplete">确 定</el-button>
-        <el-button @click="completeOpen = false">取 消</el-button>
-      </template>
-    </el-dialog>
+    <!-- 标记看过（统一完成弹窗，文案与字段随类型参数化） -->
+    <item-complete-dialog v-model="completeOpen" :item="currentItem" @submitted="onCompleted" />
 
     <!-- 详情抽屉：封面铺底 hero + 手账风信息卡（与足迹页同风格） -->
     <media-detail-drawer
@@ -191,10 +175,11 @@ import { getToken } from '@/utils/auth'
 import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
+import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
 import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
-import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, updateFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
+import { listFrontItem, getFrontItem, addFrontItem, updateFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
 import type { SgjItem } from '@/types/api/business/item'
 
 const { sgj_item_type, sgj_movie_status, sgj_movie_genre, sgj_region, sgj_language } = useDict('sgj_item_type', 'sgj_movie_status', 'sgj_movie_genre', 'sgj_region', 'sgj_language')
@@ -256,12 +241,6 @@ function onCoverError(item: SgjItem): void {
 function isCoverError(item: SgjItem): boolean {
   return item.itemId != null && coverErrorIds.value.has(item.itemId)
 }
-
-const completeForm = reactive({
-  finishDate: undefined,
-  rating: undefined,
-  comment: undefined
-})
 
 const addRules = {
   title: [{ required: true, message: '请输入影视名称', trigger: 'blur' }]
@@ -438,21 +417,13 @@ function goWriteNote(itemId: number, title: string): void {
 
 function openComplete(item: SgjItem): void {
   currentItem.value = item
-  Object.assign(completeForm, {
-    finishDate: undefined,
-    rating: undefined,
-    comment: undefined
-  })
   completeOpen.value = true
 }
 
-function submitComplete(): void {
-  if (!currentItem.value?.itemId) return
-  completeFrontItem(currentItem.value.itemId, completeForm).then(() => {
-    proxy.$modal.msgSuccess('已标记看过')
-    completeOpen.value = false
-    loadData()
-  }).catch(() => {})
+/** 统一完成弹窗提交成功：提示与刷新留在页面侧（文案与原页内实现逐字一致） */
+function onCompleted(): void {
+  proxy.$modal.msgSuccess('已标记看过')
+  loadData()
 }
 
 function openDetail(item: SgjItem): void {
