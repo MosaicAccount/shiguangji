@@ -107,14 +107,24 @@
       <aside class="side-section">
         <section v-if="isLogin" class="wishlist-card">
           <h2 class="card-title">心愿单 · WISH LIST</h2>
-          <div v-if="!data?.wishlist || !data.wishlist.length" class="empty-tip">暂无心愿</div>
-          <div v-for="item in data?.wishlist || []" :key="item.itemId" class="wish-item">
+          <div v-if="!wishlist.length" class="empty-tip">暂无心愿</div>
+          <div v-for="item in wishlist" :key="item.itemId" class="wish-item">
             <span class="wish-icon" :class="'wish-icon-' + item.itemType">{{ wishGlyph(item.itemType) }}</span>
             <div class="wish-body">
               <div class="wish-title">{{ item.title }}</div>
-              <div class="wish-status">{{ wishLabel(item.itemType, item.status) }}</div>
+              <div class="wish-meta">
+                <span class="wish-status">{{ statusText(item) }}</span>
+                <plan-date-badge :item="item" @saved="loadWishlist" />
+              </div>
             </div>
             <el-button link class="wish-complete" @click="openComplete(item)">完成 →</el-button>
+          </div>
+          <!-- 心愿单分页（0.0.3 修订）：与计划页同一个数据源，故翻页口径一致 -->
+          <div v-if="wishlist.length" class="wish-foot">
+            <span class="wish-count">已展示 {{ wishlist.length }} / 共 {{ wishTotal }} 项</span>
+            <el-button v-if="hasMoreWish" link type="primary" :loading="wishLoadingMore" @click="loadMoreWishlist">
+              加载更多
+            </el-button>
           </div>
         </section>
 
@@ -141,8 +151,11 @@
 <script setup lang="ts" name="FrontHome">
 import { getToken } from '@/utils/auth'
 import { photoUrl } from '@/utils/sgj'
+import { itemStatusLabel } from '@/utils/itemStatus'
 import { getFrontHomeData, listFrontHomeTimeline } from '@/api/front/home'
+import { listPlanItems } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
+import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import type { FrontHomeData } from '@/types/api/front/home'
 import type { SgjItem } from '@/types/api/business/item'
 import type { SgjNote } from '@/types/api/business/note'
@@ -277,14 +290,9 @@ function doneTotal(type: string): number {
   return data.value?.summary?.done?.[type] || 0
 }
 
-/** 心愿单状态文案：显式三态（0.0.3 D-8 心愿单纳入 DOING），地点无中间态 */
-function wishLabel(type?: string, status?: string): string {
-  if (status === 'DOING') {
-    return type === 'BOOK' ? '在读' : '在看'
-  }
-  if (type === 'BOOK') return '想读'
-  if (type === 'PLACE') return '想去'
-  return '想看'
+/** 心愿单状态文案：字典优先、中文兜底（utils/itemStatus.ts），不再写死一份措辞 */
+function statusText(item: SgjItem): string {
+  return itemStatusLabel(item)
 }
 
 /** 心愿条数字：在想 + 在做（summary 三态显式拆列，0.0.3 设计 结论 75/76） */
@@ -303,14 +311,52 @@ function openComplete(item: SgjItem): void {
   completeOpen.value = true
 }
 
-/** 统一完成弹窗提交成功：从心愿单移除并刷新 */
+/** 统一完成弹窗提交成功：从心愿单移除并刷新（心愿单与汇总都要更新） */
 function onCompleted(): void {
   const type = completeItem.value?.itemType
-  if (completeItem.value?.itemId && data.value?.wishlist) {
-    data.value.wishlist = data.value.wishlist.filter(w => w.itemId !== completeItem.value!.itemId)
+  const doneId = completeItem.value?.itemId
+  if (doneId) {
+    wishlist.value = wishlist.value.filter(w => w.itemId !== doneId)
   }
   proxy.$modal.msgSuccess(doneMessage(type))
+  loadWishlist()
   getData()
+}
+
+// ------------------------------------------------------------------
+// 心愿单：与计划页同一个数据源（/app/item/plan/list），因此翻页口径与排序完全一致
+// ------------------------------------------------------------------
+
+/** 心愿单每页条数（首屏与「加载更多」同一页大小，翻页才不会错位） */
+const WISHLIST_PAGE_SIZE = 10
+const wishlist = ref<SgjItem[]>([])
+const wishTotal = ref(0)
+const wishPage = ref(1)
+const wishLoadingMore = ref(false)
+const hasMoreWish = computed(() => wishlist.value.length < wishTotal.value)
+
+/** 拉第一页（刷新场景：完成、改日期后调用） */
+function loadWishlist(): Promise<void> {
+  wishPage.value = 1
+  return listPlanItems({ pageNum: 1, pageSize: WISHLIST_PAGE_SIZE }).then(response => {
+    wishlist.value = response.data || []
+    wishTotal.value = Number(response.total) || 0
+  }).catch(() => {})
+}
+
+/** 加载下一页并追加 */
+function loadMoreWishlist(): void {
+  if (wishLoadingMore.value || !hasMoreWish.value) return
+  wishLoadingMore.value = true
+  wishPage.value += 1
+  listPlanItems({ pageNum: wishPage.value, pageSize: WISHLIST_PAGE_SIZE }).then(response => {
+    wishlist.value = wishlist.value.concat(response.data || [])
+    wishTotal.value = Number(response.total) || 0
+  }).catch(() => {
+    wishPage.value -= 1
+  }).finally(() => {
+    wishLoadingMore.value = false
+  })
 }
 
 function formatDate(time?: string): string {
@@ -371,6 +417,10 @@ function getData(): void {
 }
 
 getData()
+// 心愿单独立取数（访客隐藏该卡片，不必为空请求买单）
+if (isLogin.value) {
+  loadWishlist()
+}
 </script>
 
 <style scoped lang="scss">
@@ -1007,10 +1057,17 @@ getData()
       white-space: nowrap;
     }
 
+    /* 状态与计划日期同一行：状态是「这条现在处于哪一步」，日期是「打算什么时候」 */
+    .wish-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
     .wish-status {
       font-size: 11px;
       color: var(--sgj-text-3);
-      margin-top: 2px;
     }
   }
 
@@ -1019,6 +1076,28 @@ getData()
     flex-shrink: 0;
     font-size: 12px;
     color: var(--sgj-primary);
+  }
+
+  /* 心愿单分页脚：已展示 / 共 N + 加载更多 */
+  .wish-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--sgj-border-card);
+
+    .wish-count {
+      font-size: 11px;
+      color: var(--sgj-text-4);
+    }
+
+    :deep(.el-button) {
+      font-size: 12px;
+      padding: 0;
+      height: auto;
+    }
   }
 }
 

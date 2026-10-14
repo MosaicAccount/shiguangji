@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groupPlanItems, planDateLabel, weekEndOf } from '@/utils/plan'
+import { groupPlanItems, planDateLabel, weekEndOf, weekStartOf } from '@/utils/plan'
 import type { SgjItem } from '@/types/api/business/item'
 
 /**
@@ -39,10 +39,26 @@ describe('T-80 groupPlanItems 分组边界', () => {
     expect(groups.map(g => g.key)).toEqual(['later'])
   })
 
+  it('四组都带人话说明，本周写明日期区间（实测反馈：只看「以后/未排期」两个词看不懂）', () => {
+    const groups = groupPlanItems(
+      [item('2026-10-13'), item('2026-10-14'), item('2026-10-19'), item()],
+      TODAY
+    )
+    const hints = Object.fromEntries(groups.map(g => [g.key, g.hint]))
+    expect(hints.overdue).toBe('计划日期已经过了')
+    expect(hints.thisWeek).toContain('本周内')
+    expect(hints.thisWeek).toContain('10月12日')
+    expect(hints.thisWeek).toContain('10月18日')
+    expect(hints.later).toBe('排在下周或更远')
+    expect(hints.unscheduled).toContain('定个日子')
+  })
+
   it('weekEndOf：周一为一周起点（周三的本周日是 10-18，周日当天也归本周）', () => {
     expect(weekEndOf(TODAY)).toBe('2026-10-18')
     expect(weekEndOf('2026-10-18')).toBe('2026-10-18')
     expect(weekEndOf('2026-10-19')).toBe('2026-10-25')
+    expect(weekStartOf(TODAY)).toBe('2026-10-12')
+    expect(weekStartOf('2026-10-18')).toBe('2026-10-12')
   })
 })
 

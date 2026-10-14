@@ -16,8 +16,8 @@ export type PlanGroupKey = 'overdue' | 'thisWeek' | 'later' | 'unscheduled'
 export interface PlanGroup {
   key: PlanGroupKey
   title: string
-  /** 未排期组的组头提示 */
-  hint?: string
+  /** 组说明：这一组是什么意思（四组都有，不只未排期） */
+  hint: string
   items: SgjItem[]
 }
 
@@ -39,16 +39,39 @@ export function weekEndOf(today: string): string {
   return formatDate(d)
 }
 
+/** 本周一（今天所在周的周一） */
+export function weekStartOf(today: string): string {
+  const d = parseLocal(today)
+  const daysSinceMonday = (d.getDay() + 6) % 7
+  d.setDate(d.getDate() - daysSinceMonday)
+  return formatDate(d)
+}
+
+/** M月D日（用于组说明里的日期区间） */
+function monthDay(date: string): string {
+  const d = parseLocal(date)
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+}
+
 /** 截掉时分秒，取本地 YYYY-MM-DD */
 export function localDateKey(date: Date): string {
   return formatDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0))
 }
 
-const GROUP_META: Record<PlanGroupKey, { title: string; hint?: string }> = {
-  overdue: { title: '逾期' },
-  thisWeek: { title: '本周' },
-  later: { title: '以后' },
-  unscheduled: { title: '未排期', hint: '这些还没有日期，点「定个日子」补上' }
+/**
+ * 组标题与说明。说明是给人看的「这一组是什么意思」——0.0.3 实测反馈：
+ * 只有「以后 / 未排期」两个词时看不出分组依据（是时间？是状态？），故每组都配一句人话，
+ * 本周还把实际日期区间写出来。
+ */
+function groupMeta(today: string): Record<PlanGroupKey, { title: string; hint: string }> {
+  const start = monthDay(weekStartOf(today))
+  const end = monthDay(weekEndOf(today))
+  return {
+    overdue: { title: '逾期', hint: '计划日期已经过了' },
+    thisWeek: { title: '本周', hint: `本周内（${start} – ${end}）` },
+    later: { title: '以后', hint: '排在下周或更远' },
+    unscheduled: { title: '未排期', hint: '还没定哪天 —— 点「定个日子」补上' }
+  }
 }
 
 /**
@@ -72,8 +95,9 @@ export function groupPlanItems(items: SgjItem[], today: string): PlanGroup[] {
     }
   }
 
+  const meta = groupMeta(today)
   return (Object.keys(buckets) as PlanGroupKey[])
-    .map(key => ({ key, ...GROUP_META[key], items: buckets[key] }))
+    .map(key => ({ key, title: meta[key].title, hint: meta[key].hint, items: buckets[key] }))
     .filter(group => group.items.length > 0)
 }
 

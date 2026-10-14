@@ -32,8 +32,6 @@ export interface FrontHomeData {
   timeline: SgjItem[]
   /** 已完成时间线总数（配合“加载更多”分页） */
   timelineTotal: number
-  /** 心愿单 */
-  wishlist: SgjItem[]
   /** 最近笔记 */
   recentNotes: SgjNote[]
 }

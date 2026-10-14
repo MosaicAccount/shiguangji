@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { defineComponent } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { ElButton, ElEmpty } from 'element-plus'
 import FrontHome from '../index.vue'
-import { getFrontHomeData, listFrontHomeTimeline } from '@/api/front/home'
+import { getFrontHomeData } from '@/api/front/home'
+import { listPlanItems } from '@/api/front/item'
 import type { FrontHomeData } from '@/types/api/front/home'
+import type { SgjItem } from '@/types/api/business/item'
 
 /**
- * T-84（docs/design/plan-testcases.md）：首页心愿条与心愿单的三态对齐。
- * - 心愿条数字 = wishTotal + doingTotal，文案「在想 X / 在做 Y」；
- * - DOING 条目状态文案「在看 / 在读」，不再显示「想看 / 想读」；
- * - 心愿条链接指向 /plan（原误指 /note，属回归断言）。
+ * T-84（docs/design/plan-testcases.md）+ 0.0.3 修订：
+ * - 心愿条数字 = wishTotal + doingTotal，文案「在想 X / 在做 Y」，链接指向 /plan；
+ * - 心愿单状态文案三态（DOING 显示在看 / 在读，不再显示想看 / 想读）；
+ * - 心愿单与计划页同一数据源（plan/list）：带计划日期，且有分页（已展示 / 共 N + 加载更多）。
  */
 
 vi.mock('@/utils/auth', () => ({
@@ -23,12 +26,19 @@ vi.mock('@/api/front/home', () => ({
 }))
 
 vi.mock('@/api/front/item', () => ({
-  completeFrontItem: vi.fn()
+  listPlanItems: vi.fn(),
+  completeFrontItem: vi.fn(),
+  updateFrontItem: vi.fn()
 }))
 
 const mockedHomeData = vi.mocked(getFrontHomeData)
+const mockedPlanList = vi.mocked(listPlanItems)
 
-function fixture(): FrontHomeData {
+const ElPopoverStub = defineComponent({
+  template: '<div class="pop-stub"><slot name="reference" /><slot /></div>'
+})
+
+function homePayload(): FrontHomeData {
   return {
     summary: {
       total: { MOVIE: 10, TV: 2, BOOK: 3 },
@@ -44,13 +54,20 @@ function fixture(): FrontHomeData {
     },
     timeline: [],
     timelineTotal: 0,
-    wishlist: [
-      { itemId: 101, itemType: 'TV', title: '漫长的季节', status: 'DOING' },
-      { itemId: 102, itemType: 'MOVIE', title: '肖申克的救赎', status: 'WANT' },
-      { itemId: 103, itemType: 'BOOK', title: '置身事内', status: 'DOING' }
-    ],
     recentNotes: []
   } as unknown as FrontHomeData
+}
+
+function wishRows(count: number): SgjItem[] {
+  const rows: SgjItem[] = [
+    { itemId: 101, itemType: 'TV', title: '漫长的季节', status: 'DOING', startDate: '2026-10-15' },
+    { itemId: 102, itemType: 'MOVIE', title: '肖申克的救赎', status: 'WANT' },
+    { itemId: 103, itemType: 'BOOK', title: '置身事内', status: 'DOING' }
+  ]
+  for (let i = rows.length; i < count; i++) {
+    rows.push({ itemId: 200 + i, itemType: 'BOOK', title: `填充${i}`, status: 'WANT' })
+  }
+  return rows.slice(0, count)
 }
 
 function buildRouter() {
@@ -68,7 +85,7 @@ async function mountHome() {
   const wrapper = mount(FrontHome, {
     global: {
       plugins: [buildRouter()],
-      components: { ElButton, ElEmpty },
+      components: { ElButton, ElEmpty, ElPopover: ElPopoverStub },
       directives: { loading: {} }
     }
   })
@@ -78,14 +95,19 @@ async function mountHome() {
 
 beforeEach(() => {
   mockedHomeData.mockReset()
-  mockedHomeData.mockResolvedValue({ code: 200, data: fixture() } as any)
+  mockedHomeData.mockResolvedValue({ code: 200, data: homePayload() } as any)
+  mockedPlanList.mockReset()
+  mockedPlanList.mockImplementation(async (query: any) => {
+    const pageSize = query?.pageSize ?? 10
+    const pageNum = query?.pageNum ?? 1
+    return { code: 200, data: wishRows(25).slice((pageNum - 1) * pageSize, pageNum * pageSize), total: 25 } as any
+  })
 })
 
-describe('T-84 首页心愿条与状态文案', () => {
+describe('T-84 首页心愿条与心愿单', () => {
   it('心愿条数字 = wishTotal + doingTotal，文案拆列「在想 3 / 在做 2」', async () => {
     const wrapper = await mountHome()
     const bar = wrapper.find('.wish-bar')
-    expect(bar.exists()).toBe(true)
     expect(bar.find('.wish-bar-num').text()).toBe('5')
     expect(bar.find('.wish-bar-label').text()).toContain('在想 3')
     expect(bar.find('.wish-bar-label').text()).toContain('在做 2')
@@ -101,7 +123,30 @@ describe('T-84 首页心愿条与状态文案', () => {
   it('心愿单状态文案：DOING 显示 在看/在读，WANT 显示 想看', async () => {
     const wrapper = await mountHome()
     const statuses = wrapper.findAll('.wish-status').map(s => s.text())
-    expect(statuses).toEqual(['在看', '想看', '在读'])
+    expect(statuses.slice(0, 3)).toEqual(['在看', '想看', '在读'])
+    wrapper.unmount()
+  })
+
+  it('心愿单展示计划日期（与计划页同一数据源）', async () => {
+    const wrapper = await mountHome()
+    const texts = wrapper.findAll('.wish-item .pdb-btn').map(b => b.text())
+    expect(texts[0]).toContain('明天')          // 2026-10-15 相对今天
+    expect(texts.some(t => t.includes('定个日子'))).toBe(true)  // 未排期那条
+    wrapper.unmount()
+  })
+
+  it('心愿单分页：给出「已展示 / 共 N」与加载更多，点一下追加下一页', async () => {
+    const wrapper = await mountHome()
+    expect(wrapper.find('.wish-count').text()).toBe('已展示 10 / 共 25 项')
+
+    const more = wrapper.findAll('button').find(b => b.text().includes('加载更多'))!
+    expect(more, '应出现加载更多按钮').toBeDefined()
+    await more.trigger('click')
+    await flushPromises()
+
+    expect(mockedPlanList).toHaveBeenLastCalledWith({ pageNum: 2, pageSize: 10 })
+    expect(wrapper.findAll('.wish-item')).toHaveLength(20)
+    expect(wrapper.find('.wish-count').text()).toBe('已展示 20 / 共 25 项')
     wrapper.unmount()
   })
 })

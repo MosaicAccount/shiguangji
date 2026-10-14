@@ -52,32 +52,53 @@
             </div>
             <div class="plan-actions" @click.stop>
               <template v-if="isLogin">
-                <el-popover v-if="!item.startDate || group.key === 'unscheduled' || group.key === 'overdue'" :width="280" trigger="click">
+                <!-- 状态推进（主操作，实心）：想看 → 开始；在看 → 标记完成 -->
+                <el-button
+                  v-if="item.status === 'WANT' && item.itemType !== 'PLACE'"
+                  type="primary"
+                  size="small"
+                  round
+                  @click="startDoing(item)"
+                >开始{{ item.itemType === 'BOOK' ? '读' : '看' }} →</el-button>
+                <el-button
+                  v-if="item.status !== 'DONE'"
+                  :type="item.status === 'DOING' ? 'primary' : 'default'"
+                  :plain="item.status === 'WANT'"
+                  size="small"
+                  round
+                  @click="openComplete(item)"
+                >标记{{ doneVerb(item.itemType) }}</el-button>
+
+                <!-- 计划日期（次操作，描边按钮）：有日期叫改日期、没有叫定个日子 -->
+                <el-popover :width="280" trigger="click">
                   <template #reference>
-                    <el-button link size="small" class="act-date">📅 {{ item.startDate ? '改日期' : '定个日子' }}</el-button>
+                    <el-button plain size="small" round>📅 {{ item.startDate ? '改日期' : '定个日子' }}</el-button>
                   </template>
                   <el-date-picker
-                    :model-value="item.startDate"
+                    :model-value="item.startDate ? item.startDate.slice(0, 10) : undefined"
                     type="date"
                     value-format="YYYY-MM-DD"
                     placeholder="打算哪天开始"
+                    :clearable="false"
                     style="width: 100%"
                     @update:model-value="(v: string | null) => v && setPlanDate(item, v)"
                   />
                 </el-popover>
-                <el-button v-if="item.status === 'WANT'" link size="small" class="act-start" @click="startDoing(item)">开始 →</el-button>
-                <el-button v-if="item.status === 'DOING'" link size="small" class="act-back" @click="backToWant(item)">退回心愿</el-button>
-                <el-button type="primary" link size="small" @click="openComplete(item)">标记{{ doneVerb(item.itemType) }}</el-button>
+
+                <!-- 退回（次操作）：只在在看的卡片上出现 -->
+                <el-button v-if="item.status === 'DOING'" plain size="small" round @click="backToWant(item)">退回心愿</el-button>
               </template>
+              <span v-else class="actions-readonly">仅浏览 · 登录后可操作</span>
             </div>
           </div>
         </div>
       </template>
 
-      <div v-if="hasMore" class="load-more-wrap">
-        <el-button :loading="loadingMore" round @click="loadMore">加载更多</el-button>
+      <div v-if="list.length" class="list-foot">
+        <span class="list-count">已展示 {{ list.length }} / 共 {{ total }} 项</span>
+        <el-button v-if="hasMore" :loading="loadingMore" round @click="loadMore">加载更多</el-button>
+        <span v-else class="list-end">—— 已到底部 ——</span>
       </div>
-      <div v-if="!hasMore && list.length" class="grid-end">—— 已到底部 · 共 {{ total }} 项 ——</div>
     </div>
 
     <item-complete-dialog v-model="completeOpen" :item="completeItem" @submitted="onCompleted" />
@@ -88,6 +109,7 @@
 import { getToken } from '@/utils/auth'
 import { useDict } from '@/utils/dict'
 import { groupPlanItems, planDateLabel, localDateKey } from '@/utils/plan'
+import { itemStatusLabel } from '@/utils/itemStatus'
 import { listPlanItems, getFrontItem, updateFrontItem } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
 import type { SgjItem } from '@/types/api/business/item'
@@ -112,7 +134,8 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const loadError = ref(false)
 const pageNum = ref(1)
-const pageSize = 20
+/** 每页条数：10 条（原 20 条时少量数据一页装完，「加载更多」永远不出现，等于没有分页） */
+const pageSize = 10
 const hasMore = computed(() => list.value.length < total.value)
 
 /** 分组基准日：每次取数时定格为“用户眼里的今天”，避免跨零点后分组漂移 */
@@ -124,6 +147,16 @@ const completeItem = ref<SgjItem | null>(null)
 const groups = computed(() => groupPlanItems(list.value, today.value))
 const wantCount = computed(() => list.value.filter(i => i.status === 'WANT').length)
 const doingCount = computed(() => list.value.filter(i => i.status === 'DOING').length)
+
+/** 状态文案：字典优先，查不到用中文兜底（utils/itemStatus.ts，绝不显示裸枚举） */
+const dictTable = computed<Record<string, any[]>>(() => ({
+  sgj_movie_status: sgj_movie_status.value,
+  sgj_book_status: sgj_book_status.value,
+  sgj_place_status: sgj_place_status.value
+}))
+function statusLabel(item: SgjItem): string {
+  return itemStatusLabel(item, dictTable.value)
+}
 
 function loadData(): Promise<void> {
   loading.value = true
@@ -152,18 +185,6 @@ function loadMore(): void {
   }).finally(() => {
     loadingMore.value = false
   })
-}
-
-/** 状态标签取字典文案（影视/书籍/地点三套字典按类型路由），不写死中文 */
-function statusLabel(item: SgjItem): string {
-  const dicts: Record<string, any> = {
-    MOVIE: sgj_movie_status.value,
-    TV: sgj_movie_status.value,
-    BOOK: sgj_book_status.value,
-    PLACE: sgj_place_status.value
-  }
-  const dict = dicts[item.itemType || ''] || []
-  return dict.find((d: any) => d.value === item.status)?.label || item.status || ''
 }
 
 const TYPE_NAMES: Record<string, string> = { MOVIE: '电影', TV: '剧集', BOOK: '书籍', PLACE: '地点' }
@@ -379,24 +400,31 @@ onMounted(() => {
   .plan-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
     flex: none;
 
+    /* 元素之间靠 gap 分隔：清掉 element-plus 的相邻按钮 margin，避免间距忽大忽小 */
     :deep(.el-button + .el-button) { margin-left: 0; }
+
+    .actions-readonly {
+      font-size: 12.5px;
+      color: var(--sgj-text-4);
+    }
   }
 }
 
-.load-more-wrap {
+/* 列表底部：始终给出「已展示 X / 共 N」，有下一页时给加载更多（原先只在有下一页时才出现，
+   少量数据一页装完就等于看不见分页） */
+.list-foot {
+  margin-top: 24px;
   display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 
-.grid-end {
-  text-align: center;
-  color: var(--sgj-text-4);
-  font-size: 12.5px;
-  margin-top: 24px;
+  .list-count { font-size: 12.5px; color: var(--sgj-text-3); }
+
+  .list-end { font-size: 12.5px; color: var(--sgj-text-4); }
 }
 
 @media (max-width: 768px) {
@@ -413,8 +441,14 @@ onMounted(() => {
     .plan-actions {
       width: 100%;
       justify-content: flex-end;
-      padding-top: 6px;
+      padding-top: 8px;
       border-top: 1px dashed var(--sgj-border-card);
+
+      /* 移动端：三个按钮平分一行，点按目标更大 */
+      :deep(.el-button) {
+        flex: 1;
+        margin-left: 0;
+      }
     }
   }
 }
