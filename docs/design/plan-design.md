@@ -43,7 +43,7 @@
 | 82 | 缺陷 | **FR-003-7：首页「完成 →」静默写当天**（必须修） | `home/index.vue:286` 用 `new Date()` 现算 `finishDate`，与各模块「标记看过」弹窗（可选日期）精度不一致，补记场景日期必错。做法：抽出 `ItemCompleteDialog` 供**四处**复用（movie / book / travel / home），**弹窗打开时日期默认今天但可改**。首页那条「完成 →」改为打开弹窗。 |
 | 83 | 现状核实 | **FR-003-6 已经实现，本期无代码改动** | `TravelMap` 已同时接收 `visited` 与 `wish` 两组点并按 `.visited` / `.want` 区分图例、图钉与聚合着色（`TravelMap:24-36, 160-164, 213-225`），`/app/travel/trajectory` 不按状态过滤（`AppTravelController:49-115`）——地图从来不依赖状态筛选切换。**D-9 纳入本期的实际交付是回归依据（设计图 `place-map.html` + 人工用例 T-87），不是功能。** 与 FR-003-6 原文的差异见 §8。 |
 | 84 | 缺陷 | **前端把 `status` 写成了 `'WANT'\|'DONE'` 字面量联合** | `movie:214,315,328`、`book:188,232`、`travel:321,374`、`MediaDetailDrawer:54,154`、`ItemManager:263` 等处改为共享的 `ItemStatus`（`'WANT'\|'DOING'\|'DONE'`，见 §5.2）；状态胶囊本身是**字典驱动**的（`v-for="(s, si) in sgj_movie_status"`），字典加了 `DOING` 会自动多出一枚，所以漏改类型不会漏 UI，但会在赋值处报类型错——由 `vue-tsc` 兜住。 |
-| 85 | 约束 | **字典排序：`DOING` 排在中间** | 新增 `DOING` 行给 `dict_sort=2`，并把既有 `DONE` 行的 `dict_sort` 由 `2` 改成 `3`（否则两行同序，胶囊顺序不稳定）。`init_business.sql` 全量脚本与 `sql/update/20261014_plan_status.sql` 增量脚本**都要改**，后者按 `dict_code` 用 `on duplicate key update` 保证可重复执行。 |
+| 85 | 约束 | **字典排序：`DOING` 排在中间** | 新增 `DOING` 行给 `dict_sort=2`，并把既有 `DONE` 行的 `dict_sort` 由 `2` 改成 `3`（否则两行同序，胶囊顺序不稳定）。`init_business.sql` 全量脚本与 `sql/update/20261014_plan_status.sql` 增量脚本**都要改**，增量脚本对 `DOING` 行按 `dict_value` 先删后插（照 `update/` 既有约定，幂等且能清掉游离行）。 |
 | 86 | 约束 | **地点条目的 `DOING` 不在本期值域内，但要有兜底归类** | 前台不给地点 `DOING` 入口；若后台管理页把地点改成 `DOING`，`AppTravelController:93` 的 `if DONE {visited} else {wish}` 会把它归入「想去」。**本期保留该 `else` 并补注释说明是有意归类**（不崩、不丢点）；登记为已知边界，不为其加分支。 |
 
 ## 3. 字典与数据
@@ -65,14 +65,13 @@
 ### 3.2 DML
 
 - **全量**：`sql/init_business.sql` —— 补两条 `DOING` 插入、把 `111` / `121` 的 `dict_sort` 改成 `3`、同步字典类型注释（`sgj_movie_status` 描述为「影视条目状态（想看/在看/看过）」、`sgj_book_status` 为「阅读状态（想读/在读/已读）」）与 `sgj_item.status` 列注释。
-- **增量**：新增 `sql/update/20261014_plan_status.sql`，可重复执行：
+- **增量**：新增 `sql/update/20261014_plan_status.sql`，可重复执行（照 `update/` 既有约定，`DOING` 行按 `dict_value` 先删后插）：
 
 ```sql
--- 幂等：dict_code 是主键，重复执行只覆盖同一行
-insert into sys_dict_data values(112, 2, '在看', 'DOING', 'sgj_movie_status', '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '在看')
-  on duplicate key update dict_sort=2, dict_label='在看', dict_value='DOING', list_class='warning';
-insert into sys_dict_data values(122, 2, '在读', 'DOING', 'sgj_book_status', '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '在读')
-  on duplicate key update dict_sort=2, dict_label='在读', dict_value='DOING', list_class='warning';
+delete from sys_dict_data where dict_type = 'sgj_movie_status' and dict_value = 'DOING';
+insert into sys_dict_data values(112, 2, '在看', 'DOING', 'sgj_movie_status', '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '在看');
+delete from sys_dict_data where dict_type = 'sgj_book_status' and dict_value = 'DOING';
+insert into sys_dict_data values(122, 2, '在读', 'DOING', 'sgj_book_status', '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '在读');
 update sys_dict_data set dict_sort = 3 where dict_type in ('sgj_movie_status','sgj_book_status') and dict_value = 'DONE';
 ```
 
