@@ -6,9 +6,9 @@
 均匀 unicode-range 分片在中文场景不划算——站点用字约 600 个但散布整个 CJK 区间，
 512 码位一片也要命中 ~40 片（~1MB+）。故改为「核心片 + 稀疏片」：
 
-  1. 核心片 lc-core.woff2：恰好包含「站点语料」用字（本脚本同目录 handdrawn-corpus.txt，
+  1. 核心片 ms-core.woff2：恰好包含「站点语料」用字（本脚本同目录 handdrawn-corpus.txt，
      含库内标题/字典与前台固定文案，~600 字 ≈ 100KB），unicode-range 逐字列出；
-  2. 稀疏片 lc-rXXXX.woff2：其余字形按 512 码位区间成片（区间内剔除核心片已有的字，
+  2. 稀疏片 ms-rXXXX.woff2：其余字形按 512 码位区间成片（区间内剔除核心片已有的字，
      与核心片零重叠），空片跳过——新标题里的罕见字落到这里，按片懒加载。
 
 语料怎么维护：库里加了带新字的内容后，重跑一遍本脚本即可（见下方「更新语料」）；
@@ -25,7 +25,7 @@
     -N -e "select title from sgj_item union select dict_label from sys_dict_data;" \\
     >> scripts/handdrawn-corpus.txt   # 去重交给本脚本
 
-输出：src/assets/fonts/handdrawn/longcang/lc-*.woff2 与 longcang.css。
+输出：src/assets/fonts/handdrawn/longcang/lc-*.woff2 与 mashanzheng.css。
 字体为 SIL OFL 1.1 授权，随包分发需附许可证，见同目录 OFL.txt。
 """
 import os
@@ -57,9 +57,9 @@ def subset(ttf: str, out: str, unicodes: list[int]) -> None:
 
 def main(ttf_path: str) -> None:
     here = os.path.dirname(os.path.abspath(__file__))
-    out_dir = os.path.normpath(os.path.join(here, '..', 'src', 'assets', 'fonts', 'handdrawn', 'longcang'))
+    out_dir = os.path.normpath(os.path.join(here, '..', 'src', 'assets', 'fonts', 'handdrawn', 'mashanzheng'))
     os.makedirs(out_dir, exist_ok=True)
-    for old in (f for f in os.listdir(out_dir) if f.endswith('.woff2') or f == 'longcang.css'):
+    for old in (f for f in os.listdir(out_dir) if f.endswith('.woff2') or f == 'mashanzheng.css'):
         os.remove(os.path.join(out_dir, old))
 
     cmap = TTFont(ttf_path).getBestCmap()
@@ -72,12 +72,12 @@ def main(ttf_path: str) -> None:
     faces = []
 
     # 1) 核心片：语料本身
-    core_out = os.path.join(out_dir, 'lc-core.woff2')
+    core_out = os.path.join(out_dir, 'ms-core.woff2')
     subset(ttf_path, core_out, sorted(corpus))
     core_range = ','.join(fmt_cp(cp) for cp in sorted(corpus))
     faces.append(
         f"@font-face{{font-family:'Ma Shan Zheng';font-style:normal;font-weight:400;font-display:swap;"
-        f"src:url('./lc-core.woff2') format('woff2');unicode-range:{core_range};}}"
+        f"src:url('./ms-core.woff2') format('woff2');unicode-range:{core_range};}}"
     )
 
     # 2) 稀疏片：其余字形按区间成片（与核心片零重叠），空片跳过。
@@ -89,7 +89,7 @@ def main(ttf_path: str) -> None:
         cps = [cp for cp in range(start, end + 1) if cp in cmap and cp not in corpus]
         if not cps:
             continue
-        name = f'lc-r{start:04X}'
+        name = f'ms-r{start:04X}'
         out = os.path.join(out_dir, f'{name}.woff2')
         subset(ttf_path, out, cps)
         kept += 1
@@ -100,7 +100,7 @@ def main(ttf_path: str) -> None:
             f"src:url('./{name}.woff2') format('woff2');unicode-range:{sparse_range};}}"
         )
 
-    css_path = os.path.join(out_dir, 'longcang.css')
+    css_path = os.path.join(out_dir, 'mashanzheng.css')
     header = (
         '/* 马善政（SIL OFL 1.1）自托管子集 —— 由 scripts/gen-handdrawn-font.py 生成，勿手改。\n'
         f' * 核心片（站点语料 {len(corpus)} 字）+ 稀疏片 {kept} 片兜底 {sparse_total / 1024:.0f} KB；\n'

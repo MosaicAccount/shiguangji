@@ -318,11 +318,11 @@ onMounted(() => {
   --hd-amber: #B18458;
   --hd-moss: #5D6F66;
   --hd-tape: rgba(168, 95, 82, 0.16);
-  /* 字体用法（结论 101，用户实测拍板）：手写体只做「标题时刻」——页头 / 组名 / 空态；
-     正文（条目、日期、按钮、说明）回到站内衬线体。手写体铺满全页时小字号下显乱（实测「好丑」），
-     手绘感由纸 / 方框 / 抖线承担，不依赖正文也用手写。 */
+  /* 字体（结论 103，回到设计图口径）：整页马善政——正文、标题、按钮、说明全部手写，
+   * 与已确认的设计图完全一致。此前「好丑」的根因是龙藏（潦草钢笔字）而非手写铺满，
+   * 结论 101 的衬线正文方案作废。 */
   --hd-hand: 'Ma Shan Zheng', var(--sgj-font-serif);
-  --hd-body: var(--sgj-font-serif);
+  --hd-body: 'Ma Shan Zheng', var(--sgj-font-serif);
 
   max-width: 1080px;
   margin: 0 auto;
@@ -433,7 +433,7 @@ html.dark .plan-page {
   }
 
   .main { flex: 1; min-width: 0;
-    .t { font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .t { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m { display: flex; align-items: center; gap: 10px; margin-top: 2px; font-size: 13.5px; color: var(--hd-ink-soft); flex-wrap: wrap;
       .st { padding: 0 8px; border-radius: 10px 3px 9px 4px / 4px 9px 3px 10px; border: 1.6px solid var(--hd-line-soft);
         &.doing { border-color: var(--hd-red); color: var(--hd-red); background: var(--hd-red-soft); } }
