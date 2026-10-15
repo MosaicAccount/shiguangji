@@ -475,13 +475,39 @@ function openDetailById(itemId: number): void {
  *  配套：读取路由 ?itemId=，存在则自动打开对应条目详情
  * （首页时间线最小方案：跳转到对应类型列表页并携带 itemId 自动开详情）
  */
+/**
+ *  配套：读取路由 ?itemId=，存在则自动打开对应条目详情（计划页 / 首页时间线跳转）
+ *
+ * 0.0.3：跳转可带 type / status 预选胶囊——不带的话抽屉开了、列表里却看不到它
+ * （影视页默认「电影 + 想看」，电视剧或「在看」的条目落在别的胶囊下）。
+ * 注意 setup 里 loadData() 先于本函数执行，胶囊变了要补一次 loadData。
+ */
 function handleRouteQuery(): void {
+  const qType = route.query.type
+  const qStatus = route.query.status
+  let filterChanged = false
+  if ((qType === 'MOVIE' || qType === 'TV') && activeType.value !== qType) {
+    activeType.value = qType
+    filterChanged = true
+  }
+  if ((qStatus === 'WANT' || qStatus === 'DOING' || qStatus === 'DONE') && activeStatus.value !== qStatus) {
+    activeStatus.value = qStatus
+    filterChanged = true
+  }
+  if (filterChanged) {
+    loadData()
+  }
+
   const raw = route.query.itemId
-  if (!raw) return
-  const itemId = Number(raw)
-  if (!itemId) return
-  openDetailById(itemId)
-  router.replace({ path: '/movie', query: {} })
+  if (raw) {
+    const itemId = Number(raw)
+    if (itemId) {
+      openDetailById(itemId)
+    }
+  }
+  if (raw || qType || qStatus) {
+    router.replace({ path: '/movie', query: {} })
+  }
 }
 
 /** 打开编辑（详情抽屉内） */

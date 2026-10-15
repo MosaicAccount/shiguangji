@@ -142,38 +142,15 @@ describe('T-84 首页心愿条与心愿单', () => {
     wrapper.unmount()
   })
 
-  it('心愿单分页：分页脚与「最近笔记」同款，点一下以 pageNum=2 追加', async () => {
+  it('心愿单只放首屏一页，右下角是「查看全部心愿 →」链接（与最近笔记同款、统一「心愿」措辞）', async () => {
     const wrapper = await mountHome()
-    const more = wrapper.find('.wish-more')
-    expect(more.exists(), '应出现「加载更多」链接式按钮').toBe(true)
-    expect(more.text()).toContain('还有 15 项')   // 25 - 10
-    expect(more.text()).toContain('→')
-    // 与最近笔记的 .note-more 同一视觉语言（复用同一 class）
-    expect(more.classes()).toContain('note-more')
+    // 只渲染首屏 10 条，其余去 /plan 看（结论 95/96）
+    expect(wrapper.findAll('.wish-item')).toHaveLength(10)
 
-    await more.trigger('click')
-    await flushPromises()
-
-    expect(mockedPlanList).toHaveBeenLastCalledWith({ pageNum: 2, pageSize: 10 })
-    expect(wrapper.findAll('.wish-item')).toHaveLength(20)
-    expect(wrapper.find('.wish-more').text()).toContain('还有 5 项')
-    wrapper.unmount()
-  })
-
-  it('心愿单加载完最后一页后显示「已全部显示 · 共 N 项」', async () => {
-    mockedPlanList.mockImplementation(async (query: any) => {
-      const pageSize = query?.pageSize ?? 10
-      const pageNum = query?.pageNum ?? 1
-      return { code: 200, data: wishRows(12).slice((pageNum - 1) * pageSize, pageNum * pageSize), total: 12 } as any
-    })
-    const wrapper = await mountHome()
-    expect(wrapper.find('.wish-more').text()).toContain('还有 2 项')
-
-    await wrapper.find('.wish-more').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.wish-more').exists()).toBe(false)
-    expect(wrapper.find('.wish-all-loaded').text()).toBe('已全部显示 · 共 12 项')
+    const more = wrapper.find('.wishlist-card .note-more')
+    expect(more.exists()).toBe(true)
+    expect(more.text()).toBe('查看全部心愿 →')
+    expect(more.attributes('href')).toBe('/plan')
     wrapper.unmount()
   })
 })

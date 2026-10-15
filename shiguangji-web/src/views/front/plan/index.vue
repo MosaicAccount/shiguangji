@@ -4,8 +4,8 @@
       <div class="banner-blob" aria-hidden="true"></div>
       <div class="banner-blob2" aria-hidden="true"></div>
       <div class="banner-text">
-        <h1>计划 · 想到就排上</h1>
-        <p>影单 / 书单 / 足迹里<strong>还没做完</strong>的事，按你定的日子排在一起。定了哪天就是「计划」，没定日子的在最后一组。</p>
+        <h1>心愿 · 想到就排上</h1>
+        <p>影单 / 书单 / 足迹里<strong>还没做完</strong>的心愿，按你定的日子排在一起：定了日子的在前，没定日子的在最后一组。</p>
         <div class="banner-chips">
           <span class="bchip">共 {{ total }} 项</span>
           <span class="bchip bchip-doing">在做 {{ doingCount }}</span>
@@ -17,7 +17,7 @@
     <div v-loading="loading" class="plan-body">
       <el-empty
         v-if="!loading && !loadError && !list.length"
-        description="还没有计划 —— 去影单 / 书单挑一个，填上打算哪天看。"
+        description="还没有心愿 —— 去影单 / 书单挑一个，填上打算哪天看。"
       >
         <div class="empty-actions">
           <el-button type="primary" round @click="router.push('/movie')">去影单</el-button>
@@ -121,7 +121,7 @@ import { getToken } from '@/utils/auth'
 import { useDict } from '@/utils/dict'
 import { groupPlanItems, planDateLabel, localDateKey } from '@/utils/plan'
 import { itemStatusLabel } from '@/utils/itemStatus'
-import { listPlanItems, getFrontItem, updateFrontItem } from '@/api/front/item'
+import { listPlanItems, updateFrontItem } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
 import type { SgjItem } from '@/types/api/business/item'
 
@@ -243,13 +243,15 @@ function onCompleted(): void {
   loadData()
 }
 
-/** 点卡片本体跳到对应模块的详情（沿用“列表页 + ?itemId= 自动开详情”的最小方案） */
+/** 点卡片本体跳到对应模块并自动开详情：带上 type/status 预选胶囊——
+ *  影视页默认「电影 + 想看」，不带的话电视剧或「在看」的条目落过去列表里看不到（结论 97） */
 function openDetail(item: SgjItem): void {
   if (!item.itemId) return
   const path = item.itemType === 'BOOK' ? '/book' : item.itemType === 'PLACE' ? '/travel' : '/movie'
-  getFrontItem(item.itemId).then(() => {
-    router.push({ path, query: { itemId: String(item.itemId) } })
-  }).catch(() => {})
+  router.push({
+    path,
+    query: { itemId: String(item.itemId), type: item.itemType, status: item.status || undefined }
+  })
 }
 
 onMounted(() => {

@@ -120,15 +120,8 @@
             </div>
             <el-button link class="wish-complete" @click="openComplete(item)">完成 →</el-button>
           </div>
-          <!-- 心愿单分页脚：与下面「最近笔记」的「查看全部笔记 →」同一视觉语言 -->
-          <button
-            v-if="wishlist.length && hasMoreWish"
-            type="button"
-            class="note-more wish-more"
-            :disabled="wishLoadingMore"
-            @click="loadMoreWishlist"
-          >{{ wishLoadingMore ? '加载中…' : `加载更多（还有 ${wishTotal - wishlist.length} 项）→` }}</button>
-          <span v-else-if="wishlist.length" class="wish-all-loaded">已全部显示 · 共 {{ wishTotal }} 项</span>
+          <!-- 与「最近笔记」同一模式：侧栏只放首屏一页，完整列表（含分页）去 /plan 看 -->
+          <router-link v-if="wishlist.length" to="/plan" class="note-more">查看全部心愿 →</router-link>
         </section>
 
         <section class="notes-card">
@@ -327,39 +320,19 @@ function onCompleted(): void {
 }
 
 // ------------------------------------------------------------------
-// 心愿单：与计划页同一个数据源（/app/item/plan/list），因此翻页口径与排序完全一致
+// 心愿单：与心愿页（/plan）同一个数据源（/app/item/plan/list），排序口径完全一致。
+// 侧栏只取首屏一页，完整列表由「查看全部心愿 →」进 /plan（与「查看全部笔记 →」同一模式）。
 // ------------------------------------------------------------------
 
-/** 心愿单每页条数（首屏与「加载更多」同一页大小，翻页才不会错位） */
+/** 心愿单首屏条数 */
 const WISHLIST_PAGE_SIZE = 10
 const wishlist = ref<SgjItem[]>([])
-const wishTotal = ref(0)
-const wishPage = ref(1)
-const wishLoadingMore = ref(false)
-const hasMoreWish = computed(() => wishlist.value.length < wishTotal.value)
 
-/** 拉第一页（刷新场景：完成、改日期后调用） */
+/** 拉首屏一页（完成、改日期后刷新） */
 function loadWishlist(): Promise<void> {
-  wishPage.value = 1
   return listPlanItems({ pageNum: 1, pageSize: WISHLIST_PAGE_SIZE }).then(response => {
     wishlist.value = response.data || []
-    wishTotal.value = Number(response.total) || 0
   }).catch(() => {})
-}
-
-/** 加载下一页并追加 */
-function loadMoreWishlist(): void {
-  if (wishLoadingMore.value || !hasMoreWish.value) return
-  wishLoadingMore.value = true
-  wishPage.value += 1
-  listPlanItems({ pageNum: wishPage.value, pageSize: WISHLIST_PAGE_SIZE }).then(response => {
-    wishlist.value = wishlist.value.concat(response.data || [])
-    wishTotal.value = Number(response.total) || 0
-  }).catch(() => {
-    wishPage.value -= 1
-  }).finally(() => {
-    wishLoadingMore.value = false
-  })
 }
 
 function formatDate(time?: string): string {
@@ -1091,30 +1064,6 @@ if (isLogin.value) {
     flex-shrink: 0;
     font-size: 12px;
     color: var(--sgj-primary);
-  }
-
-  /* 分页脚与「最近笔记」的 .note-more 同一视觉：右对齐主色 12px；
-     .wish-more 只是按钮复位（.note-more 的排版照抄），.wish-all-loaded 用弱色收尾 */
-  .wish-more {
-    width: 100%;
-    background: none;
-    border: 0;
-    padding: 0;
-    font: inherit;
-    cursor: pointer;
-
-    &:disabled {
-      cursor: default;
-      color: var(--sgj-text-3);
-    }
-  }
-
-  .wish-all-loaded {
-    display: block;
-    text-align: right;
-    margin-top: 12px;
-    font-size: 12px;
-    color: var(--sgj-text-4);
   }
 }
 

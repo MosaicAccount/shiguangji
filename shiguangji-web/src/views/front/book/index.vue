@@ -402,14 +402,30 @@ function openDetailById(itemId: number): void {
 
 /**
  *  配套：读取路由 ?itemId=，存在则自动打开对应条目详情
+ * 0.0.3：跳转可带 status 预选胶囊（「在读」的条目不在默认「想读」列表里）；
+ * setup 里 loadData() 先于本函数执行，胶囊变了要补一次 loadData。
  */
 function handleRouteQuery(): void {
+  const qStatus = route.query.status
+  let filterChanged = false
+  if ((qStatus === 'WANT' || qStatus === 'DOING' || qStatus === 'DONE') && activeStatus.value !== qStatus) {
+    activeStatus.value = qStatus
+    filterChanged = true
+  }
+  if (filterChanged) {
+    loadData()
+  }
+
   const raw = route.query.itemId
-  if (!raw) return
-  const itemId = Number(raw)
-  if (!itemId) return
-  openDetailById(itemId)
-  router.replace({ path: '/book', query: {} })
+  if (raw) {
+    const itemId = Number(raw)
+    if (itemId) {
+      openDetailById(itemId)
+    }
+  }
+  if (raw || qStatus) {
+    router.replace({ path: '/book', query: {} })
+  }
 }
 
 /** 打开编辑（详情抽屉内） */

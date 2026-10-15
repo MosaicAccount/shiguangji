@@ -652,6 +652,14 @@ function openDetailById(itemId: number): void {
  * - ?mode=map：直达地图模式（首页「旅行足迹地图」入口卡）
  */
 function handleRouteQuery(): void {
+  // 0.0.3：跳转可带 status 预选胶囊（地点只有 想去/去过 两态，其余值忽略）；
+  // onMounted 里 loadData() 先于本函数执行，胶囊变了要补一次 loadData
+  const qStatus = route.query.status
+  if ((qStatus === 'WANT' || qStatus === 'DONE') && activeStatus.value !== qStatus) {
+    activeStatus.value = qStatus
+    loadData()
+  }
+
   const rawId = route.query.itemId
   if (rawId) {
     const itemId = Number(rawId)
@@ -663,7 +671,9 @@ function handleRouteQuery(): void {
     mode.value = 'map'
     loadMapData()
   }
-  router.replace({ path: '/travel', query: {} })
+  if (rawId || qStatus || route.query.mode) {
+    router.replace({ path: '/travel', query: {} })
+  }
 }
 
 /** 打开编辑（详情抽屉内） */
