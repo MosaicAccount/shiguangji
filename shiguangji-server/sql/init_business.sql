@@ -18,14 +18,14 @@ set foreign_key_checks = 0;
 -- 1、内容条目主表
 -- 统一存放四类条目的公共字段
 -- item_type: MOVIE=电影 TV=电视剧 BOOK=书籍 PLACE=地点
--- status: 按类型使用统一枚举，例如 WANT=想看/想读/想去 DONE=看过/读过/去过
+-- status: 按类型使用统一枚举，例如 WANT=想看/想读/想去 DOING=在看/在读 DONE=看过/读过/去过（地点仅 WANT/DONE，见 0.0.3 D-5）
 -- ----------------------------
 drop table if exists sgj_item;
 create table sgj_item (
   item_id        bigint(20)      not null auto_increment    comment '条目ID',
   item_type      varchar(20)     not null                   comment '条目类型（MOVIE/TV/BOOK/PLACE）',
   title          varchar(200)    not null                   comment '标题/名称',
-  status         varchar(20)     not null default 'WANT'    comment '状态（WANT/DONE）',
+  status         varchar(20)     not null default 'WANT'    comment '状态（WANT/DOING/DONE；地点仅 WANT/DONE）',
   rating         decimal(3,1)    default null               comment '评分（0-10，保留一位小数）',
   comment        text                                       comment '个人短评',
   tags           varchar(500)    default ''                 comment '标签，多个用英文逗号分隔',
@@ -243,8 +243,8 @@ insert into sys_menu values('2020', '标签删除', '2016', '4', '', '', '', '',
 
 -- 字典类型
 insert into sys_dict_type values(30, '条目类型',       'sgj_item_type',     '0', 'admin', sysdate(), '', null, '影视/书籍/地点条目类型');
-insert into sys_dict_type values(31, '影视状态',       'sgj_movie_status',  '0', 'admin', sysdate(), '', null, '影视条目状态（想看/看过）');
-insert into sys_dict_type values(32, '阅读状态',       'sgj_book_status',   '0', 'admin', sysdate(), '', null, '书籍条目状态（想读/已读）');
+insert into sys_dict_type values(31, '影视状态',       'sgj_movie_status',  '0', 'admin', sysdate(), '', null, '影视条目状态（想看/在看/看过）');
+insert into sys_dict_type values(32, '阅读状态',       'sgj_book_status',   '0', 'admin', sysdate(), '', null, '书籍条目状态（想读/在读/已读）');
 insert into sys_dict_type values(33, '旅行状态',       'sgj_place_status',  '0', 'admin', sysdate(), '', null, '地点条目状态（想去/去过）');
 insert into sys_dict_type values(34, '地点分类',       'sgj_place_category','0', 'admin', sysdate(), '', null, '地点分类（自然/人文/美食等）');
 insert into sys_dict_type values(35, '最佳季节',       'sgj_best_season',   '0', 'admin', sysdate(), '', null, '地点最佳游览季节');
@@ -260,12 +260,14 @@ insert into sys_dict_data values(100, 1, '电影',   'MOVIE', 'sgj_item_type',  
 insert into sys_dict_data values(101, 2, '电视剧', 'TV',    'sgj_item_type',      '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '电视剧');
 insert into sys_dict_data values(102, 3, '书籍',   'BOOK',  'sgj_item_type',      '', 'success', 'N', '0', 'admin', sysdate(), '', null, '书籍');
 insert into sys_dict_data values(103, 4, '地点',   'PLACE', 'sgj_item_type',      '', 'info',    'N', '0', 'admin', sysdate(), '', null, '地点');
--- 影视状态
-insert into sys_dict_data values(110, 1, '想看', 'WANT', 'sgj_movie_status', '', 'info',    'Y', '0', 'admin', sysdate(), '', null, '想看');
-insert into sys_dict_data values(111, 2, '看过', 'DONE', 'sgj_movie_status', '', 'success', 'N', '0', 'admin', sysdate(), '', null, '看过');
+-- 影视状态（DOING=在看 为 0.0.3 新增；DONE 的 dict_sort 由 2 改 3，保证胶囊顺序 想看/在看/看过）
+insert into sys_dict_data values(110, 1, '想看', 'WANT',  'sgj_movie_status', '', 'info',    'Y', '0', 'admin', sysdate(), '', null, '想看');
+insert into sys_dict_data values(111, 3, '看过', 'DONE',  'sgj_movie_status', '', 'success', 'N', '0', 'admin', sysdate(), '', null, '看过');
+insert into sys_dict_data values(112, 2, '在看', 'DOING', 'sgj_movie_status', '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '在看');
 -- 阅读状态
-insert into sys_dict_data values(120, 1, '想读', 'WANT', 'sgj_book_status', '', 'info',    'Y', '0', 'admin', sysdate(), '', null, '想读');
-insert into sys_dict_data values(121, 2, '已读', 'DONE', 'sgj_book_status', '', 'success', 'N', '0', 'admin', sysdate(), '', null, '已读');
+insert into sys_dict_data values(120, 1, '想读', 'WANT',  'sgj_book_status', '', 'info',    'Y', '0', 'admin', sysdate(), '', null, '想读');
+insert into sys_dict_data values(121, 3, '已读', 'DONE',  'sgj_book_status', '', 'success', 'N', '0', 'admin', sysdate(), '', null, '已读');
+insert into sys_dict_data values(122, 2, '在读', 'DOING', 'sgj_book_status', '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '在读');
 -- 旅行状态
 insert into sys_dict_data values(130, 1, '想去', 'WANT', 'sgj_place_status', '', 'info',    'Y', '0', 'admin', sysdate(), '', null, '想去');
 insert into sys_dict_data values(131, 2, '去过', 'DONE', 'sgj_place_status', '', 'success', 'N', '0', 'admin', sysdate(), '', null, '去过');

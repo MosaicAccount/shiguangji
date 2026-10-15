@@ -112,6 +112,20 @@ export const constantRoutes = [
     ]
   },
   {
+    // 心愿页（0.0.3；路由沿用 /plan）：未完成 WANT/DOING 的全类型汇总，按计划日期分组
+    path: '/plan',
+    component: FrontLayout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/front/plan/index.vue'),
+        name: 'FrontPlan',
+        meta: { title: '心愿' }
+      }
+    ]
+  },
+  {
     path: '/note',
     component: FrontLayout,
     hidden: true,

@@ -6,7 +6,7 @@
         <img v-if="heroImage" class="md-hero-img" :src="heroImage" :alt="item.title" @error="onHeroError" />
         <span v-else class="md-hero-glyph" aria-hidden="true">{{ glyph }}</span>
         <div class="md-hero-mask" aria-hidden="true"></div>
-        <span class="md-status" :class="item.status">{{ item.status === 'DONE' ? doneLabel : wantLabel }}</span>
+        <span class="md-status" :class="item.status">{{ statusText }}</span>
         <button class="md-close" aria-label="关闭详情" @click="visible = false">✕</button>
         <div class="md-hero-bottom">
           <h2>{{ item.title }}</h2>
@@ -51,9 +51,11 @@ const props = defineProps<{
   item: SgjItem | null
   /** 无封面时的衬线占位字（影/剧/书） */
   glyph: string
-  /** 状态文案（DONE/WANT），如 看过/想看、已读/想读 */
+  /** 状态文案（DONE/WANT/DOING），如 看过/想看/在看、已读/想读/在读 */
   doneLabel: string
   wantLabel: string
+  /** 进行中态文案（0.0.3 三态）；地点等无中间态的页面不传，回退 wantLabel */
+  doingLabel?: string
   /** 标题下 meta 行（评分之外），如「1994 年上映」 */
   heroMeta?: string[]
   /** 短评卡标签（如 MY THOUGHTS · 我的短评），不传则不渲染短评卡 */
@@ -71,6 +73,13 @@ const emit = defineEmits<{
 const visible = computed({
   get: () => props.modelValue,
   set: value => emit('update:modelValue', value)
+})
+
+/** 状态徽标文案：显式三态，缺 doingLabel 的页面回退 wantLabel（地点无中间态） */
+const statusText = computed(() => {
+  if (props.item?.status === 'DONE') return props.doneLabel
+  if (props.item?.status === 'DOING') return props.doingLabel || props.wantLabel
+  return props.wantLabel
 })
 
 const heroFailed = ref(false)
@@ -149,6 +158,11 @@ function onHeroError(): void {
 
   &.DONE {
     background: rgba(93, 111, 102, 0.92);
+  }
+
+  /* 在看/在读：暖陶色，介于 WANT 琥珀与 DONE 鼠尾草之间 */
+  &.DOING {
+    background: rgba(168, 95, 82, 0.92);
   }
 
   &.WANT {

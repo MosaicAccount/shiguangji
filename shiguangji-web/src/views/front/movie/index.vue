@@ -67,12 +67,16 @@
           <div class="card-title">{{ item.title }}</div>
           <div class="card-meta">
             <span class="card-meta-text">{{ cardMeta(item) }}</span>
+            <plan-date-badge :item="item" @saved="loadData" />
             <span v-if="item.rating" class="rating-pill">★ {{ item.rating }}</span>
           </div>
           <div v-if="item.comment" class="card-comment">{{ item.comment }}</div>
         </div>
         <div class="card-actions" @click.stop>
-          <el-button v-if="item.status === 'WANT' && isLogin" type="primary" size="small" round @click="openComplete(item)">
+          <el-button v-if="item.status === 'WANT' && isLogin" size="small" round @click="startDoing(item)">
+            开始看 →
+          </el-button>
+          <el-button v-if="item.status !== 'DONE' && isLogin" type="primary" size="small" round @click="openComplete(item)">
             标记看过
           </el-button>
           <el-button v-if="item.status === 'DONE' && isLogin" type="warning" size="small" round @click="handleUncomplete(item)">
@@ -126,6 +130,9 @@
           <!-- 标签来自后台标签管理，按条目类型区分，禁止自由输入 -->
           <tag-select v-model="addForm.tags" :module="activeType" placeholder="选择标签（可选）" />
         </el-form-item>
+        <el-form-item label="计划日期">
+          <el-date-picker v-model="addForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="打算哪天看（可选）" :clearable="false" style="width: 100%" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -133,24 +140,8 @@
       </template>
     </el-dialog>
 
-    <!-- 标记看过 -->
-    <el-dialog v-model="completeOpen" :title="'标记看过：' + (currentItem?.title || '')" width="520px" append-to-body>
-      <el-form ref="completeFormRef" :model="completeForm" label-width="80px">
-        <el-form-item label="看完日期">
-          <el-date-picker v-model="completeForm.finishDate" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="评分">
-          <el-rate v-model="completeForm.rating" :max="10" show-score />
-        </el-form-item>
-        <el-form-item label="短评">
-          <el-input v-model="completeForm.comment" type="textarea" :rows="3" placeholder="写点短评吧（可选）" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="primary" @click="submitComplete">确 定</el-button>
-        <el-button @click="completeOpen = false">取 消</el-button>
-      </template>
-    </el-dialog>
+    <!-- 标记看过（统一完成弹窗，文案与字段随类型参数化） -->
+    <item-complete-dialog v-model="completeOpen" :item="currentItem" @submitted="onCompleted" />
 
     <!-- 详情抽屉：封面铺底 hero + 手账风信息卡（与足迹页同风格） -->
     <media-detail-drawer
@@ -159,6 +150,7 @@
       :glyph="activeType === 'MOVIE' ? '影' : '剧'"
       done-label="看过"
       want-label="想看"
+      doing-label="在看"
       :hero-meta="heroMeta"
       memory-label="MY THOUGHTS · 我的短评"
       :can-operate="isLogin"
@@ -191,11 +183,14 @@ import { getToken } from '@/utils/auth'
 import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
+import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
+import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
-import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, updateFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
-import type { SgjItem } from '@/types/api/business/item'
+import { listFrontItem, getFrontItem, addFrontItem, updateFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
+import type { SgjItem, ItemStatus } from '@/types/api/business/item'
+import { planDateLabel, localDateKey } from '@/utils/plan'
 
 const { sgj_item_type, sgj_movie_status, sgj_movie_genre, sgj_region, sgj_language } = useDict('sgj_item_type', 'sgj_movie_status', 'sgj_movie_genre', 'sgj_region', 'sgj_language')
 
@@ -210,8 +205,8 @@ const isLogin = computed(() => !!getToken())
 const movieTypes = computed(() => (sgj_item_type.value || []).filter(t => t.value === 'MOVIE' || t.value === 'TV'))
 
 const activeType = ref<'MOVIE' | 'TV'>('MOVIE')
-/** 访客默认只看已完成内容 */
-const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
+/** 访客默认只看已完成内容；登录后含三态胶囊（字典驱动，0.0.3 起多一枚「在看」） */
+const activeStatus = ref<ItemStatus>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
 /** 标签筛选（选择即查询；切换类型时由 switchType 清空并随列表刷新） */
 const searchTag = ref('')
@@ -243,7 +238,9 @@ const addForm = reactive({
   seasonCount: undefined,
   episodeCount: undefined,
   genre: undefined,
-  tags: undefined as string | undefined
+  tags: undefined as string | undefined,
+  /** 计划日期（0.0.3）：留空即纯心愿 */
+  startDate: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -256,12 +253,6 @@ function onCoverError(item: SgjItem): void {
 function isCoverError(item: SgjItem): boolean {
   return item.itemId != null && coverErrorIds.value.has(item.itemId)
 }
-
-const completeForm = reactive({
-  finishDate: undefined,
-  rating: undefined,
-  comment: undefined
-})
 
 const addRules = {
   title: [{ required: true, message: '请输入影视名称', trigger: 'blur' }]
@@ -324,25 +315,40 @@ function switchType(type: 'MOVIE' | 'TV'): void {
   handleTypeChange()
 }
 
-/** 状态胶囊切换 */
-function switchStatus(status: 'WANT' | 'DONE'): void {
+/** 状态胶囊切换（字典驱动，三枚：想看 / 在看 / 看过） */
+function switchStatus(status: ItemStatus): void {
   if (activeStatus.value === status) return
   activeStatus.value = status
   loadData()
 }
 
+/** WANT → DOING：开始看（0.0.3 状态流转复用 PUT /app/item/{id}，不新增端点） */
+function startDoing(item: SgjItem): void {
+  if (!item.itemId) return
+  updateFrontItem(item.itemId, { status: 'DOING' }).then(() => {
+    proxy.$modal.msgSuccess(`开始看：${item.title || ''}`)
+    loadData()
+  }).catch(() => {})
+}
+
 /** 封面占位衬线字 */
 const coverGlyph = computed(() => (activeType.value === 'MOVIE' ? '影' : '剧'))
 
-/** 详情抽屉 hero meta：评分之外追加年份信息 */
+/** 详情抽屉 hero meta：评分之外追加年份与计划日期 */
 const heroMeta = computed<string[]>(() => {
   const d = detail.value
   if (!d) return []
-  if (activeType.value === 'MOVIE') {
-    return d.releaseYear ? [`${d.releaseYear} 年上映`] : []
+  const meta: string[] = []
+  if (d.startDate) {
+    meta.push(`计划 ${planDateLabel(d.startDate.slice(0, 10), localDateKey(new Date()))}`)
   }
-  const span = [d.startYear, d.endYear].filter(Boolean).join('-')
-  return span ? [`${span} 年`] : []
+  if (activeType.value === 'MOVIE') {
+    if (d.releaseYear) meta.push(`${d.releaseYear} 年上映`)
+  } else {
+    const span = [d.startYear, d.endYear].filter(Boolean).join('-')
+    if (span) meta.push(`${span} 年`)
+  }
+  return meta
 })
 
 /** 详情抽屉分类 chips：类型/地区/语言（script 内调用需手动解包字典 ref） */
@@ -438,21 +444,13 @@ function goWriteNote(itemId: number, title: string): void {
 
 function openComplete(item: SgjItem): void {
   currentItem.value = item
-  Object.assign(completeForm, {
-    finishDate: undefined,
-    rating: undefined,
-    comment: undefined
-  })
   completeOpen.value = true
 }
 
-function submitComplete(): void {
-  if (!currentItem.value?.itemId) return
-  completeFrontItem(currentItem.value.itemId, completeForm).then(() => {
-    proxy.$modal.msgSuccess('已标记看过')
-    completeOpen.value = false
-    loadData()
-  }).catch(() => {})
+/** 统一完成弹窗提交成功：提示与刷新留在页面侧（文案与原页内实现逐字一致） */
+function onCompleted(): void {
+  proxy.$modal.msgSuccess('已标记看过')
+  loadData()
 }
 
 function openDetail(item: SgjItem): void {
@@ -477,13 +475,39 @@ function openDetailById(itemId: number): void {
  *  配套：读取路由 ?itemId=，存在则自动打开对应条目详情
  * （首页时间线最小方案：跳转到对应类型列表页并携带 itemId 自动开详情）
  */
+/**
+ *  配套：读取路由 ?itemId=，存在则自动打开对应条目详情（计划页 / 首页时间线跳转）
+ *
+ * 0.0.3：跳转可带 type / status 预选胶囊——不带的话抽屉开了、列表里却看不到它
+ * （影视页默认「电影 + 想看」，电视剧或「在看」的条目落在别的胶囊下）。
+ * 注意 setup 里 loadData() 先于本函数执行，胶囊变了要补一次 loadData。
+ */
 function handleRouteQuery(): void {
+  const qType = route.query.type
+  const qStatus = route.query.status
+  let filterChanged = false
+  if ((qType === 'MOVIE' || qType === 'TV') && activeType.value !== qType) {
+    activeType.value = qType
+    filterChanged = true
+  }
+  if ((qStatus === 'WANT' || qStatus === 'DOING' || qStatus === 'DONE') && activeStatus.value !== qStatus) {
+    activeStatus.value = qStatus
+    filterChanged = true
+  }
+  if (filterChanged) {
+    loadData()
+  }
+
   const raw = route.query.itemId
-  if (!raw) return
-  const itemId = Number(raw)
-  if (!itemId) return
-  openDetailById(itemId)
-  router.replace({ path: '/movie', query: {} })
+  if (raw) {
+    const itemId = Number(raw)
+    if (itemId) {
+      openDetailById(itemId)
+    }
+  }
+  if (raw || qType || qStatus) {
+    router.replace({ path: '/movie', query: {} })
+  }
 }
 
 /** 打开编辑（详情抽屉内） */

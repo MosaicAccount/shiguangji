@@ -1,0 +1,146 @@
+/* 心愿页手绘皮肤 —— 唯一来源：设计图与产品共用本文件。
+ * 设计图 docs/design/mockups/plan-0.0.3/handdrawn-checklist.html 通过 <link> 引用它，
+ * 页面 shiguangji-web/src/views/front/plan/index.vue 也 import 它；
+ * 因此「实现即设计图」，不存在两份样式各自漂移的可能。
+ *
+ * 相对设计图的必要变换（仅此几处，其余逐字保留）：
+ *   1. 作用域：所有规则加 .plan-page 前缀（设计图里是整页，产品里是本页）；
+ *   2. 暗色钩子：设计图用 html[data-theme="dark"]，产品用 html.dark（两套令牌值一字未改）；
+ *   3. body → .plan-page：margin/background 归站点，字体与颜色沿设计图；
+ *   4. 字体：产品自托管霞鹜文楷（--hd-hand，结论 107），设计图的评审切换器留在外壳；
+ *   5. 空态：设计图靠 body[data-state] 切换，产品的显隐由 Vue 控制，故去掉 display:none；
+ *   6. 移动端：设计图靠 body[data-vp] 预览，产品用真实媒体查询（同一批声明）。
+ * 设计图的评审工具条/视口框/标注/站点导航属评审外壳，不进本文件。
+ */
+.plan-page {
+  --hd-page:#F1F3F2;
+  --hd-paper:#FFFEF8;
+  --hd-paper-2:#FBF7EE;
+  --hd-ink:#3B342C;
+  --hd-ink-soft:#8A8075;
+  --hd-ink-faint:#B7AE9F;
+  --hd-line:rgba(59,52,44,.5);
+  --hd-line-soft:rgba(59,52,44,.28);
+  --hd-red:#A85F52;
+  --hd-red-soft:rgba(168,95,82,.12);
+  --hd-amber:#B18458;
+  --hd-amber-soft:rgba(177,132,88,.14);
+  --hd-moss:#5D6F66;
+  --hd-moss-soft:rgba(93,111,102,.14);
+  --hd-tape:rgba(168,95,82,.16);
+  --an:#E8632C;
+  /* 字体（结论 106）：系统楷体栈，用户拍板「选那种楷体」。
+   * 必须写成自包含的字体栈，不得把站点变量（var(--sgj-font-serif)）当回退：
+   * 设计图里没有那个变量，按 CSS 规范整条 font-family 会失效、退回浏览器默认字体——
+   * 于是「设计图好看、实现难看」其实是在比两种完全不同的字体（实测踩过，结论 106）。 */
+  /* 字体（结论 107）：自托管霞鹜文楷（LXGW WenKai，OFL）——系统字体各平台不一致
+   * （安卓无楷体、Windows 楷体与 macOS 不同），要跨设备一致只能随包分发；
+   * 后面几项是系统楷体兜底。栈必须自包含，不得引用站点变量（结论 106 的坑）。 */
+  --hd-hand: 'LXGW WenKai', 'Kaiti SC', 'STKaiti', 'KaiTi', 'Songti SC', serif;
+
+  /* 站点 body 设了 -webkit-font-smoothing:antialiased + text-rendering:optimizeLegibility，
+   * 会把细笔画手写体「洗淡」——实测同一段文字、同一字体，笔画覆盖比设计图的默认渲染少 15~22%。
+   * 这里还原设计图的渲染条件（设计图没有这两条），否则字体一样、看起来却不一样。 */
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: auto;
+  max-width: 860px;      /* 对齐设计图 .screen 的内容宽度 */
+  margin: 0 auto;
+  padding: 10px 22px 40px;
+}
+
+html.dark .plan-page {
+  --hd-page:#222724;
+  --hd-paper:#2A302C;
+  --hd-paper-2:#2E3531;
+  --hd-ink:#EDE8DC;
+  --hd-ink-soft:#A6A093;
+  --hd-ink-faint:#7C766B;
+  --hd-line:rgba(237,232,220,.55);
+  --hd-line-soft:rgba(237,232,220,.26);
+  --hd-red:#C98F82;
+  --hd-red-soft:rgba(201,143,130,.16);
+  --hd-amber:#C9A472;
+  --hd-amber-soft:rgba(201,164,114,.16);
+  --hd-moss:#93A99B;
+  --hd-moss-soft:rgba(147,169,155,.16);
+  --hd-tape:rgba(201,143,130,.14);
+}
+
+.plan-page * { box-sizing:border-box }
+.plan-page { color:var(--hd-ink);font-family:var(--hd-hand),cursive;font-size:16px;line-height:1.65 }
+.plan-page button { font:inherit;color:inherit }
+.plan-page .hd-head { padding:18px 4px 6px }
+.plan-page .hd-head h1 { margin:0;font-size:34px;font-weight:400;letter-spacing:2px }
+.plan-page .hd-head h1 .dot { color:var(--hd-red) }
+.plan-page .hd-head p { margin:6px 0 0;font-size:16px;color:var(--hd-ink-soft) }
+.plan-page .hd-chips { display:flex;gap:10px;margin-top:12px;flex-wrap:wrap }
+.plan-page .hd-chip { border:2px solid var(--hd-line);border-radius:14px 4px 16px 5px/5px 16px 4px 14px;padding:0 12px;font-size:14px;background:var(--hd-paper) }
+.plan-page .hd-chip.doing { border-color:var(--hd-red);color:var(--hd-red);background:var(--hd-red-soft) }
+.plan-page .sheet { position:relative;margin-top:30px }
+.plan-page .paper { position:relative;background:var(--hd-paper);border-radius:6px;padding:6px 20px 10px;box-shadow:2px 3px 0 var(--hd-line-soft) }
+.plan-page .sheet:nth-of-type(odd) { transform:rotate(-.35deg) }
+.plan-page .sheet:nth-of-type(even) { transform:rotate(.3deg) }
+.plan-page .paper .lines { position:absolute;inset:0;pointer-events:none;filter:url(#rough) }
+.plan-page .paper .lines .frame { position:absolute;inset:0;border:2.2px solid var(--hd-line);border-radius:10px 4px 12px 5px/5px 12px 4px 10px }
+.plan-page .rsep { height:0;border-bottom:2px dashed var(--hd-line-soft);margin:0 12px;filter:url(#rough) }
+.plan-page .tape { position:absolute;top:-11px;left:50%;width:92px;height:24px;transform:translateX(-50%) rotate(-2deg); background:var(--hd-tape);border-left:1px dashed rgba(255,255,255,.5);border-right:1px dashed rgba(255,255,255,.5); clip-path:polygon(0 4%,5% 0,95% 2%,100% 6%,98% 96%,93% 100%,4% 98%,0 94%) }
+.plan-page .sheet.alt .tape { transform:translateX(-50%) rotate(1.6deg);left:58% }
+.plan-page .g-head { display:flex;align-items:baseline;gap:12px;padding:14px 2px 4px;position:relative;z-index:1 }
+.plan-page .g-title { margin:0;font-size:24px;font-weight:400;position:relative;display:inline-block }
+.plan-page .g-title svg { position:absolute;left:-4px;right:-10px;bottom:-6px;width:calc(100% + 14px);height:9px }
+.plan-page .g-count { font-size:14px;color:var(--hd-ink-soft);border:1.8px solid var(--hd-line-soft);border-radius:10px 3px 8px 4px/4px 8px 3px 10px;padding:0 9px }
+.plan-page .g-hint { font-size:14px;color:var(--hd-ink-soft) }
+.plan-page .g-overdue .g-title { color:var(--hd-red) }
+.plan-page .g-thisweek .g-title { color:var(--hd-amber) }
+.plan-page .g-later .g-title { color:var(--hd-moss) }
+.plan-page .rows { position:relative;z-index:1 }
+.plan-page .row { display:flex;align-items:center;gap:14px;padding:13px 2px 14px;position:relative }
+.plan-page .row:nth-child(odd) { transform:rotate(-.12deg) }
+.plan-page .row:nth-child(even) { transform:rotate(.1deg) }
+.plan-page .row .ck { flex:none;width:26px;height:26px;padding:0;background:none;border:0;cursor:pointer;position:relative }
+.plan-page .row .ck svg { width:100%;height:100%;display:block }
+.plan-page .row .ck .ghost { opacity:0;transition:opacity .15s }
+.plan-page .row .ck:hover .ghost { opacity:.4 }
+.plan-page .row .ck.doing .ghost { display:none }
+.plan-page .row .glyph { flex:none;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;position:relative }
+.plan-page .row .glyph .ring { position:absolute;inset:0;filter:url(#rough) }
+.plan-page .row .glyph span { position:relative }
+.plan-page .g-movie .glyph, .plan-page .g-tv .glyph { color:var(--hd-red) }
+.plan-page .g-movie .ring ellipse, .plan-page .g-tv .glyph ellipse { stroke:var(--hd-red) }
+.plan-page .g-book .glyph { color:var(--hd-moss) }
+.plan-page .g-place .glyph { color:var(--hd-amber) }
+.plan-page .row .main { flex:1;min-width:0 }
+.plan-page .row .t { font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.plan-page .row .m { display:flex;align-items:center;gap:10px;margin-top:2px;font-size:13.5px;color:var(--hd-ink-soft);flex-wrap:wrap }
+.plan-page .row .st { padding:0 8px;border-radius:10px 3px 9px 4px/4px 9px 3px 10px;border:1.6px solid var(--hd-line-soft) }
+.plan-page .row .st.doing { border-color:var(--hd-red);color:var(--hd-red);background:var(--hd-red-soft) }
+.plan-page .row .when { font-size:14px }
+.plan-page .row .when.late { color:var(--hd-red) }
+.plan-page .row .acts { flex:none;display:flex;gap:8px;align-items:center }
+.plan-page .row.doing .t { color:var(--hd-ink) }
+.plan-page .hdbtn { border:2px solid var(--hd-line);border-radius:12px 4px 10px 5px/5px 10px 4px 12px;background:var(--hd-paper); padding:3px 13px;font-size:15px;cursor:pointer;filter:url(#rough);transition:transform .12s }
+.plan-page .hdbtn:hover { transform:translateY(-1px) rotate(-.6deg) }
+.plan-page .hdbtn.go { background:var(--hd-ink);color:var(--hd-paper);border-color:var(--hd-ink) }
+.plan-page .hdbtn.sub { border-color:var(--hd-line-soft);color:var(--hd-ink-soft) }
+html.dark .plan-page .hdbtn.go { background:var(--hd-ink);color:#262B29 }
+.plan-page .list-foot { display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:30px }
+.plan-page .list-foot .cnt { font-size:15px;color:var(--hd-ink-soft) }
+.plan-page .empty { text-align:center;padding:64px 10px 40px }
+.plan-page .empty svg { width:150px;height:96px;margin-bottom:6px }
+.plan-page .empty p { font-size:19px;margin:0 0 18px }
+.plan-page .empty .acts { display:flex;gap:14px;justify-content:center }
+
+/* 移动端：设计图用 body[data-vp="mobile"] 预览，这里换成真实媒体查询（声明逐字相同） */
+@media (max-width: 768px) {
+  .plan-page .row { flex-wrap: wrap; }
+  .plan-page .row .acts { width: 100%; justify-content: flex-end; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--hd-line-soft); }
+  .plan-page .row .acts .hdbtn { flex: 1; padding: 5px 6px; }
+  .plan-page .hd-head h1 { font-size: 27px; }
+  .plan-page .g-head { flex-wrap: wrap; gap: 8px; }
+  .plan-page { padding: 4px 14px 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-page * { transition: none !important; animation: none !important; }
+}

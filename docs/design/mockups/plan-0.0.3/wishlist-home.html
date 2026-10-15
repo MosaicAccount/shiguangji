@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.3 设计图 · 首页心愿单与统一完成弹窗 — 拾光记</title>
+<style>
+
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+button{font-family:inherit}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台导航（既有样式，未改动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px;text-decoration:none}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:18px}
+.nav span{position:relative;padding:8px 0;color:var(--sgj-text-2);font-size:14px;text-decoration:none}
+.nav span.on{font-weight:700;color:var(--sgj-primary)}
+.nav span.on::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--sgj-primary)}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px;flex-shrink:0}
+.page{padding:36px;max-width:1320px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh-in{padding:0 12px;gap:12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en{display:none}
+body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .theme-toggle{width:32px;height:32px;font-size:13px}
+body[data-vp=mobile] .page{padding:16px 12px 76px}
+body[data-vp=mobile] .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:60px;z-index:6;
+  background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+
+/* ===== 前台页脚（既有样式，未改动）===== */
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep);margin-top:32px}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .ff{padding:16px 14px 76px}
+body[data-vp=mobile] .ff-line{font-size:12px}
+
+/* ===== 标注气泡 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .fix{color:#5D6F66;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .fix{color:#7F9B8D}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+
+/* ===== 前台共用控件 ===== */
+.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;padding:6px 12px;
+  font-size:12px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
+.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .el-button--primary{color:#171B1A}
+.el-button--warning{background:var(--sgj-amber);border-color:var(--sgj-amber);color:#fff}
+html.dark .el-button--warning{color:#171B1A}
+.el-button--text{border:0;background:transparent;color:var(--sgj-primary);padding:4px 6px}
+.el-button[disabled]{opacity:.55;cursor:not-allowed}
+.el-button.is-loading{opacity:.75;cursor:default}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;
+  font-size:13px;font-weight:500;letter-spacing:.5px;display:inline-flex;align-items:center;justify-content:center}
+html.dark .btn{color:#171B1A}
+.btn.ghost{background:transparent;color:#e7ece9;border:1px solid rgba(231,236,233,.4)}
+html.dark .btn.ghost{color:var(--sgj-text-2);border-color:var(--sgj-border)}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.only-desktop{display:block}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin{width:13px;height:13px;border:2px solid var(--sgj-border);border-top-color:var(--sgj-primary);border-radius:50%;animation:sp .7s linear infinite;flex:none}
+html.dark .spin{border-color:var(--sgj-border);border-top-color:var(--sgj-primary)}
+.sk{background:var(--sgj-bg-deep);border-radius:6px;animation:sk 1.2s ease-in-out infinite}
+html.dark .sk{background:var(--sgj-bg-deep)}
+@keyframes sk{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+
+
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 452px;gap:48px;padding:36px 0 24px;margin-bottom:24px}
+.hero-blob{position:absolute;border-radius:50%;pointer-events:none}
+.hero-blob-1{right:96px;top:0;width:340px;height:340px;background:var(--sgj-primary-soft)}
+.hero-blob-2{right:-40px;top:260px;width:160px;height:160px;background:var(--sgj-moss-soft)}
+.hero-text{position:relative;z-index:1;align-self:center}
+.hero-text h1{margin:0 0 14px;color:var(--sgj-text);font-family:var(--sgj-font-serif);font-size:52px;font-weight:700;line-height:1.4}
+.hero-sub{margin:0;color:var(--sgj-text-2);font-family:var(--sgj-font-serif);font-size:20px;line-height:1.35}
+.hero-actions{display:flex;align-items:center;gap:16px;margin-top:36px;flex-wrap:wrap}
+.hero-map-entry{display:inline-flex;align-items:center;gap:12px;padding:0 22px;height:62px;background:var(--sgj-bg-card);
+  border:1px solid var(--sgj-border-card);border-radius:31px;box-shadow:var(--sgj-shadow-sm)}
+.hero-map-icon{font-size:20px;color:var(--sgj-primary)}
+.hero-map-body{display:flex;flex-direction:column;line-height:1.25}
+.hero-map-text{font-family:var(--sgj-font-serif);font-weight:700;font-size:14px;color:var(--sgj-text)}
+.hero-map-sub{font-size:11px;color:var(--sgj-text-3);margin-top:2px}
+.hero-map-arrow{font-size:17px;color:var(--sgj-primary)}
+.hero-cta{border:0;cursor:pointer;padding:0 30px;height:48px;border-radius:24px;background:var(--sgj-primary);color:#fff;
+  font-size:13px;font-weight:500;letter-spacing:1px}
+html.dark .hero-cta{color:#171B1A}
+.hero-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,216px);justify-content:end;gap:18px}
+.stat-item{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:20px;width:216px}
+.stat-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-primary-dark);background:var(--sgj-primary-soft)}
+.stat-value{display:block;margin-top:14px;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.2;color:var(--sgj-text)}
+.stat-label{display:block;margin-top:6px;font-size:13px;color:var(--sgj-text-3)}
+.wish-bar{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:20px;background:var(--sgj-bg-card);
+  border:1px solid var(--sgj-border-card);border-radius:18px;text-decoration:none}
+.wish-bar-icon{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:20px;color:var(--sgj-amber);background:var(--sgj-amber-soft);flex-shrink:0}
+.wish-bar-num{font-family:var(--sgj-font-serif);font-weight:700;font-size:30px;color:var(--sgj-amber)}
+.wish-bar-label{flex:1;font-size:12px;color:var(--sgj-text-3)}
+.wish-bar-more{font-size:12px;font-weight:500;color:var(--sgj-primary);white-space:nowrap}
+.section-head{display:flex;align-items:center;gap:16px;margin-bottom:28px}
+.section-title{font-family:var(--sgj-font-serif);font-size:30px;font-weight:700;color:var(--sgj-text);margin:0;flex-shrink:0}
+.section-strip{flex:1;display:flex;gap:14px;justify-content:center;min-width:0}
+.perf{width:26px;height:10px;border-radius:5px;background:var(--sgj-bg-deep);flex-shrink:0}
+.section-sub{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);flex-shrink:0}
+.home-content{display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-areas:'head head' 'timeline side';gap:0 40px;align-items:start}
+.section-head{grid-area:head}
+.timeline-section{grid-area:timeline;min-width:0}
+.side-section{grid-area:side;display:flex;flex-direction:column;gap:24px;position:sticky;top:96px}
+.timeline-group{display:grid;grid-template-columns:120px minmax(0,1fr);gap:36px;margin-bottom:36px}
+.timeline-date{text-align:right;font-family:var(--sgj-font-serif);font-weight:700;font-size:22px;color:var(--sgj-text);padding-top:8px;white-space:nowrap}
+.timeline-rail{position:relative;display:flex;flex-direction:column;gap:24px;padding-left:30px}
+.timeline-rail::before{content:'';position:absolute;left:9px;top:0;bottom:0;width:2px;background:var(--sgj-border)}
+.timeline-item{position:relative}
+.tl-dot{position:absolute;left:-30px;top:26px;width:20px;height:20px;border-radius:50%;background:var(--sgj-primary)}
+.tl-dot::after{content:'';position:absolute;left:6px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--sgj-bg-card)}
+.timeline-card{position:relative;z-index:1;display:flex;gap:14px;background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:14px}
+.timeline-cover{display:flex;align-items:center;justify-content:center;width:120px;height:120px;border-radius:12px;flex-shrink:0;
+  font-family:var(--sgj-font-serif);font-size:40px;line-height:1}
+.timeline-body{flex:1;min-width:0}
+.timeline-title{font-family:var(--sgj-font-serif);font-weight:700;font-size:16px;color:var(--sgj-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.timeline-meta{font-size:12px;color:var(--sgj-text-3);margin-top:6px}
+.timeline-rating{display:inline-block;margin-top:12px;padding:1px 10px;border-radius:11px;background:var(--sgj-amber-soft);color:var(--sgj-amber);
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:12px}
+.timeline-comment{font-size:12px;color:var(--sgj-text-2);margin-top:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-title{font-family:var(--sgj-font-serif);font-size:16px;font-weight:700;color:var(--sgj-text);margin:0 0 16px}
+.wishlist-card,.notes-card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:20px;padding:24px;box-shadow:var(--sgj-shadow-sm)}
+.wish-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--sgj-border-card)}
+.wish-item:last-child{border-bottom:none}
+.wish-icon{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:14px;color:var(--sgj-primary-dark);background:var(--sgj-primary-soft);flex-shrink:0}
+.wish-icon.wish-icon-BOOK{color:var(--sgj-moss);background:var(--sgj-moss-soft)}
+.wish-icon.wish-icon-PLACE{color:var(--sgj-amber);background:var(--sgj-amber-soft)}
+.wish-body{flex:1;min-width:0}
+.wish-title{font-family:var(--sgj-font-serif);font-weight:700;font-size:14px;color:var(--sgj-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wish-status{font-size:11px;color:var(--sgj-text-3);margin-top:2px;display:flex;align-items:center;gap:6px}
+.wish-status .st{font-size:10.5px;padding:0 7px}
+.wish-complete{white-space:nowrap;flex-shrink:0;font-size:12px;color:var(--sgj-primary);border:0;background:transparent;cursor:pointer;padding:4px 6px}
+.note-item{padding:8px 0;border-bottom:1px solid var(--sgj-border-card)}
+.note-item:last-child{border-bottom:none}
+.note-title{font-family:var(--sgj-font-serif);font-weight:500;font-size:14px;color:var(--sgj-text)}
+.note-meta{font-size:11px;color:var(--sgj-text-3);margin-top:4px}
+.note-more{display:block;text-align:right;margin-top:12px;font-size:12px;color:var(--sgj-primary);text-decoration:none}
+
+/* ===== 完成弹窗（统一组件，三处复用）===== */
+.mask{position:absolute;inset:0;background:rgba(23,27,26,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.el-dialog{background:var(--sgj-bg-card);border-radius:var(--sgj-radius-lg);width:520px;max-width:100%;box-shadow:0 12px 32px rgba(0,0,0,.18);
+  display:flex;flex-direction:column;max-height:100%;overflow:hidden}
+.el-dialog__header{display:flex;align-items:center;gap:10px;padding:18px 20px 10px;flex-shrink:0}
+.el-dialog__title{margin:0;font-size:16px;font-family:var(--sgj-font-serif);font-weight:700;color:var(--sgj-text);flex:1;min-width:0}
+.el-dialog__headerbtn{border:0;background:transparent;color:var(--sgj-text-4);font-size:16px;cursor:pointer;padding:2px 4px}
+.el-dialog__body{padding:4px 20px 8px;overflow:auto;flex:1;min-height:0}
+.el-dialog__footer{padding:12px 20px 20px;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.el-form-item{display:flex;gap:12px;margin-bottom:16px}
+.el-form-item__label{flex:none;width:80px;text-align:right;font-size:13px;color:var(--sgj-text-2);line-height:32px}
+.el-form-item__content{flex:1;min-width:0}
+.inp{width:100%;border:1px solid var(--sgj-border);border-radius:var(--sgj-radius-md);background:var(--sgj-bg-card);
+  padding:6px 12px;height:32px;color:var(--sgj-text);font:inherit;display:flex;align-items:center;gap:8px}
+.inp.plain{padding:6px 12px;height:auto;min-height:72px;align-items:flex-start;color:var(--sgj-text-3)}
+.rate{display:flex;align-items:center;gap:4px;font-size:18px;color:var(--sgj-amber)}
+.rate .off{color:var(--sgj-border)}
+.rate .score{font-size:12.5px;color:var(--sgj-text-3);margin-left:8px}
+.datehint{font-size:11.5px;color:var(--sgj-text-4);margin-top:6px}
+.datehint b{color:var(--sgj-warning)}
+.no-rate{font-size:12.5px;color:var(--sgj-text-4);padding:6px 0}
+.dlg-note{background:var(--sgj-amber-soft);color:var(--sgj-amber);border-radius:var(--sgj-radius-md);padding:10px 14px;
+  font-size:12.5px;line-height:1.7;margin:0 0 14px}
+.dlg-note b{color:inherit}
+body[data-vp=mobile] .hero{display:block;padding:24px 20px;border-radius:16px;background:#282e2c}
+html.dark body[data-vp=mobile] .hero{background:var(--sgj-bg-deep)}
+body[data-vp=mobile] .hero-blob{display:none}
+body[data-vp=mobile] .hero-text h1{font-size:28px;color:#e7ece9}
+body[data-vp=mobile] .hero-sub{font-size:13px;color:#aeb8b3}
+body[data-vp=mobile] .hero-map-text{color:#e7ece9}
+body[data-vp=mobile] .hero-stats{display:none}
+body[data-vp=mobile] .home-content{display:block}
+body[data-vp=mobile] .side-section{display:none}
+body[data-vp=mobile] .section-strip,body[data-vp=mobile] .section-sub{display:none}
+body[data-vp=mobile] .timeline-group{grid-template-columns:96px minmax(0,1fr);gap:12px}
+body[data-vp=mobile] .timeline-date{font-size:17px}
+body[data-vp=mobile] .timeline-cover{width:64px;height:64px;font-size:24px}
+body[data-vp=mobile] .timeline-card{padding:10px}
+body[data-vp=mobile] .el-dialog{width:94%}
+body[data-vp=mobile] .el-form-item{flex-direction:column;gap:4px}
+body[data-vp=mobile] .el-form-item__label{width:auto;text-align:left;line-height:1.4}
+
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.3 设计图</b>
+    <nav class="screens"><a href="index.html">索引</a><a href="plan-page.html">计划页</a><a href="status-flow.html">三态流转</a><a href="wishlist-home.html" aria-current="page">首页心愿单</a><a href="place-map.html">足迹地图</a></nav>
+    <span class="seg" role="group" aria-label="状态"><button data-state="home" aria-pressed="true">首页默认</button><button data-state="movie" aria-pressed="false">完成弹窗（影视）</button><button data-state="book" aria-pressed="false">完成弹窗（书籍）</button><button data-state="place" aria-pressed="false">完成弹窗（地点）</button><button data-state="mobile" aria-pressed="false">移动端</button></span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <div class="fh-in">
+        <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+        <nav class="nav"><span class="on">首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span><span>计划</span></nav>
+        <span class="theme-toggle">☾</span>
+      </div>
+    </header>
+
+
+    <div id="homeMain">
+    <div class="page">
+      <section class="hero">
+        <div class="hero-blob hero-blob-1"></div>
+        <div class="hero-blob hero-blob-2"></div>
+        <div class="hero-text">
+          <h1>晚安，拾光人</h1>
+          <p class="hero-sub">你已经记录了 168 件值得记住的小事，</p>
+          <p class="hero-sub">日子正在被你慢慢写成照片。</p>
+          <div class="hero-actions">
+            <div class="hero-map-entry">
+              <span class="hero-map-icon">✈</span>
+              <span class="hero-map-body"><span class="hero-map-text">旅行足迹地图</span><span class="hero-map-sub">87 个地点 · 把远方连成一条线</span></span>
+              <span class="hero-map-arrow">↘</span>
+            </div>
+            <button class="hero-cta" type="button">开始记录 →</button>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item"><span class="stat-icon">影</span><span class="stat-value">64</span><span class="stat-label">看过 · 电影/剧集</span></div>
+          <div class="stat-item"><span class="stat-icon" style="color:var(--sgj-moss);background:var(--sgj-moss-soft)">书</span><span class="stat-value">31</span><span class="stat-label">读过 · 书籍</span></div>
+          <div class="stat-item"><span class="stat-icon" style="color:var(--sgj-amber);background:var(--sgj-amber-soft)">地</span><span class="stat-value">23</span><span class="stat-label">去过 · 地点</span></div>
+          <div class="stat-item"><span class="stat-icon">文</span><span class="stat-value">50</span><span class="stat-label">写过 · 笔记</span></div>
+          <a class="wish-bar" href="/plan">
+            <span class="wish-bar-icon">愿</span>
+            <span class="wish-bar-num">12</span>
+            <span class="wish-bar-label">心愿 · 在想 8 / 在做 4<span class="an" data-n="1"></span></span>
+            <span class="wish-bar-more">全部计划 →<span class="an" data-n="2"></span></span>
+          </a>
+        </div>
+      </section>
+
+      <div class="home-content">
+        <div class="section-head">
+          <h2 class="section-title">我的时光</h2>
+          <div class="section-strip"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+          <div class="section-sub">EVERYDAY MEMOIR</div>
+        </div>
+
+        <section class="timeline-section">
+          <div class="timeline-group">
+            <div class="timeline-date">2026 / 10</div>
+            <div class="timeline-rail">
+              <div class="timeline-item">
+                <span class="tl-dot"></span>
+                <div class="timeline-card">
+                  <span class="timeline-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span>
+                  <div class="timeline-body">
+                    <div class="timeline-title">花样年华</div>
+                    <div class="timeline-meta">电影 · 王家卫 · 2000</div>
+                    <span class="timeline-rating">★ 9.0</span>
+                    <div class="timeline-comment">镜头里的雨和旗袍，看了两遍。</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <span class="tl-dot"></span>
+                <div class="timeline-card">
+                  <span class="timeline-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span>
+                  <div class="timeline-body">
+                    <div class="timeline-title">克拉拉与太阳</div>
+                    <div class="timeline-meta">书籍 · 石黑一雄</div>
+                    <span class="timeline-rating">★ 8.6</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="timeline-group">
+            <div class="timeline-date">2026 / 09</div>
+            <div class="timeline-rail">
+              <div class="timeline-item">
+                <span class="tl-dot"></span>
+                <div class="timeline-card">
+                  <span class="timeline-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">旅</span>
+                  <div class="timeline-body">
+                    <div class="timeline-title">大理 · 洱海</div>
+                    <div class="timeline-meta">地点 · 大理 · 中国</div>
+                    <div class="timeline-comment">骑了一整天，风把云吹得很低。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="timeline-end" style="text-align:center;padding:4px 0 12px;font-size:12px;letter-spacing:1.5px;color:var(--sgj-text-4)">—— 已到底部 · 共 168 条时光 ——</div>
+        </section>
+
+        <aside class="side-section">
+          <section class="wishlist-card">
+            <h2 class="card-title">心愿单 · WISH LIST</h2>
+            
+              <div class="wish-item">
+                <span class="wish-icon wish-icon-MOVIE">剧</span>
+                <div class="wish-body">
+                  <div class="wish-title">漫长的季节</div>
+                  <div class="wish-status"><span class="st DOING">在看</span></div>
+                </div>
+                <button class="wish-complete" type="button" data-complete="movie">完成 →</button><span class="an" data-n="3"></span>
+              </div>
+            
+              <div class="wish-item">
+                <span class="wish-icon wish-icon-MOVIE">影</span>
+                <div class="wish-body">
+                  <div class="wish-title">肖申克的救赎</div>
+                  <div class="wish-status"><span class="st WANT">想看</span></div>
+                </div>
+                <button class="wish-complete" type="button" data-complete="movie">完成 →</button>
+              </div>
+            
+              <div class="wish-item">
+                <span class="wish-icon wish-icon-BOOK">书</span>
+                <div class="wish-body">
+                  <div class="wish-title">置身事内：中国政府与经济发展</div>
+                  <div class="wish-status"><span class="st DOING">在读</span></div>
+                </div>
+                <button class="wish-complete" type="button" data-complete="book">完成 →</button>
+              </div>
+            
+              <div class="wish-item">
+                <span class="wish-icon wish-icon-BOOK">书</span>
+                <div class="wish-body">
+                  <div class="wish-title">献给阿尔吉侬的花束</div>
+                  <div class="wish-status"><span class="st WANT">想读</span></div>
+                </div>
+                <button class="wish-complete" type="button" data-complete="book">完成 →</button>
+              </div>
+            
+              <div class="wish-item">
+                <span class="wish-icon wish-icon-PLACE">地</span>
+                <div class="wish-body">
+                  <div class="wish-title">京都 · 岚山竹林</div>
+                  <div class="wish-status"><span class="st WANT">想去</span></div>
+                </div>
+                <button class="wish-complete" type="button" data-complete="place">完成 →</button><span class="an" data-n="4"></span>
+              </div>
+          </section>
+
+          <section class="notes-card">
+            <h2 class="card-title">最近笔记 · NOTES</h2>
+            <div class="note-item"><div class="note-title">Obsidian 到拾光记的笔记迁移</div><div class="note-meta">独立笔记 · 2026-09-18</div></div>
+            <div class="note-item"><div class="note-title">MySQL 全文索引与 ngram 分词</div><div class="note-meta">独立笔记 · 2026-09-18</div></div>
+            <a class="note-more" href="/note">查看全部笔记 →</a>
+          </section>
+        </aside>
+      </div>
+    </div></div>
+    <div class="mask" id="mask" hidden>
+      <div class="el-dialog" id="dMovie" role="dialog" aria-modal="true" hidden>
+      <div class="el-dialog__header">
+        <h3 class="el-dialog__title">标记看过：肖申克的救赎</h3>
+        <button class="el-dialog__headerbtn" type="button" aria-label="关闭" onclick="closeDlg()">✕</button>
+      </div>
+      <div class="el-dialog__body">
+        
+        <p class="dlg-note">首页心愿单的「完成 →」原来<b>静默写入当天日期</b>，补记（昨天看的、上周末去的）就会记错。统一弹窗后，日期默认今天但<b>可以改</b>。<span class="an" data-n="5"></span></p>
+        <div class="el-form-item"><label class="el-form-item__label">看完日期</label>
+          <div class="el-form-item__content"><span class="inp">2026-10-14 ▾<span class="an" data-n="6"></span></span>
+            <div class="datehint">默认今天；点开可改成实际看完的那天</div></div></div>
+        <div class="el-form-item"><label class="el-form-item__label">评分</label>
+          <div class="el-form-item__content"><span class="rate">★<span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="score">9.0 / 10</span></span></div></div>
+        <div class="el-form-item"><label class="el-form-item__label">短评</label>
+          <div class="el-form-item__content"><span class="inp plain">写点短评吧（可选）</span></div></div>
+      </div>
+      <div class="el-dialog__footer">
+        <button class="el-button el-button--primary" type="button">确 定</button>
+        <button class="el-button" type="button" onclick="closeDlg()">取 消</button>
+      </div></div>
+      <div class="el-dialog" id="dBook" role="dialog" aria-modal="true" hidden>
+      <div class="el-dialog__header">
+        <h3 class="el-dialog__title">标记已读：置身事内：中国政府与经济发展</h3>
+        <button class="el-dialog__headerbtn" type="button" aria-label="关闭" onclick="closeDlg()">✕</button>
+      </div>
+      <div class="el-dialog__body">
+        
+        <p class="dlg-note">书籍只是把标签换成「读完日期 / 读后感」，<b>字段与交互同一套</b>——这正是「一个组件供四处复用」的意思：影视 / 书籍 / 地点三种文案由类型参数化，弹窗本体只有一个。<span class="an" data-n="7"></span></p>
+        <div class="el-form-item"><label class="el-form-item__label">读完日期</label>
+          <div class="el-form-item__content"><span class="inp">2026-10-13 ▾</span>
+            <div class="datehint">默认今天；补记时改成实际读完的那天</div></div></div>
+        <div class="el-form-item"><label class="el-form-item__label">评分</label>
+          <div class="el-form-item__content"><span class="rate">★<span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="score">8.6 / 10</span></span></div></div>
+        <div class="el-form-item"><label class="el-form-item__label">读后感</label>
+          <div class="el-form-item__content"><span class="inp plain">写点读后感吧（可选）</span></div></div>
+      </div>
+      <div class="el-dialog__footer">
+        <button class="el-button el-button--primary" type="button">确 定</button>
+        <button class="el-button" type="button" onclick="closeDlg()">取 消</button>
+      </div></div>
+      <div class="el-dialog" id="dPlace" role="dialog" aria-modal="true" hidden>
+      <div class="el-dialog__header">
+        <h3 class="el-dialog__title">标记去过：京都 · 岚山竹林</h3>
+        <button class="el-dialog__headerbtn" type="button" aria-label="关闭" onclick="closeDlg()">✕</button>
+      </div>
+      <div class="el-dialog__body">
+        
+        <p class="dlg-note">地点<b>没有评分</b>——给一个地方打几分说不通，所以这一形态只有「去过日期 + 回忆」两个字段。三形态里只有它少一行，这处差异要在组件里显式表达（不是漏画）。<span class="an" data-n="8"></span></p>
+        <div class="el-form-item"><label class="el-form-item__label">去过日期</label>
+          <div class="el-form-item__content"><span class="inp">2026-10-12 ▾</span>
+            <div class="datehint">默认今天；补记时改成实际去过的那天</div></div></div>
+        <div class="el-form-item"><label class="el-form-item__label">回忆</label>
+          <div class="el-form-item__content"><span class="inp plain">写点回忆吧（可选）</span></div></div>
+      </div>
+      <div class="el-dialog__footer">
+        <button class="el-button el-button--primary" type="button">确 定</button>
+        <button class="el-button" type="button" onclick="closeDlg()">取 消</button>
+      </div></div>
+    </div>
+<nav class="tabbar"><div class="on">首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="chg">改动</span>：<b>hero 的统计口径不动</b>——四个数字仍然是「已完成」（看过 / 读过 / 去过 / 写过），<code>DOING</code> <b>不</b>进这四个格子。理由：这四个格子说的是「已经留下了什么」，而「在看」还没有结果。<b>但心愿条要改</b>：原来它写死的 <code>wish-bar-label</code> 是「心愿 · 想去 / 想读」，且数字来自 <code>buildSummary</code> 的 <code>else</code> 兜底分支——新增 <code>DOING</code> 后，进行中的条目会被静默算进这个数（需求 §7 第 3 行），所以数字与文案必须一起改成显式的三态口径。</li>
+    <li><span class="fix">修复</span>：<b>心愿条右侧链接由 <code>/note</code> 改为 <code>/plan</code></b>。现有代码里这条「全部计划 →」（原为「待完成 →」）指向笔记列表，是错的落点：点进去看到的是笔记，不是自己的计划。本期把它指向新页 <code>/plan</code>。图上按修复后的形态画。<span class="fix">这是本组图唯一一条「现状是错的」</span>。</li>
+    <li><span class="new">新增</span>：<b>心愿单列表纳入「在看」条目</b>（原来只含 <code>WANT</code>）。列表排序仍是既有的 <code>create_time desc</code>（最新添加者在前）——本期<b>不改排序</b>，只改集合；排序要按计划日期是 <code>/plan</code> 的事（见 <a href="plan-page.html">计划页</a>）。每条右侧保留既有的「完成 →」。</li>
+    <li><span class="new">新增</span>：<b>每条显示状态文案</b>（想看 / 在看 / 想读 / 在读 / 想去），用与列表页同族的胶囊，颜色同一套：想*=灰铜、在*=灰陶、去/读/看过的完成态=鼠尾草。没有这行，纳入「在看」之后用户分不清哪条是在进行中的。</li>
+    <li><span class="new">新增</span>：<b>统一完成弹窗的第一个形态：影视</b>（<code>看完日期 / 评分 / 短评</code>），字段与 <code>/movie</code> 既有的「标记看过」弹窗一致。这个组件供四处复用：<code>/movie</code>、<code>/book</code>、<code>/travel</code>、以及<b>首页心愿单的「完成 →」</b>——第四处是本期新接的。</li>
+    <li><span class="new">新增</span>：<b>弹窗打开时日期默认今天，但可改</b>——这是 FR-003-7 的核心。此前首页的「完成 →」是<b>静默写当天</b>（<code>handleComplete</code> 用 <code>new Date()</code> 现算，连弹窗都没有），而列表页的「标记看过」允许选日期：<b>同一个动作两个入口，精度不一致</b>。补记场景（昨天看的、上周末去的）在首页那条路上必然记错日期。做法不是「事后可修正」而是「当时可指定」——后者少一次往返。</li>
+    <li><span class="new">新增</span>：<b>第二个形态：书籍</b>（<code>读完日期 / 评分 / 读后感</code>）。三形态共用弹窗本体，差异只由类型参数决定标签文案与字段集，不复制三份弹窗实现。</li>
+    <li><span class="new">新增</span>：<b>第三个形态：地点</b>（<code>去过日期 / 回忆</code>，<b>无评分</b>）。地点没有「几分」这种评价维度，少一行是<b>刻意的</b>，实现时用字段集参数控制，不要为了「三处一致」硬加一个评分。三处入口的按钮文案也随类型：首页是「完成 →」，模块页是「标记看过 / 标记已读 / 标记去过」。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实评分组件（本屏用字符星示意）、日期选择器的弹出面板（只画收起态）、弹窗提交后的 toast 与列表刷新、<code>取消完成</code> 的确认框、首页时间线的分页加载更多（只画了到底提示）。<br><b>既有不改</b>：hero 的文字与动效错峰（<code>--d</code> 阶梯）、地图入口卡、分段标题与胶片齿孔、时间线的日期分栏与轨道圆点、最近笔记卡片。<b>移动端差异</b>：hero 变冷炭灰横幅且<b>隐藏统计矩阵与心愿条</b>（既有行为，所以移动端看不到心愿单——这是现状，本屏不动它；心愿条在移动端不可达的问题另议）。</p>
+
+</section>
+
+<script>
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+/* 遮罩是绝对定位在设备框内的：页面滚下去再开弹窗，遮罩中心会跑到可视区外。
+   打开时把设备框滚回顶部——静态稿的取巧，真实实现里是 fixed 遮罩。 */
+function deviceTop(instant){
+  const d=document.querySelector('.device'); if(!d) return;
+  if(d.scrollTop>0) d.scrollTo({ top:0, behavior: instant ? 'auto' : 'smooth' });
+}
+
+const STATES = {
+  home:   {},
+  movie:  { dlg:'movie' },
+  book:   { dlg:'book' },
+  place:  { dlg:'place' },
+  mobile: {}
+};
+let state='home';
+const DLG = {movie:'', book:'', place:''};
+function render(){
+  const c = STATES[state] || {};
+  show('mask', !!c.dlg);
+  show('dMovie', c.dlg==='movie');
+  show('dBook', c.dlg==='book');
+  show('dPlace', c.dlg==='place');
+  if (state==='mobile'){ document.body.dataset.vp='mobile'; }
+}
+function closeDlg(){ state='home'; sync(); render(); }
+function openDlg(k){ state=k; sync(); render(); deviceTop(); }
+function sync(){ document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.state===state))); }
+function closeAll(){ closeDlg(); }
+document.getElementById('mask').addEventListener('click',e=>{ if(e.target.id==='mask') closeDlg(); });
+document.querySelectorAll('[data-complete]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); openDlg(b.dataset.complete); }));
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+  /* 遮罩锚在设备框内容顶部，滚动位置不对就会「点了没反应」——切状态后回到顶部 */
+  deviceTop(true);
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAll(); } });
+render();
+
+</script>
+</body>
+</html>

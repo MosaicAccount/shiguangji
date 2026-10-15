@@ -166,16 +166,17 @@ function typeLabel(itemType?: string) {
   return hit ? hit.label : (itemType || '-')
 }
 
-/** 条目状态显示（WANT/DONE 按类型措辞：想看/看过、想读/读过、想去/去过） */
-const statusWording: Record<string, [string, string]> = {
-  MOVIE: ['想看', '看过'],
-  TV: ['想看', '看过'],
-  BOOK: ['想读', '读过'],
-  PLACE: ['想去', '去过']
+/** 条目状态显示（WANT/DOING/DONE 按类型措辞：想看/在看/看过、想读/在读/读过、想去/去过） */
+const statusWording: Record<string, Record<string, string>> = {
+  MOVIE: { WANT: '想看', DOING: '在看', DONE: '看过' },
+  TV: { WANT: '想看', DOING: '在看', DONE: '看过' },
+  BOOK: { WANT: '想读', DOING: '在读', DONE: '读过' },
+  PLACE: { WANT: '想去', DONE: '去过' }
 }
 function statusLabel(row: SgjItem) {
-  const wording = statusWording[row.itemType || ''] || ['想看', '看过']
-  return row.status === 'DONE' ? wording[1] : wording[0]
+  const wording = statusWording[row.itemType || ''] || statusWording.MOVIE
+  const status = row.status || 'WANT'
+  return wording[status] || status
 }
 
 /** 查询回收站列表（条目+笔记） */

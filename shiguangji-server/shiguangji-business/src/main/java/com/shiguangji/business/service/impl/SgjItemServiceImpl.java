@@ -40,8 +40,8 @@ public class SgjItemServiceImpl implements ISgjItemService
     /** 允许的条目类型 */
     private static final java.util.List<String> ITEM_TYPES = Arrays.asList("MOVIE", "TV", "BOOK", "PLACE");
 
-    /** 允许的状态 */
-    private static final java.util.List<String> ITEM_STATUS = Arrays.asList("WANT", "DONE");
+    /** 允许的状态（0.0.3 加 DOING=在看/在读；地点条目前台不提供中间态，值域上取超集，见设计 结论 71/86） */
+    private static final java.util.List<String> ITEM_STATUS = Arrays.asList("WANT", "DOING", "DONE");
 
     @Autowired
     private SgjItemMapper sgjItemMapper;
@@ -64,6 +64,12 @@ public class SgjItemServiceImpl implements ISgjItemService
     public List<SgjItem> selectSgjItemList(SgjItem sgjItem)
     {
         return sgjItemMapper.selectSgjItemList(sgjItem);
+    }
+
+    @Override
+    public List<SgjItem> selectPlanItems(SgjItem sgjItem)
+    {
+        return sgjItemMapper.selectPlanItems(sgjItem);
     }
 
     @Override
@@ -171,7 +177,14 @@ public class SgjItemServiceImpl implements ISgjItemService
         }
         if (!StringUtils.isEmpty(sgjItem.getStatus()) && !ITEM_STATUS.contains(sgjItem.getStatus()))
         {
-            throw new ServiceException("状态值不合法，仅支持WANT/DONE");
+            throw new ServiceException("状态值不合法，仅支持WANT/DOING/DONE");
+        }
+        // 地点不引入中间态（0.0.3 D-5）：值域里虽有 DOING，但地点字典没有它，
+        // 一旦落库就是一个「显示不出来」的状态（前端只能回退到裸枚举 DOING）。
+        // 在唯一闸门处拒绝，比指望每个入口都记得隐藏更可靠。
+        if ("DOING".equals(sgjItem.getStatus()) && "PLACE".equals(sgjItem.getItemType()))
+        {
+            throw new ServiceException("地点不支持「在看」，请用计划日期表达计划");
         }
         BigDecimal rating = sgjItem.getRating();
         if (rating != null && (rating.compareTo(BigDecimal.ZERO) < 0 || rating.compareTo(new BigDecimal("10")) > 0))
