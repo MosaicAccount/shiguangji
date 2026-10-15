@@ -4,7 +4,7 @@ import type { SgjItem } from '@/types/api/business/item'
  * 计划页的纯逻辑（0.0.3）：分组与日期文案。
  *
  * 口径（设计 结论 78）：服务端只保证「有日期的按日期升序、无日期置后」的顺序，
- * 「逾期 / 本周 / 以后 / 未排期」由前端按浏览器本地日期切——分组的正确性只对
+ * 「已过期 / 这周 / 下周及以后 / 还没定日子」由前端按浏览器本地日期切——分组的正确性只对
  * 「用户眼里的今天」负责，两侧各算一次必然在跨时区与跨零点上对不齐。
  *
  * 日期一律用 'YYYY-MM-DD' 字符串（字典序即时间序），需要日期运算时取本地正午
@@ -59,18 +59,21 @@ export function localDateKey(date: Date): string {
 }
 
 /**
- * 组标题与说明。说明是给人看的「这一组是什么意思」——0.0.3 实测反馈：
- * 只有「以后 / 未排期」两个词时看不出分组依据（是时间？是状态？），故每组都配一句人话，
- * 本周还把实际日期区间写出来。
+ * 组标题与说明。
+ *
+ * 两条实测反馈决定了这里的措辞（结论 91 / 93）：
+ * ① 「逾期 / 以后 / 未排期」这类词只说了**判据**，没说**这一组是干什么的**——组名改成自解释的说法
+ *    （已过期 / 这周 / 下周及以后 / 还没定日子），说明写成「该拿它做什么」；
+ * ② 本周把实际日期区间写出来，避免「本周」按谁的周算的歧义。
  */
 function groupMeta(today: string): Record<PlanGroupKey, { title: string; hint: string }> {
   const start = monthDay(weekStartOf(today))
   const end = monthDay(weekEndOf(today))
   return {
-    overdue: { title: '逾期', hint: '计划日期已经过了' },
-    thisWeek: { title: '本周', hint: `本周内（${start} – ${end}）` },
-    later: { title: '以后', hint: '排在下周或更远' },
-    unscheduled: { title: '未排期', hint: '还没定哪天 —— 点「定个日子」补上' }
+    overdue: { title: '已过期', hint: '计划日期已经过了 —— 开始做，或者改个日子' },
+    thisWeek: { title: '这周', hint: `打算这周完成的（${start} – ${end}）` },
+    later: { title: '下周及以后', hint: '日子还远，先放着' },
+    unscheduled: { title: '还没定日子', hint: '点「定个日子」把它排上' }
   }
 }
 
@@ -105,14 +108,14 @@ const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五
 
 /**
  * 计划日期的相对文案：
- * 过去 → 「逾期 N 天」；今天 / 明天 → 原词；本周内 → 「周X」；
- * 更远 → 「M月D日」（跨年补年份）。
+ * 过去 → 「过期 N 天」（与组名「已过期」同一措辞，结论 93）；今天 / 明天 → 原词；
+ * 本周内 → 「周X」；更远 → 「M月D日」（跨年补年份）。
  */
 export function planDateLabel(startDate: string, today: string): string {
   const start = startDate.slice(0, 10)
   const diffDays = Math.round((parseLocal(start).getTime() - parseLocal(today).getTime()) / 86400000)
   if (diffDays < 0) {
-    return `逾期 ${-diffDays} 天`
+    return `过期 ${-diffDays} 天`
   }
   if (diffDays === 0) {
     return '今天'

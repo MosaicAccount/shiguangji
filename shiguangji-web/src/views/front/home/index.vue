@@ -113,19 +113,22 @@
             <div class="wish-body">
               <div class="wish-title">{{ item.title }}</div>
               <div class="wish-meta">
-                <span class="wish-status">{{ statusText(item) }}</span>
+                <!-- 状态做成胶囊：在做是暖色高亮（可行动的那一档），其余中性底（实测反馈：11px 灰字看不清） -->
+                <span class="wish-status" :class="{ 'is-doing': item.status === 'DOING' }">{{ statusText(item) }}</span>
                 <plan-date-badge :item="item" @saved="loadWishlist" />
               </div>
             </div>
             <el-button link class="wish-complete" @click="openComplete(item)">完成 →</el-button>
           </div>
-          <!-- 心愿单分页（0.0.3 修订）：与计划页同一个数据源，故翻页口径一致 -->
-          <div v-if="wishlist.length" class="wish-foot">
-            <span class="wish-count">已展示 {{ wishlist.length }} / 共 {{ wishTotal }} 项</span>
-            <el-button v-if="hasMoreWish" link type="primary" :loading="wishLoadingMore" @click="loadMoreWishlist">
-              加载更多
-            </el-button>
-          </div>
+          <!-- 心愿单分页脚：与下面「最近笔记」的「查看全部笔记 →」同一视觉语言 -->
+          <button
+            v-if="wishlist.length && hasMoreWish"
+            type="button"
+            class="note-more wish-more"
+            :disabled="wishLoadingMore"
+            @click="loadMoreWishlist"
+          >{{ wishLoadingMore ? '加载中…' : `加载更多（还有 ${wishTotal - wishlist.length} 项）→` }}</button>
+          <span v-else-if="wishlist.length" class="wish-all-loaded">已全部显示 · 共 {{ wishTotal }} 项</span>
         </section>
 
         <section class="notes-card">
@@ -1057,17 +1060,29 @@ if (isLogin.value) {
       white-space: nowrap;
     }
 
-    /* 状态与计划日期同一行：状态是「这条现在处于哪一步」，日期是「打算什么时候」 */
+    /* 状态与计划日期同一行：状态是「这条现在处于哪一步」，日期是「打算什么时候」。
+       状态做成胶囊而非 11px 灰字（实测反馈根本看不清）；在做 = 暖色高亮，是可行动的那一档 */
     .wish-meta {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
     .wish-status {
+      display: inline-block;
       font-size: 11px;
-      color: var(--sgj-text-3);
+      line-height: 1.6;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--sgj-bg-deep);
+      color: var(--sgj-text-2);
+
+      &.is-doing {
+        background: var(--sgj-primary-soft);
+        color: var(--sgj-primary);
+        font-weight: 600;
+      }
     }
   }
 
@@ -1078,26 +1093,28 @@ if (isLogin.value) {
     color: var(--sgj-primary);
   }
 
-  /* 心愿单分页脚：已展示 / 共 N + 加载更多 */
-  .wish-foot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px dashed var(--sgj-border-card);
+  /* 分页脚与「最近笔记」的 .note-more 同一视觉：右对齐主色 12px；
+     .wish-more 只是按钮复位（.note-more 的排版照抄），.wish-all-loaded 用弱色收尾 */
+  .wish-more {
+    width: 100%;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
 
-    .wish-count {
-      font-size: 11px;
-      color: var(--sgj-text-4);
+    &:disabled {
+      cursor: default;
+      color: var(--sgj-text-3);
     }
+  }
 
-    :deep(.el-button) {
-      font-size: 12px;
-      padding: 0;
-      height: auto;
-    }
+  .wish-all-loaded {
+    display: block;
+    text-align: right;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--sgj-text-4);
   }
 }
 

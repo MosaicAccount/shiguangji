@@ -5,7 +5,12 @@
       <div class="banner-blob2" aria-hidden="true"></div>
       <div class="banner-text">
         <h1>计划 · 想到就排上</h1>
-        <p>共 {{ total }} 项 · 在想 {{ wantCount }} · 在做 {{ doingCount }}</p>
+        <p>影单 / 书单 / 足迹里<strong>还没做完</strong>的事，按你定的日子排在一起。定了哪天就是「计划」，没定日子的在最后一组。</p>
+        <div class="banner-chips">
+          <span class="bchip">共 {{ total }} 项</span>
+          <span class="bchip bchip-doing">在做 {{ doingCount }}</span>
+          <span class="bchip">在想 {{ wantCount }}</span>
+        </div>
       </div>
     </div>
 
@@ -24,11 +29,17 @@
         <el-button size="small" round @click="loadData">重试</el-button>
       </div>
 
-      <template v-for="group in groups" :key="group.key">
-        <div class="group-head anim">
-          <h2 class="group-title" :class="'group-' + group.key">{{ group.title }}</h2>
+      <!-- 每一组是一块有身份色的区域：标题说「这批事是什么」，说明说「该拿它做什么」 -->
+      <section
+        v-for="group in groups"
+        :key="group.key"
+        class="plan-group anim"
+        :class="'g-' + group.key"
+      >
+        <div class="group-head">
+          <h2 class="group-title">{{ group.title }}</h2>
           <span class="group-count">{{ group.items.length }} 项</span>
-          <span v-if="group.hint" class="group-hint">{{ group.hint }}</span>
+          <span class="group-hint">{{ group.hint }}</span>
         </div>
         <div class="plan-list">
           <div
@@ -47,7 +58,7 @@
                 <span v-if="item.startDate" class="date-label" :class="{ overdue: group.key === 'overdue' }">
                   {{ planDateLabel(item.startDate.slice(0, 10), today) }}
                 </span>
-                <span v-else class="date-label empty">未排期</span>
+                <!-- 无日期的卡片不标「未排期」：所在组名「还没定日子」已经说了，重复且词汇不一致 -->
               </div>
             </div>
             <div class="plan-actions" @click.stop>
@@ -92,7 +103,7 @@
             </div>
           </div>
         </div>
-      </template>
+      </section>
 
       <div v-if="list.length" class="list-foot">
         <span class="list-count">已展示 {{ list.length }} / 共 {{ total }} 项</span>
@@ -289,7 +300,29 @@ onMounted(() => {
     p {
       margin: 8px 0 0;
       font-size: 13.5px;
+      line-height: 1.7;
       color: var(--sgj-text-2);
+      max-width: 640px;
+    }
+
+    .banner-chips {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+
+      .bchip {
+        font-size: 12px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: var(--sgj-bg-deep);
+        color: var(--sgj-text-2);
+
+        &.bchip-doing {
+          background: var(--sgj-primary-soft);
+          color: var(--sgj-primary);
+          font-weight: 600;
+        }
+      }
     }
   }
 }
@@ -307,11 +340,43 @@ onMounted(() => {
   color: var(--sgj-text-3);
 }
 
+/* 每一组是一块有身份色的区域：左侧色条 + 标题染色把「这组意味着什么」画出来，
+   组名自解释、说明写「该拿它做什么」（结论 93） */
+.plan-group {
+  margin-top: 22px;
+  padding-left: 14px;
+  border-left: 3px solid var(--sgj-border);
+
+  &.g-overdue {
+    border-left-color: var(--sgj-primary);
+
+    .group-title { color: var(--sgj-primary); }
+  }
+
+  &.g-thisWeek {
+    border-left-color: var(--sgj-amber);
+
+    .group-title { color: var(--sgj-amber); }
+  }
+
+  &.g-later {
+    border-left-color: var(--sgj-moss);
+
+    .group-title { color: var(--sgj-moss); }
+  }
+
+  &.g-unscheduled {
+    border-left-color: var(--sgj-border);
+
+    .group-title { color: var(--sgj-text-2); }
+  }
+}
+
 .group-head {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin: 26px 0 12px;
+  margin: 0 0 12px;
 
   .group-title {
     margin: 0;
@@ -320,9 +385,13 @@ onMounted(() => {
     color: var(--sgj-text);
   }
 
-  .group-title.group-overdue { color: var(--sgj-primary); }
-
-  .group-count { font-size: 12.5px; color: var(--sgj-text-4); }
+  .group-count {
+    font-size: 11.5px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--sgj-bg-deep);
+    color: var(--sgj-text-2);
+  }
 
   .group-hint { font-size: 12.5px; color: var(--sgj-text-3); }
 }

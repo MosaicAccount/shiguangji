@@ -58,9 +58,16 @@ function homePayload(): FrontHomeData {
   } as unknown as FrontHomeData
 }
 
+/** 动态「明天」：PlanDateBadge 的相对文案按真实今天算，写死日期的用例过一天就翻车 */
+function tomorrow(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function wishRows(count: number): SgjItem[] {
   const rows: SgjItem[] = [
-    { itemId: 101, itemType: 'TV', title: '漫长的季节', status: 'DOING', startDate: '2026-10-15' },
+    { itemId: 101, itemType: 'TV', title: '漫长的季节', status: 'DOING', startDate: tomorrow() },
     { itemId: 102, itemType: 'MOVIE', title: '肖申克的救赎', status: 'WANT' },
     { itemId: 103, itemType: 'BOOK', title: '置身事内', status: 'DOING' }
   ]
@@ -130,23 +137,43 @@ describe('T-84 首页心愿条与心愿单', () => {
   it('心愿单展示计划日期（与计划页同一数据源）', async () => {
     const wrapper = await mountHome()
     const texts = wrapper.findAll('.wish-item .pdb-btn').map(b => b.text())
-    expect(texts[0]).toContain('明天')          // 2026-10-15 相对今天
+    expect(texts[0]).toContain('明天')          // startDate = 动态明天
     expect(texts.some(t => t.includes('定个日子'))).toBe(true)  // 未排期那条
     wrapper.unmount()
   })
 
-  it('心愿单分页：给出「已展示 / 共 N」与加载更多，点一下追加下一页', async () => {
+  it('心愿单分页：分页脚与「最近笔记」同款，点一下以 pageNum=2 追加', async () => {
     const wrapper = await mountHome()
-    expect(wrapper.find('.wish-count').text()).toBe('已展示 10 / 共 25 项')
+    const more = wrapper.find('.wish-more')
+    expect(more.exists(), '应出现「加载更多」链接式按钮').toBe(true)
+    expect(more.text()).toContain('还有 15 项')   // 25 - 10
+    expect(more.text()).toContain('→')
+    // 与最近笔记的 .note-more 同一视觉语言（复用同一 class）
+    expect(more.classes()).toContain('note-more')
 
-    const more = wrapper.findAll('button').find(b => b.text().includes('加载更多'))!
-    expect(more, '应出现加载更多按钮').toBeDefined()
     await more.trigger('click')
     await flushPromises()
 
     expect(mockedPlanList).toHaveBeenLastCalledWith({ pageNum: 2, pageSize: 10 })
     expect(wrapper.findAll('.wish-item')).toHaveLength(20)
-    expect(wrapper.find('.wish-count').text()).toBe('已展示 20 / 共 25 项')
+    expect(wrapper.find('.wish-more').text()).toContain('还有 5 项')
+    wrapper.unmount()
+  })
+
+  it('心愿单加载完最后一页后显示「已全部显示 · 共 N 项」', async () => {
+    mockedPlanList.mockImplementation(async (query: any) => {
+      const pageSize = query?.pageSize ?? 10
+      const pageNum = query?.pageNum ?? 1
+      return { code: 200, data: wishRows(12).slice((pageNum - 1) * pageSize, pageNum * pageSize), total: 12 } as any
+    })
+    const wrapper = await mountHome()
+    expect(wrapper.find('.wish-more').text()).toContain('还有 2 项')
+
+    await wrapper.find('.wish-more').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.wish-more').exists()).toBe(false)
+    expect(wrapper.find('.wish-all-loaded').text()).toBe('已全部显示 · 共 12 项')
     wrapper.unmount()
   })
 })
