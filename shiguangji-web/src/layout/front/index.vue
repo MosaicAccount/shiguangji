@@ -63,15 +63,19 @@ function handleToggleTheme(event: MouseEvent): void {
   animateThemeToggle(() => settingsStore.toggleTheme(), event)
 }
 
-/** 桌面导航（0.0.3：末尾追加「心愿」，不动既有顺序；768px 以下整体隐藏改显底部 tab） */
-const navLinks = [
-  { to: '/home', label: '首页' },
-  { to: '/movie', label: '影单' },
-  { to: '/book', label: '书单' },
-  { to: '/travel', label: '足迹' },
-  { to: '/note', label: '笔记' },
-  { to: '/plan', label: '心愿' }
-]
+/** 桌面导航（0.0.3：末尾追加「心愿」，不动既有顺序；768px 以下整体隐藏改显底部 tab）
+ *  心愿是私人内容（设计 结论 108）：访客不显示该入口，直接访问 /plan 由路由守卫弹去登录 */
+const navLinks = computed(() => {
+  const links = [
+    { to: '/home', label: '首页' },
+    { to: '/movie', label: '影单' },
+    { to: '/book', label: '书单' },
+    { to: '/travel', label: '足迹' },
+    { to: '/note', label: '笔记' },
+    { to: '/plan', label: '心愿' }
+  ]
+  return isLogin.value ? links : links.filter(l => l.to !== '/plan')
+})
 
 /** 移动端底部导航（设计稿 04：首页 / 影单 / 足迹 / 笔记） */
 const mobileTabs = [

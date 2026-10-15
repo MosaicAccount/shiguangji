@@ -16,8 +16,11 @@ import type { SgjItem } from '@/types/api/business/item'
  * - 心愿单与计划页同一数据源（plan/list）：带计划日期，且有分页（已展示 / 共 N + 加载更多）。
  */
 
+// 登录态可按用例切换（访客用例需要 getToken 返回空）
+const authState = vi.hoisted(() => ({ token: 'test-token' as string }))
+
 vi.mock('@/utils/auth', () => ({
-  getToken: () => 'test-token'
+  getToken: () => authState.token
 }))
 
 vi.mock('@/api/front/home', () => ({
@@ -119,6 +122,19 @@ describe('T-84 首页心愿条与心愿单', () => {
     expect(bar.find('.wish-bar-label').text()).toContain('在想 3')
     expect(bar.find('.wish-bar-label').text()).toContain('在做 2')
     wrapper.unmount()
+  })
+
+  it('访客（未登录）不渲染心愿条与心愿单，且不请求计划接口（结论 108：心愿是私人模块）', async () => {
+    authState.token = ''
+    mockedPlanList.mockClear()
+    const wrapper = await mountHome()
+
+    expect(wrapper.find('.wish-bar').exists(), '访客不应看到心愿条').toBe(false)
+    expect(wrapper.find('.wishlist-card').exists(), '访客不应看到心愿单卡片').toBe(false)
+    expect(mockedPlanList, '访客不该为空请求买单').not.toHaveBeenCalled()
+
+    wrapper.unmount()
+    authState.token = 'test-token'
   })
 
   it('心愿条链接指向 /plan（回归：原误指 /note）', async () => {
