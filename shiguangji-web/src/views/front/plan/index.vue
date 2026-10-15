@@ -144,8 +144,8 @@ import { groupPlanItems, planDateLabel, localDateKey } from '@/utils/plan'
 import { itemStatusLabel } from '@/utils/itemStatus'
 import { listPlanItems, updateFrontItem } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
-// 手绘字体（龙藏）分片子集：随本路由懒加载，浏览器按 unicode-range 只取命中的分片（结论 99）
-import '@/assets/fonts/handdrawn/longcang/longcang.css'
+// 手绘标题字体（马善政）分片子集：随本路由懒加载，浏览器按 unicode-range 只取命中的分片（结论 99/101/102）
+import '@/assets/fonts/handdrawn/mashanzheng/mashanzheng.css'
 import type { SgjItem } from '@/types/api/business/item'
 
 /**
@@ -321,7 +321,7 @@ onMounted(() => {
   /* 字体用法（结论 101，用户实测拍板）：手写体只做「标题时刻」——页头 / 组名 / 空态；
      正文（条目、日期、按钮、说明）回到站内衬线体。手写体铺满全页时小字号下显乱（实测「好丑」），
      手绘感由纸 / 方框 / 抖线承担，不依赖正文也用手写。 */
-  --hd-hand: 'Long Cang', var(--sgj-font-serif);
+  --hd-hand: 'Ma Shan Zheng', var(--sgj-font-serif);
   --hd-body: var(--sgj-font-serif);
 
   max-width: 1080px;

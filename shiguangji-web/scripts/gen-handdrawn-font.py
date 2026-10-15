@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-生成手绘字体（龙藏）的自托管子集，供 /plan 手绘清单页使用。
+生成手绘标题字体（马善政）的自托管子集，供 /plan 手绘清单页使用。
 
 方案（实测迭代而来，见 docs/design/plan-design.md 结论 99）：
 均匀 unicode-range 分片在中文场景不划算——站点用字约 600 个但散布整个 CJK 区间，
@@ -17,7 +17,7 @@
 用法（需要 fonttools + brotli）：
   python3 -m pip install --target .pylibs fonttools brotli
   curl -sL -o /tmp/LongCang-Regular.ttf \\
-    https://raw.githubusercontent.com/google/fonts/main/ofl/longcang/LongCang-Regular.ttf
+    https://raw.githubusercontent.com/google/fonts/main/ofl/mashanzheng/MaShanZheng-Regular.ttf
   PYTHONPATH=../../.pylibs python3 scripts/gen-handdrawn-font.py /tmp/LongCang-Regular.ttf
 
 更新语料（把库内新标题并进核心片）：
@@ -76,7 +76,7 @@ def main(ttf_path: str) -> None:
     subset(ttf_path, core_out, sorted(corpus))
     core_range = ','.join(fmt_cp(cp) for cp in sorted(corpus))
     faces.append(
-        f"@font-face{{font-family:'Long Cang';font-style:normal;font-weight:400;font-display:swap;"
+        f"@font-face{{font-family:'Ma Shan Zheng';font-style:normal;font-weight:400;font-display:swap;"
         f"src:url('./lc-core.woff2') format('woff2');unicode-range:{core_range};}}"
     )
 
@@ -96,13 +96,13 @@ def main(ttf_path: str) -> None:
         sparse_total += os.path.getsize(out)
         sparse_range = ','.join(fmt_cp(cp) for cp in cps)
         faces.append(
-            f"@font-face{{font-family:'Long Cang';font-style:normal;font-weight:400;font-display:swap;"
+            f"@font-face{{font-family:'Ma Shan Zheng';font-style:normal;font-weight:400;font-display:swap;"
             f"src:url('./{name}.woff2') format('woff2');unicode-range:{sparse_range};}}"
         )
 
     css_path = os.path.join(out_dir, 'longcang.css')
     header = (
-        '/* 龙藏（SIL OFL 1.1）自托管子集 —— 由 scripts/gen-handdrawn-font.py 生成，勿手改。\n'
+        '/* 马善政（SIL OFL 1.1）自托管子集 —— 由 scripts/gen-handdrawn-font.py 生成，勿手改。\n'
         f' * 核心片（站点语料 {len(corpus)} 字）+ 稀疏片 {kept} 片兜底 {sparse_total / 1024:.0f} KB；\n'
         ' * 常规浏览只加载核心片，新标题的罕见字按片懒加载。 */\n'
     )
