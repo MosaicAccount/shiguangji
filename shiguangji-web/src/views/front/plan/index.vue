@@ -153,9 +153,9 @@ import { groupPlanItems, planDateLabel, localDateKey } from '@/utils/plan'
 import { itemStatusLabel } from '@/utils/itemStatus'
 import { listPlanItems, updateFrontItem } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
-// 手绘皮肤：与设计图共用的唯一来源（handdrawn.css）；字体为马善政分片子集（结论 99）
+// 手绘皮肤：与设计图共用的唯一来源（handdrawn.css）。字体用系统楷体栈（结论 106），
+// 不再下载 webfont —— 因此这里也不再 import 分片字体 CSS。
 import './handdrawn.css'
-import '@/assets/fonts/handdrawn/mashanzheng/mashanzheng.css'
 import type { SgjItem } from '@/types/api/business/item'
 
 /**

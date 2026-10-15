@@ -7,7 +7,7 @@
  *   1. 作用域：所有规则加 .plan-page 前缀（设计图里是整页，产品里是本页）；
  *   2. 暗色钩子：设计图用 html[data-theme="dark"]，产品用 html.dark（两套令牌值一字未改）；
  *   3. body → .plan-page：margin/background 归站点，字体与颜色沿设计图；
- *   4. 字体：产品固定马善政（--hd-hand，用户拍板），去掉设计图的评审切换器；
+ *   4. 字体：产品固定系统楷体（--hd-hand，用户拍板，结论 106），设计图的评审切换器留在外壳；
  *   5. 空态：设计图靠 body[data-state] 切换，产品的显隐由 Vue 控制，故去掉 display:none；
  *   6. 移动端：设计图靠 body[data-vp] 预览，产品用真实媒体查询（同一批声明）。
  * 设计图的评审工具条/视口框/标注/站点导航属评审外壳，不进本文件。
@@ -29,7 +29,11 @@
   --hd-moss-soft:rgba(93,111,102,.14);
   --hd-tape:rgba(168,95,82,.16);
   --an:#E8632C;
-  --hd-hand: 'Ma Shan Zheng', var(--sgj-font-serif);
+  /* 字体（结论 106）：系统楷体栈，用户拍板「选那种楷体」。
+   * 必须写成自包含的字体栈，不得把站点变量（var(--sgj-font-serif)）当回退：
+   * 设计图里没有那个变量，按 CSS 规范整条 font-family 会失效、退回浏览器默认字体——
+   * 于是「设计图好看、实现难看」其实是在比两种完全不同的字体（实测踩过，结论 106）。 */
+  --hd-hand: 'Kaiti SC', 'STKaiti', 'KaiTi', 'Songti SC', 'SimSun', serif;
 
   /* 站点 body 设了 -webkit-font-smoothing:antialiased + text-rendering:optimizeLegibility，
    * 会把细笔画手写体「洗淡」——实测同一段文字、同一字体，笔画覆盖比设计图的默认渲染少 15~22%。

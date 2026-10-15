@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="light" data-font="mashanzheng">
+<html lang="zh-CN" data-theme="light" data-font="kaiti">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -33,9 +33,15 @@ html[data-theme="dark"] .hd-nav a.on::after{filter:brightness(1.5) saturate(.9)}
 body[data-state="empty"] .groups,
 body[data-state="empty"] .list-foot{display:none}
 body[data-state="empty"] .empty{display:block}
-/* 手写字体切换器（产品固定马善政） */
-html[data-font="longcang"] .plan-page{--hd-hand:'Long Cang',cursive}
-html[data-font="zhimangxing"] .plan-page{--hd-hand:'Zhi Mang Xing',cursive}
+/* 字体对比（评审用；产品固定「楷体」，见 handdrawn.css 的 --hd-hand）。
+   每个选项都写成自包含字体栈：曾因回退里引用了只在应用里定义的站点变量，
+   整条 font-family 失效、设计图偷偷退回浏览器默认字体（结论 106）。 */
+html[data-font="kaiti"] .plan-page{--hd-hand:'Kaiti SC','STKaiti','KaiTi','Songti SC','SimSun',serif}
+html[data-font="songti"] .plan-page{--hd-hand:'Songti SC','STSong','SimSun',serif}
+html[data-font="system"] .plan-page{--hd-hand:system-ui,'PingFang SC',sans-serif}
+html[data-font="mashanzheng"] .plan-page{--hd-hand:'Ma Shan Zheng',serif}
+html[data-font="longcang"] .plan-page{--hd-hand:'Long Cang',serif}
+html[data-font="zhimangxing"] .plan-page{--hd-hand:'Zhi Mang Xing',serif}
 /* 标注 */
 .an{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
   background:var(--an);color:#fff;font-size:12px;font-family:-apple-system,sans-serif;position:absolute;z-index:30}
@@ -63,7 +69,10 @@ body.no-an .an{display:none}
   </span>
   <span class="cap">字体</span>
   <span class="seg" role="group" id="fontSeg">
-    <button data-font="mashanzheng" aria-pressed="true">马善政（产品用）</button>
+    <button data-font="kaiti" aria-pressed="true">楷体（产品用）</button>
+    <button data-font="songti" aria-pressed="false">宋体</button>
+    <button data-font="system" aria-pressed="false">浏览器默认</button>
+    <button data-font="mashanzheng" aria-pressed="false">马善政</button>
     <button data-font="longcang" aria-pressed="false">龙藏</button>
     <button data-font="zhimangxing" aria-pressed="false">芝蔓行</button>
   </span>
@@ -337,7 +346,7 @@ body.no-an .an{display:none}
   <h3>本屏标注（评审要点）</h3>
   <ol>
     <li><b>样式唯一来源</b>：本设计图与产品 /plan 页面共用 <code>shiguangji-web/src/views/front/plan/handdrawn.css</code>，类名也逐一对齐（sheet/paper/row/ck/glyph/hdbtn…）。设计图不再自带设计 CSS，两边不会各改各的。</li>
-    <li><b>手写字体</b>：产品固定马善政（工具条可切龙藏 / 芝蔓行做对比）。字体按站点语料分片自托管，常规浏览只拉核心片（结论 99/103）。</li>
+    <li><b>字体</b>：产品用<b>系统楷体</b>（工具条可切宋体 / 浏览器默认 / 马善政 / 龙藏 / 芝蔓行做对比）。系统楷体不下载任何字体文件；马善政等 webfont 方案已备好分片子集（结论 99/103），需要时一行即可切回。<br><span class="sub">历史坑：此前本设计图的字体回退引用了只在应用里定义的站点变量，导致整条 font-family 失效、悄悄退回「浏览器默认字体」——于是「设计图好看、实现难看」其实是在比两种完全不同的字。现已各自自包含（结论 106）。</span></li>
     <li><b>线是抖的，字是清楚的</b>：边框 / 行分隔 / 按钮框 / 类型圆圈套 SVG 位移滤镜（#rough），文字层不套。</li>
     <li><b>方框 = 状态也是动作</b>：空框 = 在想；涂鸦痕 = 在做；悬停出现淡红勾提示「点我推进」。</li>
     <li><b>日/夜</b>：日间纸+钢笔，夜间黑板+粉笔（同一骨架换墨）。</li>
