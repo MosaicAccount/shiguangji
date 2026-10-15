@@ -30,6 +30,13 @@
   --hd-tape:rgba(168,95,82,.16);
   --an:#E8632C;
   --hd-hand: 'Ma Shan Zheng', var(--sgj-font-serif);
+
+  /* 站点 body 设了 -webkit-font-smoothing:antialiased + text-rendering:optimizeLegibility，
+   * 会把细笔画手写体「洗淡」——实测同一段文字、同一字体，笔画覆盖比设计图的默认渲染少 15~22%。
+   * 这里还原设计图的渲染条件（设计图没有这两条），否则字体一样、看起来却不一样。 */
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: auto;
   max-width: 860px;      /* 对齐设计图 .screen 的内容宽度 */
   margin: 0 auto;
   padding: 10px 22px 40px;

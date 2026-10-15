@@ -66,7 +66,7 @@
                   </button>
 
                   <span class="glyph">
-                    <svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none" stroke-width="1.8" /></svg>
+                    <svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none" :stroke="glyphColor(item.itemType)" stroke-width="1.8" /></svg>
                     <span>{{ typeGlyph(item.itemType) }}</span>
                   </span>
 
@@ -238,10 +238,13 @@ function loadMore(): void {
 const TYPE_NAMES: Record<string, string> = { MOVIE: '电影', TV: '剧集', BOOK: '书籍', PLACE: '地点' }
 const TYPE_GLYPHS: Record<string, string> = { MOVIE: '影', TV: '剧', BOOK: '书', PLACE: '地' }
 const DONE_VERBS: Record<string, string> = { BOOK: '已读', PLACE: '去过' }
+/** 类型圆圈与字的颜色：与设计图内联的 stroke 完全一致（影视=陶红 / 书籍=鼠尾草 / 地点=琥珀） */
+const TYPE_COLORS: Record<string, string> = { MOVIE: 'var(--hd-red)', TV: 'var(--hd-red)', BOOK: 'var(--hd-moss)', PLACE: 'var(--hd-amber)' }
 
 const typeName = (type?: string) => TYPE_NAMES[type || ''] || ''
 const typeGlyph = (type?: string) => TYPE_GLYPHS[type || ''] || '记'
 const doneVerb = (type?: string) => DONE_VERBS[type || ''] || '看过'
+const glyphColor = (type?: string) => TYPE_COLORS[type || ''] || 'var(--hd-ink-soft)'
 
 /** WANT → DOING：开始做 */
 function startDoing(item: SgjItem): void {
