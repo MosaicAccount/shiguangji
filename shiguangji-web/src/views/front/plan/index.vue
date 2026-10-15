@@ -318,12 +318,16 @@ onMounted(() => {
   --hd-amber: #B18458;
   --hd-moss: #5D6F66;
   --hd-tape: rgba(168, 95, 82, 0.16);
-  --hd-hand: 'Long Cang', var(--sgj-font-sans);
+  /* 字体用法（结论 101，用户实测拍板）：手写体只做「标题时刻」——页头 / 组名 / 空态；
+     正文（条目、日期、按钮、说明）回到站内衬线体。手写体铺满全页时小字号下显乱（实测「好丑」），
+     手绘感由纸 / 方框 / 抖线承担，不依赖正文也用手写。 */
+  --hd-hand: 'Long Cang', var(--sgj-font-serif);
+  --hd-body: var(--sgj-font-serif);
 
   max-width: 1080px;
   margin: 0 auto;
   padding: 8px 24px 48px;
-  font-family: var(--hd-hand);
+  font-family: var(--hd-body);
   color: var(--hd-ink);
   font-size: 16px;
   line-height: 1.65;
@@ -348,7 +352,7 @@ html.dark .plan-page {
 .plan-page .hd-head {
   padding: 18px 4px 6px;
 
-  h1 { margin: 0; font-size: 34px; font-weight: 400; letter-spacing: 2px; .dot { color: var(--hd-red); } }
+  h1 { margin: 0; font-size: 34px; font-weight: 400; letter-spacing: 2px; font-family: var(--hd-hand); .dot { color: var(--hd-red); } }
   p { margin: 6px 0 0; font-size: 16px; color: var(--hd-ink-soft); max-width: 640px; }
 }
 
@@ -389,7 +393,7 @@ html.dark .plan-page {
 
 /* 组标题：身份色 + 手绘下划线（currentColor 跟随组色） */
 .plan-page .g-head { display: flex; align-items: baseline; gap: 12px; padding: 14px 2px 4px; position: relative; z-index: 1; flex-wrap: wrap;
-  .g-title { margin: 0; font-size: 24px; font-weight: 400; position: relative; display: inline-block;
+  .g-title { margin: 0; font-size: 24px; font-weight: 400; position: relative; display: inline-block; font-family: var(--hd-hand);
     svg { position: absolute; left: -4px; right: -10px; bottom: -6px; width: calc(100% + 14px); height: 9px; } }
   .g-count { font-size: 14px; color: var(--hd-ink-soft); border: 1.8px solid var(--hd-line-soft); border-radius: 10px 3px 8px 4px / 4px 8px 3px 10px; padding: 0 9px; }
   .g-hint { font-size: 14px; color: var(--hd-ink-soft); }
@@ -429,7 +433,7 @@ html.dark .plan-page {
   }
 
   .main { flex: 1; min-width: 0;
-    .t { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .t { font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m { display: flex; align-items: center; gap: 10px; margin-top: 2px; font-size: 13.5px; color: var(--hd-ink-soft); flex-wrap: wrap;
       .st { padding: 0 8px; border-radius: 10px 3px 9px 4px / 4px 9px 3px 10px; border: 1.6px solid var(--hd-line-soft);
         &.doing { border-color: var(--hd-red); color: var(--hd-red); background: var(--hd-red-soft); } }
@@ -457,7 +461,7 @@ html.dark .plan-page .hdbtn.go { color: #262B29; }
 /* ---------------- 空态 / 加载失败 ---------------- */
 .plan-page .hd-empty { text-align: center; padding: 64px 10px 40px;
   svg { width: 150px; height: 96px; margin-bottom: 6px; }
-  p { font-size: 19px; margin: 0 0 18px; }
+  p { font-size: 22px; margin: 0 0 18px; font-family: var(--hd-hand); }
   .hd-empty-acts { display: flex; gap: 14px; justify-content: center; }
 }
 .plan-page .hd-load-error { display: flex; align-items: center; gap: 12px; justify-content: center; padding: 32px 0; color: var(--hd-ink-soft); }
