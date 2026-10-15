@@ -14,8 +14,8 @@
 | T-73 | `buildSummary` 三态自洽 | 造 1 `WANT` + 1 `DOING` + 1 `DONE` 后：`wishTotal==1`、`doingTotal==1`、`doneTotal==1`、`itemTotal==3`，且 **`itemTotal == doneTotal + wishTotal + doingTotal`**；`doing`/`wish`/`done` 三个按类型的 map 之和各自等于对应 total（`DOING` 不得再出现在 `wish` 里） | `AppPlanApiSmokeTest` |
 | T-74 | 心愿单单一数据源与分页边界 | `/app/home/index` **不再**下发 `wishlist`；心愿单走 plan/list：`page1 ∪ page2` 覆盖全部夹具且两页之间无重复（结论 92）；排序与状态同计划页 | 同上 |
 | T-75 | 计划接口集合 / 排序 / 分页 | `GET /app/item/plan/list`：只含 `WANT` ∪ `DOING`（无 `DONE`）；无日期的排在最后；`start_date` 升序；`total` 等于符合条件的总数而非当前页长度；`pageSize=2` 翻页无重复无遗漏 | 同上 |
-| T-76 | 计划接口的可见范围 | 匿名 → 只见 `publicOwner` 的数据；登录用户 → 只见自己的；`?pageNum=0` 等异常入参不 500（照既有分页接口的口径） | 同上 |
-| T-77 | 计划接口访客脱敏 | 匿名请求返回的条目 `comment` 为空（与 `/app/item/list` 的 `maskItemsForGuest` 口径一致），`title` / `status` / `startDate` 保留 | 同上 |
+| T-76 | 计划接口的可见范围（含匿名拒绝） | 匿名 → **code 401 且不下发任何行**（结论 108：心愿不对匿名开放）；登录用户 → 只见自己的（夹具建在 admin 名下时，其他用户看到 0 条）；`?pageNum=0` 等异常入参不 500 | 同上 |
+| T-77 | 首页汇总不向访客下发心愿数字（结论 108） | 户主 `/app/home/index` → `wishTotal + doingTotal > 0`；匿名同一接口 → `wishTotal == 0`、`doingTotal == 0`、`wish` / `doing` 分态映射为空，而公开目录口径（`itemTotal`）仍 > 0 | 同上 |
 | T-78 | 字典值域与排序 | `sgj_movie_status` / `sgj_book_status` 各 3 条且 `dict_sort` 为 `1/2/3` 对应 `WANT/DOING/DONE`；`sgj_place_status` **仍只有 2 条**（`DOING` 不得出现在地点）；三套字典无重复 `dict_value` | `SgjStatusDictTest`（纯 SQL 断言，或并入 smoke） |
 | T-79 | 时间线仍只含 `DONE`（回归） | 存在 `DOING` 条目时：`/app/home/index` 的 `timeline` 与 `/app/home/timeline` 的 `rows` 都不含它；`total` 与按同一条件独立统计的行数相等 | `AppPlanApiSmokeTest` |
 
@@ -28,6 +28,7 @@
 | T-82 | `ItemCompleteDialog` 分类型形态 | MOVIE → 标题「标记看过：」+「看完日期」+ 评分 +「短评」；BOOK →「标记已读：」+「读完日期」+ 评分 +「读后感」；PLACE →「标记去过：」+「去过日期」+ **无评分** +「回忆」；打开时 `finishDate` 默认**本地今天** | `components/ItemCompleteDialog/__tests__/index.spec.ts` |
 | T-83 | 完成弹窗提交用用户选的日期 | 把日期改成 `2026-10-01` 后提交 → 以 `{finishDate:'2026-10-01'}` 调用 `completeFrontItem`（断言出参而不是只断言被调用）；成功后 `emit('submitted')` | 同上 |
 | T-84 | 首页心愿条、状态文案与心愿单脚 | 心愿条数字 = `wishTotal + doingTotal`；`DOING` 条目状态文案是「在看 / 在读」；心愿条链接指向 `/plan`（回归：改前误指 `/note`）；心愿单展示计划日期、只渲染首屏 10 条，右下角「查看全部心愿 →」链接指向 `/plan` 且与最近笔记同一 `.note-more` 视觉（结论 95/96） | `views/front/home/__tests__/wishlist.spec.ts` |
+| T-96 | 访客口径：心愿入口与数据都不可见（结论 108） | 前端：`isPublicRoute('/plan') === false`；访客首页不渲染 `.wish-bar` / `.wishlist-card` 且**不请求** `plan/list`（`publicRoutes.spec.ts` + `home/__tests__/wishlist.spec.ts`）。人工真机：匿名打开 `/plan` → 落登录页；访客首页导航无「心愿」、右栏只有「最近笔记」 | 自动化 + 人工 |
 
 ## 2. 人工用例（只有人能跑）
 
