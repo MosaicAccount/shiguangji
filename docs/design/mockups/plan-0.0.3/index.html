@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.3 设计图 · 计划（三态与计划日期）— 拾光记</title>
+<style>
+
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+button{font-family:inherit}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:auto;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台导航（既有样式，未改动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px;text-decoration:none}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:18px}
+.nav span{position:relative;padding:8px 0;color:var(--sgj-text-2);font-size:14px;text-decoration:none}
+.nav span.on{font-weight:700;color:var(--sgj-primary)}
+.nav span.on::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--sgj-primary)}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px;flex-shrink:0}
+.page{padding:36px;max-width:1320px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh-in{padding:0 12px;gap:12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en{display:none}
+body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .theme-toggle{width:32px;height:32px;font-size:13px}
+body[data-vp=mobile] .page{padding:16px 12px 76px}
+body[data-vp=mobile] .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:60px;z-index:6;
+  background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+
+/* ===== 前台页脚（既有样式，未改动）===== */
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep);margin-top:32px}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .ff{padding:16px 14px 76px}
+body[data-vp=mobile] .ff-line{font-size:12px}
+
+/* ===== 标注气泡 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:5px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .fix{color:#5D6F66;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .fix{color:#7F9B8D}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:12px;font-size:12px;color:#7D8783}
+
+/* ===== 前台共用控件 ===== */
+.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;padding:6px 12px;
+  font-size:12px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
+.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .el-button--primary{color:#171B1A}
+.el-button--warning{background:var(--sgj-amber);border-color:var(--sgj-amber);color:#fff}
+html.dark .el-button--warning{color:#171B1A}
+.el-button--text{border:0;background:transparent;color:var(--sgj-primary);padding:4px 6px}
+.el-button[disabled]{opacity:.55;cursor:not-allowed}
+.el-button.is-loading{opacity:.75;cursor:default}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;
+  font-size:13px;font-weight:500;letter-spacing:.5px;display:inline-flex;align-items:center;justify-content:center}
+html.dark .btn{color:#171B1A}
+.btn.ghost{background:transparent;color:#e7ece9;border:1px solid rgba(231,236,233,.4)}
+html.dark .btn.ghost{color:var(--sgj-text-2);border-color:var(--sgj-border)}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.only-desktop{display:block}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin{width:13px;height:13px;border:2px solid var(--sgj-border);border-top-color:var(--sgj-primary);border-radius:50%;animation:sp .7s linear infinite;flex:none}
+html.dark .spin{border-color:var(--sgj-border);border-top-color:var(--sgj-primary)}
+.sk{background:var(--sgj-bg-deep);border-radius:6px;animation:sk 1.2s ease-in-out infinite}
+html.dark .sk{background:var(--sgj-bg-deep)}
+@keyframes sk{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+
+
+.wrap{max-width:1080px;margin:0 auto;padding:44px 20px 70px}
+.banner{position:relative;background:#282e2c;color:#e7ece9;border-radius:24px;padding:34px 40px;overflow:hidden;margin-bottom:26px}
+.banner .blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:140px;bottom:-100px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .in{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.3}
+.banner p{margin:12px 0 0;font-size:14px;color:#aeb8b3;letter-spacing:.4px;max-width:680px}
+h2{font-family:var(--sgj-font-serif);font-size:19px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--sgj-border)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px 20px;
+  box-shadow:var(--sgj-shadow-sm);display:block;color:inherit}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px);transition:box-shadow .16s,transform .16s;text-decoration:none}
+.card h3{margin:0 0 6px;font-family:var(--sgj-font-serif);font-size:17px}
+.card .route{font-size:12px;color:var(--sgj-text-4);font-family:var(--sgj-font-mono)}
+.card p{margin:8px 0 0;font-size:13px;color:var(--sgj-text-2)}
+.card ul{margin:8px 0 0;padding-left:20px;font-size:12.5px;color:var(--sgj-text-3)}
+.card li{margin:3px 0}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.tag.new{background:var(--sgj-primary-soft);color:var(--sgj-primary)}
+.tag.chg{background:var(--sgj-amber-soft);color:var(--sgj-amber)}
+.tag.fix{background:var(--sgj-moss-soft);color:var(--sgj-moss)}
+.box{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 20px}
+.box ul{margin:0;padding-left:20px}
+.box li{margin:5px 0;font-size:14px}
+code{font-family:var(--sgj-font-mono);font-size:12.5px;background:var(--sgj-bg-deep);border-radius:4px;padding:1px 5px;color:var(--sgj-primary)}
+.note{font-size:12.5px;color:var(--sgj-text-4);margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border:1px solid var(--sgj-border-card);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--sgj-bg-deep);font-weight:600;color:var(--sgj-text)}
+td code{font-size:12px}
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="banner">
+    <div class="blob"></div><div class="blob2"></div>
+    <div class="in">
+      <h1>计划 · 三态与计划日期</h1>
+      <p>四个内容模块（影单 / 书单 / 足迹 / 笔记）里，影单、书单、足迹原来只有「想看」和「看过」两端。本期补上中间态 <code>DOING</code>（在看 / 在读），让既有的「计划日期」字段在前台露出，并新增汇总页 <code>/plan</code>。<b>地点不加中间态</b>——只用「想去 + 计划日期」表达计划。</p>
+    </div>
+  </div>
+
+  <h2>怎么用</h2>
+  <div class="box">
+    <ul>
+      <li>每屏一页，页内用顶部工具条切换：<b>状态</b>、<b>深色模式</b>、<b>桌面 / 移动端</b>、<b>标注</b>。</li>
+      <li>橙色数字气泡与页脚「本屏标注」一一对应；关掉「标注」是无打扰观感。</li>
+      <li>设备框是<b>可滚动的真视口</b>：<code>/plan</code> 的四组列表、地图下的时间线、完成弹窗里的表单都能滚，可以据此判断遮挡与留白。</li>
+      <li>视觉基线取自 <code>shiguangji-web/src/assets/styles/front-tokens.scss</code>（冷雾胶片 v3.3）；弹窗、抽屉、胶囊都沿用 Element Plus 结构，但配色走 <code>--sgj-*</code>（前台主题下的 Element Plus）。</li>
+    </ul>
+    <p class="note">本组图是<b>静态保真</b>，不连接真实接口：按钮可点、弹窗可关、状态可切，但日期选择、评分、图片上传与跳转均为示意。这些是刻意的边界，不是缺失。</p>
+  </div>
+
+  <h2>各屏</h2>
+  <div class="grid">
+    <a class="card" href="plan-page.html">
+      <h3>计划页 /plan</h3>
+      <span class="route">/plan · 新增</span>
+      <p><span class="tag new">新增</span>汇总 <code>WANT + DOING</code> 的条目；四组按计划日期升序，逾期与本周有视觉区分</p>
+      <ul><li>状态：默认（四组有数据） / 空态 / 加载中骨架</li></ul>
+    </a>
+    <a class="card" href="status-flow.html">
+      <h3>三态胶囊与状态流转</h3>
+      <span class="route">/movie · /book · /travel · 详情抽屉</span>
+      <p><span class="tag new">新增</span><code>DOING</code>；<span class="tag chg">改动</span>状态胶囊由字典驱动扩到三枚；足迹保持两枚并露出计划日期</p>
+      <ul><li>状态：影单三态 / 书单三态 / 足迹两态+计划日期 / 详情抽屉 / 移动端</li></ul>
+    </a>
+    <a class="card" href="wishlist-home.html">
+      <h3>首页心愿单与统一完成弹窗</h3>
+      <span class="route">/home · 一个弹窗供四处复用</span>
+      <p><span class="tag chg">改动</span>心愿单纳入「在看」；<span class="tag fix">修</span><code>全部计划 →</code> 由 <code>/note</code> 改为 <code>/plan</code>；<span class="tag new">新增</span>完成弹窗的日期可改</p>
+      <ul><li>状态：首页默认 / 完成弹窗（影视）/ 完成弹窗（书籍）/ 完成弹窗（地点）/ 移动端</li></ul>
+    </a>
+    <a class="card" href="place-map.html">
+      <h3>足迹地图（现状核实）</h3>
+      <span class="route">/travel?mode=map · 无代码改动</span>
+      <p><span class="tag chg">核实</span>地图已同时展示「去过 / 想去」两态图钉（FR-003-6）；本期不写代码，只留回归依据</p>
+      <ul><li>状态：地图模式（两态同屏） / 聚合态 / 移动端</li></ul>
+    </a>
+  </div>
+
+  <h2>出图口径</h2>
+  <div class="box">
+    <ul>
+      <li><b>覆盖</b>：FR-003-1 ~ FR-003-7 的用户可见部分。四屏的分工是——<code>/plan</code> 是新页（新增），三态胶囊与流转是把既有交互从两端扩到三端（改动），首页心愿单对齐与统一完成弹窗兼有改动与修复，足迹地图是 FR-003-6 的<b>现状核实页</b>，不产出改动。</li>
+      <li><b>每屏都有</b>移动端（≤768px）与深色模式两个变体——页内切换，不另存文件。<b>移动端差异</b>：<code>/plan</code> 单列、分组标题吸顶、卡片操作收成短文案；三态屏单列卡片；地图降为 420px 高。</li>
+      <li><b>文案即定稿</b>：四屏里的中文文案会与实现逐字对齐——尤其「逾期 3 天」「今天 / 明天 / 周五」「还没有计划 —— 去影单 / 书单挑一个，填上打算哪天看。」「心愿 · 在想 8 / 在做 4」「＋ 定个日子」。图里的说明性文字只出现在标注与页脚，不混进界面文案。</li>
+      <li><b>既有口径不动</b>：hero 统计数字仍<b>只显示已完成</b>（看过 / 读过 / 去过 / 笔记），本期不改；首页时间线仍只含 <code>DONE</code>；三个模块的「取消完成」文案与位置不变。</li>
+      <li><b>图片占位</b>：全部用 CSS 渐变圆角块 + 衬线字（影 / 剧 / 书 / 地）表示封面，<b>不引用任何外部图片</b>；地图底图是纯 CSS 画的示意底（浅灰网格 + 道路/水域色块），不是真实瓦片。</li>
+      <li><b>本组图不含</b>：后端字典 DDL 与 <code>buildSummary</code> 的三态分支修改（见需求 §7 风险提示）、提醒与通知、「集数 / 页数进度」（D-10 本期不做）、清单子项、<code>is_public</code>（D-21 不提前）。</li>
+    </ul>
+    <p class="note">唯一一条<b>既知不一致</b>：<code>全部计划 →</code> 在现有代码里误指向 <code>/note</code>。本组图按修复后的形态画 <code>/plan</code>，见 <a href="wishlist-home.html">首页屏</a> 标注。</p>
+  </div>
+
+  <h2>状态与文案对照</h2>
+  <div class="box">
+    <table>
+      <tr><th>模块</th><th>胶囊（字典驱动）</th><th>「有日期」的读法</th><th>本期变化</th></tr>
+      <tr><td>影单（电影 / 剧集）</td><td>想看 / <b>在看</b> / 看过</td><td>打算哪天看</td><td rowspan="2"><code>sgj_movie_status</code> / <code>sgj_book_status</code> 各加一条 <code>DOING</code>；三态判断</td></tr>
+      <tr><td>书单</td><td>想读 / <b>在读</b> / 已读</td><td>打算哪天读</td></tr>
+      <tr><td>足迹</td><td>想去 / 去过（<b>两枚</b>）</td><td>打算哪天去</td><td>不加 <code>DOING</code>，只让计划日期露出（D-5 建议）</td></tr>
+      <tr><td>笔记</td><td>—（无状态）</td><td>—</td><td>不受影响</td></tr>
+    </table>
+    <p class="note">状态胶囊是<b>字典驱动的循环</b>（<code>v-for="s in sgj_movie_status"</code>），所以本期的主要表现变化不是改模板结构，而是字典多一行、以及三处写死二值的地方（首页 summary / 时间线 / 心愿单）改成显式三态。</p>
+  </div>
+</div>
+
+</body>
+</html>

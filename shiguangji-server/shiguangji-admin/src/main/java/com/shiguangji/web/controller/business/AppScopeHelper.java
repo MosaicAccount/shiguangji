@@ -1,6 +1,8 @@
 package com.shiguangji.web.controller.business;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -124,6 +126,31 @@ public class AppScopeHelper
             {
                 note.setRemark(null);
             }
+        }
+    }
+
+    /**
+     * 访客响应脱敏：心愿是私人模块（设计 结论 108），首页汇总里的「在想 / 在做」数字也不下发。
+     * 只清零心愿相关字段：条目总数 / 已完成 / 笔记数属公开目录口径，保持原样。
+     * 仅对匿名访客生效，登录态返回内容不受影响。
+     *
+     * @param homeData 首页数据（含 summary）
+     */
+    @SuppressWarnings("unchecked")
+    public void zeroPlanSummaryForGuest(Map<String, Object> homeData)
+    {
+        if (homeData == null || !isAnonymous())
+        {
+            return;
+        }
+        Object summary = homeData.get("summary");
+        if (summary instanceof Map)
+        {
+            Map<String, Object> map = (Map<String, Object>) summary;
+            map.put("wishTotal", 0L);
+            map.put("doingTotal", 0L);
+            map.put("wish", Collections.emptyMap());
+            map.put("doing", Collections.emptyMap());
         }
     }
 

@@ -58,13 +58,17 @@
           <div class="card-title">{{ item.title }}</div>
           <div v-if="item.author" class="card-author">{{ item.author }}</div>
           <div class="card-meta">
+            <plan-date-badge :item="item" @saved="loadData" />
             <span v-if="item.rating" class="rating-pill">★ {{ item.rating }}</span>
           </div>
           <div v-if="item.comment" class="card-comment">{{ item.comment }}</div>
         </div>
         <!-- ：整卡点击已开详情，操作区只留高频操作（去重「查看详情」按钮） -->
         <div class="card-actions" @click.stop>
-          <el-button v-if="item.status === 'WANT' && isLogin" type="primary" size="small" round @click="openComplete(item)">
+          <el-button v-if="item.status === 'WANT' && isLogin" size="small" round @click="startDoing(item)">
+            开始读 →
+          </el-button>
+          <el-button v-if="item.status !== 'DONE' && isLogin" type="primary" size="small" round @click="openComplete(item)">
             标记已读
           </el-button>
           <el-button v-if="item.status === 'DONE' && isLogin" type="warning" size="small" round @click="handleUncomplete(item)">
@@ -105,6 +109,9 @@
           <!-- 标签来自后台标签管理（BOOK 模块），禁止自由输入 -->
           <tag-select v-model="addForm.tags" module="BOOK" placeholder="选择标签（可选）" />
         </el-form-item>
+        <el-form-item label="计划日期">
+          <el-date-picker v-model="addForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="打算哪天读（可选）" :clearable="false" style="width: 100%" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitAdd">确 定</el-button>
@@ -112,24 +119,8 @@
       </template>
     </el-dialog>
 
-    <!-- 标记已读 -->
-    <el-dialog v-model="completeOpen" :title="'标记已读：' + (currentItem?.title || '')" width="520px" append-to-body>
-      <el-form ref="completeFormRef" :model="completeForm" label-width="80px">
-        <el-form-item label="读完日期">
-          <el-date-picker v-model="completeForm.finishDate" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="评分">
-          <el-rate v-model="completeForm.rating" :max="10" show-score />
-        </el-form-item>
-        <el-form-item label="读后感">
-          <el-input v-model="completeForm.comment" type="textarea" :rows="3" placeholder="写点读后感吧（可选）" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="primary" @click="submitComplete">确 定</el-button>
-        <el-button @click="completeOpen = false">取 消</el-button>
-      </template>
-    </el-dialog>
+    <!-- 标记已读（统一完成弹窗，文案与字段随类型参数化） -->
+    <item-complete-dialog v-model="completeOpen" :item="currentItem" @submitted="onCompleted" />
 
     <!-- 详情抽屉：封面铺底 hero + 手账风信息卡（与足迹页同风格） -->
     <media-detail-drawer
@@ -138,6 +129,7 @@
       glyph="书"
       done-label="已读"
       want-label="想读"
+      doing-label="在读"
       :hero-meta="heroMeta"
       memory-label="MY THOUGHTS · 我的读后感"
       :can-operate="isLogin"
@@ -170,11 +162,14 @@ import { getToken } from '@/utils/auth'
 import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import { useDict } from '@/utils/dict'
 import ItemEditDialog from '@/components/ItemEditDialog/index.vue'
+import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
+import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
-import { listFrontItem, getFrontItem, addFrontItem, completeFrontItem, delFrontItem, uncompleteFrontItem } from '@/api/front/item'
-import type { SgjItem } from '@/types/api/business/item'
+import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
+import type { SgjItem, ItemStatus } from '@/types/api/business/item'
+import { planDateLabel, localDateKey } from '@/utils/plan'
 
 const { sgj_book_status, sgj_book_genre } = useDict('sgj_book_status', 'sgj_book_genre')
 
@@ -185,7 +180,7 @@ const route = useRoute()
 /** 是否登录（访客只读，登录后可管理） */
 const isLogin = computed(() => !!getToken())
 
-const activeStatus = ref<'WANT' | 'DONE'>(isLogin.value ? 'WANT' : 'DONE')
+const activeStatus = ref<ItemStatus>(isLogin.value ? 'WANT' : 'DONE')
 const searchTitle = ref('')
 /** 标签筛选（选择即查询） */
 const searchTag = ref('')
@@ -214,7 +209,9 @@ const addForm = reactive({
   publishDate: undefined,
   isbn: undefined,
   genre: undefined,
-  tags: undefined as string | undefined
+  tags: undefined as string | undefined,
+  /** 计划日期（0.0.3）：留空即纯心愿 */
+  startDate: undefined as string | undefined
 })
 
 /** ：封面加载失败兜底——记录失败的 itemId，模板隐藏 img 显示占位图标 */
@@ -229,10 +226,19 @@ function isCoverError(item: SgjItem): boolean {
 }
 
 /** 状态胶囊切换 */
-function switchStatus(status: 'WANT' | 'DONE'): void {
+function switchStatus(status: ItemStatus): void {
   if (activeStatus.value === status) return
   activeStatus.value = status
   loadData()
+}
+
+/** WANT → DOING：开始读（0.0.3 状态流转复用 PUT /app/item/{id}，不新增端点） */
+function startDoing(item: SgjItem): void {
+  if (!item.itemId) return
+  updateFrontItem(item.itemId, { status: 'DOING' }).then(() => {
+    proxy.$modal.msgSuccess(`开始读：${item.title || ''}`)
+    loadData()
+  }).catch(() => {})
 }
 
 /** 卡片封面占位色块：按索引轮换灰陶浅/鼠尾草浅/灰铜浅/中性 */
@@ -244,7 +250,15 @@ function coverStyle(index: number): Record<string, string> {
 }
 
 /** 详情抽屉 hero meta：评分之外追加作者 */
-const heroMeta = computed<string[]>(() => (detail.value?.author ? [detail.value.author] : []))
+/** 详情抽屉 hero meta：作者之外追加计划日期 */
+const heroMeta = computed<string[]>(() => {
+  const meta: string[] = []
+  if (detail.value?.author) meta.push(detail.value.author)
+  if (detail.value?.startDate) {
+    meta.push(`计划 ${planDateLabel(detail.value.startDate.slice(0, 10), localDateKey(new Date()))}`)
+  }
+  return meta
+})
 
 /** 详情抽屉分类 chips（script 内调用需手动解包字典 ref） */
 const chipList = computed<string[]>(() => {
@@ -263,12 +277,6 @@ const infoRows = computed<{ ico: string; label: string; value: string }[]>(() =>
   if (d.isbn) rows.push({ ico: '🔖', label: 'ISBN', value: d.isbn })
   if (d.pages) rows.push({ ico: '📃', label: '页数', value: d.pages + ' 页' })
   return rows
-})
-
-const completeForm = reactive({
-  finishDate: undefined,
-  rating: undefined,
-  comment: undefined
 })
 
 const addRules = {
@@ -365,21 +373,13 @@ function goWriteNote(itemId: number, title: string): void {
 
 function openComplete(item: SgjItem): void {
   currentItem.value = item
-  Object.assign(completeForm, {
-    finishDate: undefined,
-    rating: undefined,
-    comment: undefined
-  })
   completeOpen.value = true
 }
 
-function submitComplete(): void {
-  if (!currentItem.value?.itemId) return
-  completeFrontItem(currentItem.value.itemId, completeForm).then(() => {
-    proxy.$modal.msgSuccess('已标记已读')
-    completeOpen.value = false
-    loadData()
-  }).catch(() => {})
+/** 统一完成弹窗提交成功：提示与刷新留在页面侧（文案与原页内实现逐字一致） */
+function onCompleted(): void {
+  proxy.$modal.msgSuccess('已标记已读')
+  loadData()
 }
 
 function openDetail(item: SgjItem): void {
@@ -402,14 +402,30 @@ function openDetailById(itemId: number): void {
 
 /**
  *  配套：读取路由 ?itemId=，存在则自动打开对应条目详情
+ * 0.0.3：跳转可带 status 预选胶囊（「在读」的条目不在默认「想读」列表里）；
+ * setup 里 loadData() 先于本函数执行，胶囊变了要补一次 loadData。
  */
 function handleRouteQuery(): void {
+  const qStatus = route.query.status
+  let filterChanged = false
+  if ((qStatus === 'WANT' || qStatus === 'DOING' || qStatus === 'DONE') && activeStatus.value !== qStatus) {
+    activeStatus.value = qStatus
+    filterChanged = true
+  }
+  if (filterChanged) {
+    loadData()
+  }
+
   const raw = route.query.itemId
-  if (!raw) return
-  const itemId = Number(raw)
-  if (!itemId) return
-  openDetailById(itemId)
-  router.replace({ path: '/book', query: {} })
+  if (raw) {
+    const itemId = Number(raw)
+    if (itemId) {
+      openDetailById(itemId)
+    }
+  }
+  if (raw || qStatus) {
+    router.replace({ path: '/book', query: {} })
+  }
 }
 
 /** 打开编辑（详情抽屉内） */

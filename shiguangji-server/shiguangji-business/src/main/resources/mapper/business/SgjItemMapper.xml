@@ -137,6 +137,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by i.update_time desc, i.item_id desc
     </select>
 
+    <!-- 0.0.3 计划页：未完成条目按计划日期升序，无日期置后（(start_date is null) 让 NULL 排在最后） -->
+    <select id="selectPlanItems" parameterType="SgjItem" resultMap="SgjItemResult">
+        <include refid="selectSgjItemVo"/>
+        <where>
+            i.del_flag = '0'
+            and i.status in ('WANT', 'DOING')
+            <if test="createBy != null and createBy != ''">
+                and i.create_by = #{createBy}
+            </if>
+            <if test="itemType != null and itemType != ''">
+                and i.item_type = #{itemType}
+            </if>
+            <if test="title != null and title != ''">
+                and i.title like concat('%', #{title}, '%')
+            </if>
+            <if test="tags != null and tags != ''">
+                and find_in_set(#{tags}, replace(i.tags, ' ', ''))
+            </if>
+        </where>
+        order by (i.start_date is null), i.start_date asc, i.item_id desc
+    </select>
+
     <insert id="insertSgjItem" parameterType="SgjItem" useGeneratedKeys="true" keyProperty="itemId">
         insert into sgj_item
         <trim prefix="(" suffix=")" suffixOverrides=",">

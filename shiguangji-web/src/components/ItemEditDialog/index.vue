@@ -168,6 +168,21 @@
           </el-col>
         </template>
 
+        <el-col :span="12">
+          <!-- 计划日期（0.0.3 FR-003-3）：WANT/DOING 时为“打算哪天”，完成后留作开始日期。
+               不可清空：后端 mergeEditableFields 跳过 null，清空不会落库，会造成“看着清了实际没清” -->
+          <el-form-item label="计划日期" prop="startDate">
+            <el-date-picker
+              v-model="form.startDate"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="打算哪天开始（可选）"
+              :clearable="false"
+              style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+
         <el-col :span="24">
           <el-form-item label="短评" prop="comment">
             <el-input v-model="form.comment" type="textarea" :rows="3" placeholder="个人短评（可选）" maxlength="1000" />

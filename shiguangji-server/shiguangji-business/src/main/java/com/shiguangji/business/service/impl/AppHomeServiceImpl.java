@@ -38,8 +38,9 @@ public class AppHomeServiceImpl implements IAppHomeService
         result.put("timeline", sgjDashboardMapper.selectTimeline(TIMELINE_FIRST_PAGE_SIZE, 0, createBy));
         result.put("timelineTotal", sgjDashboardMapper.countTimeline(createBy));
 
-        // 心愿单
-        result.put("wishlist", sgjDashboardMapper.selectTodoItems(20, createBy));
+        // 心愿单不再随首页下发（0.0.3 修订）：它与计划页是同一个集合 + 同一个排序，
+        // 两份来源各带一页会在分页边界上错位；统一由 GET /app/item/plan/list 提供（含分页）。
+        // 汇总里的 wishTotal / doingTotal 仍在 summary 内，首页数字口径不变。
 
         // 最近笔记（publicOnly 时仅返回公开笔记，）
         result.put("recentNotes", sgjDashboardMapper.selectRecentNotes(5, createBy, publicOnly));
@@ -65,10 +66,13 @@ public class AppHomeServiceImpl implements IAppHomeService
         Map<String, Long> total = new HashMap<>();
         Map<String, Long> done = new HashMap<>();
         Map<String, Long> wish = new HashMap<>();
+        Map<String, Long> doing = new HashMap<>();
         long itemTotal = 0;
         long doneTotal = 0;
         long wishTotal = 0;
+        long doingTotal = 0;
 
+        // 0.0.3 显式三态：原先的 else 兜底会把 DOING 静默计入 wish，wishTotal 与心愿单条数不符（设计 结论 75）
         for (Map<String, Object> row : typeStats)
         {
             String type = (String) row.get("itemType");
@@ -81,6 +85,11 @@ public class AppHomeServiceImpl implements IAppHomeService
                 done.merge(type, cnt, Long::sum);
                 doneTotal += cnt;
             }
+            else if ("DOING".equals(status))
+            {
+                doing.merge(type, cnt, Long::sum);
+                doingTotal += cnt;
+            }
             else
             {
                 wish.merge(type, cnt, Long::sum);
@@ -92,9 +101,11 @@ public class AppHomeServiceImpl implements IAppHomeService
         summary.put("total", total);
         summary.put("done", done);
         summary.put("wish", wish);
+        summary.put("doing", doing);
         summary.put("itemTotal", itemTotal);
         summary.put("doneTotal", doneTotal);
         summary.put("wishTotal", wishTotal);
+        summary.put("doingTotal", doingTotal);
         summary.put("noteTotal", noteTotal);
         summary.put("allTotal", itemTotal + noteTotal);
         return summary;

@@ -1,5 +1,11 @@
 import type { BaseEntity, PageDomain } from '@/types/api/common'
 
+/**
+ * 条目状态（0.0.3 起三态）。
+ * 地点条目实际只会取到 WANT/DONE 两态（D-5：地点不引入中间态），类型取超集不影响。
+ */
+export type ItemStatus = 'WANT' | 'DOING' | 'DONE'
+
 /** 内容条目 */
 export interface SgjItem extends BaseEntity {
   itemId?: number
@@ -7,8 +13,8 @@ export interface SgjItem extends BaseEntity {
   itemType?: string
   /** 标题/名称 */
   title?: string
-  /** 状态（WANT/DONE） */
-  status?: string
+  /** 状态（WANT/DOING/DONE；地点仅 WANT/DONE） */
+  status?: ItemStatus | string
   /** 评分 */
   rating?: number
   /** 个人短评 */
@@ -17,7 +23,7 @@ export interface SgjItem extends BaseEntity {
   tags?: string
   /** 封面图/图片地址 */
   coverUrl?: string
-  /** 开始日期 */
+  /** 计划日期（列 start_date 不变，前台文案统一「计划日期」，D-6） */
   startDate?: string
   /** 完成日期 */
   finishDate?: string

@@ -18,6 +18,7 @@
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="状态" clearable style="width: 160px">
           <el-option label="想看/想读/想去" value="WANT" />
+          <el-option label="在看/在读" value="DOING" />
           <el-option label="已看/已读/去过" value="DONE" />
         </el-select>
       </el-form-item>

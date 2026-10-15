@@ -25,7 +25,7 @@ public class SgjItem extends BaseEntity
     /** 标题/名称 */
     private String title;
 
-    /** 状态（WANT/DONE） */
+    /** 状态（WANT/DOING/DONE；地点仅 WANT/DONE，0.0.3 D-5） */
     private String status;
 
     /** 评分 */
@@ -40,7 +40,7 @@ public class SgjItem extends BaseEntity
     /** 封面图/图片地址 */
     private String coverUrl;
 
-    /** 开始日期 */
+    /** 计划日期（列名 start_date 不变，0.0.3 D-6：前台文案统一「计划日期」） */
     @JsonFormat(pattern = "yyyy-MM-dd")
     private Date startDate;
 

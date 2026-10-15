@@ -39,9 +39,9 @@ public class AppHomeController extends BaseController
     private AppScopeHelper appScopeHelper;
 
     /**
-     * 获取前台首页数据（按可见范围过滤，）
+     * 获取前台首页数据（按可见范围过滤）
      *
-     * ：匿名访客的笔记相关数据仅含公开笔记（is_public='1'）
+     * 匿名访客：笔记相关数据仅含公开笔记（is_public='1'），心愿相关数字清零（私人模块，设计 结论 108）
      */
     @Anonymous
     @GetMapping("/index")
@@ -51,10 +51,11 @@ public class AppHomeController extends BaseController
         Map<String, Object> data = appHomeService.getHomeData(appScopeHelper.resolveCreateBy(), guestMode);
         if (guestMode)
         {
-            // 访客响应脱敏：时间线/心愿单不返回 remark/comment，最近笔记不返回私人备注
+            // 访客响应脱敏：时间线不返回 remark/comment，最近笔记不返回私人备注
             appScopeHelper.maskItemsForGuest((List<SgjItem>) data.get("timeline"));
-            appScopeHelper.maskItemsForGuest((List<SgjItem>) data.get("wishlist"));
             appScopeHelper.maskNotesForGuest((List<SgjNote>) data.get("recentNotes"));
+            // 心愿是私人模块：汇总里的在想 / 在做数字也不对访客下发
+            appScopeHelper.zeroPlanSummaryForGuest(data);
         }
         return success(data);
     }

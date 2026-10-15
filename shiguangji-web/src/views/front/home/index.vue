@@ -46,10 +46,11 @@
           <span class="stat-value">{{ data?.summary?.noteTotal || 0 }}</span>
           <span class="stat-label">写过 · 笔记</span>
         </div>
-        <router-link v-if="isLogin" to="/note" class="wish-bar anim" :style="{ '--d': '288ms' }">
+        <!-- 0.0.3：心愿条数字 = 在想 + 在做，入口指向 /plan（原误指 /note，一并修） -->
+        <router-link v-if="isLogin" to="/plan" class="wish-bar anim" :style="{ '--d': '288ms' }">
           <span class="wish-bar-icon">愿</span>
-          <span class="wish-bar-num">{{ data?.summary?.wishTotal || 0 }}</span>
-          <span class="wish-bar-label">心愿 · 想去 / 想读</span>
+          <span class="wish-bar-num">{{ wishBarTotal }}</span>
+          <span class="wish-bar-label">心愿 · 在想 {{ data?.summary?.wishTotal || 0 }} / 在做 {{ data?.summary?.doingTotal || 0 }}</span>
           <span class="wish-bar-more">待完成 →</span>
         </router-link>
       </div>
@@ -106,15 +107,21 @@
       <aside class="side-section">
         <section v-if="isLogin" class="wishlist-card">
           <h2 class="card-title">心愿单 · WISH LIST</h2>
-          <div v-if="!data?.wishlist || !data.wishlist.length" class="empty-tip">暂无心愿</div>
-          <div v-for="item in data?.wishlist || []" :key="item.itemId" class="wish-item">
+          <div v-if="!wishlist.length" class="empty-tip">暂无心愿</div>
+          <div v-for="item in wishlist" :key="item.itemId" class="wish-item">
             <span class="wish-icon" :class="'wish-icon-' + item.itemType">{{ wishGlyph(item.itemType) }}</span>
             <div class="wish-body">
               <div class="wish-title">{{ item.title }}</div>
-              <div class="wish-status">{{ wishLabel(item.itemType) }}</div>
+              <div class="wish-meta">
+                <!-- 状态做成胶囊：在做是暖色高亮（可行动的那一档），其余中性底（实测反馈：11px 灰字看不清） -->
+                <span class="wish-status" :class="{ 'is-doing': item.status === 'DOING' }">{{ statusText(item) }}</span>
+                <plan-date-badge :item="item" @saved="loadWishlist" />
+              </div>
             </div>
-            <el-button link class="wish-complete" @click="handleComplete(item)">完成 →</el-button>
+            <el-button link class="wish-complete" @click="openComplete(item)">完成 →</el-button>
           </div>
+          <!-- 与「最近笔记」同一模式：侧栏只放首屏一页，完整列表（含分页）去 /plan 看 -->
+          <router-link v-if="wishlist.length" to="/plan" class="note-more">查看全部心愿 →</router-link>
         </section>
 
         <section class="notes-card">
@@ -131,14 +138,20 @@
       </aside>
     </div>
     </template>
+
+    <!-- 心愿单「完成 →」统一完成弹窗（与各模块页同一份组件） -->
+    <item-complete-dialog v-model="completeOpen" :item="completeItem" @submitted="onCompleted" />
   </div>
 </template>
 
 <script setup lang="ts" name="FrontHome">
 import { getToken } from '@/utils/auth'
 import { photoUrl } from '@/utils/sgj'
+import { itemStatusLabel } from '@/utils/itemStatus'
 import { getFrontHomeData, listFrontHomeTimeline } from '@/api/front/home'
-import { completeFrontItem } from '@/api/front/item'
+import { listPlanItems } from '@/api/front/item'
+import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
+import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import type { FrontHomeData } from '@/types/api/front/home'
 import type { SgjItem } from '@/types/api/business/item'
 import type { SgjNote } from '@/types/api/business/note'
@@ -155,6 +168,10 @@ const router = useRouter()
 const data = ref<FrontHomeData | null>(null)
 const loading = ref<boolean>(false)
 const loadError = ref<boolean>(false)
+
+/** 心愿单完成弹窗（统一组件） */
+const completeOpen = ref(false)
+const completeItem = ref<SgjItem | null>(null)
 
 /** 已完成时间线：首屏 + “加载更多”累积 */
 const timelineItems = ref<SgjItem[]>([])
@@ -269,30 +286,52 @@ function doneTotal(type: string): number {
   return data.value?.summary?.done?.[type] || 0
 }
 
-function wishLabel(type?: string): string {
-  if (type === 'BOOK') return '想读'
-  if (type === 'PLACE') return '想去'
-  return '想看'
+/** 心愿单状态文案：字典优先、中文兜底（utils/itemStatus.ts），不再写死一份措辞 */
+function statusText(item: SgjItem): string {
+  return itemStatusLabel(item)
 }
 
-/** 标记完成按钮文案：看过/读过/去过 */
-function doneLabel(type?: string): string {
-  if (type === 'BOOK') return '读过'
-  if (type === 'PLACE') return '去过'
-  return '看过'
+/** 心愿条数字：在想 + 在做（summary 三态显式拆列，0.0.3 设计 结论 75/76） */
+const wishBarTotal = computed(() => (data.value?.summary?.wishTotal || 0) + (data.value?.summary?.doingTotal || 0))
+
+/** 标记完成提示文案：与各模块页逐字一致（原 handleComplete 的“读过”与书单页“已读”不一致，一并收敛） */
+function doneMessage(type?: string): string {
+  if (type === 'BOOK') return '已标记已读'
+  if (type === 'PLACE') return '已标记去过'
+  return '已标记看过'
 }
 
-/** 一键标记完成：默认完成日期取当天，成功后从心愿单移除并刷新 */
-function handleComplete(item: SgjItem): void {
-  if (!item.itemId) return
-  const now = new Date()
-  const finishDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  completeFrontItem(item.itemId, { finishDate }).then(() => {
-    proxy.$modal.msgSuccess(`已标记${doneLabel(item.itemType)}`)
-    if (data.value?.wishlist) {
-      data.value.wishlist = data.value.wishlist.filter(w => w.itemId !== item.itemId)
-    }
-    getData()
+/** 心愿单「完成 →」：打开统一完成弹窗（FR-003-7：日期默认今天但可改，补记不再被静默写成当天） */
+function openComplete(item: SgjItem): void {
+  completeItem.value = item
+  completeOpen.value = true
+}
+
+/** 统一完成弹窗提交成功：从心愿单移除并刷新（心愿单与汇总都要更新） */
+function onCompleted(): void {
+  const type = completeItem.value?.itemType
+  const doneId = completeItem.value?.itemId
+  if (doneId) {
+    wishlist.value = wishlist.value.filter(w => w.itemId !== doneId)
+  }
+  proxy.$modal.msgSuccess(doneMessage(type))
+  loadWishlist()
+  getData()
+}
+
+// ------------------------------------------------------------------
+// 心愿单：与心愿页（/plan）同一个数据源（/app/item/plan/list），排序口径完全一致。
+// 侧栏只取首屏一页，完整列表由「查看全部心愿 →」进 /plan（与「查看全部笔记 →」同一模式）。
+// ------------------------------------------------------------------
+
+/** 心愿单首屏条数 */
+const WISHLIST_PAGE_SIZE = 10
+const wishlist = ref<SgjItem[]>([])
+
+/** 拉首屏一页（完成、改日期后刷新） */
+function loadWishlist(): Promise<void> {
+  return listPlanItems({ pageNum: 1, pageSize: WISHLIST_PAGE_SIZE }).then(response => {
+    wishlist.value = response.data || []
   }).catch(() => {})
 }
 
@@ -354,6 +393,10 @@ function getData(): void {
 }
 
 getData()
+// 心愿单独立取数（访客隐藏该卡片，不必为空请求买单）
+if (isLogin.value) {
+  loadWishlist()
+}
 </script>
 
 <style scoped lang="scss">
@@ -990,10 +1033,29 @@ getData()
       white-space: nowrap;
     }
 
+    /* 状态与计划日期同一行：状态是「这条现在处于哪一步」，日期是「打算什么时候」。
+       状态做成胶囊而非 11px 灰字（实测反馈根本看不清）；在做 = 暖色高亮，是可行动的那一档 */
+    .wish-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
     .wish-status {
+      display: inline-block;
       font-size: 11px;
-      color: var(--sgj-text-3);
-      margin-top: 2px;
+      line-height: 1.6;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--sgj-bg-deep);
+      color: var(--sgj-text-2);
+
+      &.is-doing {
+        background: var(--sgj-primary-soft);
+        color: var(--sgj-primary);
+        font-weight: 600;
+      }
     }
   }
 
