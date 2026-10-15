@@ -153,9 +153,10 @@ import { groupPlanItems, planDateLabel, localDateKey } from '@/utils/plan'
 import { itemStatusLabel } from '@/utils/itemStatus'
 import { listPlanItems, updateFrontItem } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
-// 手绘皮肤：与设计图共用的唯一来源（handdrawn.css）。字体用系统楷体栈（结论 106），
-// 不再下载 webfont —— 因此这里也不再 import 分片字体 CSS。
+// 手绘皮肤：与设计图共用的唯一来源（handdrawn.css）；字体为自托管霞鹜文楷分片子集
+// （跨设备一致，结论 107）。字体 CSS 随本路由懒加载，浏览器按 unicode-range 只取命中的分片。
 import './handdrawn.css'
+import '@/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css'
 import type { SgjItem } from '@/types/api/business/item'
 
 /**

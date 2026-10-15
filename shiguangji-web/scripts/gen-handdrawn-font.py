@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-生成手绘标题字体（马善政）的自托管子集，供 /plan 手绘清单页使用。
+生成手绘皮肤字体（霞鹜文楷 LXGW WenKai Lite）的自托管子集，供 /plan 手绘清单页使用。
 
 方案（实测迭代而来，见 docs/design/plan-design.md 结论 99）：
 均匀 unicode-range 分片在中文场景不划算——站点用字约 600 个但散布整个 CJK 区间，
 512 码位一片也要命中 ~40 片（~1MB+）。故改为「核心片 + 稀疏片」：
 
-  1. 核心片 ms-core.woff2：恰好包含「站点语料」用字（本脚本同目录 handdrawn-corpus.txt，
+  1. 核心片 lw-core.woff2：恰好包含「站点语料」用字（本脚本同目录 handdrawn-corpus.txt，
      含库内标题/字典与前台固定文案，~600 字 ≈ 100KB），unicode-range 逐字列出；
-  2. 稀疏片 ms-rXXXX.woff2：其余字形按 512 码位区间成片（区间内剔除核心片已有的字，
+  2. 稀疏片 lw-rXXXX.woff2：其余字形按 512 码位区间成片（区间内剔除核心片已有的字，
      与核心片零重叠），空片跳过——新标题里的罕见字落到这里，按片懒加载。
 
 语料怎么维护：库里加了带新字的内容后，重跑一遍本脚本即可（见下方「更新语料」）；
@@ -17,7 +17,7 @@
 用法（需要 fonttools + brotli）：
   python3 -m pip install --target .pylibs fonttools brotli
   curl -sL -o /tmp/LongCang-Regular.ttf \\
-    https://raw.githubusercontent.com/google/fonts/main/ofl/mashanzheng/MaShanZheng-Regular.ttf
+    https://raw.githubusercontent.com/lxgw/LxgwWenKai-Lite/main/fonts/TTF/LXGWWenKaiLite-Regular.ttf
   PYTHONPATH=../../.pylibs python3 scripts/gen-handdrawn-font.py /tmp/LongCang-Regular.ttf
 
 更新语料（把库内新标题并进核心片）：
@@ -35,7 +35,7 @@ import sys
 from fontTools.ttLib import TTFont
 
 CJK_START, CJK_END, SPARSE_STEP = 0x4E00, 0x9FFF, 512
-SYMBOL_RANGES = [(0x0020, 0x007E), (0x2000, 0x206F), (0x2190, 0x21FF), (0x3000, 0x303F), (0xFF00, 0xFFEF)]
+SYMBOL_RANGES = [(0x0020, 0x007E), (0x00A0, 0x00FF), (0x2000, 0x206F), (0x2190, 0x21FF), (0x3000, 0x303F), (0xFF00, 0xFFEF)]
 
 
 def fmt_cp(cp: int) -> str:
@@ -57,9 +57,9 @@ def subset(ttf: str, out: str, unicodes: list[int]) -> None:
 
 def main(ttf_path: str) -> None:
     here = os.path.dirname(os.path.abspath(__file__))
-    out_dir = os.path.normpath(os.path.join(here, '..', 'src', 'assets', 'fonts', 'handdrawn', 'mashanzheng'))
+    out_dir = os.path.normpath(os.path.join(here, '..', 'src', 'assets', 'fonts', 'handdrawn', 'lxgw-wenkai'))
     os.makedirs(out_dir, exist_ok=True)
-    for old in (f for f in os.listdir(out_dir) if f.endswith('.woff2') or f == 'mashanzheng.css'):
+    for old in (f for f in os.listdir(out_dir) if f.endswith('.woff2') or f == 'lxgw-wenkai.css'):
         os.remove(os.path.join(out_dir, old))
 
     cmap = TTFont(ttf_path).getBestCmap()
@@ -72,12 +72,12 @@ def main(ttf_path: str) -> None:
     faces = []
 
     # 1) 核心片：语料本身
-    core_out = os.path.join(out_dir, 'ms-core.woff2')
+    core_out = os.path.join(out_dir, 'lw-core.woff2')
     subset(ttf_path, core_out, sorted(corpus))
     core_range = ','.join(fmt_cp(cp) for cp in sorted(corpus))
     faces.append(
-        f"@font-face{{font-family:'Ma Shan Zheng';font-style:normal;font-weight:400;font-display:swap;"
-        f"src:url('./ms-core.woff2') format('woff2');unicode-range:{core_range};}}"
+        f"@font-face{{font-family:'LXGW WenKai';font-style:normal;font-weight:400;font-display:swap;"
+        f"src:url('./lw-core.woff2') format('woff2');unicode-range:{core_range};}}"
     )
 
     # 2) 稀疏片：其余字形按区间成片（与核心片零重叠），空片跳过。
@@ -89,20 +89,20 @@ def main(ttf_path: str) -> None:
         cps = [cp for cp in range(start, end + 1) if cp in cmap and cp not in corpus]
         if not cps:
             continue
-        name = f'ms-r{start:04X}'
+        name = f'lw-r{start:04X}'
         out = os.path.join(out_dir, f'{name}.woff2')
         subset(ttf_path, out, cps)
         kept += 1
         sparse_total += os.path.getsize(out)
         sparse_range = ','.join(fmt_cp(cp) for cp in cps)
         faces.append(
-            f"@font-face{{font-family:'Ma Shan Zheng';font-style:normal;font-weight:400;font-display:swap;"
+            f"@font-face{{font-family:'LXGW WenKai';font-style:normal;font-weight:400;font-display:swap;"
             f"src:url('./{name}.woff2') format('woff2');unicode-range:{sparse_range};}}"
         )
 
-    css_path = os.path.join(out_dir, 'mashanzheng.css')
+    css_path = os.path.join(out_dir, 'lxgw-wenkai.css')
     header = (
-        '/* 马善政（SIL OFL 1.1）自托管子集 —— 由 scripts/gen-handdrawn-font.py 生成，勿手改。\n'
+        '/* 霞鹜文楷（SIL OFL 1.1）自托管子集 —— 由 scripts/gen-handdrawn-font.py 生成，勿手改。\n'
         f' * 核心片（站点语料 {len(corpus)} 字）+ 稀疏片 {kept} 片兜底 {sparse_total / 1024:.0f} KB；\n'
         ' * 常规浏览只加载核心片，新标题的罕见字按片懒加载。 */\n'
     )
