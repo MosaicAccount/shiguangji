@@ -61,9 +61,9 @@ public class AppItemController extends BaseController
     /**
      * 查询计划页条目（0.0.3：未完成 WANT/DOING 的全类型汇总，按计划日期升序、无日期置后；分页）
      *
-     * 可见范围与脱敏口径同 /list：匿名访客可见 publicOwner 的公开数据，comment/remark 不下发
+     * 心愿是私人内容（设计 结论 108）：本接口**不开放匿名访问**，未登录一律 401；
+     * 登录用户只看自己（resolveCreateBy 给出当前用户），故没有访客脱敏分支。
      */
-    @Anonymous
     @GetMapping("/plan/list")
     public AjaxResult planList(SgjItem sgjItem)
     {
@@ -73,7 +73,6 @@ public class AppItemController extends BaseController
         sgjItem.setStatus(null);
         startPage();
         List<SgjItem> list = sgjItemService.selectPlanItems(sgjItem);
-        appScopeHelper.maskItemsForGuest(list);
         AjaxResult result = success(list);
         result.put("total", ((Page<?>) list).getTotal());
         return result;

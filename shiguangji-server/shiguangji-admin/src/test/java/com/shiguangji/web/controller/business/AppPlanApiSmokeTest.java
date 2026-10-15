@@ -226,11 +226,14 @@ class AppPlanApiSmokeTest
     @Order(3)
     void planListVisibilityByScope() throws Exception
     {
-        // 匿名访客：resolveCreateBy 返回 publicOwner（admin），能看到 admin 的夹具
-        JsonNode anonymous = objectMapper.readTree(mockMvc.perform(get("/app/item/plan/list")
-                        .param("title", TITLE))
-                .andReturn().getResponse().getContentAsString()).path("data");
-        assertThat(anonymous.size()).as("匿名访客应看到 publicOwner 的计划夹具").isEqualTo(3);
+        // 匿名访客：心愿是私人模块（结论 108），不开放匿名访问，返回业务码 401 且不下发任何行
+        String guestBody = mockMvc.perform(get("/app/item/plan/list").param("title", TITLE))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(guestBody).path("code").asInt())
+                .as("匿名访问计划接口应为 401，实际响应：%s", guestBody).isEqualTo(401);
+        assertThat(objectMapper.readTree(guestBody).path("data").isMissingNode()
+                || objectMapper.readTree(guestBody).path("data").isNull())
+                .as("匿名响应不得带任何条目").isTrue();
 
         // 其他登录用户：只见自己（夹具都建在 admin 名下，shiguangji 应看到 0 条）
         String otherToken = createTokenFor(OTHER_USER);
@@ -242,22 +245,27 @@ class AppPlanApiSmokeTest
     }
 
     // ------------------------------------------------------------------
-    // 4. T-77：计划接口访客脱敏（comment 不下发，title/status/startDate 保留）
+    // 4. T-77：心愿为私人模块 —— 首页汇总不向访客下发心愿数字
+    //    （原「访客脱敏」用例随接口私有化作废：访客现在拿不到该接口，见 T-76）
     // ------------------------------------------------------------------
 
     @Test
     @Order(4)
-    void planListGuestMasking() throws Exception
+    void homeSummaryHidesPlanForGuest() throws Exception
     {
-        JsonNode rows = objectMapper.readTree(mockMvc.perform(get("/app/item/plan/list")
-                        .param("title", TITLE_B))
-                .andReturn().getResponse().getContentAsString()).path("data");
-        assertThat(rows.size()).isEqualTo(1);
-        JsonNode row = rows.get(0);
-        assertThat(row.path("title").asText()).isEqualTo(TITLE_B);
-        assertThat(row.path("status").asText()).isEqualTo("DOING");
-        assertThat(row.path("startDate").asText()).startsWith("2026-10-15");
-        assertThat(row.path("comment").asText("")).as("匿名访客不应看到短评").isEmpty();
+        // 户主视角：在想 / 在做确有数字，否则下面的清零断言没有意义
+        JsonNode owner = homeIndexSummary();
+        assertThat(owner.path("wishTotal").asLong() + owner.path("doingTotal").asLong())
+                .as("户主应能看到心愿数字").isGreaterThan(0);
+
+        // 访客视角：心愿数字清零、分态映射为空；公开目录口径不受影响
+        JsonNode guest = objectMapper.readTree(mockMvc.perform(get("/app/home/index"))
+                .andReturn().getResponse().getContentAsString()).path("data").path("summary");
+        assertThat(guest.path("wishTotal").asLong()).as("访客不应看到在想数字").isZero();
+        assertThat(guest.path("doingTotal").asLong()).as("访客不应看到在做数字").isZero();
+        assertThat(guest.path("wish").size()).as("访客的「在想」分态映射应为空").isZero();
+        assertThat(guest.path("doing").size()).as("访客的「在做」分态映射应为空").isZero();
+        assertThat(guest.path("itemTotal").asLong()).as("公开目录口径（条目总数）对访客不变").isGreaterThan(0);
     }
 
     // ------------------------------------------------------------------
