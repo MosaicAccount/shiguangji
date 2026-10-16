@@ -89,7 +89,7 @@ th{background:var(--sgj-bg-deep);font-weight:600;color:var(--sgj-text)}
 td code{font-size:12px}
 .dec{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 .dec .d{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:14px 18px;box-shadow:var(--sgj-shadow-sm)}
-.dec .d b{display:block;font-size:13px;color:var(--sgj-primary);margin-bottom:4px;font-family:var(--sgj-font-mono)}
+.dec .d > b{display:block;font-size:13px;color:var(--sgj-primary);margin-bottom:4px;font-family:var(--sgj-font-mono)}
 .dec .d p{margin:0;font-size:13px;color:var(--sgj-text-2)}
 .wrap-scroll{overflow-x:auto}
 </style>
@@ -99,7 +99,7 @@ td code{font-size:12px}
 <div class="review">
   <div class="review-in">
     <b>0.0.4 设计图</b>
-    <nav class="screens"><a href="index.html" aria-current="page">索引</a><a href="review-page.html">回顾页</a><a href="review-entry.html">入口与边界</a></nav>
+    <nav class="screens"><a href="index.html" aria-current="page">索引</a><a href="review-page.html">回顾页</a><a href="review-entry.html">入口与边界</a><a href="review-travel.html">足迹：路线 vs 地图</a></nav>
     <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
   </div>
 </div>
@@ -140,6 +140,13 @@ td code{font-size:12px}
       <ul><li>场景：站主首页 / 访客首页 / 访客直达 <b>×</b> 方案 A（hero 卡）/ 方案 B（导航项）</li>
         <li>覆盖 FR-004-5 与 D-11</li></ul>
     </a>
+    <a class="card" href="review-travel.html">
+      <h3>足迹：串联路线 vs 地图</h3>
+      <span class="route">/review 的足迹区块 · 待定</span>
+      <p><span class="tag chg">待定</span>足迹从「一张说不出地理信息的假地图」改成「按去过的先后串成一串」；<span class="tag new">新</span>同一屏可直接对照 0.0.7 的手绘语言与现站冷雾语言</p>
+      <ul><li>组合：风格（手绘 / 冷雾）<b>×</b> 展示方式（A 串联路线 / B 地图 + 路线）</li>
+        <li>要定的两件事：足迹怎么展示 · 回顾页是否现在就用手绘皮肤</li></ul>
+    </a>
   </div>
 
   <h2>已拍板决策与本组图的关系</h2>
@@ -147,16 +154,17 @@ td code{font-size:12px}
     <div class="d"><b>D-11</b><p><b>仅登录可见</b>（定稿时复议翻转：原建议公开）。目录公开、回看私有——入口屏按此画，含访客侧对比与守卫拦截。</p></div>
     <div class="d"><b>D-12</b><p><b>仅自然年</b>。年份用 <code>‹ ›</code> 步进、胶囊只列有记录的年份；不做自定义起止时间段。</p></div>
     <div class="d"><b>D-13</b><p><b>不做</b>连续记录天数等激励型指标。本组图不含任何打卡 / 连续 / 排行类元素。</p></div>
+    <div class="d"><b>待拍板</b><p>足迹用<b>串联路线</b>还是<b>地图 + 路线</b>；回顾页<b>现在就用 0.0.7 的手绘皮肤</b>还是先留在冷雾、等 0.0.7 一起换。见 <a href="review-travel.html">足迹屏</a>——两项都拍板后需回写需求文档与 pending。</p></div>
   </div>
 
   <h2>出图口径</h2>
   <div class="box">
     <ul>
-      <li><b>覆盖</b>：FR-004-1 ~ FR-004-5 的用户可见部分。两屏分工是——回顾页是<b>本体</b>（新增页面，四个区块 + 三种状态），入口屏是<b>入口位置与隐私边界</b>（FR-004-5 的两案对比 + D-11 的落点）。</li>
+      <li><b>覆盖</b>：FR-004-1 ~ FR-004-5 的用户可见部分。三屏分工是——回顾页是<b>本体</b>（新增页面，四个区块 + 三种状态），入口屏是<b>入口位置与隐私边界</b>（FR-004-5 的两案对比 + D-11 的落点），足迹屏是<b>两个待定的选择</b>（足迹怎么展示 × 回顾页用什么视觉语言，见该屏标注）。</li>
       <li><b>每屏都有</b>桌面与移动端、亮色与暗色两组变体——页内切换，不另存文件。<b>移动端差异</b>：回顾页 hero 单列、年份降到 50px、统计卡两列等宽、地图 240px、Top 两栏改单列、标签改单列；入口屏 hero 单列、入口卡与 CTA 按既有 <code>flex-wrap</code> 换行、移动端 tab 仍是四项。</li>
-      <li><b>文案即定稿</b>：两屏里的中文文案会与实现逐字对齐——尤其「这一年，你记录了 87 件值得记住的小事。」「条目按完成日期归年 · 笔记按写下时间归年」「这一年去过 7 个地方，6 个落在了图上。」「只有打过分的条目参与评选」「2021 年还没有记录」「回顾是你自己的页面」。图里的说明性文字只出现在标注、口径表与页脚，不混进界面文案。</li>
+      <li><b>文案即定稿</b>：三屏里的中文文案会与实现逐字对齐——尤其「这一年，你记录了 87 件值得记住的小事。」「条目按完成日期归年 · 笔记按写下时间归年」「按去过的先后串起来，不是路线图」「这一年去过 7 个地方，6 个落在了图上。」「只有打过分的条目参与评选」「2021 年还没有记录」「回顾是你自己的页面」。图里的说明性文字只出现在标注、口径表与页脚，不混进界面文案。</li>
       <li><b>既有口径不动</b>：首页 hero 统计数字仍<b>只显示已完成</b>，时间线仍只含 <code>DONE</code>，导航仍是 6 项（回顾不占导航位），移动端 tab 仍是四项。本组图不触碰任何既有页面的行为。</li>
-      <li><b>图片与地图占位</b>：封面用 CSS 色块 + 衬线字（影 / 剧 / 书）表示，<b>不引用任何外部图片</b>；地图底图是纯 CSS 示意底（网格 + 陆地 / 水域色块 + 道路），不是真实瓦片，实际实现用既有 <code>TravelMap</code>。</li>
+      <li><b>图片与地图占位</b>：封面用 CSS 色块 + 衬线字（影 / 剧 / 书）表示，<b>不引用任何外部图片</b>。足迹区块在足迹屏里给了两案：<b>串联路线</b>（手绘虚线把站点串起来，<b>不需要坐标</b>）与<b>地图 + 路线</b>（示意底图 + 手绘陆地轮廓 + 虚线路线，保留地理感但坐标成为硬依赖）。回顾页主屏画的是现站那版地图，仅作对照基线。</li>
       <li><b>本组图不含</b>：后端聚合接口的形状与 SQL、年份参数校验与非法年份处理、地图真实瓦片与图钉交互、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、后台管理端任何改动。</li>
     </ul>
     <p class="note">一处<b>已知的产品观察</b>：前台目前没有独立登录页，守卫把访客送去的是后台登录页 <code>/login</code>，与前台视觉不同源。本组图把拦截结果画成提示卡（示意），该议题本期不解决，见入口屏标注 5。</p>

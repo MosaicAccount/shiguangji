@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.4 设计图 · 足迹：手绘路线 vs 地图 — 拾光记</title>
+<link rel="icon" href="data:,">
+<!-- 手绘皮肤与字体：与产品 /plan 页面同源（不是另画一套） -->
+<link rel="stylesheet" href="../../../../shiguangji-web/src/views/front/plan/handdrawn.css">
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<style>
+
+/* ===== 站点令牌（冷雾胶片 v3.3）：冷雾对照用 ===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-primary)}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
+
+/* ===== 评审工具条 ===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框 ===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;display:flex;flex-direction:column;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:hidden;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto}
+.device-body{flex:1;min-height:0;overflow:auto}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台导航与页脚（既有，未改动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:18px}
+.nav span{padding:8px 0;color:var(--sgj-text-2);font-size:14px}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px}
+.page{padding:36px;max-width:1320px;margin:0 auto}
+.tabbar{display:none}
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep)}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .fh-in{padding:0 12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en,body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .page{padding:16px 12px 76px}
+body[data-vp=mobile] .tabbar{display:flex;height:60px;flex:none;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+body[data-vp=mobile] .ff{padding:16px 14px 24px}
+
+/* ===== 标注 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:7px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .keep{color:#5D6F66;font-weight:600}
+.legend .watch{color:#B18458;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .keep{color:#7F9B8D}
+html.dark .legend .watch{color:#C69A67}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:14px;font-size:12px;color:#7D8783}
+
+/* ===== 风格切换 ===== */
+body[data-style=hd] .page-sjn{display:none}
+body[data-style=sjn] .page-hd{display:none}
+body[data-scheme=a] .scheme-b{display:none}
+body[data-scheme=b] .scheme-a{display:none}
+
+/* ============================================================
+   一、手绘版（令牌与形制全部来自 handdrawn.css，本屏只加「路线」这一个新组件）
+   ============================================================ */
+.hd-page{max-width:900px}
+.hd-sec{margin-top:32px}
+
+/* hero */
+.hd-hero{padding:8px 4px 0}
+.hd-eyebrow{font-size:12px;letter-spacing:5px;color:var(--hd-ink-faint)}
+.hd-year-row{display:flex;align-items:center;gap:12px;margin-top:2px}
+.hd-year{font-size:72px;line-height:1.05;letter-spacing:1px}
+.hd-round{width:40px;height:40px;flex:none;border:2px solid var(--hd-line);background:var(--hd-paper);cursor:pointer;
+  border-radius:50% 46% 52% 48%/48% 52% 46% 54%;font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;filter:url(#rough)}
+.hd-round[disabled]{opacity:.4;cursor:not-allowed}
+.hd-lead{font-size:22px;margin:12px 0 0}
+.hd-lead b{color:var(--hd-red);font-size:26px}
+.hd-caliber{font-size:13.5px;color:var(--hd-ink-soft);margin:8px 0 0}
+.hd-chips{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.hd-chips .cap{font-size:13px;color:var(--hd-ink-faint)}
+.hd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:22px}
+.hd-stat{background:var(--hd-paper);border-radius:12px 4px 13px 5px/5px 13px 4px 12px;padding:12px 14px 14px;box-shadow:2px 3px 0 var(--hd-line-soft)}
+.hdg{position:relative;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.hdg svg{position:absolute;inset:0;filter:url(#rough)}
+.hdg svg ellipse{fill:none;stroke:currentColor;stroke-width:1.9}
+.hd-stat .num{display:block;font-size:34px;margin-top:6px;line-height:1.15}
+.hd-stat .lbl{display:block;font-size:13.5px;color:var(--hd-ink-soft)}
+.hd-movie{color:var(--hd-red)} .hd-book{color:var(--hd-moss)} .hd-place{color:var(--hd-amber)} .hd-note{color:var(--hd-ink-soft)}
+
+/* 路线（新组件）：横向纸带 + 手绘虚线串联 + 站点上下交替 */
+.route{position:relative;margin-top:4px}
+.route .trail{position:absolute;left:0;top:0;width:100%;height:152px;filter:url(#rough);pointer-events:none}
+.route .stops{position:relative;display:grid;grid-template-columns:repeat(7,1fr);height:152px;margin:0;padding:0;list-style:none}
+.stop{position:relative}
+.stop .dot{position:absolute;top:76px;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center}
+.stop .dot svg{position:absolute;inset:0;filter:url(#rough)}
+.stop .dot svg ellipse{fill:var(--hd-paper);stroke:currentColor;stroke-width:2}
+.stop .dot b{position:relative;font-size:15px;color:inherit}
+.stop .name{position:absolute;left:50%;transform:translateX(-50%);width:140%;text-align:center;font-size:16px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stop .mo{position:absolute;left:50%;transform:translateX(-50%);font-size:13px;color:var(--hd-ink-soft);white-space:nowrap}
+.stop.up .name{top:10px} .stop.up .mo{top:33px}
+.stop.down .name{top:100px} .stop.down .mo{top:123px}
+.stop:nth-child(odd) .name{transform:translateX(-50%) rotate(-.9deg)}
+.stop:nth-child(even) .name{transform:translateX(-50%) rotate(.7deg)}
+.stop.off .dot svg ellipse{stroke-dasharray:5 4}
+.hd-note{font-size:13.5px;color:var(--hd-ink-soft);margin:16px 0 0}
+
+/* 地图方案（保留地理感）：手绘底图 + 虚线路线 */
+.hd-map{position:relative;height:352px;margin-top:6px}
+.hd-map .land,.hd-map .trail-b{position:absolute;inset:0;width:100%;height:100%;filter:url(#rough)}
+.pinb{position:absolute;transform:translate(-50%,-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--hd-amber)}
+.pinb svg{position:absolute;inset:0;filter:url(#rough)}
+.pinb svg ellipse{fill:var(--hd-paper);stroke:currentColor;stroke-width:2}
+.pinb b{position:relative;font-size:15px}
+.pinb .lb{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-size:14.5px;white-space:nowrap;color:var(--hd-ink);
+  background:var(--hd-paper);padding:0 7px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
+.pinb.r .lb{top:50%;left:36px;transform:translateY(-50%)}
+.pinb.l .lb{top:50%;right:36px;left:auto;transform:translateY(-50%)}
+.hd-maphint{position:absolute;left:10px;bottom:8px;font-size:13px;color:var(--hd-ink-faint)}
+
+/* 手绘评分榜 / 标签 */
+.hd-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.hd-cols .sheet{margin-top:0}
+.hd-cols .paper{padding:6px 16px 10px}
+.hd-score{margin-left:auto;font-size:20px;color:var(--hd-amber);flex:none}
+/* 共享皮肤的一处缺口：handdrawn.css 只给影视的 glyph 圈设了 stroke（.g-movie .ring ellipse），
+   书籍 / 地点的圈因此不可见（fill=none + 无 stroke），/plan 页里同理、只是没暴露。
+   这里统一成 currentColor —— 类型色由 .g-book / .g-place 的 color 决定。0.0.7 收敛皮肤时应并回 handdrawn.css。 */
+.hd-page .row .glyph .ring ellipse{stroke:currentColor}
+.hd-tags{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;position:relative;z-index:1;padding:4px 0 8px}
+.hd-tag{display:grid;grid-template-columns:68px 1fr 26px;align-items:center;gap:10px}
+.hd-tag .tn{font-size:15px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-tag .tb{height:12px;background:var(--hd-red-soft);border:1.5px solid var(--hd-line-soft);
+  border-radius:8px 3px 9px 4px/4px 9px 3px 8px;filter:url(#rough)}
+.hd-tag .tc{font-size:14px;color:var(--hd-ink-soft);text-align:right}
+
+/* ============================================================
+   二、冷雾胶片版（现站语言，对照用）
+   ============================================================ */
+.sjn-hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 452px;gap:44px;padding:26px 0 14px}
+.sjn-blob{position:absolute;border-radius:50%;pointer-events:none}
+.sjn-blob-1{right:120px;top:-10px;width:320px;height:320px;background:var(--sgj-primary-soft)}
+.sjn-blob-2{right:-34px;top:246px;width:150px;height:150px;background:var(--sgj-moss-soft)}
+.sjn-hero-text{position:relative;z-index:1;align-self:center;min-width:0}
+.sjn-eyebrow{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);margin-bottom:6px}
+.sjn-year-row{display:flex;align-items:center;gap:10px}
+.sjn-year{font-family:var(--sgj-font-serif);font-weight:700;font-size:70px;line-height:1.04;font-variant-numeric:tabular-nums}
+.sjn-round{width:38px;height:38px;flex:none;border-radius:50%;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);
+  color:var(--sgj-text-2);font-size:17px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.sjn-round[disabled]{opacity:.4;cursor:not-allowed}
+.sjn-lead{margin:10px 0 0;font-family:var(--sgj-font-serif);font-size:21px;color:var(--sgj-text-2)}
+.sjn-lead b{font-size:25px;color:var(--sgj-primary-dark)}
+.sjn-caliber{margin:12px 0 0;font-size:12px;color:var(--sgj-text-4)}
+.sjn-chips{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.sjn-chip{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:999px;cursor:pointer;border:1px solid var(--sgj-border);
+  background:var(--sgj-bg-card);color:var(--sgj-text-2)}
+.sjn-chip.on{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff;font-weight:600}
+html.dark .sjn-chip.on{color:#171B1A}
+.sjn-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,216px);gap:18px;justify-content:end}
+.stat-item{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:20px;width:216px}
+.stat-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-primary-dark);background:var(--sgj-primary-soft)}
+.stat-value{display:block;margin-top:14px;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat-label{display:block;margin-top:6px;font-size:13px;color:var(--sgj-text-3)}
+.sec-head{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+.sec-title{font-family:var(--sgj-font-serif);font-size:26px;margin:0;flex-shrink:0}
+.sec-strip{flex:1;display:flex;gap:14px;justify-content:center;min-width:0}
+.perf{width:26px;height:10px;border-radius:5px;background:var(--sgj-bg-deep);flex-shrink:0}
+.sec-sub{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);flex-shrink:0}
+.sec-note{margin:14px 0 0;font-size:12.5px;color:var(--sgj-text-4)}
+/* 冷雾版串联：干净的横向步骤线 */
+.sjn-chain{position:relative;background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);
+  padding:6px 18px 10px;box-shadow:var(--sgj-shadow-sm)}
+.sjn-chain .stops{position:relative;display:grid;grid-template-columns:repeat(7,1fr);height:152px;margin:0;padding:0;list-style:none}
+/* 线正好从第一个点到最后一个点：站点在 1/14 ~ 13/14 处（7 等分格的中心） */
+.sjn-chain .stops::before{content:'';position:absolute;left:7.14%;right:7.14%;top:79px;height:2px;background:var(--sgj-border);border-radius:2px}
+.sjn-chain .stop{position:relative}
+.sjn-chain .dot{position:absolute;top:80px;left:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;
+  background:var(--sgj-bg-card);border:3px solid var(--sgj-primary)}
+.sjn-chain .name{position:absolute;left:50%;transform:translateX(-50%);width:140%;text-align:center;font-size:13.5px;
+  font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sjn-chain .mo{position:absolute;left:50%;transform:translateX(-50%);font-size:11.5px;color:var(--sgj-text-4);white-space:nowrap}
+.sjn-chain .up .name{top:26px} .sjn-chain .up .mo{top:46px}
+.sjn-chain .down .name{top:98px} .sjn-chain .down .mo{top:118px}
+/* 冷雾版地图：现状（对照基线） */
+.map-wrap{position:relative;height:372px;border-radius:var(--sgj-r-lg);overflow:hidden;border:1px solid var(--sgj-border-card);
+  background:repeating-linear-gradient(0deg,transparent 0 39px,var(--sgj-border-card) 39px 40px),
+    repeating-linear-gradient(90deg,transparent 0 39px,var(--sgj-border-card) 39px 40px),var(--sgj-bg-deep)}
+.map-land{position:absolute;left:5%;top:9%;width:74%;height:78%;background:var(--sgj-bg-card);
+  border-radius:56% 44% 52% 48%/48% 52% 44% 56%;box-shadow:inset 0 0 0 1px var(--sgj-border-card)}
+.map-water{position:absolute;right:0;top:0;width:30%;height:100%;background:linear-gradient(180deg,rgba(93,111,102,.16),rgba(93,111,102,.06))}
+.map-road{position:absolute;height:2px;background:var(--sgj-border);transform-origin:left center;border-radius:2px}
+.pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:3px}
+.pin-dot{width:11px;height:11px;border-radius:50%;background:var(--sgj-primary);box-shadow:0 0 0 4px rgba(168,95,82,.16)}
+.pin-label{font-size:11px;color:var(--sgj-text-2);background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);
+  border-radius:999px;padding:1px 8px;white-space:nowrap;box-shadow:var(--sgj-shadow-sm)}
+.map-legend{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--sgj-text-3);background:var(--sgj-bg-card);
+  border:1px solid var(--sgj-border-card);border-radius:999px;padding:3px 10px}
+/* 冷雾版评分 / 标签 */
+.top-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.top-col{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 20px 10px;box-shadow:var(--sgj-shadow-sm)}
+.top-col h3{margin:0 0 12px;font-family:var(--sgj-font-serif);font-size:17px;display:flex;align-items:center;gap:8px}
+.top-col h3 span{font-family:var(--sgj-font-sans);font-size:11px;letter-spacing:2.4px;color:var(--sgj-text-4);font-weight:400}
+.rank{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--sgj-border-card)}
+.rank:first-of-type{border-top:0}
+.rank-no{font-family:var(--sgj-font-serif);font-weight:700;font-size:15px;color:var(--sgj-text-4);width:16px;flex:none}
+.rank-cover{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:16px}
+.rank-body{flex:1;min-width:0}
+.rank-title{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{display:block;font-size:11.5px;color:var(--sgj-text-4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-score{font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-amber);flex:none}
+.tags{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:20px;box-shadow:var(--sgj-shadow-sm)}
+.tag-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 30px}
+.tag-row{display:grid;grid-template-columns:62px 1fr 24px;align-items:center;gap:10px}
+.tag-name{font-size:13px;color:var(--sgj-text-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag-bar{height:8px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
+.tag-bar i{display:block;height:100%;border-radius:999px;background:var(--sgj-primary-light)}
+.tag-cnt{font-size:12px;color:var(--sgj-text-3);text-align:right}
+.tag-rest{margin-top:16px;padding-top:14px;border-top:1px solid var(--sgj-border-card);font-size:12.5px;color:var(--sgj-text-4);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag-rest .tail{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--sgj-bg-deep);color:var(--sgj-text-3)}
+
+/* ===== 移动端：手绘与冷雾的路线都转竖向 ===== */
+/* ===== 移动端：本屏的「移动端」是 390px 设备框预览（窗口仍是桌面宽度），
+   所以用 body[data-vp=mobile] 作用域而不是媒体查询 —— 照搬 handdrawn.css 的真实媒体查询在这里不会触发。
+   产品里这些声明最终应以媒体查询形式并入共享皮肤。===== */
+body[data-vp=mobile] .hd-page{padding:2px 12px 24px}
+body[data-vp=mobile] .hd-stats{grid-template-columns:repeat(2,1fr);gap:10px}
+body[data-vp=mobile] .hd-year{font-size:52px}
+body[data-vp=mobile] .hd-lead{font-size:18px}
+body[data-vp=mobile] .hd-cols{grid-template-columns:1fr;gap:14px}
+body[data-vp=mobile] .hd-tags{grid-template-columns:1fr}
+body[data-vp=mobile] .route .trail{display:none}
+body[data-vp=mobile] .route .stops{display:flex;flex-direction:column;height:auto;gap:0}
+body[data-vp=mobile] .stop{display:grid;grid-template-columns:38px 1fr;align-items:center;column-gap:12px;min-height:56px;padding:4px 0}
+body[data-vp=mobile] .stop .dot{position:relative;top:auto;left:auto;transform:none;grid-row:1/3;margin:0;justify-self:center}
+body[data-vp=mobile] .stop .name{position:static;transform:none;width:auto;text-align:left;grid-column:2;font-size:17px}
+body[data-vp=mobile] .stop:nth-child(odd) .name,body[data-vp=mobile] .stop:nth-child(even) .name{transform:none}
+body[data-vp=mobile] .stop .mo{position:static;grid-column:2;text-align:left;transform:none}
+body[data-vp=mobile] .stop:not(:last-child)::after{content:'';position:absolute;left:18px;top:46px;bottom:-4px;border-left:2px dashed var(--hd-line-soft)}
+body[data-vp=mobile] .hd-map{height:260px}
+body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px;line-height:1.3}
+body[data-vp=mobile] .sjn-hero{grid-template-columns:1fr;gap:20px;padding:16px 0 8px}
+body[data-vp=mobile] .sjn-year{font-size:50px}
+body[data-vp=mobile] .sjn-stats{grid-template-columns:repeat(2,1fr);gap:12px;justify-content:stretch}
+body[data-vp=mobile] .stat-item{width:auto;padding:14px}
+body[data-vp=mobile] .stat-value{font-size:26px;margin-top:10px}
+body[data-vp=mobile] .sjn-chain .stops::before{display:none}
+body[data-vp=mobile] .sjn-chain .stops{display:flex;flex-direction:column;height:auto}
+body[data-vp=mobile] .sjn-chain .stop{display:grid;grid-template-columns:20px 1fr;column-gap:12px;min-height:52px;padding:4px 0}
+body[data-vp=mobile] .sjn-chain .dot{position:relative;top:auto;left:auto;transform:none;grid-row:1/3;width:13px;height:13px;justify-self:center}
+body[data-vp=mobile] .sjn-chain .name{position:static;transform:none;width:auto;text-align:left;grid-column:2}
+body[data-vp=mobile] .sjn-chain .mo{position:static;grid-column:2;text-align:left;transform:none}
+body[data-vp=mobile] .sjn-chain .stop:not(:last-child)::after{content:'';position:absolute;left:6px;top:34px;bottom:-4px;border-left:2px solid var(--sgj-border)}
+body[data-vp=mobile] .top-cols{grid-template-columns:1fr;gap:16px}
+body[data-vp=mobile] .tag-grid{grid-template-columns:1fr}
+body[data-vp=mobile] .map-wrap{height:240px}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body data-vp="desktop" data-style="hd" data-scheme="a">
+
+<!-- 手绘抖线滤镜：与设计图同名同参数（handdrawn.css 的 filter:url(#rough) 指向它） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.4 设计图</b>
+    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html">回顾页</a><a href="review-entry.html">入口与边界</a><a href="review-travel.html" aria-current="page">足迹：路线 vs 地图</a></nav>
+    <span class="seg" role="group" aria-label="风格"><button data-style="hd" aria-pressed="true">手绘（0.0.7 语言）</button><button data-style="sjn" aria-pressed="false">冷雾胶片（现站）</button></span>
+    <span class="seg" role="group" aria-label="展示方式"><button data-scheme="a" aria-pressed="true">A · 串联路线</button><button data-scheme="b" aria-pressed="false">B · 地图 + 路线</button></span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口"><button data-vp="desktop" aria-pressed="true">桌面</button><button data-vp="mobile" aria-pressed="false">移动端</button></span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <div class="fh-in">
+        <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+        <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span><span>心愿</span></nav>
+        <span class="theme-toggle">☾</span>
+      </div>
+    </header>
+
+    <div class="device-body">
+
+      <!-- ================= 手绘版 ================= -->
+      <div class="plan-page hd-page page-hd">
+
+        <section class="hd-hero">
+          <div class="hd-eyebrow">YEAR IN REVIEW</div>
+          <div class="hd-year-row">
+            <button class="hd-round" type="button" aria-label="上一年">‹</button>
+            <span class="hd-year">2024</span>
+            <button class="hd-round" type="button" aria-label="下一年" disabled>›</button>
+          </div>
+          <p class="hd-lead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
+          <p class="hd-caliber">条目按完成日期归年 · 笔记按写下时间归年</p>
+          <div class="hd-chips">
+            <span class="hd-chip doing">2024</span>
+            <span class="hd-chip">2023</span>
+            <span class="hd-chip">2022</span>
+            <span class="cap">有记录的年份<span class="an" data-n="1"></span></span>
+          </div>
+          <div class="hd-stats">
+            <div class="hd-stat hd-movie">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>影</span></span>
+              <span class="num">36</span><span class="lbl">看过 · 电影 24 · 剧集 12</span>
+            </div>
+            <div class="hd-stat hd-book">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>书</span></span>
+              <span class="num">8</span><span class="lbl">读过 · 书籍</span>
+            </div>
+            <div class="hd-stat hd-place">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>地</span></span>
+              <span class="num">7</span><span class="lbl">去过 · 地点</span>
+            </div>
+            <div class="hd-stat hd-note">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>文</span></span>
+              <span class="num">36</span><span class="lbl">写过 · 笔记<span class="an" data-n="2"></span></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 方案 A：串联路线 -->
+        <section class="hd-sec scheme-a">
+          <div class="sheet">
+            <div class="paper">
+              <span class="tape"></span>
+              <div class="lines"><span class="frame"></span></div>
+              <div class="g-head">
+                <h2 class="g-title">这一年走过的<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+                <span class="g-count">7 个地方</span>
+                <span class="an" data-n="3"></span>
+              </div>
+              <div class="route">
+                <svg class="trail" viewBox="0 0 820 152" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M58.6 76 C100 60 135 60 175.7 76 C217 92 252 92 292.9 76 C334 60 369 60 410 76 C451 92 486 92 527.1 76 C568 60 603 60 644.3 76 C685 92 720 92 761.4 76"
+                        fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/>
+                </svg>
+                <ol class="stops">
+                  <li class="stop up">
+                    <span class="name">平潭</span><span class="mo">3 月</span>
+                    <span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>1</b></span>
+                  </li>
+                  <li class="stop down">
+                    <span class="name">泉州 · 西街</span><span class="mo">4 月</span>
+                    <span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>2</b></span>
+                  </li>
+                  <li class="stop up">
+                    <span class="name">潮州</span><span class="mo">5 月</span>
+                    <span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>3</b></span>
+                  </li>
+                  <li class="stop down">
+                    <span class="name">景德镇</span><span class="mo">7 月</span>
+                    <span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>4</b></span>
+                  </li>
+                  <li class="stop up">
+                    <span class="name">婺源</span><span class="mo">8 月</span>
+                    <span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>5</b></span>
+                  </li>
+                  <li class="stop down">
+                    <span class="name">大理 · 洱海</span><span class="mo">10 月</span>
+                    <span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>6</b></span>
+                  </li>
+                  <li class="stop up off">
+                    <span class="name">沙溪</span><span class="mo">11 月 · 没填坐标</span>
+                    <span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>7</b></span>
+                  </li>
+                </ol>
+              </div>
+              <p class="hd-note">按去过的先后串起来，<b>不是路线图</b> —— 两点之间没有画「怎么走」；虚线只是把这一年连成一串。</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 方案 B：手绘地图 + 虚线路线 -->
+        <section class="hd-sec scheme-b">
+          <div class="sheet">
+            <div class="paper">
+              <span class="tape"></span>
+              <div class="lines"><span class="frame"></span></div>
+              <div class="g-head">
+                <h2 class="g-title">这一年走过的<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+                <span class="g-count">6 个地方落在图上</span>
+              </div>
+              <div class="hd-map">
+                <svg class="land" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M120 62 C200 40 300 50 400 38 C520 24 620 40 700 34 C742 30 782 44 794 72 C804 98 772 122 782 152 C792 182 762 202 742 232 C722 262 682 288 622 302 C562 316 502 302 442 294 C382 286 332 298 272 288 C212 278 152 252 122 212 C94 174 102 132 110 102 C114 84 114 72 120 62 Z"
+                        fill="var(--hd-paper-2)" stroke="var(--hd-line)" stroke-width="2.4"/>
+                  <path d="M300 150 C360 132 430 148 470 128" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M330 214 C390 200 450 216 500 198" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M600 120 C640 150 650 210 620 262" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <svg class="trail-b" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M700 96 C680 120 668 136 656 150 C620 178 586 214 560 250 C520 200 492 150 470 108 C494 94 520 82 546 74 C420 96 300 132 170 176"
+                        fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/>
+                </svg>
+                <span class="pinb" style="left:85.4%;top:27.3%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>1</b><span class="lb">平潭 · 3 月</span></span>
+                <span class="pinb l" style="left:80%;top:42.6%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>2</b><span class="lb">泉州 · 4 月</span></span>
+                <span class="pinb" style="left:68.3%;top:71%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>3</b><span class="lb">潮州 · 5 月</span></span>
+                <span class="pinb l" style="left:57.3%;top:30.7%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>4</b><span class="lb">景德镇 · 7 月</span></span>
+                <span class="pinb" style="left:66.6%;top:21%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>5</b><span class="lb">婺源 · 8 月</span></span>
+                <span class="pinb" style="left:20.7%;top:50%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>6</b><span class="lb">大理 · 10 月</span></span>
+                <span class="hd-maphint">底图是手绘示意，不是等比例地图</span>
+              </div>
+              <p class="hd-note">沙溪（11 月）<b>没填坐标</b>，所以没落在图上 —— 这是保留地理感的代价；方案 A 只要「去过的先后」，没有这个问题。</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 手绘评分榜 -->
+        <section class="hd-sec">
+          <div class="g-head">
+            <h2 class="g-title">评分最高<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+            <span class="g-count">51 条里 32 条有评分</span>
+          </div>
+          <div class="hd-cols">
+            <div class="sheet alt">
+              <div class="paper">
+                <span class="tape"></span>
+                <div class="lines"><span class="frame"></span></div>
+                <div class="g-head g-movie"><h2 class="g-title">影视<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
+                <div class="rows g-movie">
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>剧</span></span><div class="main"><div class="t">漫长的季节</div><div class="m"><span>剧集 · 5 月看完</span></div></div><span class="hd-score">9.4</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">奥本海默</div><div class="m"><span>电影 · 3 月看过</span></div></div><span class="hd-score">9.2</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">沙丘 2</div><div class="m"><span>电影 · 9 月看过</span></div></div><span class="hd-score">8.8</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>剧</span></span><div class="main"><div class="t">三体</div><div class="m"><span>剧集 · 2 月看完</span></div></div><span class="hd-score">8.6</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">宇宙探索编辑部</div><div class="m"><span>电影 · 11 月看过</span></div></div><span class="hd-score">8.5</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="sheet">
+              <div class="paper">
+                <span class="tape"></span>
+                <div class="lines"><span class="frame"></span></div>
+                <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
+                <div class="rows g-book">
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">红楼梦</div><div class="m"><span>文学 · 8 月读完</span></div></div><span class="hd-score">9.5</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">置身事内</div><div class="m"><span>社科 · 4 月读完</span></div></div><span class="hd-score">9.3</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">人类简史</div><div class="m"><span>历史 · 6 月读完</span></div></div><span class="hd-score">9.0</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">百年孤独</div><div class="m"><span>文学 · 1 月读完</span></div></div><span class="hd-score">8.9</span></div>
+                  <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">房思琪的初恋乐园</div><div class="m"><span>文学 · 12 月读完</span></div></div><span class="hd-score">8.7</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 手绘标签 -->
+        <section class="hd-sec">
+          <div class="g-head">
+            <h2 class="g-title">都是些什么<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+            <span class="g-count">Top 10 / 24 个标签</span>
+          </div>
+          <div class="sheet">
+            <div class="paper">
+              <span class="tape"></span>
+              <div class="lines"><span class="frame"></span></div>
+              <div class="hd-tags">
+                <div class="hd-tag"><span class="tn">治愈</span><span class="tb" style="width:100%"></span><span class="tc">12</span></div>
+                <div class="hd-tag"><span class="tn">悬疑</span><span class="tb" style="width:100%"></span><span class="tc">12</span></div>
+                <div class="hd-tag"><span class="tn">日剧</span><span class="tb" style="width:75%"></span><span class="tc">9</span></div>
+                <div class="hd-tag"><span class="tn">历史</span><span class="tb" style="width:58%"></span><span class="tc">7</span></div>
+                <div class="hd-tag"><span class="tn">文学</span><span class="tb" style="width:50%"></span><span class="tc">6</span></div>
+                <div class="hd-tag"><span class="tn">科幻</span><span class="tb" style="width:50%"></span><span class="tc">6</span></div>
+                <div class="hd-tag"><span class="tn">纪录片</span><span class="tb" style="width:42%"></span><span class="tc">5</span></div>
+                <div class="hd-tag"><span class="tn">长篇</span><span class="tb" style="width:42%"></span><span class="tc">5</span></div>
+                <div class="hd-tag"><span class="tn">云南</span><span class="tb" style="width:25%"></span><span class="tc">3</span></div>
+                <div class="hd-tag"><span class="tn">重看</span><span class="tb" style="width:25%"></span><span class="tc">3</span></div>
+              </div>
+              <p class="hd-note" style="margin-top:6px">其余 14 个标签各出现 1 次 · 笔记只贡献「写过」那个数，标签不并进来。</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ================= 冷雾胶片版（对照） ================= -->
+      <div class="page page-sjn">
+
+        <section class="sjn-hero">
+          <div class="sjn-blob sjn-blob-1" aria-hidden="true"></div>
+          <div class="sjn-blob sjn-blob-2" aria-hidden="true"></div>
+          <div class="sjn-hero-text">
+            <div class="sjn-eyebrow">YEAR IN REVIEW</div>
+            <div class="sjn-year-row">
+              <button class="sjn-round" type="button" aria-label="上一年">‹</button>
+              <span class="sjn-year">2024</span>
+              <button class="sjn-round" type="button" aria-label="下一年" disabled>›</button>
+            </div>
+            <p class="sjn-lead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
+            <p class="sjn-caliber">条目按完成日期归年 · 笔记按写下时间归年</p>
+            <div class="sjn-chips">
+              <button class="sjn-chip on" type="button">2024</button>
+              <button class="sjn-chip" type="button">2023</button>
+              <button class="sjn-chip" type="button">2022</button>
+              <span style="font-size:11px;color:var(--sgj-text-4)">有记录的年份</span>
+            </div>
+          </div>
+          <div class="sjn-stats">
+            <div class="stat-item"><span class="stat-icon">影</span><span class="stat-value">36</span><span class="stat-label">看过 · 电影 24 · 剧集 12</span></div>
+            <div class="stat-item"><span class="stat-icon" style="color:var(--sgj-moss);background:var(--sgj-moss-soft)">书</span><span class="stat-value">8</span><span class="stat-label">读过 · 书籍</span></div>
+            <div class="stat-item"><span class="stat-icon" style="color:var(--sgj-amber);background:var(--sgj-amber-soft)">地</span><span class="stat-value">7</span><span class="stat-label">去过 · 地点</span></div>
+            <div class="stat-item"><span class="stat-icon">文</span><span class="stat-value">36</span><span class="stat-label">写过 · 笔记</span></div>
+          </div>
+        </section>
+
+        <!-- 冷雾 A：串联路线 -->
+        <section class="scheme-a" style="margin-top:26px">
+          <div class="sec-head">
+            <h2 class="sec-title">这一年走过的</h2>
+            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+            <div class="sec-sub">TRAVELED</div>
+          </div>
+          <div class="sjn-chain">
+            <ol class="stops">
+              <li class="stop up"><span class="name">平潭</span><span class="mo">3 月</span><span class="dot"></span></li>
+              <li class="stop down"><span class="name">泉州 · 西街</span><span class="mo">4 月</span><span class="dot"></span></li>
+              <li class="stop up"><span class="name">潮州</span><span class="mo">5 月</span><span class="dot"></span></li>
+              <li class="stop down"><span class="name">景德镇</span><span class="mo">7 月</span><span class="dot"></span></li>
+              <li class="stop up"><span class="name">婺源</span><span class="mo">8 月</span><span class="dot"></span></li>
+              <li class="stop down"><span class="name">大理 · 洱海</span><span class="mo">10 月</span><span class="dot"></span></li>
+              <li class="stop up"><span class="name">沙溪</span><span class="mo">11 月 · 没填坐标</span><span class="dot"></span></li>
+            </ol>
+          </div>
+          <p class="sec-note">按去过的先后串起来，不是路线图 —— 两点之间没有画「怎么走」。</p>
+        </section>
+
+        <!-- 冷雾 B：现状地图（对照基线） -->
+        <section class="scheme-b" style="margin-top:26px">
+          <div class="sec-head">
+            <h2 class="sec-title">这一年走过的</h2>
+            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+            <div class="sec-sub">TRAVELED</div>
+          </div>
+          <div class="map-wrap">
+            <div class="map-water" aria-hidden="true"></div>
+            <div class="map-land" aria-hidden="true"></div>
+            <div class="map-road" style="left:12%;top:54%;width:60%;transform:rotate(-6deg)" aria-hidden="true"></div>
+            <div class="map-road" style="left:26%;top:74%;width:48%;transform:rotate(5deg)" aria-hidden="true"></div>
+            <div class="pin" style="left:17%;top:60%"><span class="pin-dot"></span><span class="pin-label">大理 · 洱海</span></div>
+            <div class="pin" style="left:53%;top:80%"><span class="pin-dot"></span><span class="pin-label">潮州</span></div>
+            <div class="pin" style="left:57%;top:32%"><span class="pin-dot"></span><span class="pin-label">景德镇</span></div>
+            <div class="pin" style="left:67%;top:20%"><span class="pin-dot"></span><span class="pin-label">婺源</span></div>
+            <div class="pin" style="left:76%;top:54%"><span class="pin-dot"></span><span class="pin-label">泉州 · 西街</span></div>
+            <div class="pin" style="left:82%;top:36%"><span class="pin-dot"></span><span class="pin-label">平潭</span></div>
+            <div class="map-legend">示意底图 · 实际使用高德地图</div>
+          </div>
+          <p class="sec-note">这一年去过 7 个地方，6 个落在了图上（沙溪没填坐标）。这就是你看到的那一版。</p>
+        </section>
+
+        <section style="margin-top:34px">
+          <div class="sec-head">
+            <h2 class="sec-title">评分最高</h2>
+            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+            <div class="sec-sub">TOP RATED</div>
+          </div>
+          <div class="top-cols">
+            <div class="top-col">
+              <h3>影视 <span>FILM &amp; TV</span></h3>
+              <div class="rank"><span class="rank-no">1</span><span class="rank-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">剧</span><span class="rank-body"><span class="rank-title">漫长的季节</span><span class="rank-meta">剧集 · 5 月看完</span></span><span class="rank-score">9.4</span></div>
+              <div class="rank"><span class="rank-no">2</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span><span class="rank-body"><span class="rank-title">奥本海默</span><span class="rank-meta">电影 · 3 月看过</span></span><span class="rank-score">9.2</span></div>
+              <div class="rank"><span class="rank-no">3</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span><span class="rank-body"><span class="rank-title">沙丘 2</span><span class="rank-meta">电影 · 9 月看过</span></span><span class="rank-score">8.8</span></div>
+              <div class="rank"><span class="rank-no">4</span><span class="rank-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">剧</span><span class="rank-body"><span class="rank-title">三体</span><span class="rank-meta">剧集 · 2 月看完</span></span><span class="rank-score">8.6</span></div>
+              <div class="rank"><span class="rank-no">5</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span><span class="rank-body"><span class="rank-title">宇宙探索编辑部</span><span class="rank-meta">电影 · 11 月看过</span></span><span class="rank-score">8.5</span></div>
+            </div>
+            <div class="top-col">
+              <h3>书籍 <span>BOOKS</span></h3>
+              <div class="rank"><span class="rank-no">1</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">书</span><span class="rank-body"><span class="rank-title">红楼梦</span><span class="rank-meta">文学 · 8 月读完</span></span><span class="rank-score">9.5</span></div>
+              <div class="rank"><span class="rank-no">2</span><span class="rank-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span><span class="rank-body"><span class="rank-title">置身事内：中国政府与经济发展</span><span class="rank-meta">社科 · 4 月读完</span></span><span class="rank-score">9.3</span></div>
+              <div class="rank"><span class="rank-no">3</span><span class="rank-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">书</span><span class="rank-body"><span class="rank-title">人类简史</span><span class="rank-meta">历史 · 6 月读完</span></span><span class="rank-score">9.0</span></div>
+              <div class="rank"><span class="rank-no">4</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">书</span><span class="rank-body"><span class="rank-title">百年孤独</span><span class="rank-meta">文学 · 1 月读完</span></span><span class="rank-score">8.9</span></div>
+              <div class="rank"><span class="rank-no">5</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">书</span><span class="rank-body"><span class="rank-title">房思琪的初恋乐园</span><span class="rank-meta">文学 · 12 月读完</span></span><span class="rank-score">8.7</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section style="margin-top:34px">
+          <div class="sec-head">
+            <h2 class="sec-title">都是些什么</h2>
+            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+            <div class="sec-sub">TAGS</div>
+          </div>
+          <div class="tags">
+            <div class="tag-grid">
+              <div class="tag-row"><span class="tag-name">治愈</span><span class="tag-bar"><i style="width:100%"></i></span><span class="tag-cnt">12</span></div>
+              <div class="tag-row"><span class="tag-name">悬疑</span><span class="tag-bar"><i style="width:100%"></i></span><span class="tag-cnt">12</span></div>
+              <div class="tag-row"><span class="tag-name">日剧</span><span class="tag-bar"><i style="width:75%"></i></span><span class="tag-cnt">9</span></div>
+              <div class="tag-row"><span class="tag-name">历史</span><span class="tag-bar"><i style="width:58%"></i></span><span class="tag-cnt">7</span></div>
+              <div class="tag-row"><span class="tag-name">文学</span><span class="tag-bar"><i style="width:50%"></i></span><span class="tag-cnt">6</span></div>
+              <div class="tag-row"><span class="tag-name">科幻</span><span class="tag-bar"><i style="width:50%"></i></span><span class="tag-cnt">6</span></div>
+              <div class="tag-row"><span class="tag-name">纪录片</span><span class="tag-bar"><i style="width:42%"></i></span><span class="tag-cnt">5</span></div>
+              <div class="tag-row"><span class="tag-name">长篇</span><span class="tag-bar"><i style="width:42%"></i></span><span class="tag-cnt">5</span></div>
+              <div class="tag-row"><span class="tag-name">云南</span><span class="tag-bar"><i style="width:25%"></i></span><span class="tag-cnt">3</span></div>
+              <div class="tag-row"><span class="tag-name">重看</span><span class="tag-bar"><i style="width:25%"></i></span><span class="tag-cnt">3</span></div>
+            </div>
+            <div class="tag-rest"><span>常用的 10 个在上面，其余 <b>14 个</b>标签各出现 1 次</span><span class="tail">展开全部 ▾</span></div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+
+    <footer class="ff">
+      <div class="ff-line">拾光记 · 把日子慢慢写成照片</div>
+      <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
+    </footer>
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>足迹从「一张地图」改成「一串地方」</b>。这是这一屏要定的第一件事。原来那块的根本毛病不是画得糙，而是它<b>假装是地图却给不出地理信息</b>——一个假的陆块形状 + 六个图钉，既不告诉你相对位置，也不告诉你先后。改成串联后它回答一个真实的问题：<b>这一年，我按什么顺序走过哪些地方</b>。</li>
+    <li><span class="new">新增</span>：<b>虚线是「时间顺序」，不是「怎么走」</b>，所以页面必须把这件事写出来（「按去过的先后串起来，不是路线图」）。原条目本来就有 <code>finish_date</code>，排序不需要任何新数据；但如果不说清楚，这条线会被读成行程轨迹，那是产品在撒谎。</li>
+    <li><span class="watch">顺带解决</span>：<b>串联不再依赖坐标</b>。沙溪（11 月）没填经纬度，在方案 A 里它只是第 7 个点、照常出现；在方案 B 里它必须掉出图外，只能补一句「没填坐标」。FR-004-2 原来那条「无坐标地点不导致渲染异常」的边界情况，在 A 里直接不存在——<b>少一个边界，少一类「地图上少了一个点」的困惑</b>。</li>
+    <li><span class="watch">代价</span>：方案 A 放弃了地理感——看不到「这一年都在南方」。若这一点重要，方案 B 用手绘底图 + 虚线路线保住了它，代价是坐标成为硬依赖、且底图只能是示意（不是等比例地图，位置是近似的）。<b>两案的取舍是「顺序准 vs 位置准」，不是「好看 vs 难看」。</b></li>
+    <li><span class="new">新增</span>：<b>手绘风格直接复用 <code>/plan</code> 已落地的那套皮肤</b>——本屏 <code>&lt;link&gt;</code> 引的就是产品在用的 <code>shiguangji-web/src/views/front/plan/handdrawn.css</code>（设计图与产品同源，仓库里有测试守着这条约束），字体是自托管霞鹜文楷分片。所以「直接做手绘」不是另起一套语言：<b>令牌、纸张、胶带、抖线滤镜、类型配色全部照用，新写的只有「路线」这一个组件</b>（约 60 行 CSS）。</li>
+    <li><span class="watch">范围</span>：<b>把回顾页做手绘，等于 0.0.7 先灰度一页</b>。这与 D-42「按页灰度、任何一步停下都是完整可发布状态」一致，<code>/plan</code> 就是先例；但要注意 0.0.7 的立项理由正是「<b>唯一的例外页被感知为没做完</b>」——0.0.4 到 0.0.7 之间，手绘孤岛会变成两页。切到「冷雾胶片」看对照：那一版结构相同、只是没有纸张质感与手写楷体。</li>
+    <li><span class="keep">沿用</span>：<b>页头导航、页脚、移动端 tab 都还是现站的冷雾样式</b>（本屏没换）——这正是「灰度一页」的真实样貌：手绘内容装在冷雾外壳里，和今天的 <code>/plan</code> 一模一样。移动端下两案的路线都转成竖向串珠（看看窄屏效果）。</li>
+    <li><span class="new">发现</span>：<b>共享皮肤有一处缺口——书籍 / 地点的手绘圈是看不见的</b>。<code>handdrawn.css</code> 只给影视写了 <code>.g-movie .ring ellipse{stroke:…}</code>，而 <code>.g-book</code> / <code>.g-place</code> 只设了字色、没设圈色，椭圆的 <code>fill="none"</code> 又让默认填充失效，于是这两类的圈根本不画出来。<code>/plan</code> 页里同理，只是恰好没暴露。本屏用一条 <code>.hd-page .row .glyph .ring ellipse{stroke:currentColor}</code> 统一成类型色，<b>0.0.7 收敛皮肤时应并回 <code>handdrawn.css</code></b>，否则每页都要各自补一遍。</li>
+  </ol>
+  <p class="scope"><b>本屏要定的两件事</b>：① 足迹用「串联路线」还是「地图 + 路线」；② 回顾页现在就用 0.0.7 的手绘语言，还是先留在冷雾、等 0.0.7 一起换。<br><b>未建模</b>：真实地图瓦片（D-45 定的「地图裱框」是 <code>/travel</code> 全量地图的方案，本屏方案 B 是回顾页专用的示意底图）、路线点击进地点详情、超过 12 个地点的换行策略（本屏只画 7 个）、按月份分组的写法、非自然年区间（D-12 不做）。<br><b>选型后的落点</b>：①若取串联，则需求文档 FR-004-2 需从「复用 TravelMap 与图钉形态」改写为「按完成日期的先后串联」，并与 FR-004-1 共用同一套归因口径；②若定手绘，则需在 0.0.4 的范围里补一条「回顾页采用手绘皮肤」，并把「路线」组件沉淀进共享皮肤（而不是留在本页），否则会重蹈「设计图与实现两份样式」的覆辙。</p>
+</section>
+
+<script>
+document.querySelectorAll('.review [data-style]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.style=b.dataset.style;
+  document.querySelectorAll('.review [data-style]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  const dv=document.querySelector('.device-body'); if(dv && dv.scrollTop>0) dv.scrollTo({top:0,behavior:'auto'});
+}));
+document.querySelectorAll('.review [data-scheme]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.scheme=b.dataset.scheme;
+  document.querySelectorAll('.review [data-scheme]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  const dv=document.querySelector('.device-body'); if(dv&&dv.scrollTop>0) dv.scrollTo({top:0,behavior:'auto'});
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+</script>
+</body>
+</html>
