@@ -165,13 +165,18 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 .hd-list .hd-lh{font-size:13.5px;color:var(--hd-ink-faint);margin-bottom:6px}
 .hd-list .hd-lr{display:grid;grid-template-columns:54px minmax(0,1fr);gap:10px;font-size:14.5px;line-height:1.95}
 .hd-list .hd-lm{color:var(--hd-ink-soft)}
-/* B —— 真地图（可缩放 / 可聚合）裱进手绘边框，D-45 的方向；点少点多都用同一个底 */
+/* B —— 手绘示意底（手账点阵纸 + 指北针）裱进手绘边框。
+   不画假陆块、也不铺地图瓦片：精确位置按需交给高德（点任一点），
+   所以这一层只负责观感与顺序，不承担地理精度 —— 点少点多都是同一个底。 */
 .hd-map-dyn{position:absolute;inset:0}
-.hd-frame{position:absolute;inset:0;background:var(--hd-paper-2);border-radius:12px 5px 14px 6px/6px 14px 5px 12px}
+.hd-frame{position:absolute;inset:0;background:var(--hd-paper);border-radius:12px 5px 14px 6px/6px 14px 5px 12px}
 .hd-frame::after{content:'';position:absolute;inset:0;border:2.6px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
-.hd-frame .tiles{position:absolute;inset:14px;border-radius:6px;
-  background:repeating-linear-gradient(0deg,transparent 0 43px,var(--hd-line-soft) 43px 44px),
-             repeating-linear-gradient(90deg,transparent 0 43px,var(--hd-line-soft) 43px 44px),var(--hd-paper)}
+.hd-frame .dotgrid{position:absolute;inset:14px;border-radius:6px;opacity:.75;
+  background-image:radial-gradient(var(--hd-line-soft) 1.3px,transparent 1.4px);
+  background-size:22px 22px;background-position:6px 6px}
+/* 「点开看真实位置」的提示：本原型不建模跳转，只交代这一步存在 */
+.hd-frame .tap{position:absolute;left:22px;top:18px;font-size:13px;color:var(--hd-red);
+  background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
 .hd-frame .trail-b{position:absolute;inset:0;width:100%;height:100%;filter:url(#rough)}
 .hd-frame .fnote{position:absolute;left:22px;bottom:20px;font-size:13px;color:var(--hd-ink-faint);
   background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
@@ -394,7 +399,7 @@ body[data-vp=mobile] .hd-nocoord{display:none}
             <div class="g-head">
               <h2 class="g-title">评分最高<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
               <span class="g-count">51 条里 32 条有评分</span>
-              <span class="an" data-n="7"></span>
+              <span class="an" data-n="9"></span>
             </div>
             <div class="hd-cols">
               <div class="sheet alt">
@@ -415,7 +420,7 @@ body[data-vp=mobile] .hd-nocoord{display:none}
                 <div class="paper">
                   <span class="tape"></span>
                   <div class="lines"><span class="frame"></span></div>
-                  <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2><span class="an" data-n="10"></span></div>
+                  <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2><span class="an" data-n="12"></span></div>
                   <div class="rows g-book">
                     <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">红楼梦</div><div class="m"><span>文学 · 8 月读完</span></div></div><span class="hd-score">9.5</span></div>
                     <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">置身事内</div><div class="m"><span>社科 · 4 月读完</span></div></div><span class="hd-score">9.3</span></div>
@@ -433,7 +438,7 @@ body[data-vp=mobile] .hd-nocoord{display:none}
             <div class="g-head">
               <h2 class="g-title">都是些什么<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
               <span class="g-count">Top 10 / 24 个标签</span>
-              <span class="an" data-n="8"></span>
+              <span class="an" data-n="10"></span>
             </div>
             <div class="sheet">
               <div class="paper">
@@ -475,7 +480,7 @@ body[data-vp=mobile] .hd-nocoord{display:none}
                   <button class="hdbtn go" type="button">去影单看看</button>
                   <button class="hdbtn" type="button">去书单看看</button>
                 </div>
-                <p class="hd-note" style="margin-top:20px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="9"></span></p>
+                <p class="hd-note" style="margin-top:20px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="11"></span></p>
               </div>
             </div>
           </div>
@@ -525,9 +530,11 @@ body[data-vp=mobile] .hd-nocoord{display:none}
     <li><span class="new">新增</span>：<b>报头：年份在左、说明句在右，两者共用一条基线</b>。年份 76px 是页面最大的一个字，说明句是它的题注；四个统计卡（影 / 书 / 地 / 文）拉成整行，卡片等高等宽。年份与说明句<b>按基线对齐而不是按几何中心</b>——数字几乎没有下伸部，几何居中会把说明句吊在年份的腰上，看着就是没对齐。统计卡的类型色用 <code>hdk-</code> 前缀（曾与正文注记 <code>.hd-note</code> 撞名，见本屏第 6 条以外的实现注意）。</li>
     <li><span class="new">新增</span>：<b>年份是可翻的，不是筛出来的</b>。<code>‹ ›</code> 步进任意年份（含没有记录的年份，翻到那里就是空态）；胶囊只列<b>有记录的年份</b>，从数据推导而不是写死 <code>2020~2030</code>。</li>
     <li><span class="new">新增</span>：<b>归因口径写在页面上</b>（「条目按完成日期归年 · 笔记按写下时间归年」）。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
-    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常出现，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 把真地图裱进手绘边框（瓦片不手绘化，D-45 的方向）保住地理感，代价是坐标成为硬依赖、且这一块不再「纯手绘」。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
-    <li><span class="new">新增</span>：<b>足迹点变多了怎么办——两案各有一条规则</b>（用顶部「点少 7 / 中 16 / 多 30」三个量级试）。<b>A：站点 = 有出行的月份，不是地点</b>，所以一年最多 12 站，<b>版式永远不溢出</b>（原来的 7 列网格与写死的虚线路径在点数上是硬伤）。站上写什么按能否容纳决定：站点 ≤ 8 写地名（同月并列，放不下收成「首个 +n」）；站点 &gt; 8 只写月份 + 地点数，地名下移到清单。<b>清单只在「链上写不全所有地名」时出现</b>，按月列出、一个不少。<b>B：底永远是真地图裱框，只是密度不同</b>——点少时逐点标注（按真实经纬度落位、近点自动并簇、缩放到这一年的范围、标签上下换边），点多时按省聚合，把缩放与聚合交给高德。顺带否掉一个看似省事的做法：<b>按省聚合对这数据没用</b>——现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合。</li>
-    <li><span class="watch">一句实话</span>：<b>两案的原型可信度不对等，这一点会影响选型。</b><b>A 是所见即所得</b>——纯 CSS/SVG，不联网、不要坐标，原型画成什么样、实现就是什么样。<b>B 只能示意</b>——瓦片、缩放、标签避让、聚合这四件事都是高德的活；我在静态原型里手搓了自动缩放与并簇，标签仍会互相挤（真地图不会）。所以「B 看着怪」有一部分是原型的锅，不是设计的锅；反过来说，选 B 就等于这一块交给第三方地图组件，手绘只负责外框。<b>若都不满意，还有第三条路</b>：回顾页只做 A（串联），地理交给已有的足迹页——放一个「在地图上看这一年 →」的入口跳过去（需要 <code>/travel</code> 支持按年筛选，是额外工作量）。</li>
+    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常出现，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 用手绘示意底保住「去过哪一片」的地理感，<b>精确位置按需开高德</b>（点任一点），代价是坐标成为硬依赖。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
+    <li><span class="new">新增</span>：<b>足迹点变多了怎么办——两案各有一条规则</b>（用顶部「点少 7 / 中 16 / 多 30」三个量级试）。<b>A：站点 = 有出行的月份，不是地点</b>，所以一年最多 12 站，<b>版式永远不溢出</b>（原来的 7 列网格与写死的虚线路径在点数上是硬伤）。站上写什么按能否容纳决定：站点 ≤ 8 写地名（同月并列，放不下收成「首个 +n」）；站点 &gt; 8 只写月份 + 地点数，地名下移到清单。<b>清单只在「链上写不全所有地名」时出现</b>，按月列出、一个不少。<b>B：底不承担地理精度，所以只需两档密度</b>——点少时逐点标注（真实经纬度粗落位、自动缩放到这一年的范围、按屏幕距离并簇、标签上下换边），点多时按省计数。<b>按省聚合也不是万灵药</b>：现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合。</li>
+    <li><span class="watch">本次新增</span>：<b>B 改成「手绘示意底 + 按需开高德」，把手绘页从地图精度里解放出来。</b>原来那个假陆块（变形虫）之所以难看，是因为它<b>既是手绘又假装准确</b>：既画不出真实形状，又不给真坐标。现在责任分家——<b>示意底只管观感与顺序</b>（手账点阵纸 + 指北针 + 点 + 虚线，页面明写「手绘示意 · 非比例地图」），<b>精确位置在点开时才交给高德</b>。这样回顾页<b>不依赖第三方瓦片</b>（0.0.7「整页手绘」不破口子）、<b>首屏不加载高德 JS</b>（只在真的想看某个点时才付这个代价），而 D-45 对足迹页「真地图裱框」的定案也不受影响（那是足迹页，不是回顾页）。</li>
+    <li><span class="watch">待定</span>：<b>「点开看真实位置」用哪种形态</b>，两条路成本不同：<b>(a) 页内弹窗/抽屉里嵌一张单点高德</b> —— 体验连贯，但回顾页要加载高德 JS API（体积与网络依赖）；<b>(b) 跳去足迹页并定位该点</b>（如 <code>/travel?focus={id}</code>）—— 零新增依赖、复用已有的真地图，代价是离开回顾页，且 <code>/travel</code> 需支持 <code>focus</code> 参数。本原型只画了入口提示，没建模跳转后的样子。</li>
+    <li><span class="watch">一句实话</span>：<b>两案的原型可信度现在对等了。</b>改完之后 B 也是纯 CSS/SVG（点阵纸、手绘圈、虚线），不联网、不依赖瓦片，原型画成什么样、实现就是什么样——唯一的第三方依赖挪到了「点开」那一步，而它只在用户主动点的时候发生。剩下真正要选的，还是那个产品问题：<b>回顾这一页要讲「顺序」还是「位置」</b>。</li>
     <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜。<b>只有打过分的条目参与</b>，参与条数写在栏头（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序与 N 的取值留待详细设计。</li>
     <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。手绘条形按最大计数归一，数字右对齐。Top 10 之外收成「其余 14 个标签各出现 1 次」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。标签只统计条目，笔记只贡献「写过」那个数。</li>
     <li><span class="new">新增</span>：<b>空态与加载中都是手绘的</b>。空态：页头保留、四个数归零（与首页 hero「页头恒在、只换主体」一致，避免整页跳变），主体是一张纸上的便条加两处去处；并说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。加载中：<b>手绘骨架</b>（歪盒子轮廓 + 浅纸底）而不是转圈或真站的灰色骨架，加载完成不跳版。</li>
@@ -677,7 +684,8 @@ function renderA(key){
 
 function renderB(key){
   const d = travelStats(key), usePins = d.total <= 10;
-  const frame = '<div class="tiles"></div>'
+  const frame = '<div class="dotgrid"></div>'
+    + '<span class="tap">点任一点 → 高德看真实位置<span class="an" data-n="8"></span></span>'
     + '<span class="hd-compass"><svg viewBox="0 0 22 28" aria-hidden="true">'
     + '<path d="M11 26 L11 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
     + '<path d="M5 15 L11 4 L17 15" fill="none" stroke="var(--hd-red)" stroke-width="2" stroke-linejoin="round"/></svg>北</span>';
@@ -720,14 +728,14 @@ function renderB(key){
                + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + (i+1) + '</b></span>'
                + '<span class="t">' + names + '</span></span>';
         }).join('')
-      + '<span class="fnote">瓦片由高德渲染 · 逐点标注</span>'
+      + '<span class="fnote">手绘示意 · 非比例地图<span class="an" data-n="7"></span></span>'
       + (missing ? '<span class="hd-nocoord">' + missing + ' 没填坐标，没落在图上</span>' : '')
       + '</div>');
     setHTML('mapBKey', '<div class="kh">图例 · 按去过的先后</div>'
       + cls.map((c,i)=>'<div class="k"><b>' + (i+1) + '</b><span>'
           + c.items.map(it=>it.n + ' · ' + it.m.replace(' ', '')).join(' / ') + '</span></div>').join('')
       + (missing ? '<div class="k"><b>—</b><span>' + missing + ' 没填坐标，没落在图上</span></div>' : ''));
-    document.getElementById('mapBNote').innerHTML = '底图是真地图裱进手绘边框（瓦片不手绘化，D-45 的方向）；图上的点按真实经纬度落位，靠得近的会并成一个（真地图也这样）。<b>没填坐标的地点不上图</b>，但会在框里交代一句 —— 这是保留地理感的代价，方案 A 没有这个问题。';
+    document.getElementById('mapBNote').innerHTML = '底是<b>手绘示意</b>（不铺地图瓦片、不按比例），只负责「这一年去过哪一片、按什么顺序」；想看某个点的<b>精确位置就点它</b>，那时才开高德——真实地图只在需要时付代价，回顾页本身保持纯手绘。图上按真实经纬度粗落位，靠得近的并成一个（真地图也这样）；没填坐标的不上图，但在框里交代一句。';
   } else {
     const byPv = {};
     d.months.forEach(g=>g.ps.forEach(p=>{ byPv[p.pv] = (byPv[p.pv]||0)+1; }));
@@ -740,10 +748,10 @@ function renderB(key){
                + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + byPv[pv] + '</b></span>'
                + '<span class="t">' + pv + '</span></span>';
         }).join('')
-      + '<span class="fnote">瓦片由高德渲染 · 可缩放 · 可聚合</span></div>');
+      + '<span class="fnote">手绘示意 · 非比例 · 按省计数<span class="an" data-n="7"></span></span></div>');
     setHTML('mapBKey', '<div class="kh">图例 · 每个省的地点数</div>'
       + Object.keys(byPv).map(pv=>'<div class="k"><b>' + byPv[pv] + '</b><span>' + pv + '</span></div>').join(''));
-    document.getElementById('mapBNote').innerHTML = '点数一多就不再逐点画了：改由真地图（可缩放、可聚合）承担，框里只留每个省的计数。<b>按省聚合也不是万灵药</b> —— 你现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合；这里能压成 6 个省，是因为这一年的出行集中。';
+    document.getElementById('mapBNote').innerHTML = '点数一多就不再逐点画，改成<b>按省计数</b>——手绘示意底只回答「去过哪几个省、各几个」。<b>按省聚合也不是万灵药</b>：你现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合；这里能压成 6 个省，是因为这一年的出行集中。要精确位置仍然点单个地点开高德（聚合态下先缩放或去足迹页）。';
   }
 }
 
