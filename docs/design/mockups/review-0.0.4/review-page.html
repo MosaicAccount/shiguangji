@@ -167,6 +167,32 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 .pinb.l .lb{top:50%;right:36px;left:auto;transform:translateY(-50%)}
 .hd-maphint{position:absolute;left:10px;bottom:8px;font-size:13px;color:var(--hd-ink-faint)}
 
+/* 足迹点数变多时（本次新增）：
+   A —— 链上写不全所有地名时，链下按月补一份完整清单，一个不少 */
+.hd-list{margin-top:14px;border-top:2px dashed var(--hd-line-soft);padding-top:12px}
+.hd-list .hd-lh{font-size:13.5px;color:var(--hd-ink-faint);margin-bottom:6px}
+.hd-list .hd-lr{display:grid;grid-template-columns:54px minmax(0,1fr);gap:10px;font-size:14.5px;line-height:1.95}
+.hd-list .hd-lm{color:var(--hd-ink-soft)}
+/* B —— 点多时不再自己画点：真地图（可缩放 / 可聚合）裱进手绘边框，D-45 的方向 */
+.hd-map.framed .land,.hd-map.framed .trail-b{display:none}
+/* 裱框模式下左下角由 .fnote 说明，静态那句示意底说明要收起来，否则两句叠在一起 */
+.hd-map.framed .hd-maphint{display:none}
+.hd-map-dyn{position:absolute;inset:0}
+.hd-frame{position:absolute;inset:0;background:var(--hd-paper-2);border-radius:12px 5px 14px 6px/6px 14px 5px 12px}
+.hd-frame::after{content:'';position:absolute;inset:0;border:2.6px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
+.hd-frame .tiles{position:absolute;inset:14px;border-radius:6px;
+  background:repeating-linear-gradient(0deg,transparent 0 43px,var(--hd-line-soft) 43px 44px),
+             repeating-linear-gradient(90deg,transparent 0 43px,var(--hd-line-soft) 43px 44px),var(--hd-paper)}
+.hd-frame .fnote{position:absolute;left:22px;bottom:20px;font-size:13px;color:var(--hd-ink-faint);
+  background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
+.hd-cl{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--hd-red)}
+.hd-cl .c{position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center}
+.hd-cl .c svg{position:absolute;inset:0;filter:url(#rough)}
+.hd-cl .c svg ellipse{fill:var(--hd-amber-soft);stroke:currentColor;stroke-width:2.2}
+.hd-cl .c b{position:relative;font-size:17px}
+.hd-cl .t{font-size:14px;color:var(--hd-ink);background:var(--hd-paper);padding:0 8px;
+  border-radius:9px 3px 9px 3px/3px 9px 3px 9px;white-space:nowrap}
+
 /* 评分榜 / 标签 */
 .hd-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .hd-cols .sheet{margin-top:0}
@@ -238,6 +264,7 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
     <nav class="screens"><a href="index.html">索引</a><a href="review-page.html" aria-current="page">回顾页</a><a href="review-entry.html">入口与边界</a></nav>
     <span class="seg" role="group" aria-label="状态"><button data-state="default" aria-pressed="true">默认</button><button data-state="empty" aria-pressed="false">空态</button><button data-state="loading" aria-pressed="false">加载中</button></span>
     <span class="seg" role="group" aria-label="足迹方案"><button data-scheme="a" aria-pressed="true">足迹 A · 串联</button><button data-scheme="b" aria-pressed="false">足迹 B · 地图</button></span>
+    <span class="seg" role="group" aria-label="足迹点数"><button data-vol="few" aria-pressed="true">点少 7</button><button data-vol="mid" aria-pressed="false">中 16</button><button data-vol="many" aria-pressed="false">多 30</button></span>
     <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
     <span class="seg" role="group" aria-label="视口"><button data-vp="desktop" aria-pressed="true">桌面</button><button data-vp="mobile" aria-pressed="false">移动端</button></span>
     <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
@@ -259,19 +286,19 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
 
         <!-- ===== 报头 ===== -->
         <section class="hd-hero" id="hdHero">
-          <div class="hd-eyebrow">YEAR IN REVIEW</div>
+          <div class="hd-eyebrow">YEAR IN REVIEW<span class="an" data-n="2"></span></div>
           <div class="hd-hero-main">
             <button class="hd-round" type="button" aria-label="上一年">‹</button>
             <span class="hd-year" id="hdYear">2024</span>
             <button class="hd-round" type="button" aria-label="下一年" disabled>›</button>
             <p class="hd-lead" id="hdLead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
           </div>
-          <p class="hd-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="2"></span></p>
+          <p class="hd-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="4"></span></p>
           <div class="hd-chips" id="hdChips">
             <span class="hd-chip doing">2024</span>
             <span class="hd-chip">2023</span>
             <span class="hd-chip">2022</span>
-            <span class="cap">有记录的年份<span class="an" data-n="1"></span></span>
+            <span class="cap">有记录的年份<span class="an" data-n="3"></span></span>
           </div>
           <div class="hd-stats" id="hdStats">
             <div class="hd-stat hdk-movie">
@@ -288,7 +315,7 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
             </div>
             <div class="hd-stat hdk-note">
               <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>文</span></span>
-              <span class="num" id="numNote">36</span><span class="lbl">写过 · 笔记<span class="an" data-n="3"></span></span>
+              <span class="num" id="numNote">36</span><span class="lbl">写过 · 笔记</span>
             </div>
           </div>
         </section>
@@ -322,25 +349,13 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
                 <div class="lines"><span class="frame"></span></div>
                 <div class="g-head">
                   <h2 class="g-title">这一年走过的<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
-                  <span class="g-count">7 个地方</span>
-                  <span class="an" data-n="4"></span>
+                  <span class="g-count" id="routeACount">7 个地方 · 7 个月</span>
+                  <span class="an" data-n="5"></span>
                 </div>
-                <div class="route">
-                  <svg class="trail" viewBox="0 0 820 152" preserveAspectRatio="none" aria-hidden="true">
-                    <path d="M58.6 76 C100 60 135 60 175.7 76 C217 92 252 92 292.9 76 C334 60 369 60 410 76 C451 92 486 92 527.1 76 C568 60 603 60 644.3 76 C685 92 720 92 761.4 76"
-                          fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/>
-                  </svg>
-                  <ol class="stops">
-                    <li class="stop up"><span class="name">平潭</span><span class="mo">3 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>1</b></span></li>
-                    <li class="stop down"><span class="name">泉州 · 西街</span><span class="mo">4 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>2</b></span></li>
-                    <li class="stop up"><span class="name">潮州</span><span class="mo">5 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>3</b></span></li>
-                    <li class="stop down"><span class="name">景德镇</span><span class="mo">7 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>4</b></span></li>
-                    <li class="stop up"><span class="name">婺源</span><span class="mo">8 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>5</b></span></li>
-                    <li class="stop down"><span class="name">大理 · 洱海</span><span class="mo">10 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>6</b></span></li>
-                    <li class="stop up off"><span class="name">沙溪</span><span class="mo">11 月 · 没填坐标</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>7</b></span></li>
-                  </ol>
-                </div>
-                <p class="hd-note">按去过的先后串起来，<b>不是路线图</b> —— 两点之间没有画「怎么走」；虚线只是把这一年连成一串。</p>
+                <!-- 内容由 JS 按「点数」渲染：站点 = 有出行的月份，一年最多 12 站 -->
+                <div class="route" id="routeA"></div>
+                <div class="hd-list" id="routeAList" hidden></div>
+                <p class="hd-note">站点是<b>有出行的月份</b>（不是逐个地点），所以一年最多 12 站、版式永远不溢出。按去过的先后串起来，<b>不是路线图</b> —— 两点之间没有画「怎么走」，虚线只是把这一年连成一串。<span class="an" data-n="6"></span></p>
               </div>
             </div>
           </section>
@@ -353,9 +368,10 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
                 <div class="lines"><span class="frame"></span></div>
                 <div class="g-head">
                   <h2 class="g-title">这一年走过的<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
-                  <span class="g-count">6 个地方落在图上</span>
+                  <span class="g-count" id="mapBCount">7 个地方落在图上</span>
+                  <span class="an" data-n="6"></span>
                 </div>
-                <div class="hd-map">
+                <div class="hd-map" id="mapB">
                   <svg class="land" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">
                     <path d="M120 62 C200 40 300 50 400 38 C520 24 620 40 700 34 C742 30 782 44 794 72 C804 98 772 122 782 152 C792 182 762 202 742 232 C722 262 682 288 622 302 C562 316 502 302 442 294 C382 286 332 298 272 288 C212 278 152 252 122 212 C94 174 102 132 110 102 C114 84 114 72 120 62 Z"
                           fill="var(--hd-paper-2)" stroke="var(--hd-line)" stroke-width="2.4"/>
@@ -363,19 +379,11 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
                     <path d="M330 214 C390 200 450 216 500 198" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
                     <path d="M600 120 C640 150 650 210 620 262" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
                   </svg>
-                  <svg class="trail-b" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">
-                    <path d="M700 96 C680 120 668 136 656 150 C620 178 586 214 560 250 C520 200 492 150 470 108 C494 94 520 82 546 74 C420 96 300 132 170 176"
-                          fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/>
-                  </svg>
-                  <span class="pinb" style="left:85.4%;top:27.3%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>1</b><span class="lb">平潭 · 3 月</span></span>
-                  <span class="pinb l" style="left:80%;top:42.6%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>2</b><span class="lb">泉州 · 4 月</span></span>
-                  <span class="pinb" style="left:68.3%;top:71%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>3</b><span class="lb">潮州 · 5 月</span></span>
-                  <span class="pinb l" style="left:57.3%;top:30.7%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>4</b><span class="lb">景德镇 · 7 月</span></span>
-                  <span class="pinb" style="left:66.6%;top:21%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>5</b><span class="lb">婺源 · 8 月</span></span>
-                  <span class="pinb" style="left:20.7%;top:50%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>6</b><span class="lb">大理 · 10 月</span></span>
-                  <span class="hd-maphint">底图是手绘示意，不是等比例地图</span>
+                  <!-- 内容由 JS 按「点数」渲染：点少 → 逐个图钉 + 虚线；点多 → 真地图裱框 + 按省聚合 -->
+                  <div class="hd-map-dyn" id="mapBDyn"></div>
+                  <span class="hd-maphint" id="mapBHint">底图是手绘示意，不是等比例地图</span>
                 </div>
-                <p class="hd-note">沙溪（11 月）<b>没填坐标</b>，所以没落在图上 —— 这是保留地理感的代价；方案 A 只要「去过的先后」，没有这个问题。</p>
+                <p class="hd-note" id="mapBNote">沙溪（11 月）<b>没填坐标</b>，所以没落在图上 —— 这是保留地理感的代价；方案 A 只要「去过的先后」，没有这个问题。</p>
               </div>
             </div>
           </section>
@@ -385,7 +393,7 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
             <div class="g-head">
               <h2 class="g-title">评分最高<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
               <span class="g-count">51 条里 32 条有评分</span>
-              <span class="an" data-n="5"></span>
+              <span class="an" data-n="7"></span>
             </div>
             <div class="hd-cols">
               <div class="sheet alt">
@@ -406,7 +414,7 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
                 <div class="paper">
                   <span class="tape"></span>
                   <div class="lines"><span class="frame"></span></div>
-                  <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
+                  <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2><span class="an" data-n="10"></span></div>
                   <div class="rows g-book">
                     <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">红楼梦</div><div class="m"><span>文学 · 8 月读完</span></div></div><span class="hd-score">9.5</span></div>
                     <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">置身事内</div><div class="m"><span>社科 · 4 月读完</span></div></div><span class="hd-score">9.3</span></div>
@@ -424,7 +432,7 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
             <div class="g-head">
               <h2 class="g-title">都是些什么<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
               <span class="g-count">Top 10 / 24 个标签</span>
-              <span class="an" data-n="6"></span>
+              <span class="an" data-n="8"></span>
             </div>
             <div class="sheet">
               <div class="paper">
@@ -466,7 +474,7 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
                   <button class="hdbtn go" type="button">去影单看看</button>
                   <button class="hdbtn" type="button">去书单看看</button>
                 </div>
-                <p class="hd-note" style="margin-top:20px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="7"></span></p>
+                <p class="hd-note" style="margin-top:20px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="9"></span></p>
               </div>
             </div>
           </div>
@@ -512,16 +520,18 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
 
   <h2>本屏标注</h2>
   <ol>
-    <li><span class="new">已拍板</span>：<b>回顾模块直接做成手绘</b>（0.0.7 的皮肤先在这一页灰度）。这不是另起一套语言：本屏 <code>&lt;link&gt;</code> 引的就是产品在用的 <code>shiguangji-web/src/views/front/plan/handdrawn.css</code>（设计图与产品同源，仓库里有测试守着这条约束），字体是自托管霞鹜文楷分片；令牌、纸张、胶带、抖线滤镜、类型配色全部照用，<b>新增的只有「报头布局」「路线」「骨架」三处</b>。页头 / 页脚 / 移动 tab 仍是冷雾——这与今天的 <code>/plan</code> 一模一样（手绘内容装在冷雾外壳里），也说明本页的灰度是干净的一步。</li>
-    <li><span class="new">新增</span>：<b>报头改成「年份在左、说明句在右」</b>。原来年份一行、说明句另起一行，年份右边的六七百像素全是空的；现在把年度汇总那句话和归因口径挪到年份右侧（左对齐、与年份垂直居中），四个统计卡拉成整行——<b>空位交给真信息，不撒装饰</b>。年份仍是页面最大的一个字（76px），说明句是它的题注。</li>
+    <li><span class="keep">已拍板</span>：<b>回顾模块直接做成手绘</b>（0.0.7 的皮肤先在这一页灰度）。这不是另起一套语言：本屏 <code>&lt;link&gt;</code> 引的就是产品在用的 <code>shiguangji-web/src/views/front/plan/handdrawn.css</code>（设计图与产品同源，仓库里有测试守着这条约束），字体是自托管霞鹜文楷分片；令牌、纸张、胶带、抖线滤镜、类型配色全部照用。页头 / 页脚 / 移动 tab 仍是冷雾——这与今天的 <code>/plan</code> 一模一样（手绘内容装在冷雾外壳里），也说明本页的灰度是干净的一步。<b>本项讲整页，不另挂气泡。</b></li>
+    <li><span class="new">新增</span>：<b>报头：年份在左、说明句在右，两者共用一条基线</b>。年份 76px 是页面最大的一个字，说明句是它的题注；四个统计卡（影 / 书 / 地 / 文）拉成整行，卡片等高等宽。年份与说明句<b>按基线对齐而不是按几何中心</b>——数字几乎没有下伸部，几何居中会把说明句吊在年份的腰上，看着就是没对齐。统计卡的类型色用 <code>hdk-</code> 前缀（曾与正文注记 <code>.hd-note</code> 撞名，见本屏第 6 条以外的实现注意）。</li>
+    <li><span class="new">新增</span>：<b>年份是可翻的，不是筛出来的</b>。<code>‹ ›</code> 步进任意年份（含没有记录的年份，翻到那里就是空态）；胶囊只列<b>有记录的年份</b>，从数据推导而不是写死 <code>2020~2030</code>。</li>
     <li><span class="new">新增</span>：<b>归因口径写在页面上</b>（「条目按完成日期归年 · 笔记按写下时间归年」）。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
-    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常是第 7 个点，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 用手绘底图 + 虚线路线保住地理感，代价是坐标成为硬依赖、且底图只能是示意。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
+    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常出现，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 用底图保住地理感，代价是坐标成为硬依赖。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
+    <li><span class="new">新增</span>：<b>足迹点变多了怎么办——两案各有一条规则</b>（用顶部「点少 7 / 中 16 / 多 30」三个量级试）。<b>A：站点 = 有出行的月份，不是地点</b>，所以一年最多 12 站，<b>版式永远不溢出</b>（原来的 7 列网格与写死的虚线路径在点数上是硬伤）。站上写什么按能否容纳决定：站点 ≤ 8 写地名（同月 2 个并列，≥3 个收成「首个 +n」）；站点 &gt; 8 只写月份 + 地点数，地名下移到清单。<b>清单只在「链上写不全所有地名」时出现</b>（有月份含多点，或站数 &gt; 8），按月列出、一个不少。<b>B：示意底从根上扛不住</b>——它不按比例、不能缩放，近的地方必然叠，所以图钉 ≤ 10 个还能读，再多就换成<b>真地图裱进手绘边框</b>（D-45 对 0.0.7 已定的方向），缩放与聚合交给高德。顺带否掉一个看似省事的做法：<b>按省聚合对这数据没用</b>——现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合。</li>
     <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜。<b>只有打过分的条目参与</b>，参与条数写在栏头（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序与 N 的取值留待详细设计。</li>
     <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。手绘条形按最大计数归一，数字右对齐。Top 10 之外收成「其余 14 个标签各出现 1 次」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。标签只统计条目，笔记只贡献「写过」那个数。</li>
     <li><span class="new">新增</span>：<b>空态与加载中都是手绘的</b>。空态：页头保留、四个数归零（与首页 hero「页头恒在、只换主体」一致，避免整页跳变），主体是一张纸上的便条加两处去处；并说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。加载中：<b>手绘骨架</b>（歪盒子轮廓 + 浅纸底）而不是转圈或真站的灰色骨架，加载完成不跳版。</li>
     <li><span class="new">发现</span>：<b>共享皮肤有一处缺口——书籍 / 地点的手绘圈是看不见的</b>。<code>handdrawn.css</code> 只给影视写了 <code>.g-movie .ring ellipse{stroke:…}</code>，而 <code>.g-book</code> / <code>.g-place</code> 只设了字色、没设圈色，椭圆的 <code>fill="none"</code> 又让默认填充失效，于是这两类的圈根本不画。<code>/plan</code> 页里同理，只是恰好没暴露。本屏用一条 <code>.hd-page .row .glyph .ring ellipse{stroke:currentColor}</code> 统一成类型色，<b>0.0.7 收敛皮肤时应并回 <code>handdrawn.css</code></b>。</li>
   </ol>
-  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 校验、非法年份处理）、地图真实瓦片与图钉交互、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、超过 12 个地点的换行策略（本屏只画 7 个）。<br><b>既有不改</b>：页头导航仍是 6 项（回顾不占导航位，从首页 hero 进入，见 <a href="review-entry.html">入口与边界屏</a>）、移动 tab 仍是四项、页脚与主题切换不动。<br><b>移动端差异</b>：报头改单列（年份在上、说明句在下）、年份降到 54px、统计卡两列等宽、两案路线都转成竖向串珠、评分两栏改单列、标签改单列。<br><b>选型后的落点</b>：①足迹定 A 则需求 FR-004-2 从「复用 <code>TravelMap</code> 与图钉形态」改写为「按完成日期的先后串联」，定 B 则保留坐标依赖；②「路线」组件应沉淀进共享皮肤而不是留在本页，否则会重蹈「设计图与实现两份样式」的覆辙。</p>
+  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 校验、非法年份处理）、真地图的瓦片与聚合（本屏只画位置）、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、同一月份内地点超过 6 个时清单的折叠（本屏最多 3 个/月）。<br><b>既有不改</b>：页头导航仍是 6 项（回顾不占导航位，从首页 hero 进入，见 <a href="review-entry.html">入口与边界屏</a>）、移动 tab 仍是四项、页脚与主题切换不动。<br><b>移动端差异</b>：报头改单列（年份在上、说明句在下，说明句用 <code>flex-basis:100%</code> 强制换行）、年份降到 54px、统计卡两列等宽、A 的路线转成竖向串珠、评分两栏改单列、标签改单列。<br><b>需拍板 / 回写的</b>：①足迹选 A 还是 B（选 A 则 FR-004-2 从「复用 <code>TravelMap</code> 与图钉形态」改写为「按完成日期的先后串联」；选 B 则要写清「点多时换真地图裱框」）；②「站点 = 月份」改变了 FR-004-2 的口径与验收标准（<b>年度地点数 ≠ 链上站点数</b>，两者都要能被解释）；③路线 / 清单 / 骨架这几个新组件应沉淀进共享皮肤，而不是留在本页。</p>
 
 </section>
 
@@ -529,8 +539,12 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
 /* 静态设计稿：三种状态与两套足迹方案都是本文件里的字面量 */
 function show(id,on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
 function setText(id,t){ const el=document.getElementById(id); if(el) el.textContent = t; }
-function setHTML(id,html){ const el=document.getElementById(id); if(!el) return;
-  const r=document.createRange(); r.selectNode(el); el.replaceChildren(r.createContextualFragment(html||'')); }
+/* id 与元素都接受：早先只接受 id，传元素时 getElementById 返回 null 就静默什么都不写，
+   表现是「不报错但页面空着」，查起来很费劲。顺手把这种情况堵掉。 */
+function setHTML(target,html){ const el = (typeof target === 'string') ? document.getElementById(target) : target;
+  if(!el || !el.replaceChildren) return;
+  const r = document.createRange(); r.selectNode(el);
+  el.replaceChildren(r.createContextualFragment(html || '')); }
 
 const DATA = {
   default:{ year:'2024', lead:'这一年，你记录了 <b>87</b> 件值得记住的小事。',
@@ -560,6 +574,145 @@ function render(){
     });
   }
 }
+/* ===== 足迹：点数伸缩（本次新增）=====
+   规则：站点 = 有出行的月份，不是地点 —— 一年最多 12 站，版式永远不溢出。
+        · 站点 ≤ 8 → 站上写地名（同月 2 个并列；≥3 个收成「首个 +n」）
+        · 站点 > 8 → 站上只写月份 + 地点数，地名全部下移到清单
+        · 清单只在「链上写不全所有地名」时出现（有月份含多点，或站数 > 8）
+   B 的另一条规则：示意图钉 ≤ 10 个还能读；再多就换成真地图裱框（可缩放 / 可聚合）。 */
+const P = (n, pv, nc) => ({ n:n, pv:pv, nc:!!nc });
+const TRAVEL = {
+  few: { months: [
+    { m:'3 月',  ps:[P('平潭','福建')] },
+    { m:'4 月',  ps:[P('泉州 · 西街','福建')] },
+    { m:'5 月',  ps:[P('潮州','广东')] },
+    { m:'7 月',  ps:[P('景德镇','江西')] },
+    { m:'8 月',  ps:[P('婺源','江西')] },
+    { m:'10 月', ps:[P('大理 · 洱海','云南')] },
+    { m:'11 月', ps:[P('沙溪','云南',1)] }
+  ]},
+  mid: { months: [
+    { m:'1 月',  ps:[P('潮州','广东'), P('汕头','广东')] },
+    { m:'3 月',  ps:[P('平潭 · 北港','福建'), P('泉州 · 西街','福建')] },
+    { m:'5 月',  ps:[P('婺源 · 篁岭','江西'), P('景德镇','江西')] },
+    { m:'7 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',1), P('丽江','云南')] },
+    { m:'8 月',  ps:[P('香格里拉','云南'), P('梅里雪山','云南')] },
+    { m:'10 月', ps:[P('宏村','安徽'), P('塔川','安徽'), P('黄山','安徽')] },
+    { m:'12 月', ps:[P('福州 · 三坊七巷','福建'), P('平潭 · 东庠岛','福建')] }
+  ]},
+  many: { months: [
+    { m:'1 月',  ps:[P('潮州','广东'), P('汕头','广东'), P('南澳岛','广东')] },
+    { m:'2 月',  ps:[P('泉州 · 西街','福建'), P('平潭 · 北港','福建')] },
+    { m:'3 月',  ps:[P('婺源 · 篁岭','江西'), P('景德镇','江西'), P('宏村','安徽')] },
+    { m:'4 月',  ps:[P('黄山','安徽'), P('塔川','安徽'), P('西递','安徽')] },
+    { m:'5 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',1)] },
+    { m:'6 月',  ps:[P('丽江','云南'), P('束河','云南')] },
+    { m:'7 月',  ps:[P('香格里拉','云南'), P('梅里雪山','云南'), P('雨崩','云南')] },
+    { m:'8 月',  ps:[P('泸沽湖','云南'), P('稻城亚丁','四川')] },
+    { m:'9 月',  ps:[P('成都','四川'), P('都江堰','四川'), P('青城山','四川')] },
+    { m:'10 月', ps:[P('平潭 · 东庠岛','福建'), P('福州 · 三坊七巷','福建')] },
+    { m:'11 月', ps:[P('泉州 · 洛阳桥','福建'), P('崇武古城','福建'), P('厦门 · 鼓浪屿','福建')] },
+    { m:'12 月', ps:[P('潮州 · 牌坊街','广东'), P('汕头 · 小公园','广东')] }
+  ]}
+};
+/* B 的示意图钉：只用于点数少的情况，位置是手调的（不按比例）。坐标用 820×352 的视图盒，与虚线路径同一坐标系 */
+const B_PINS = [
+  { x:700, y:96,  n:1, lb:'平潭 · 3 月' },
+  { x:656, y:150, n:2, lb:'泉州 · 4 月', side:'l' },
+  { x:560, y:250, n:3, lb:'潮州 · 5 月' },
+  { x:470, y:108, n:4, lb:'景德镇 · 7 月', side:'l' },
+  { x:546, y:74,  n:5, lb:'婺源 · 8 月' },
+  { x:170, y:176, n:6, lb:'大理 · 10 月' }
+];
+const B_TRAIL = 'M700 96 C680 120 668 136 656 150 C620 178 586 214 560 250 C520 200 492 150 470 108 C494 94 520 82 546 74 C420 96 300 132 170 176';
+const PROV_POS = { '福建':[76,52], '云南':[22,56], '广东':[68,74], '四川':[36,46], '安徽':[66,32], '江西':[58,28] };
+
+function travelStats(key){
+  const months = TRAVEL[key].months;
+  const total = months.reduce((n,g)=>n+g.ps.length, 0);
+  return { months:months, total:total, stations:months.length,
+           nameMode: months.length <= 8,
+           needList: months.length > 8 || months.some(g=>g.ps.length > 1) };
+}
+
+function renderA(key){
+  const d = travelStats(key), S = d.stations, W = 1000, Y = 76;
+  const xs = d.months.map((_,i)=> (i+0.5)*W/S);
+  let path = 'M' + xs[0].toFixed(1) + ' ' + Y;
+  for(let i=1;i<S;i++){
+    const cy = (i % 2 === 1) ? Y-16 : Y+16;
+    const c1 = xs[i-1] + (xs[i]-xs[i-1])*0.35, c2 = xs[i-1] + (xs[i]-xs[i-1])*0.65;
+    path += ' C' + c1.toFixed(1) + ' ' + cy + ' ' + c2.toFixed(1) + ' ' + cy + ' ' + xs[i].toFixed(1) + ' ' + Y;
+  }
+  const stops = d.months.map((g,i)=>{
+    const up = i % 2 === 0;
+    const noCoord = g.ps.some(p=>p.nc);
+    let big, small;
+    if(d.nameMode){
+      /* 站点列窄，两个长地名并列会撞在一起被截断，所以按字符数估宽：并列放不下就收成「首个 +n」
+         （真实实现里这个判断应该交给布局 —— 要么量宽度，要么恒为「首个 +n」） */
+      const joined = g.ps.map(p=>p.n).join(' · ');
+      big = g.ps.length === 1 ? g.ps[0].n
+          : (g.ps.length === 2 && joined.length <= 11) ? joined
+          : g.ps[0].n + ' +' + (g.ps.length-1);
+      small = g.m + (noCoord ? ' · 没填坐标' : '');
+    } else {
+      big = g.m;
+      small = g.ps.length + ' 个';
+    }
+    return '<li class="stop ' + (up?'up':'down') + (noCoord?' off':'') + '">'
+         + '<span class="name">' + big + '</span><span class="mo">' + small + '</span>'
+         + '<span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>' + (i+1) + '</b></span></li>';
+  }).join('');
+  setHTML('routeA',
+    '<svg class="trail" viewBox="0 0 ' + W + ' 152" preserveAspectRatio="none" aria-hidden="true">'
+    + '<path d="' + path + '" fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/></svg>'
+    + '<ol class="stops" style="grid-template-columns:repeat(' + S + ',1fr)">' + stops + '</ol>');
+  document.getElementById('routeACount').textContent = d.total + ' 个地方 · ' + S + ' 个月';
+
+  const list = document.getElementById('routeAList');
+  list.hidden = !d.needList;
+  if(d.needList){
+    setHTML('routeAList', '<div class="hd-lh">全部 ' + d.total + ' 个地方（按月）</div>'
+      + d.months.map(g=>'<div class="hd-lr"><span class="hd-lm">' + g.m + '</span><span>'
+          + g.ps.map(p=>p.n + (p.nc ? '（没填坐标）' : '')).join(' · ') + '</span></div>').join(''));
+  }
+}
+
+function renderB(key){
+  const d = travelStats(key), usePins = d.total <= 10;
+  const map = document.getElementById('mapB');
+  map.classList.toggle('framed', !usePins);
+  if(usePins){
+    document.getElementById('mapBCount').textContent = d.total + ' 个地方落在图上';
+    setHTML('mapBDyn',
+      '<svg class="trail-b" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">'
+      + '<path d="' + B_TRAIL + '" fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/></svg>'
+      + B_PINS.map(p=>'<span class="pinb' + (p.side?' '+p.side:'') + '" style="left:' + (p.x/8.2).toFixed(1) + '%;top:' + (p.y/3.52).toFixed(1) + '%">'
+          + '<svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>' + p.n + '</b><span class="lb">' + p.lb + '</span></span>').join(''));
+    document.getElementById('mapBHint').textContent = '底图是手绘示意，不是等比例地图';
+    document.getElementById('mapBNote').innerHTML = '沙溪（11 月）<b>没填坐标</b>，所以没落在图上 —— 这是保留地理感的代价；方案 A 只要「去过的先后」，没有这个问题。';
+  } else {
+    const byPv = {};
+    d.months.forEach(g=>g.ps.forEach(p=>{ byPv[p.pv] = (byPv[p.pv]||0)+1; }));
+    const pvs = Object.keys(byPv).length;
+    document.getElementById('mapBCount').textContent = d.total + ' 个地方 · ' + pvs + ' 个省';
+    setHTML('mapBDyn', '<div class="hd-frame"><div class="tiles"></div>'
+      + Object.keys(byPv).map(pv=>{
+          const pos = PROV_POS[pv] || [50,50];
+          return '<span class="hd-cl" style="left:' + pos[0] + '%;top:' + pos[1] + '%">'
+               + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + byPv[pv] + '</b></span>'
+               + '<span class="t">' + pv + '</span></span>';
+        }).join('')
+      + '<span class="fnote">瓦片由高德渲染 · 可缩放 · 可聚合</span></div>');
+    document.getElementById('mapBHint').textContent = '真地图裱进手绘边框（D-45 的方向）';
+    document.getElementById('mapBNote').innerHTML = '点数一多，示意底就<b>扛不住</b>：它不按比例、不能缩放，近的地方必然叠在一起（你的测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，按省聚合也压不动）。所以点多时不再自己画点，改用真地图（可缩放、可聚合）裱进手绘边框。';
+  }
+}
+
+let vol = 'few';
+function renderTravel(){ renderA(vol); renderB(vol); }
+
 document.querySelectorAll('.review [data-state]').forEach(b=>b.addEventListener('click',()=>{
   state=b.dataset.state;
   document.querySelectorAll('.review [data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
@@ -569,6 +722,11 @@ document.querySelectorAll('.review [data-state]').forEach(b=>b.addEventListener(
 document.querySelectorAll('.review [data-scheme]').forEach(b=>b.addEventListener('click',()=>{
   document.body.dataset.scheme=b.dataset.scheme;
   document.querySelectorAll('.review [data-scheme]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.querySelectorAll('.review [data-vol]').forEach(b=>b.addEventListener('click',()=>{
+  vol=b.dataset.vol;
+  document.querySelectorAll('.review [data-vol]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  renderTravel();
 }));
 document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
   document.body.dataset.vp=b.dataset.vp;
@@ -585,6 +743,7 @@ document.getElementById('anBtn').addEventListener('click',e=>{
   e.currentTarget.setAttribute('aria-pressed',String(!off));
 });
 render();
+renderTravel();
 </script>
 </body>
 </html>
