@@ -154,18 +154,10 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 .stop.off .dot svg ellipse{stroke-dasharray:5 4}
 .hd-note{font-size:13.5px;color:var(--hd-ink-soft);margin:16px 0 0}
 
-/* 足迹 · 方案 B：手绘底图 + 虚线路线（保留地理感） */
+/* 足迹 · 方案 B：真地图裱进手绘边框（D-45 的方向）。
+   瓦片不手绘化；点少时逐点标注、点多时按省聚合 —— 两种密度同一个底，
+   不再画「示意陆块」（早先那版变形虫既不传达地理、也不好看，是原型为了不联网的权宜）。 */
 .hd-map{position:relative;height:352px;margin-top:6px}
-.hd-map .land,.hd-map .trail-b{position:absolute;inset:0;width:100%;height:100%;filter:url(#rough)}
-.pinb{position:absolute;transform:translate(-50%,-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--hd-amber)}
-.pinb svg{position:absolute;inset:0;filter:url(#rough)}
-.pinb svg ellipse{fill:var(--hd-paper);stroke:currentColor;stroke-width:2}
-.pinb b{position:relative;font-size:15px}
-.pinb .lb{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-size:14.5px;white-space:nowrap;color:var(--hd-ink);
-  background:var(--hd-paper);padding:0 7px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
-.pinb.r .lb{top:50%;left:36px;transform:translateY(-50%)}
-.pinb.l .lb{top:50%;right:36px;left:auto;transform:translateY(-50%)}
-.hd-maphint{position:absolute;left:10px;bottom:8px;font-size:13px;color:var(--hd-ink-faint)}
 
 /* 足迹点数变多时（本次新增）：
    A —— 链上写不全所有地名时，链下按月补一份完整清单，一个不少 */
@@ -173,25 +165,36 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 .hd-list .hd-lh{font-size:13.5px;color:var(--hd-ink-faint);margin-bottom:6px}
 .hd-list .hd-lr{display:grid;grid-template-columns:54px minmax(0,1fr);gap:10px;font-size:14.5px;line-height:1.95}
 .hd-list .hd-lm{color:var(--hd-ink-soft)}
-/* B —— 点多时不再自己画点：真地图（可缩放 / 可聚合）裱进手绘边框，D-45 的方向 */
-.hd-map.framed .land,.hd-map.framed .trail-b{display:none}
-/* 裱框模式下左下角由 .fnote 说明，静态那句示意底说明要收起来，否则两句叠在一起 */
-.hd-map.framed .hd-maphint{display:none}
+/* B —— 真地图（可缩放 / 可聚合）裱进手绘边框，D-45 的方向；点少点多都用同一个底 */
 .hd-map-dyn{position:absolute;inset:0}
 .hd-frame{position:absolute;inset:0;background:var(--hd-paper-2);border-radius:12px 5px 14px 6px/6px 14px 5px 12px}
 .hd-frame::after{content:'';position:absolute;inset:0;border:2.6px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
 .hd-frame .tiles{position:absolute;inset:14px;border-radius:6px;
   background:repeating-linear-gradient(0deg,transparent 0 43px,var(--hd-line-soft) 43px 44px),
              repeating-linear-gradient(90deg,transparent 0 43px,var(--hd-line-soft) 43px 44px),var(--hd-paper)}
+.hd-frame .trail-b{position:absolute;inset:0;width:100%;height:100%;filter:url(#rough)}
 .hd-frame .fnote{position:absolute;left:22px;bottom:20px;font-size:13px;color:var(--hd-ink-faint);
   background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
+/* 指北针：让裱框读起来像一页真地图，而不是一块空白 */
+.hd-compass{position:absolute;right:22px;top:18px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--hd-ink-soft);font-size:12px;line-height:1}
+.hd-compass svg{width:22px;height:28px;filter:url(#rough)}
+/* 没填坐标的地点：不上图，但在图里交代一句，不静默丢掉 */
+.hd-nocoord{position:absolute;right:22px;bottom:20px;max-width:268px;text-align:right;font-size:13px;color:var(--hd-ink-soft);
+  background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
 .hd-cl{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--hd-red)}
+.hd-cl.up{flex-direction:column-reverse}   /* 相邻点的标签换到上方，避免互相压 */
 .hd-cl .c{position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center}
 .hd-cl .c svg{position:absolute;inset:0;filter:url(#rough)}
 .hd-cl .c svg ellipse{fill:var(--hd-amber-soft);stroke:currentColor;stroke-width:2.2}
 .hd-cl .c b{position:relative;font-size:17px}
 .hd-cl .t{font-size:14px;color:var(--hd-ink);background:var(--hd-paper);padding:0 8px;
   border-radius:9px 3px 9px 3px/3px 9px 3px 9px;white-space:nowrap}
+/* 移动端：窄屏里地图塞不下标签，就把名字挪到图下方、图上只留编号（真地图的常见形态） */
+.hd-mapkey{display:none}
+.hd-mapkey .k{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;font-size:14px;line-height:1.85}
+.hd-mapkey .k b{font-weight:400;color:var(--hd-red)}
+.hd-mapkey .kh{font-size:13px;color:var(--hd-ink-faint);margin-bottom:4px}
 
 /* 评分榜 / 标签 */
 .hd-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -248,8 +251,12 @@ body[data-vp=mobile] .stop .name{position:static;transform:none;width:auto;text-
 body[data-vp=mobile] .stop:nth-child(odd) .name,body[data-vp=mobile] .stop:nth-child(even) .name{transform:none}
 body[data-vp=mobile] .stop .mo{position:static;grid-column:2;text-align:left;transform:none}
 body[data-vp=mobile] .stop:not(:last-child)::after{content:'';position:absolute;left:18px;top:46px;bottom:-4px;border-left:2px dashed var(--hd-line-soft)}
-body[data-vp=mobile] .hd-map{height:260px}
-body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px;line-height:1.3}
+body[data-vp=mobile] .hd-map{height:300px}
+body[data-vp=mobile] .hd-compass{display:none}
+body[data-vp=mobile] .hd-cl .t{display:none}
+body[data-vp=mobile] .hd-mapkey{display:block;margin-top:12px}
+body[data-vp=mobile] .hd-frame .fnote{font-size:12px;max-width:150px}
+body[data-vp=mobile] .hd-nocoord{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 </style>
 </head>
@@ -372,17 +379,11 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
                   <span class="an" data-n="6"></span>
                 </div>
                 <div class="hd-map" id="mapB">
-                  <svg class="land" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">
-                    <path d="M120 62 C200 40 300 50 400 38 C520 24 620 40 700 34 C742 30 782 44 794 72 C804 98 772 122 782 152 C792 182 762 202 742 232 C722 262 682 288 622 302 C562 316 502 302 442 294 C382 286 332 298 272 288 C212 278 152 252 122 212 C94 174 102 132 110 102 C114 84 114 72 120 62 Z"
-                          fill="var(--hd-paper-2)" stroke="var(--hd-line)" stroke-width="2.4"/>
-                    <path d="M300 150 C360 132 430 148 470 128" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M330 214 C390 200 450 216 500 198" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M600 120 C640 150 650 210 620 262" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
-                  </svg>
-                  <!-- 内容由 JS 按「点数」渲染：点少 → 逐个图钉 + 虚线；点多 → 真地图裱框 + 按省聚合 -->
+                  <!-- 内容由 JS 按「点数」渲染：都是真地图裱框，点少逐点标注、点多按省聚合 -->
                   <div class="hd-map-dyn" id="mapBDyn"></div>
-                  <span class="hd-maphint" id="mapBHint">底图是手绘示意，不是等比例地图</span>
                 </div>
+                <!-- 窄屏图例：地图上只留编号，名字在这里（桌面端隐藏，因为图上直接写了名字） -->
+                <div class="hd-mapkey" id="mapBKey"></div>
                 <p class="hd-note" id="mapBNote">沙溪（11 月）<b>没填坐标</b>，所以没落在图上 —— 这是保留地理感的代价；方案 A 只要「去过的先后」，没有这个问题。</p>
               </div>
             </div>
@@ -524,14 +525,15 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
     <li><span class="new">新增</span>：<b>报头：年份在左、说明句在右，两者共用一条基线</b>。年份 76px 是页面最大的一个字，说明句是它的题注；四个统计卡（影 / 书 / 地 / 文）拉成整行，卡片等高等宽。年份与说明句<b>按基线对齐而不是按几何中心</b>——数字几乎没有下伸部，几何居中会把说明句吊在年份的腰上，看着就是没对齐。统计卡的类型色用 <code>hdk-</code> 前缀（曾与正文注记 <code>.hd-note</code> 撞名，见本屏第 6 条以外的实现注意）。</li>
     <li><span class="new">新增</span>：<b>年份是可翻的，不是筛出来的</b>。<code>‹ ›</code> 步进任意年份（含没有记录的年份，翻到那里就是空态）；胶囊只列<b>有记录的年份</b>，从数据推导而不是写死 <code>2020~2030</code>。</li>
     <li><span class="new">新增</span>：<b>归因口径写在页面上</b>（「条目按完成日期归年 · 笔记按写下时间归年」）。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
-    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常出现，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 用底图保住地理感，代价是坐标成为硬依赖。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
-    <li><span class="new">新增</span>：<b>足迹点变多了怎么办——两案各有一条规则</b>（用顶部「点少 7 / 中 16 / 多 30」三个量级试）。<b>A：站点 = 有出行的月份，不是地点</b>，所以一年最多 12 站，<b>版式永远不溢出</b>（原来的 7 列网格与写死的虚线路径在点数上是硬伤）。站上写什么按能否容纳决定：站点 ≤ 8 写地名（同月 2 个并列，≥3 个收成「首个 +n」）；站点 &gt; 8 只写月份 + 地点数，地名下移到清单。<b>清单只在「链上写不全所有地名」时出现</b>（有月份含多点，或站数 &gt; 8），按月列出、一个不少。<b>B：示意底从根上扛不住</b>——它不按比例、不能缩放，近的地方必然叠，所以图钉 ≤ 10 个还能读，再多就换成<b>真地图裱进手绘边框</b>（D-45 对 0.0.7 已定的方向），缩放与聚合交给高德。顺带否掉一个看似省事的做法：<b>按省聚合对这数据没用</b>——现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合。</li>
+    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常出现，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 把真地图裱进手绘边框（瓦片不手绘化，D-45 的方向）保住地理感，代价是坐标成为硬依赖、且这一块不再「纯手绘」。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
+    <li><span class="new">新增</span>：<b>足迹点变多了怎么办——两案各有一条规则</b>（用顶部「点少 7 / 中 16 / 多 30」三个量级试）。<b>A：站点 = 有出行的月份，不是地点</b>，所以一年最多 12 站，<b>版式永远不溢出</b>（原来的 7 列网格与写死的虚线路径在点数上是硬伤）。站上写什么按能否容纳决定：站点 ≤ 8 写地名（同月并列，放不下收成「首个 +n」）；站点 &gt; 8 只写月份 + 地点数，地名下移到清单。<b>清单只在「链上写不全所有地名」时出现</b>，按月列出、一个不少。<b>B：底永远是真地图裱框，只是密度不同</b>——点少时逐点标注（按真实经纬度落位、近点自动并簇、缩放到这一年的范围、标签上下换边），点多时按省聚合，把缩放与聚合交给高德。顺带否掉一个看似省事的做法：<b>按省聚合对这数据没用</b>——现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合。</li>
+    <li><span class="watch">一句实话</span>：<b>两案的原型可信度不对等，这一点会影响选型。</b><b>A 是所见即所得</b>——纯 CSS/SVG，不联网、不要坐标，原型画成什么样、实现就是什么样。<b>B 只能示意</b>——瓦片、缩放、标签避让、聚合这四件事都是高德的活；我在静态原型里手搓了自动缩放与并簇，标签仍会互相挤（真地图不会）。所以「B 看着怪」有一部分是原型的锅，不是设计的锅；反过来说，选 B 就等于这一块交给第三方地图组件，手绘只负责外框。<b>若都不满意，还有第三条路</b>：回顾页只做 A（串联），地理交给已有的足迹页——放一个「在地图上看这一年 →」的入口跳过去（需要 <code>/travel</code> 支持按年筛选，是额外工作量）。</li>
     <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜。<b>只有打过分的条目参与</b>，参与条数写在栏头（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序与 N 的取值留待详细设计。</li>
     <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。手绘条形按最大计数归一，数字右对齐。Top 10 之外收成「其余 14 个标签各出现 1 次」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。标签只统计条目，笔记只贡献「写过」那个数。</li>
     <li><span class="new">新增</span>：<b>空态与加载中都是手绘的</b>。空态：页头保留、四个数归零（与首页 hero「页头恒在、只换主体」一致，避免整页跳变），主体是一张纸上的便条加两处去处；并说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。加载中：<b>手绘骨架</b>（歪盒子轮廓 + 浅纸底）而不是转圈或真站的灰色骨架，加载完成不跳版。</li>
     <li><span class="new">发现</span>：<b>共享皮肤有一处缺口——书籍 / 地点的手绘圈是看不见的</b>。<code>handdrawn.css</code> 只给影视写了 <code>.g-movie .ring ellipse{stroke:…}</code>，而 <code>.g-book</code> / <code>.g-place</code> 只设了字色、没设圈色，椭圆的 <code>fill="none"</code> 又让默认填充失效，于是这两类的圈根本不画。<code>/plan</code> 页里同理，只是恰好没暴露。本屏用一条 <code>.hd-page .row .glyph .ring ellipse{stroke:currentColor}</code> 统一成类型色，<b>0.0.7 收敛皮肤时应并回 <code>handdrawn.css</code></b>。</li>
   </ol>
-  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 校验、非法年份处理）、真地图的瓦片与聚合（本屏只画位置）、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、同一月份内地点超过 6 个时清单的折叠（本屏最多 3 个/月）。<br><b>既有不改</b>：页头导航仍是 6 项（回顾不占导航位，从首页 hero 进入，见 <a href="review-entry.html">入口与边界屏</a>）、移动 tab 仍是四项、页脚与主题切换不动。<br><b>移动端差异</b>：报头改单列（年份在上、说明句在下，说明句用 <code>flex-basis:100%</code> 强制换行）、年份降到 54px、统计卡两列等宽、A 的路线转成竖向串珠、评分两栏改单列、标签改单列。<br><b>需拍板 / 回写的</b>：①足迹选 A 还是 B（选 A 则 FR-004-2 从「复用 <code>TravelMap</code> 与图钉形态」改写为「按完成日期的先后串联」；选 B 则要写清「点多时换真地图裱框」）；②「站点 = 月份」改变了 FR-004-2 的口径与验收标准（<b>年度地点数 ≠ 链上站点数</b>，两者都要能被解释）；③路线 / 清单 / 骨架这几个新组件应沉淀进共享皮肤，而不是留在本页。</p>
+  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 校验、非法年份处理）、<b>真地图的四件事（瓦片 / 缩放 / 标签避让 / 聚合）—— 都由高德负责，本屏只是位置示意</b>、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、同一月份内地点超过 6 个时清单的折叠（本屏最多 3 个/月）。<br><b>既有不改</b>：页头导航仍是 6 项（回顾不占导航位，从首页 hero 进入，见 <a href="review-entry.html">入口与边界屏</a>）、移动 tab 仍是四项、页脚与主题切换不动。<br><b>移动端差异</b>：报头改单列（年份在上、说明句在下，说明句用 <code>flex-basis:100%</code> 强制换行）、年份降到 54px、统计卡两列等宽、A 的路线转成竖向串珠、评分两栏改单列、标签改单列。<br><b>需拍板 / 回写的</b>：①足迹三选一 —— 选 <b>A</b> 则 FR-004-2 从「复用 <code>TravelMap</code> 与图钉形态」改写为「按完成日期的先后串联」；选 <b>B</b> 则要写清「真地图裱框 + 逐点/按省两档密度」，并接受这一块依赖高德；选 <b>A + 跳转</b> 则要新增「<code>/travel</code> 支持按年筛选」这条需求。②「站点 = 月份」改变了 FR-004-2 的口径与验收标准（<b>年度地点数 ≠ 链上站点数</b>，两者都要能被解释）。③路线 / 清单 / 骨架这几个新组件应沉淀进共享皮肤，而不是留在本页。</p>
 
 </section>
 
@@ -574,28 +576,31 @@ function render(){
     });
   }
 }
-/* ===== 足迹：点数伸缩（本次新增）=====
-   规则：站点 = 有出行的月份，不是地点 —— 一年最多 12 站，版式永远不溢出。
-        · 站点 ≤ 8 → 站上写地名（同月 2 个并列；≥3 个收成「首个 +n」）
+/* ===== 足迹：点数伸缩 =====
+   A（串联）规则：站点 = 有出行的月份，不是地点 —— 一年最多 12 站，版式永远不溢出。
+        · 站点 ≤ 8 → 站上写地名（同月并列，放不下收成「首个 +n」）
         · 站点 > 8 → 站上只写月份 + 地点数，地名全部下移到清单
         · 清单只在「链上写不全所有地名」时出现（有月份含多点，或站数 > 8）
-   B 的另一条规则：示意图钉 ≤ 10 个还能读；再多就换成真地图裱框（可缩放 / 可聚合）。 */
-const P = (n, pv, nc) => ({ n:n, pv:pv, nc:!!nc });
+   B（地图）规则：底永远是「真地图裱进手绘边框」，只是密度不同 ——
+        · 点少（≤ 10）→ 逐点标注，按真实经纬度投影；近的点自动并簇（真地图也这样）
+        · 点多 → 按省聚合，缩放与聚合交给高德
+   ll 只有点少那一档用得上（逐点投影），点多的档走省聚合、不需要逐点坐标。 */
+const P = (n, pv, ll, nc) => ({ n:n, pv:pv, ll:ll||null, nc:!!nc });
 const TRAVEL = {
   few: { months: [
-    { m:'3 月',  ps:[P('平潭','福建')] },
-    { m:'4 月',  ps:[P('泉州 · 西街','福建')] },
-    { m:'5 月',  ps:[P('潮州','广东')] },
-    { m:'7 月',  ps:[P('景德镇','江西')] },
-    { m:'8 月',  ps:[P('婺源','江西')] },
-    { m:'10 月', ps:[P('大理 · 洱海','云南')] },
-    { m:'11 月', ps:[P('沙溪','云南',1)] }
+    { m:'3 月',  ps:[P('平潭','福建',[25.50,119.79])] },
+    { m:'4 月',  ps:[P('泉州 · 西街','福建',[24.87,118.58])] },
+    { m:'5 月',  ps:[P('潮州','广东',[23.66,116.62])] },
+    { m:'7 月',  ps:[P('景德镇','江西',[29.27,117.18])] },
+    { m:'8 月',  ps:[P('婺源','江西',[29.25,117.86])] },
+    { m:'10 月', ps:[P('大理 · 洱海','云南',[25.61,100.27])] },
+    { m:'11 月', ps:[P('沙溪','云南',null,1)] }
   ]},
   mid: { months: [
     { m:'1 月',  ps:[P('潮州','广东'), P('汕头','广东')] },
     { m:'3 月',  ps:[P('平潭 · 北港','福建'), P('泉州 · 西街','福建')] },
     { m:'5 月',  ps:[P('婺源 · 篁岭','江西'), P('景德镇','江西')] },
-    { m:'7 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',1), P('丽江','云南')] },
+    { m:'7 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',null,1), P('丽江','云南')] },
     { m:'8 月',  ps:[P('香格里拉','云南'), P('梅里雪山','云南')] },
     { m:'10 月', ps:[P('宏村','安徽'), P('塔川','安徽'), P('黄山','安徽')] },
     { m:'12 月', ps:[P('福州 · 三坊七巷','福建'), P('平潭 · 东庠岛','福建')] }
@@ -605,7 +610,7 @@ const TRAVEL = {
     { m:'2 月',  ps:[P('泉州 · 西街','福建'), P('平潭 · 北港','福建')] },
     { m:'3 月',  ps:[P('婺源 · 篁岭','江西'), P('景德镇','江西'), P('宏村','安徽')] },
     { m:'4 月',  ps:[P('黄山','安徽'), P('塔川','安徽'), P('西递','安徽')] },
-    { m:'5 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',1)] },
+    { m:'5 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',null,1)] },
     { m:'6 月',  ps:[P('丽江','云南'), P('束河','云南')] },
     { m:'7 月',  ps:[P('香格里拉','云南'), P('梅里雪山','云南'), P('雨崩','云南')] },
     { m:'8 月',  ps:[P('泸沽湖','云南'), P('稻城亚丁','四川')] },
@@ -615,16 +620,7 @@ const TRAVEL = {
     { m:'12 月', ps:[P('潮州 · 牌坊街','广东'), P('汕头 · 小公园','广东')] }
   ]}
 };
-/* B 的示意图钉：只用于点数少的情况，位置是手调的（不按比例）。坐标用 820×352 的视图盒，与虚线路径同一坐标系 */
-const B_PINS = [
-  { x:700, y:96,  n:1, lb:'平潭 · 3 月' },
-  { x:656, y:150, n:2, lb:'泉州 · 4 月', side:'l' },
-  { x:560, y:250, n:3, lb:'潮州 · 5 月' },
-  { x:470, y:108, n:4, lb:'景德镇 · 7 月', side:'l' },
-  { x:546, y:74,  n:5, lb:'婺源 · 8 月' },
-  { x:170, y:176, n:6, lb:'大理 · 10 月' }
-];
-const B_TRAIL = 'M700 96 C680 120 668 136 656 150 C620 178 586 214 560 250 C520 200 492 150 470 108 C494 94 520 82 546 74 C420 96 300 132 170 176';
+/* 点多的那一档按省聚合：这两档的位置是示意用的（真实现里由高德定位） */
 const PROV_POS = { '福建':[76,52], '云南':[22,56], '广东':[68,74], '四川':[36,46], '安徽':[66,32], '江西':[58,28] };
 
 function travelStats(key){
@@ -681,23 +677,63 @@ function renderA(key){
 
 function renderB(key){
   const d = travelStats(key), usePins = d.total <= 10;
-  const map = document.getElementById('mapB');
-  map.classList.toggle('framed', !usePins);
+  const frame = '<div class="tiles"></div>'
+    + '<span class="hd-compass"><svg viewBox="0 0 22 28" aria-hidden="true">'
+    + '<path d="M11 26 L11 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+    + '<path d="M5 15 L11 4 L17 15" fill="none" stroke="var(--hd-red)" stroke-width="2" stroke-linejoin="round"/></svg>北</span>';
   if(usePins){
-    document.getElementById('mapBCount').textContent = d.total + ' 个地方落在图上';
-    setHTML('mapBDyn',
-      '<svg class="trail-b" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">'
-      + '<path d="' + B_TRAIL + '" fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/></svg>'
-      + B_PINS.map(p=>'<span class="pinb' + (p.side?' '+p.side:'') + '" style="left:' + (p.x/8.2).toFixed(1) + '%;top:' + (p.y/3.52).toFixed(1) + '%">'
-          + '<svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>' + p.n + '</b><span class="lb">' + p.lb + '</span></span>').join(''));
-    document.getElementById('mapBHint').textContent = '底图是手绘示意，不是等比例地图';
-    document.getElementById('mapBNote').innerHTML = '沙溪（11 月）<b>没填坐标</b>，所以没落在图上 —— 这是保留地理感的代价；方案 A 只要「去过的先后」，没有这个问题。';
+    /* 逐点标注：按真实经纬度粗略投影到框里（这一带是东南—西南，所以取 lat 20~33 / lng 96~124 的视窗） */
+    const projX = lng => 8 + (lng - 96) / 28 * 84;
+    const projY = lat => 10 + (33 - lat) / 13 * 78;
+    const seq = [];
+    d.months.forEach(g=>g.ps.forEach(p=>{ if(p.ll) seq.push({ x:projX(p.ll[1]), y:projY(p.ll[0]), n:p.n, m:g.m }); }));
+    /* 近的点并簇 —— 真地图按屏幕距离并，所以阈值要按百分比给（不是按公里）：
+       5% 在 816 宽的框上约 40px、在 390 宽的手机上约 20px，都比 46px 的圈小，
+       于是不管桌面还是手机，圈都不会叠。 */
+    const cls = [];
+    seq.forEach(p=>{
+      const hit = cls.find(c=> Math.abs(c.x-p.x) < 5 && Math.abs(c.y-p.y) < 5);
+      if(hit){ hit.items.push(p); hit.x = (hit.x*(hit.items.length-1) + p.x)/hit.items.length; hit.y = (hit.y*(hit.items.length-1) + p.y)/hit.items.length; }
+      else cls.push({ x:p.x, y:p.y, items:[p] });
+    });
+    /* 缩放到这一年的范围并保持比例（真地图的自动缩放也是这么做的），
+       否则固定视窗会把点全挤在一角、另一角空着 */
+    if(cls.length > 1){
+      const xs = cls.map(c=>c.x), ys = cls.map(c=>c.y);
+      const x0 = Math.min.apply(null,xs), x1 = Math.max.apply(null,xs);
+      const y0 = Math.min.apply(null,ys), y1 = Math.max.apply(null,ys);
+      const k = Math.min(72/Math.max(x1-x0,1), 72/Math.max(y1-y0,1));
+      const cx = (x0+x1)/2, cy = (y0+y1)/2;
+      cls.forEach(c=>{ c.x = 50 + (c.x-cx)*k; c.y = 50 + (c.y-cy)*k; });
+    }
+    /* 虚线按第一次出现的先后串起来。
+       坐标系与框同比例（816×352），否则 preserveAspectRatio=none 会把线拉成粗细不均 */
+    const path = cls.length > 1 ? 'M' + cls.map(c=>(c.x*8.16).toFixed(1) + ' ' + (c.y*3.52).toFixed(1)).join(' L') : '';
+    const missing = d.months.reduce((a,g)=>a + g.ps.filter(p=>p.nc).map(p=>p.n + '（' + g.m + '）').join('、'), '');
+    document.getElementById('mapBCount').textContent = d.total + ' 个地方 · ' + cls.length + ' 个点落在图上';
+    setHTML('mapBDyn', '<div class="hd-frame">' + frame
+      + (path ? '<svg class="trail-b" viewBox="0 0 816 352" preserveAspectRatio="none" aria-hidden="true">'
+              + '<path d="' + path + '" fill="none" stroke="var(--hd-line)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="9 8"/></svg>' : '')
+      + cls.map((c,i)=>{
+          const names = c.items.map(it=>it.n).join(' · ');
+          return '<span class="hd-cl' + (i % 2 ? ' up' : '') + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
+               + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + (i+1) + '</b></span>'
+               + '<span class="t">' + names + '</span></span>';
+        }).join('')
+      + '<span class="fnote">瓦片由高德渲染 · 逐点标注</span>'
+      + (missing ? '<span class="hd-nocoord">' + missing + ' 没填坐标，没落在图上</span>' : '')
+      + '</div>');
+    setHTML('mapBKey', '<div class="kh">图例 · 按去过的先后</div>'
+      + cls.map((c,i)=>'<div class="k"><b>' + (i+1) + '</b><span>'
+          + c.items.map(it=>it.n + ' · ' + it.m.replace(' ', '')).join(' / ') + '</span></div>').join('')
+      + (missing ? '<div class="k"><b>—</b><span>' + missing + ' 没填坐标，没落在图上</span></div>' : ''));
+    document.getElementById('mapBNote').innerHTML = '底图是真地图裱进手绘边框（瓦片不手绘化，D-45 的方向）；图上的点按真实经纬度落位，靠得近的会并成一个（真地图也这样）。<b>没填坐标的地点不上图</b>，但会在框里交代一句 —— 这是保留地理感的代价，方案 A 没有这个问题。';
   } else {
     const byPv = {};
     d.months.forEach(g=>g.ps.forEach(p=>{ byPv[p.pv] = (byPv[p.pv]||0)+1; }));
     const pvs = Object.keys(byPv).length;
     document.getElementById('mapBCount').textContent = d.total + ' 个地方 · ' + pvs + ' 个省';
-    setHTML('mapBDyn', '<div class="hd-frame"><div class="tiles"></div>'
+    setHTML('mapBDyn', '<div class="hd-frame">' + frame
       + Object.keys(byPv).map(pv=>{
           const pos = PROV_POS[pv] || [50,50];
           return '<span class="hd-cl" style="left:' + pos[0] + '%;top:' + pos[1] + '%">'
@@ -705,8 +741,9 @@ function renderB(key){
                + '<span class="t">' + pv + '</span></span>';
         }).join('')
       + '<span class="fnote">瓦片由高德渲染 · 可缩放 · 可聚合</span></div>');
-    document.getElementById('mapBHint').textContent = '真地图裱进手绘边框（D-45 的方向）';
-    document.getElementById('mapBNote').innerHTML = '点数一多，示意底就<b>扛不住</b>：它不按比例、不能缩放，近的地方必然叠在一起（你的测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，按省聚合也压不动）。所以点多时不再自己画点，改用真地图（可缩放、可聚合）裱进手绘边框。';
+    setHTML('mapBKey', '<div class="kh">图例 · 每个省的地点数</div>'
+      + Object.keys(byPv).map(pv=>'<div class="k"><b>' + byPv[pv] + '</b><span>' + pv + '</span></div>').join(''));
+    document.getElementById('mapBNote').innerHTML = '点数一多就不再逐点画了：改由真地图（可缩放、可聚合）承担，框里只留每个省的计数。<b>按省聚合也不是万灵药</b> —— 你现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合；这里能压成 6 个省，是因为这一年的出行集中。';
   }
 }
 
