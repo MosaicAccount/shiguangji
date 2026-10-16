@@ -3,51 +3,48 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>0.0.4 设计图 · 回顾页 /review — 拾光记</title>
+<title>0.0.4 设计图 · 回顾页 /review（手绘）— 拾光记</title>
 <link rel="icon" href="data:,">
+<!-- 手绘皮肤与字体：与产品 /plan 页面同源（不是另画一套） -->
+<link rel="stylesheet" href="../../../../shiguangji-web/src/views/front/plan/handdrawn.css">
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
 <style>
 
-/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+/* ===== 站点令牌：只用于外壳（页头 / 页脚 / 移动 tab 仍是冷雾，本屏不换）===== */
 :root{
   --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
   --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
   --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
   --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
-  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC;
   --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
-  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
-  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
-  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
-  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
-  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+  --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-r-lg:16px; --sgj-r-xl:20px;
 }
 html.dark{
-  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
-  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-primary:#C27A6D; --sgj-primary-soft:#3D2D2A; --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833;
+  --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329;
   --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
-  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
-  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+  --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
 }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
 body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
 html.dark body{background:#0E1110}
-a{color:var(--sgj-link)}
-strong,b{font-weight:600}
+a{color:var(--sgj-primary)}
 button{font-family:inherit}
 :focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
 
-/* ===== 评审工具条（不是产品的一部分）===== */
+/* ===== 评审工具条 ===== */
 .review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
 html.dark .review{background:#1B211F;border-color:#2C3531}
-.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
 .review b{font-weight:600;color:#262B2A}
 html.dark .review b{color:#EEF2F0}
 .screens{display:flex;gap:6px;flex-wrap:wrap}
 .screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
 html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
 .screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
-.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
 .seg{display:flex;flex-wrap:wrap}
 .seg button{border-radius:0;border-left-width:0}
 .seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
@@ -55,51 +52,41 @@ html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;bord
 .seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
 html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
 
-/* ===== 设备框（可滚动真视口）===== */
+/* ===== 设备框 ===== */
 .stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
 .device{position:relative;display:flex;flex-direction:column;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:hidden;
-  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto}
 .device-body{flex:1;min-height:0;overflow:auto}
 body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
 body[data-vp=mobile] .device{max-width:390px;height:800px}
 body[data-vp=mobile] .only-desktop{display:none !important}
 body[data-vp=desktop] .only-mobile{display:none !important}
 
-/* ===== 前台导航（既有样式，未改动）===== */
+/* ===== 前台外壳：页头 / 页脚 / 移动 tab（既有冷雾样式，本期不动）===== */
 .fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
 .fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
-.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px;text-decoration:none}
-.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;letter-spacing:.04em}
 .logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
 .nav{display:flex;align-items:center;gap:18px}
-.nav span{position:relative;padding:8px 0;color:var(--sgj-text-2);font-size:14px}
-.nav span.on{font-weight:700;color:var(--sgj-primary)}
-.nav span.on::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--sgj-primary)}
+.nav span{padding:8px 0;color:var(--sgj-text-2);font-size:14px}
 .theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px;flex-shrink:0}
-.page{padding:36px;max-width:1320px;margin:0 auto}
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px}
 .tabbar{display:none}
-body[data-vp=mobile] .fh-in{padding:0 12px;gap:12px;height:60px}
-body[data-vp=mobile] .logo-text{font-size:20px}
-body[data-vp=mobile] .logo-en{display:none}
-body[data-vp=mobile] .nav{display:none}
-body[data-vp=mobile] .theme-toggle{width:32px;height:32px;font-size:13px}
-body[data-vp=mobile] .page{padding:16px 12px 76px}
-body[data-vp=mobile] .tabbar{display:flex;height:60px;z-index:6;flex:none;
-  background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
-body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
-body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
-
-/* ===== 前台页脚（既有样式，未改动）===== */
-.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep);margin-top:32px}
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep)}
 .ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
 .ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .fh-in{padding:0 12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en,body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .tabbar{display:flex;height:60px;flex:none;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
 body[data-vp=mobile] .ff{padding:16px 14px 24px}
-body[data-vp=mobile] .ff-line{font-size:12px}
 
-/* ===== 标注气泡 ===== */
+/* ===== 标注 ===== */
 .an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
-  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1;flex:none}
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1;flex:none}
 .an::before{content:attr(data-n)}
 body.no-annotate .an{display:none}
 .legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
@@ -109,179 +96,148 @@ html.dark .legend ol{color:#C8D0CC}
 .legend li{margin:7px 0}
 .legend .new{color:#934C47;font-weight:600}
 .legend .keep{color:#5D6F66;font-weight:600}
+.legend .watch{color:#B18458;font-weight:600}
 html.dark .legend .new{color:#D67870}
 html.dark .legend .keep{color:#7F9B8D}
+html.dark .legend .watch{color:#C69A67}
 .legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
 html.dark .legend code{background:#1C2220;color:#C27A6D}
 .legend .scope{margin-top:14px;font-size:12px;color:#7D8783}
 
-/* ===== 前台共用控件 ===== */
-.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;padding:6px 12px;
-  font-size:12px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
-.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
-html.dark .el-button--primary{color:#171B1A}
-.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;
-  font-size:13px;font-weight:500;letter-spacing:.5px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
-html.dark .btn{color:#171B1A}
-.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
-.only-desktop{display:block}
-body[data-vp=desktop] .only-mobile{display:none !important}
+/* ============================================================
+   手绘皮肤：令牌与形制来自 handdrawn.css；本屏新增「报头布局」「路线」「骨架」三处
+   ============================================================ */
+.hd-page{max-width:900px}
+.hd-sec{margin-top:30px}
 
-@keyframes sp{to{transform:rotate(360deg)}}
-.spin{width:13px;height:13px;border:2px solid var(--sgj-border);border-top-color:var(--sgj-primary);border-radius:50%;animation:sp .7s linear infinite;flex:none}
-.sk{display:block;background:var(--sgj-bg-deep);border-radius:6px;animation:sk 1.2s ease-in-out infinite}
-@keyframes sk{0%,100%{opacity:.55}50%{opacity:1}}
+/* 报头：年份在左，说明句在右（把年份右边的空位交给真信息，而不是装饰） */
+.hd-hero{padding:8px 4px 0}
+.hd-hero-top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 36px;align-items:center}
+.hd-eyebrow{font-size:12px;letter-spacing:5px;color:var(--hd-ink-faint)}
+.hd-year-row{display:flex;align-items:center;gap:12px;margin-top:2px}
+.hd-year{font-size:76px;line-height:1.05;letter-spacing:1px}
+.hd-round{width:40px;height:40px;flex:none;border:2px solid var(--hd-line);background:var(--hd-paper);cursor:pointer;
+  border-radius:50% 46% 52% 48%/48% 52% 46% 54%;font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;filter:url(#rough)}
+.hd-round[disabled]{opacity:.4;cursor:not-allowed}
+.hd-hero-say{min-width:0}
+.hd-lead{font-size:21px;margin:0}
+.hd-lead b{color:var(--hd-red);font-size:25px}
+.hd-caliber{font-size:13.5px;color:var(--hd-ink-soft);margin:8px 0 0}
+.hd-chips{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.hd-chips .cap{font-size:13px;color:var(--hd-ink-faint)}
+.hd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.hd-stat{background:var(--hd-paper);border-radius:12px 4px 13px 5px/5px 13px 4px 12px;padding:12px 14px 14px;box-shadow:2px 3px 0 var(--hd-line-soft)}
+.hdg{position:relative;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.hdg svg{position:absolute;inset:0;filter:url(#rough)}
+.hdg svg ellipse{fill:none;stroke:currentColor;stroke-width:1.9}
+.hd-stat .num{display:block;font-size:34px;margin-top:6px;line-height:1.15}
+.hd-stat .lbl{display:block;font-size:13.5px;color:var(--hd-ink-soft)}
+.hd-movie{color:var(--hd-red)} .hd-book{color:var(--hd-moss)} .hd-place{color:var(--hd-amber)} .hd-note{color:var(--hd-ink-soft)}
+
+/* 足迹 · 方案 A：按去过的先后横向串联 */
+.route{position:relative;margin-top:4px}
+.route .trail{position:absolute;left:0;top:0;width:100%;height:152px;filter:url(#rough);pointer-events:none}
+.route .stops{position:relative;display:grid;grid-template-columns:repeat(7,1fr);height:152px;margin:0;padding:0;list-style:none}
+.stop{position:relative}
+.stop .dot{position:absolute;top:76px;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center}
+.stop .dot svg{position:absolute;inset:0;filter:url(#rough)}
+.stop .dot svg ellipse{fill:var(--hd-paper);stroke:currentColor;stroke-width:2}
+.stop .dot b{position:relative;font-size:15px;color:inherit}
+.stop .name{position:absolute;left:50%;transform:translateX(-50%);width:140%;text-align:center;font-size:16px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stop .mo{position:absolute;left:50%;transform:translateX(-50%);font-size:13px;color:var(--hd-ink-soft);white-space:nowrap}
+.stop.up .name{top:10px} .stop.up .mo{top:33px}
+.stop.down .name{top:100px} .stop.down .mo{top:123px}
+.stop:nth-child(odd) .name{transform:translateX(-50%) rotate(-.9deg)}
+.stop:nth-child(even) .name{transform:translateX(-50%) rotate(.7deg)}
+.stop.off .dot svg ellipse{stroke-dasharray:5 4}
+.hd-note{font-size:13.5px;color:var(--hd-ink-soft);margin:16px 0 0}
+
+/* 足迹 · 方案 B：手绘底图 + 虚线路线（保留地理感） */
+.hd-map{position:relative;height:352px;margin-top:6px}
+.hd-map .land,.hd-map .trail-b{position:absolute;inset:0;width:100%;height:100%;filter:url(#rough)}
+.pinb{position:absolute;transform:translate(-50%,-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--hd-amber)}
+.pinb svg{position:absolute;inset:0;filter:url(#rough)}
+.pinb svg ellipse{fill:var(--hd-paper);stroke:currentColor;stroke-width:2}
+.pinb b{position:relative;font-size:15px}
+.pinb .lb{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-size:14.5px;white-space:nowrap;color:var(--hd-ink);
+  background:var(--hd-paper);padding:0 7px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
+.pinb.r .lb{top:50%;left:36px;transform:translateY(-50%)}
+.pinb.l .lb{top:50%;right:36px;left:auto;transform:translateY(-50%)}
+.hd-maphint{position:absolute;left:10px;bottom:8px;font-size:13px;color:var(--hd-ink-faint)}
+
+/* 评分榜 / 标签 */
+.hd-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.hd-cols .sheet{margin-top:0}
+.hd-cols .paper{padding:6px 16px 10px}
+.hd-score{margin-left:auto;font-size:20px;color:var(--hd-amber);flex:none}
+/* 共享皮肤的缺口：handdrawn.css 只给影视的 glyph 圈设了 stroke，书籍 / 地点的圈因此不可见
+   （fill=none + 无 stroke），/plan 页里同理、只是没暴露。这里统一成类型色，0.0.7 应收敛回 handdrawn.css。 */
+.hd-page .row .glyph .ring ellipse{stroke:currentColor}
+.hd-tags{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;position:relative;z-index:1;padding:4px 0 8px}
+.hd-tag{display:grid;grid-template-columns:68px 1fr 26px;align-items:center;gap:10px}
+.hd-tag .tn{font-size:15px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-tag .tb{height:12px;background:var(--hd-red-soft);border:1.5px solid var(--hd-line-soft);
+  border-radius:8px 3px 9px 4px/4px 9px 3px 8px;filter:url(#rough)}
+.hd-tag .tc{font-size:14px;color:var(--hd-ink-soft);text-align:right}
+
+/* 空态：一张纸上的便条 + 两处可去的地方 */
+.hd-empty{text-align:center;padding:40px 10px 30px}
+.hd-empty svg{width:150px;height:96px;margin-bottom:4px}
+.hd-empty h3{margin:0 0 10px;font-size:22px;font-weight:400}
+.hd-empty p{margin:0 auto;font-size:15px;color:var(--hd-ink-soft);max-width:420px}
+.hd-empty .acts{display:flex;gap:14px;justify-content:center;margin-top:22px;flex-wrap:wrap}
+
+/* 加载中：手绘骨架（歪盒子轮廓 + 浅纸底） */
+.hdsk{background:var(--hd-paper-2);border:1.6px solid var(--hd-line-soft);
+  border-radius:10px 4px 12px 5px/5px 12px 4px 10px;filter:url(#rough);animation:hdsk 1.3s ease-in-out infinite;display:block}
+@keyframes hdsk{0%,100%{opacity:.5}50%{opacity:1}}
+.hdsk-line{height:14px}
+.hdsk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.hdsk-stat{padding:12px 14px 14px}
+.hdsk-sheet{margin-top:30px}
+.hdsk-row{display:flex;align-items:center;gap:12px;padding:9px 0}
+
+/* ===== 方案切换 ===== */
+body[data-scheme=a] .scheme-b{display:none}
+body[data-scheme=b] .scheme-a{display:none}
+
+/* ===== 移动端：390px 设备框预览（窗口仍是桌面宽度），所以用 data-vp 作用域而非媒体查询。
+   产品里这些声明最终应以媒体查询形式并入共享皮肤。===== */
+body[data-vp=mobile] .hd-page{padding:2px 12px 24px}
+body[data-vp=mobile] .hd-hero-top{grid-template-columns:1fr;gap:12px}
+body[data-vp=mobile] .hd-year{font-size:54px}
+body[data-vp=mobile] .hd-lead{font-size:18px}
+body[data-vp=mobile] .hd-lead b{font-size:21px}
+body[data-vp=mobile] .hd-stats,body[data-vp=mobile] .hdsk-stats{grid-template-columns:repeat(2,1fr);gap:10px}
+body[data-vp=mobile] .hd-cols{grid-template-columns:1fr;gap:14px}
+body[data-vp=mobile] .hd-tags{grid-template-columns:1fr}
+body[data-vp=mobile] .route .trail{display:none}
+body[data-vp=mobile] .route .stops{display:flex;flex-direction:column;height:auto;gap:0}
+body[data-vp=mobile] .stop{display:grid;grid-template-columns:38px 1fr;align-items:center;column-gap:12px;min-height:56px;padding:4px 0}
+body[data-vp=mobile] .stop .dot{position:relative;top:auto;left:auto;transform:none;grid-row:1/3;margin:0;justify-self:center}
+body[data-vp=mobile] .stop .name{position:static;transform:none;width:auto;text-align:left;grid-column:2;font-size:17px}
+body[data-vp=mobile] .stop:nth-child(odd) .name,body[data-vp=mobile] .stop:nth-child(even) .name{transform:none}
+body[data-vp=mobile] .stop .mo{position:static;grid-column:2;text-align:left;transform:none}
+body[data-vp=mobile] .stop:not(:last-child)::after{content:'';position:absolute;left:18px;top:46px;bottom:-4px;border-left:2px dashed var(--hd-line-soft)}
+body[data-vp=mobile] .hd-map{height:260px}
+body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px;line-height:1.3}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
-
-/* ===== 回顾页 · hero：年份是主角 ===== */
-.rev-hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 452px;gap:44px;padding:40px 0 18px;margin-bottom:6px}
-.rev-blob{position:absolute;border-radius:50%;pointer-events:none}
-.rev-blob-1{right:120px;top:-10px;width:320px;height:320px;background:var(--sgj-primary-soft)}
-.rev-blob-2{right:-34px;top:246px;width:150px;height:150px;background:var(--sgj-moss-soft)}
-.rev-hero-text{position:relative;z-index:1;align-self:center;min-width:0}
-.rev-eyebrow{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);margin-bottom:8px}
-.rev-year-row{display:flex;align-items:center;gap:10px}
-.rev-year{font-family:var(--sgj-font-serif);font-weight:700;font-size:74px;line-height:1.04;color:var(--sgj-text);
-  font-variant-numeric:tabular-nums;letter-spacing:.01em}
-.rev-arrow{width:38px;height:38px;flex:none;border-radius:50%;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);
-  color:var(--sgj-text-2);font-size:17px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
-  transition:transform .14s cubic-bezier(.23,1,.32,1)}
-.rev-arrow:hover{transform:translateY(-1px);box-shadow:var(--sgj-shadow-sm)}
-.rev-arrow[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none}
-.rev-lead{margin:12px 0 0;font-family:var(--sgj-font-serif);font-size:21px;line-height:1.5;color:var(--sgj-text-2)}
-.rev-lead b{font-size:25px;color:var(--sgj-primary-dark);font-variant-numeric:tabular-nums}
-.rev-caliber{margin:14px 0 0;font-size:12px;color:var(--sgj-text-4)}
-.rev-chips{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;align-items:center}
-.chip{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:999px;cursor:pointer;
-  border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);font-variant-numeric:tabular-nums}
-.chip.on{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff;font-weight:600}
-html.dark .chip.on{color:#171B1A}
-.chip-cap{font-size:11px;color:var(--sgj-text-4);margin-left:2px}
-.rev-hero-sk{position:relative;z-index:1;align-self:center}
-
-/* hero 统计：沿用首页 hero 的 2×216px 网格与 stat-item 形状 */
-.rev-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,216px);gap:18px;justify-content:end}
-.stat-item{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:20px;width:216px;box-sizing:border-box}
-.stat-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;
-  font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-primary-dark);background:var(--sgj-primary-soft)}
-.stat-value{display:block;margin-top:14px;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.2;
-  color:var(--sgj-text);font-variant-numeric:tabular-nums}
-.stat-label{display:block;margin-top:6px;font-size:13px;color:var(--sgj-text-3)}
-.stat-sk{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:20px;width:216px}
-
-/* ===== 区块头：沿用首页「沉浸式分段标题 + 胶片齿孔」===== */
-.rev-sec{margin-top:46px}
-.sec-head{display:flex;align-items:center;gap:16px;margin-bottom:20px}
-.sec-title{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);margin:0;flex-shrink:0}
-.sec-strip{flex:1;display:flex;gap:14px;justify-content:center;min-width:0}
-.perf{width:26px;height:10px;border-radius:5px;background:var(--sgj-bg-deep);flex-shrink:0}
-.sec-sub{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);flex-shrink:0}
-.sec-note{margin:14px 0 0;font-size:12.5px;color:var(--sgj-text-4)}
-
-/* ===== 地图：纯 CSS 示意底，不是真实瓦片 ===== */
-.map-wrap{position:relative;height:372px;border-radius:var(--sgj-r-lg);overflow:hidden;border:1px solid var(--sgj-border-card);
-  background:
-    repeating-linear-gradient(0deg,transparent 0 39px,var(--sgj-border-card) 39px 40px),
-    repeating-linear-gradient(90deg,transparent 0 39px,var(--sgj-border-card) 39px 40px),
-    var(--sgj-bg-deep);}
-.map-land{position:absolute;left:5%;top:9%;width:74%;height:78%;background:var(--sgj-bg-card);
-  border-radius:56% 44% 52% 48%/48% 52% 44% 56%;box-shadow:inset 0 0 0 1px var(--sgj-border-card)}
-.map-water{position:absolute;right:0;top:0;width:30%;height:100%;background:linear-gradient(180deg,rgba(93,111,102,.16),rgba(93,111,102,.06))}
-.map-road{position:absolute;height:2px;background:var(--sgj-border);transform-origin:left center;border-radius:2px}
-.pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:3px}
-.pin-dot{width:11px;height:11px;border-radius:50%;background:var(--sgj-primary);box-shadow:0 0 0 4px rgba(168,95,82,.16)}
-html.dark .pin-dot{box-shadow:0 0 0 4px rgba(194,122,109,.2)}
-.pin-label{font-size:11px;color:var(--sgj-text-2);background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);
-  border-radius:999px;padding:1px 8px;white-space:nowrap;box-shadow:var(--sgj-shadow-sm)}
-.map-legend{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--sgj-text-3);background:var(--sgj-bg-card);
-  border:1px solid var(--sgj-border-card);border-radius:999px;padding:3px 10px}
-.place-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.place{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 12px;border-radius:999px;
-  background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2)}
-.place i{width:7px;height:7px;border-radius:50%;background:var(--sgj-primary);flex:none}
-.place.off{color:var(--sgj-text-4);border-style:dashed;background:transparent}
-.place.off i{background:transparent;box-shadow:inset 0 0 0 1px var(--sgj-text-4)}
-.place small{font-size:10.5px;color:var(--sgj-text-4)}
-
-/* ===== 评分 Top：影视 / 书籍两栏 ===== */
-.top-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.top-col{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);
-  padding:16px 20px 10px;box-shadow:var(--sgj-shadow-sm)}
-.top-col h3{margin:0 0 12px;font-family:var(--sgj-font-serif);font-size:17px;display:flex;align-items:center;gap:8px;color:var(--sgj-text)}
-.top-col h3 span{font-family:var(--sgj-font-sans);font-size:11px;letter-spacing:2.4px;color:var(--sgj-text-4);font-weight:400}
-.rank{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--sgj-border-card)}
-.rank:first-of-type{border-top:0}
-.rank-no{font-family:var(--sgj-font-serif);font-weight:700;font-size:15px;color:var(--sgj-text-4);width:16px;flex:none;font-variant-numeric:tabular-nums}
-.rank-cover{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;
-  font-family:var(--sgj-font-serif);font-weight:700;font-size:16px}
-.rank-body{flex:1;min-width:0}
-.rank-title{display:block;font-size:14px;font-weight:600;color:var(--sgj-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rank-meta{display:block;font-size:11.5px;color:var(--sgj-text-4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rank-score{font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-amber);flex:none;font-variant-numeric:tabular-nums}
-
-/* ===== 标签分布 ===== */
-.tags{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:20px;box-shadow:var(--sgj-shadow-sm)}
-.tag-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 30px}
-.tag-row{display:grid;grid-template-columns:62px 1fr 24px;align-items:center;gap:10px}
-.tag-name{font-size:13px;color:var(--sgj-text-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tag-bar{height:8px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
-.tag-bar i{display:block;height:100%;border-radius:999px;background:var(--sgj-primary-light)}
-.tag-cnt{font-size:12px;color:var(--sgj-text-3);text-align:right;font-variant-numeric:tabular-nums}
-.tag-rest{margin-top:16px;padding-top:14px;border-top:1px solid var(--sgj-border-card);font-size:12.5px;color:var(--sgj-text-4);
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.tag-rest .place{font-size:12px;padding:3px 10px}
-
-/* ===== 空态 ===== */
-.rev-empty{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);
-  padding:54px 24px 50px;text-align:center;box-shadow:var(--sgj-shadow-sm)}
-.rev-empty h3{margin:0 0 10px;font-family:var(--sgj-font-serif);font-size:22px;color:var(--sgj-text)}
-.rev-empty p{margin:0 auto;color:var(--sgj-text-3);font-size:13.5px;max-width:520px}
-.rev-empty .acts{margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-
-/* ===== 骨架 ===== */
-.sk-sec{margin-top:46px}
-.sk-head{display:flex;align-items:center;gap:16px;margin-bottom:20px}
-.sk-line{height:14px;border-radius:6px}
-.sk-map{height:250px;border-radius:var(--sgj-r-lg)}
-.sk-card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px 20px}
-.sk-row{display:flex;align-items:center;gap:12px;padding:9px 0}
-.sk-sq{width:38px;height:38px;border-radius:9px;flex:none}
-
-/* ===== 移动端 ===== */
-body[data-vp=mobile] .rev-hero{grid-template-columns:1fr;gap:24px;padding:20px 0 8px}
-body[data-vp=mobile] .rev-year{font-size:50px}
-body[data-vp=mobile] .rev-arrow{width:32px;height:32px;font-size:15px}
-body[data-vp=mobile] .rev-lead{font-size:17px}
-body[data-vp=mobile] .rev-lead b{font-size:20px}
-body[data-vp=mobile] .rev-stats{grid-template-columns:repeat(2,1fr);gap:12px;justify-content:stretch}
-body[data-vp=mobile] .stat-item{width:auto;padding:14px}
-body[data-vp=mobile] .stat-sk{width:auto;padding:14px}
-body[data-vp=mobile] .stat-value{font-size:26px;margin-top:10px}
-body[data-vp=mobile] .stat-label{font-size:12px}
-body[data-vp=mobile] .rev-sec{margin-top:32px}
-body[data-vp=mobile] .sec-title{font-size:21px}
-body[data-vp=mobile] .sec-sub{display:none}
-body[data-vp=mobile] .map-wrap{height:240px}
-body[data-vp=mobile] .pin-label{font-size:10px}
-body[data-vp=mobile] .top-cols{grid-template-columns:1fr;gap:16px}
-body[data-vp=mobile] .tag-grid{grid-template-columns:1fr}
-body[data-vp=mobile] .rev-empty{padding:38px 18px}
-body[data-vp=mobile] .rev-empty h3{font-size:19px}
-
 </style>
 </head>
-<body data-vp="desktop">
+<body data-vp="desktop" data-scheme="a">
+
+<!-- 手绘抖线滤镜：与设计图同名同参数（handdrawn.css 的 filter:url(#rough) 指向它） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 
 <div class="review">
   <div class="review-in">
     <b>0.0.4 设计图</b>
-    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html" aria-current="page">回顾页</a><a href="review-entry.html">入口与边界</a><a href="review-travel.html">足迹：路线 vs 地图</a></nav>
+    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html" aria-current="page">回顾页</a><a href="review-entry.html">入口与边界</a></nav>
     <span class="seg" role="group" aria-label="状态"><button data-state="default" aria-pressed="true">默认</button><button data-state="empty" aria-pressed="false">空态</button><button data-state="loading" aria-pressed="false">加载中</button></span>
+    <span class="seg" role="group" aria-label="足迹方案"><button data-scheme="a" aria-pressed="true">足迹 A · 串联</button><button data-scheme="b" aria-pressed="false">足迹 B · 地图</button></span>
     <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
-    <span class="seg" role="group" aria-label="视口">
-      <button data-vp="desktop" aria-pressed="true">桌面</button>
-      <button data-vp="mobile" aria-pressed="false">移动端</button>
-    </span>
+    <span class="seg" role="group" aria-label="视口"><button data-vp="desktop" aria-pressed="true">桌面</button><button data-vp="mobile" aria-pressed="false">移动端</button></span>
     <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
   </div>
 </div>
@@ -297,222 +253,263 @@ body[data-vp=mobile] .rev-empty h3{font-size:19px}
     </header>
 
     <div class="device-body">
-    <div class="page">
+      <div class="plan-page hd-page page-hd">
 
-      <!-- ===== hero：年份是主角 ===== -->
-      <section class="rev-hero">
-        <div class="rev-blob rev-blob-1" aria-hidden="true"></div>
-        <div class="rev-blob rev-blob-2" aria-hidden="true"></div>
-
-        <div class="rev-hero-text" id="revHeroMain">
-          <div class="rev-eyebrow">YEAR IN REVIEW</div>
-          <div class="rev-year-row">
-            <button class="rev-arrow" type="button" aria-label="上一年">‹</button>
-            <span class="rev-year" id="revYearNum">2024</span>
-            <button class="rev-arrow" type="button" aria-label="下一年" disabled>›</button>
+        <!-- ===== 报头 ===== -->
+        <section class="hd-hero" id="hdHero">
+          <div class="hd-hero-top">
+            <div class="hd-hero-year">
+              <div class="hd-eyebrow">YEAR IN REVIEW</div>
+              <div class="hd-year-row">
+                <button class="hd-round" type="button" aria-label="上一年">‹</button>
+                <span class="hd-year" id="hdYear">2024</span>
+                <button class="hd-round" type="button" aria-label="下一年" disabled>›</button>
+              </div>
+            </div>
+            <div class="hd-hero-say">
+              <p class="hd-lead" id="hdLead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
+              <p class="hd-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="2"></span></p>
+            </div>
           </div>
-          <p class="rev-lead" id="revLead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
-          <p class="rev-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="2"></span></p>
-          <div class="rev-chips" id="revChips">
-            <button class="chip on" type="button">2024</button>
-            <button class="chip" type="button">2023</button>
-            <button class="chip" type="button">2022</button>
-            <span class="chip-cap">有记录的年份<span class="an" data-n="1"></span></span>
+          <div class="hd-chips" id="hdChips">
+            <span class="hd-chip doing">2024</span>
+            <span class="hd-chip">2023</span>
+            <span class="hd-chip">2022</span>
+            <span class="cap">有记录的年份<span class="an" data-n="1"></span></span>
           </div>
-        </div>
-
-        <div class="rev-hero-sk" id="revHeroSk" hidden>
-          <div class="rev-eyebrow">YEAR IN REVIEW</div>
-          <span class="sk" style="width:210px;height:74px;border-radius:12px;margin:4px 0 14px"></span>
-          <span class="sk sk-line" style="width:260px;height:20px"></span>
-          <span class="sk sk-line" style="width:180px;height:12px;margin-top:12px"></span>
-        </div>
-
-        <div class="rev-stats" id="revStatsMain">
-          <div class="stat-item">
-            <span class="stat-icon">影</span>
-            <span class="stat-value" id="statMovie">36</span>
-            <span class="stat-label" id="statMovieLabel">看过 · 电影 24 · 剧集 12</span>
+          <div class="hd-stats" id="hdStats">
+            <div class="hd-stat hd-movie">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>影</span></span>
+              <span class="num" id="numMovie">36</span><span class="lbl" id="lblMovie">看过 · 电影 24 · 剧集 12</span>
+            </div>
+            <div class="hd-stat hd-book">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>书</span></span>
+              <span class="num" id="numBook">8</span><span class="lbl">读过 · 书籍</span>
+            </div>
+            <div class="hd-stat hd-place">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>地</span></span>
+              <span class="num" id="numPlace">7</span><span class="lbl">去过 · 地点</span>
+            </div>
+            <div class="hd-stat hd-note">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>文</span></span>
+              <span class="num" id="numNote">36</span><span class="lbl">写过 · 笔记<span class="an" data-n="3"></span></span>
+            </div>
           </div>
-          <div class="stat-item">
-            <span class="stat-icon" style="color:var(--sgj-moss);background:var(--sgj-moss-soft)">书</span>
-            <span class="stat-value" id="statBook">8</span>
-            <span class="stat-label" id="statBookLabel">读过 · 书籍</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-icon" style="color:var(--sgj-amber);background:var(--sgj-amber-soft)">地</span>
-            <span class="stat-value" id="statPlace">7</span>
-            <span class="stat-label" id="statPlaceLabel">去过 · 地点</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-icon">文</span>
-            <span class="stat-value" id="statNote">36</span>
-            <span class="stat-label" id="statNoteLabel">写过 · 笔记<span class="an" data-n="3"></span></span>
-          </div>
-        </div>
-
-        <div class="rev-stats" id="revStatsSk" hidden>
-          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
-            <span class="sk sk-line" style="width:70px;height:30px;margin-top:14px"></span>
-            <span class="sk sk-line" style="width:120px;height:11px;margin-top:8px"></span></div>
-          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
-            <span class="sk sk-line" style="width:50px;height:30px;margin-top:14px"></span>
-            <span class="sk sk-line" style="width:100px;height:11px;margin-top:8px"></span></div>
-          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
-            <span class="sk sk-line" style="width:50px;height:30px;margin-top:14px"></span>
-            <span class="sk sk-line" style="width:100px;height:11px;margin-top:8px"></span></div>
-          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
-            <span class="sk sk-line" style="width:60px;height:30px;margin-top:14px"></span>
-            <span class="sk sk-line" style="width:110px;height:11px;margin-top:8px"></span></div>
-        </div>
-      </section>
-
-      <!-- ===== 主体：默认 ===== -->
-      <div id="revMain">
-        <section class="rev-sec">
-          <div class="sec-head">
-            <h2 class="sec-title">这一年走过的</h2>
-            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
-            <div class="sec-sub">TRAVELED</div>
-          </div>
-          <div class="map-wrap">
-            <div class="map-water" aria-hidden="true"></div>
-            <div class="map-land" aria-hidden="true"></div>
-            <div class="map-road" style="left:12%;top:54%;width:60%;transform:rotate(-6deg)" aria-hidden="true"></div>
-            <div class="map-road" style="left:26%;top:74%;width:48%;transform:rotate(5deg)" aria-hidden="true"></div>
-            <div class="map-road" style="left:30%;top:26%;width:42%;transform:rotate(-4deg)" aria-hidden="true"></div>
-            <div class="pin" style="left:17%;top:60%"><span class="pin-dot"></span><span class="pin-label">大理 · 洱海</span></div>
-            <div class="pin" style="left:53%;top:80%"><span class="pin-dot"></span><span class="pin-label">潮州</span></div>
-            <div class="pin" style="left:57%;top:32%"><span class="pin-dot"></span><span class="pin-label">景德镇</span></div>
-            <div class="pin" style="left:67%;top:20%"><span class="pin-dot"></span><span class="pin-label">婺源</span></div>
-            <div class="pin" style="left:76%;top:54%"><span class="pin-dot"></span><span class="pin-label">泉州 · 西街</span></div>
-            <div class="pin" style="left:82%;top:36%"><span class="pin-dot"></span><span class="pin-label">平潭</span></div>
-            <div class="map-legend">示意底图 · 实际使用高德地图<span class="an" data-n="4"></span></div>
-          </div>
-          <div class="place-chips">
-            <span class="place"><i></i>大理 · 洱海</span>
-            <span class="place"><i></i>泉州 · 西街</span>
-            <span class="place"><i></i>潮州</span>
-            <span class="place"><i></i>景德镇</span>
-            <span class="place"><i></i>婺源</span>
-            <span class="place"><i></i>平潭</span>
-            <span class="place off"><i></i>沙溪 <small>没填坐标</small></span>
-          </div>
-          <p class="sec-note">这一年去过 7 个地方，6 个落在了图上。</p>
         </section>
 
-        <section class="rev-sec">
-          <div class="sec-head">
-            <h2 class="sec-title">评分最高</h2>
-            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
-            <div class="sec-sub">TOP RATED</div>
-          </div>
-          <div class="top-cols">
-            <div class="top-col">
-              <h3>影视 <span>FILM &amp; TV</span><span class="an" data-n="5"></span></h3>
-              <div class="rank"><span class="rank-no">1</span><span class="rank-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">剧</span>
-                <span class="rank-body"><span class="rank-title">漫长的季节</span><span class="rank-meta">剧集 · 5 月看完</span></span><span class="rank-score">9.4</span></div>
-              <div class="rank"><span class="rank-no">2</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span>
-                <span class="rank-body"><span class="rank-title">奥本海默</span><span class="rank-meta">电影 · 3 月看过</span></span><span class="rank-score">9.2</span></div>
-              <div class="rank"><span class="rank-no">3</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span>
-                <span class="rank-body"><span class="rank-title">沙丘 2</span><span class="rank-meta">电影 · 9 月看过</span></span><span class="rank-score">8.8</span></div>
-              <div class="rank"><span class="rank-no">4</span><span class="rank-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">剧</span>
-                <span class="rank-body"><span class="rank-title">三体</span><span class="rank-meta">剧集 · 2 月看完</span></span><span class="rank-score">8.6</span></div>
-              <div class="rank"><span class="rank-no">5</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span>
-                <span class="rank-body"><span class="rank-title">宇宙探索编辑部</span><span class="rank-meta">电影 · 11 月看过</span></span><span class="rank-score">8.5</span></div>
+        <!-- ===== 加载中：手绘骨架（页头也换成骨架）===== -->
+        <section class="hd-hero only-loading" hidden id="hdHeroSk">
+          <div class="hd-hero-top">
+            <div>
+              <span class="hdsk hdsk-line" style="width:118px;height:12px"></span>
+              <span class="hdsk" style="width:224px;height:78px;border-radius:14px;margin-top:12px"></span>
             </div>
-            <div class="top-col">
-              <h3>书籍 <span>BOOKS</span></h3>
-              <div class="rank"><span class="rank-no">1</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">书</span>
-                <span class="rank-body"><span class="rank-title">红楼梦</span><span class="rank-meta">文学 · 8 月读完</span></span><span class="rank-score">9.5</span></div>
-              <div class="rank"><span class="rank-no">2</span><span class="rank-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span>
-                <span class="rank-body"><span class="rank-title">置身事内：中国政府与经济发展</span><span class="rank-meta">社科 · 4 月读完</span></span><span class="rank-score">9.3</span></div>
-              <div class="rank"><span class="rank-no">3</span><span class="rank-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">书</span>
-                <span class="rank-body"><span class="rank-title">人类简史</span><span class="rank-meta">历史 · 6 月读完</span></span><span class="rank-score">9.0</span></div>
-              <div class="rank"><span class="rank-no">4</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">书</span>
-                <span class="rank-body"><span class="rank-title">百年孤独</span><span class="rank-meta">文学 · 1 月读完</span></span><span class="rank-score">8.9</span></div>
-              <div class="rank"><span class="rank-no">5</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">书</span>
-                <span class="rank-body"><span class="rank-title">房思琪的初恋乐园</span><span class="rank-meta">文学 · 12 月读完</span></span><span class="rank-score">8.7</span></div>
+            <div>
+              <span class="hdsk hdsk-line" style="width:300px;height:20px"></span>
+              <span class="hdsk hdsk-line" style="width:200px;height:12px;margin-top:12px"></span>
             </div>
           </div>
-          <p class="sec-note">只有打过分的条目参与评选：这一年 51 条记录里，32 条有评分。</p>
+          <div class="hdsk-stats">
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:64px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:110px;height:11px;margin-top:8px"></span></div>
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:44px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:90px;height:11px;margin-top:8px"></span></div>
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:44px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:90px;height:11px;margin-top:8px"></span></div>
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:54px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:100px;height:11px;margin-top:8px"></span></div>
+          </div>
         </section>
 
-        <section class="rev-sec">
-          <div class="sec-head">
-            <h2 class="sec-title">都是些什么</h2>
-            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
-            <div class="sec-sub">TAGS</div>
-          </div>
-          <div class="tags">
-            <div class="tag-grid">
-              <div class="tag-row"><span class="tag-name">治愈</span><span class="tag-bar"><i style="width:100%"></i></span><span class="tag-cnt">12</span></div>
-              <div class="tag-row"><span class="tag-name">悬疑</span><span class="tag-bar"><i style="width:100%"></i></span><span class="tag-cnt">12</span></div>
-              <div class="tag-row"><span class="tag-name">日剧</span><span class="tag-bar"><i style="width:75%"></i></span><span class="tag-cnt">9</span></div>
-              <div class="tag-row"><span class="tag-name">历史</span><span class="tag-bar"><i style="width:58%"></i></span><span class="tag-cnt">7</span></div>
-              <div class="tag-row"><span class="tag-name">文学</span><span class="tag-bar"><i style="width:50%"></i></span><span class="tag-cnt">6</span></div>
-              <div class="tag-row"><span class="tag-name">科幻</span><span class="tag-bar"><i style="width:50%"></i></span><span class="tag-cnt">6</span></div>
-              <div class="tag-row"><span class="tag-name">纪录片</span><span class="tag-bar"><i style="width:42%"></i></span><span class="tag-cnt">5</span></div>
-              <div class="tag-row"><span class="tag-name">长篇</span><span class="tag-bar"><i style="width:42%"></i></span><span class="tag-cnt">5</span></div>
-              <div class="tag-row"><span class="tag-name">云南</span><span class="tag-bar"><i style="width:25%"></i></span><span class="tag-cnt">3</span></div>
-              <div class="tag-row"><span class="tag-name">重看</span><span class="tag-bar"><i style="width:25%"></i></span><span class="tag-cnt">3</span></div>
+        <!-- ===== 主体：默认 ===== -->
+        <div id="hdMain">
+
+          <!-- 足迹 · 方案 A -->
+          <section class="hd-sec scheme-a">
+            <div class="sheet">
+              <div class="paper">
+                <span class="tape"></span>
+                <div class="lines"><span class="frame"></span></div>
+                <div class="g-head">
+                  <h2 class="g-title">这一年走过的<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+                  <span class="g-count">7 个地方</span>
+                  <span class="an" data-n="4"></span>
+                </div>
+                <div class="route">
+                  <svg class="trail" viewBox="0 0 820 152" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M58.6 76 C100 60 135 60 175.7 76 C217 92 252 92 292.9 76 C334 60 369 60 410 76 C451 92 486 92 527.1 76 C568 60 603 60 644.3 76 C685 92 720 92 761.4 76"
+                          fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/>
+                  </svg>
+                  <ol class="stops">
+                    <li class="stop up"><span class="name">平潭</span><span class="mo">3 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>1</b></span></li>
+                    <li class="stop down"><span class="name">泉州 · 西街</span><span class="mo">4 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>2</b></span></li>
+                    <li class="stop up"><span class="name">潮州</span><span class="mo">5 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>3</b></span></li>
+                    <li class="stop down"><span class="name">景德镇</span><span class="mo">7 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>4</b></span></li>
+                    <li class="stop up"><span class="name">婺源</span><span class="mo">8 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>5</b></span></li>
+                    <li class="stop down"><span class="name">大理 · 洱海</span><span class="mo">10 月</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>6</b></span></li>
+                    <li class="stop up off"><span class="name">沙溪</span><span class="mo">11 月 · 没填坐标</span><span class="dot"><svg viewBox="0 0 36 36"><ellipse cx="18" cy="18" rx="15.5" ry="14.5"/></svg><b>7</b></span></li>
+                  </ol>
+                </div>
+                <p class="hd-note">按去过的先后串起来，<b>不是路线图</b> —— 两点之间没有画「怎么走」；虚线只是把这一年连成一串。</p>
+              </div>
             </div>
-            <div class="tag-rest">
-              <span>常用的 10 个在上面，其余 <b>14 个</b>标签各出现 1 次</span>
-              <span class="place off" style="border-style:solid;background:var(--sgj-bg-deep)">展开全部 ▾</span>
+          </section>
+
+          <!-- 足迹 · 方案 B -->
+          <section class="hd-sec scheme-b">
+            <div class="sheet">
+              <div class="paper">
+                <span class="tape"></span>
+                <div class="lines"><span class="frame"></span></div>
+                <div class="g-head">
+                  <h2 class="g-title">这一年走过的<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+                  <span class="g-count">6 个地方落在图上</span>
+                </div>
+                <div class="hd-map">
+                  <svg class="land" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M120 62 C200 40 300 50 400 38 C520 24 620 40 700 34 C742 30 782 44 794 72 C804 98 772 122 782 152 C792 182 762 202 742 232 C722 262 682 288 622 302 C562 316 502 302 442 294 C382 286 332 298 272 288 C212 278 152 252 122 212 C94 174 102 132 110 102 C114 84 114 72 120 62 Z"
+                          fill="var(--hd-paper-2)" stroke="var(--hd-line)" stroke-width="2.4"/>
+                    <path d="M300 150 C360 132 430 148 470 128" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M330 214 C390 200 450 216 500 198" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M600 120 C640 150 650 210 620 262" fill="none" stroke="var(--hd-line-soft)" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                  <svg class="trail-b" viewBox="0 0 820 352" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M700 96 C680 120 668 136 656 150 C620 178 586 214 560 250 C520 200 492 150 470 108 C494 94 520 82 546 74 C420 96 300 132 170 176"
+                          fill="none" stroke="var(--hd-line)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="10 9"/>
+                  </svg>
+                  <span class="pinb" style="left:85.4%;top:27.3%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>1</b><span class="lb">平潭 · 3 月</span></span>
+                  <span class="pinb l" style="left:80%;top:42.6%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>2</b><span class="lb">泉州 · 4 月</span></span>
+                  <span class="pinb" style="left:68.3%;top:71%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>3</b><span class="lb">潮州 · 5 月</span></span>
+                  <span class="pinb l" style="left:57.3%;top:30.7%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>4</b><span class="lb">景德镇 · 7 月</span></span>
+                  <span class="pinb" style="left:66.6%;top:21%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>5</b><span class="lb">婺源 · 8 月</span></span>
+                  <span class="pinb" style="left:20.7%;top:50%"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><b>6</b><span class="lb">大理 · 10 月</span></span>
+                  <span class="hd-maphint">底图是手绘示意，不是等比例地图</span>
+                </div>
+                <p class="hd-note">沙溪（11 月）<b>没填坐标</b>，所以没落在图上 —— 这是保留地理感的代价；方案 A 只要「去过的先后」，没有这个问题。</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 评分榜 -->
+          <section class="hd-sec">
+            <div class="g-head">
+              <h2 class="g-title">评分最高<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+              <span class="g-count">51 条里 32 条有评分</span>
+              <span class="an" data-n="5"></span>
+            </div>
+            <div class="hd-cols">
+              <div class="sheet alt">
+                <div class="paper">
+                  <span class="tape"></span>
+                  <div class="lines"><span class="frame"></span></div>
+                  <div class="g-head g-movie"><h2 class="g-title">影视<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
+                  <div class="rows g-movie">
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>剧</span></span><div class="main"><div class="t">漫长的季节</div><div class="m"><span>剧集 · 5 月看完</span></div></div><span class="hd-score">9.4</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">奥本海默</div><div class="m"><span>电影 · 3 月看过</span></div></div><span class="hd-score">9.2</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">沙丘 2</div><div class="m"><span>电影 · 9 月看过</span></div></div><span class="hd-score">8.8</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>剧</span></span><div class="main"><div class="t">三体</div><div class="m"><span>剧集 · 2 月看完</span></div></div><span class="hd-score">8.6</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">宇宙探索编辑部</div><div class="m"><span>电影 · 11 月看过</span></div></div><span class="hd-score">8.5</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="sheet">
+                <div class="paper">
+                  <span class="tape"></span>
+                  <div class="lines"><span class="frame"></span></div>
+                  <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
+                  <div class="rows g-book">
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">红楼梦</div><div class="m"><span>文学 · 8 月读完</span></div></div><span class="hd-score">9.5</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">置身事内</div><div class="m"><span>社科 · 4 月读完</span></div></div><span class="hd-score">9.3</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">人类简史</div><div class="m"><span>历史 · 6 月读完</span></div></div><span class="hd-score">9.0</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">百年孤独</div><div class="m"><span>文学 · 1 月读完</span></div></div><span class="hd-score">8.9</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">房思琪的初恋乐园</div><div class="m"><span>文学 · 12 月读完</span></div></div><span class="hd-score">8.7</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 标签 -->
+          <section class="hd-sec">
+            <div class="g-head">
+              <h2 class="g-title">都是些什么<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+              <span class="g-count">Top 10 / 24 个标签</span>
               <span class="an" data-n="6"></span>
             </div>
-          </div>
-          <p class="sec-note">标签统计的是这一年的条目；笔记只贡献上面「写过」那个数，标签不并进来。</p>
-        </section>
-      </div>
-
-      <!-- ===== 主体：空态 ===== -->
-      <div id="revEmpty" hidden>
-        <div class="rev-empty">
-          <h3>2021 年还没有记录</h3>
-          <p>你是从 2022 年往前翻到这里的。去影单、书单或足迹添几笔，明年这个时候就有东西可看了；也可以往右翻回有记录的年份。</p>
-          <div class="acts">
-            <a class="btn" href="#">去影单看看</a>
-            <a class="btn line" href="#">去书单看看</a>
-          </div>
-          <p class="sec-note" style="margin-top:22px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="7"></span></p>
-        </div>
-      </div>
-
-      <!-- ===== 主体：加载中 ===== -->
-      <div id="revSk" hidden>
-        <div class="sk-sec">
-          <div class="sk-head"><span class="sk sk-line" style="width:150px;height:22px"></span><span style="flex:1"></span></div>
-          <div class="sk sk-map"></div>
-        </div>
-        <div class="sk-sec">
-          <div class="sk-head"><span class="sk sk-line" style="width:120px;height:22px"></span><span style="flex:1"></span></div>
-          <div class="top-cols">
-            <div class="sk-card">
-              <span class="sk sk-line" style="width:110px;height:15px;display:block;margin-bottom:14px"></span>
-              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:70%"></span><span class="sk sk-line" style="display:block;width:40%;height:10px;margin-top:7px"></span></span></div>
-              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:60%"></span><span class="sk sk-line" style="display:block;width:35%;height:10px;margin-top:7px"></span></span></div>
-              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:65%"></span><span class="sk sk-line" style="display:block;width:38%;height:10px;margin-top:7px"></span></span></div>
+            <div class="sheet">
+              <div class="paper">
+                <span class="tape"></span>
+                <div class="lines"><span class="frame"></span></div>
+                <div class="hd-tags">
+                  <div class="hd-tag"><span class="tn">治愈</span><span class="tb" style="width:100%"></span><span class="tc">12</span></div>
+                  <div class="hd-tag"><span class="tn">悬疑</span><span class="tb" style="width:100%"></span><span class="tc">12</span></div>
+                  <div class="hd-tag"><span class="tn">日剧</span><span class="tb" style="width:75%"></span><span class="tc">9</span></div>
+                  <div class="hd-tag"><span class="tn">历史</span><span class="tb" style="width:58%"></span><span class="tc">7</span></div>
+                  <div class="hd-tag"><span class="tn">文学</span><span class="tb" style="width:50%"></span><span class="tc">6</span></div>
+                  <div class="hd-tag"><span class="tn">科幻</span><span class="tb" style="width:50%"></span><span class="tc">6</span></div>
+                  <div class="hd-tag"><span class="tn">纪录片</span><span class="tb" style="width:42%"></span><span class="tc">5</span></div>
+                  <div class="hd-tag"><span class="tn">长篇</span><span class="tb" style="width:42%"></span><span class="tc">5</span></div>
+                  <div class="hd-tag"><span class="tn">云南</span><span class="tb" style="width:25%"></span><span class="tc">3</span></div>
+                  <div class="hd-tag"><span class="tn">重看</span><span class="tb" style="width:25%"></span><span class="tc">3</span></div>
+                </div>
+                <p class="hd-note" style="margin-top:6px">其余 14 个标签各出现 1 次 · 笔记只贡献「写过」那个数，标签不并进来。</p>
+              </div>
             </div>
-            <div class="sk-card">
-              <span class="sk sk-line" style="width:90px;height:15px;display:block;margin-bottom:14px"></span>
-              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:72%"></span><span class="sk sk-line" style="display:block;width:42%;height:10px;margin-top:7px"></span></span></div>
-              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:58%"></span><span class="sk sk-line" style="display:block;width:33%;height:10px;margin-top:7px"></span></span></div>
-              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:64%"></span><span class="sk sk-line" style="display:block;width:36%;height:10px;margin-top:7px"></span></span></div>
+          </section>
+        </div>
+
+        <!-- ===== 主体：空态 ===== -->
+        <div id="hdEmpty" hidden>
+          <div class="sheet">
+            <div class="paper">
+              <span class="tape"></span>
+              <div class="lines"><span class="frame"></span></div>
+              <div class="hd-empty">
+                <svg viewBox="0 0 150 96" fill="none" stroke="var(--hd-ink-soft)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M44 14 Q75 10 106 14 Q110 45 106 80 Q75 84 44 80 Q40 46 44 14 Z"/>
+                  <path d="M57 33 Q75 30 93 33"/><path d="M57 45 Q75 42 93 45"/><path d="M57 57 Q70 54 79 57"/>
+                  <path d="M116 26 Q128 18 137 24 Q135 34 125 33"/>
+                </svg>
+                <h3>2021 年还没有记录</h3>
+                <p>你是从 2022 年往前翻到这里的。去影单、书单或足迹添几笔，明年这个时候就有东西可看了；也可以往右翻回有记录的年份。</p>
+                <div class="acts">
+                  <button class="hdbtn go" type="button">去影单看看</button>
+                  <button class="hdbtn" type="button">去书单看看</button>
+                </div>
+                <p class="hd-note" style="margin-top:20px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="7"></span></p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
+        <!-- ===== 主体：加载中 ===== -->
+        <div id="hdSk" hidden>
+          <div class="hdsk-sheet">
+            <span class="hdsk" style="width:150px;height:22px"></span>
+            <span class="hdsk" style="width:100%;height:200px;margin-top:16px;border-radius:14px"></span>
+          </div>
+          <div class="hdsk-sheet">
+            <span class="hdsk" style="width:120px;height:22px"></span>
+            <div class="hd-cols" style="margin-top:16px">
+              <div class="hdsk" style="padding:16px 18px;border-radius:14px">
+                <span class="hdsk" style="width:90px;height:15px"></span>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:70%"></span><span class="hdsk hdsk-line" style="width:40%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:60%"></span><span class="hdsk hdsk-line" style="width:34%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:66%"></span><span class="hdsk hdsk-line" style="width:38%;height:10px;margin-top:7px"></span></span></div>
+              </div>
+              <div class="hdsk" style="padding:16px 18px;border-radius:14px">
+                <span class="hdsk" style="width:76px;height:15px"></span>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:72%"></span><span class="hdsk hdsk-line" style="width:42%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:58%"></span><span class="hdsk hdsk-line" style="width:33%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:64%"></span><span class="hdsk hdsk-line" style="width:36%;height:10px;margin-top:7px"></span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <footer class="ff">
       <div class="ff-line">拾光记 · 把日子慢慢写成照片</div>
       <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
     </footer>
-    </div>
-
     <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
   </div>
 </main>
@@ -521,90 +518,63 @@ body[data-vp=mobile] .rev-empty h3{font-size:19px}
 
   <h2>本屏标注</h2>
   <ol>
-    <li><span class="new">新增</span>：<b>年份是可翻的，不是筛出来的</b>。<code>‹ ›</code> 箭头步进任意年份（包括没有记录的年份，翻到那里就是空态）；下方胶囊只列<b>有记录的年份</b>，从数据推导而不是写死 <code>2020~2030</code>。翻页用箭头、跳转用胶囊，两种动作分工清楚。</li>
-    <li><span class="new">新增</span>：<b>年份是 hero 的主角</b>（74px 衬线数字），因为回顾的阅读单位就是一年。归因口径直接写在页面上——「条目按完成日期归年 · 笔记按写下时间归年」。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
-    <li><span class="keep">沿用</span>：<b>四个数沿用首页 hero 的同一套字形</b>（封面占位衬线字 + 40px 圆角底 + 衬线大数字），只有统计范围不同：首页是「到现在为止」，这里是「这一年」。<code>2×216px</code> 网格与卡片尺寸照搬，hero 的体量也与首页一致。电影 / 剧集的拆分放进标签行（「看过 · 电影 24 · 剧集 12」），不再多开一张卡。</li>
-    <li><span class="new">新增</span>：<b>地图只放这一年去过的点</b>，与 <code>/travel</code> 的全量地图分工不同：那里回答「一共走过哪」，这里回答「这一年走过哪」。<b>没坐标的地点不上图，但要交代</b>——「沙溪」在下面的地点列表里以虚线胶囊出现并标「没填坐标」，而不是静默丢掉；这也是需求 §3.2 FR-004-2 点名的边界情况。底图是纯 CSS 示意底（网格 + 陆地 / 水域色块 + 道路），实际实现用既有 <code>TravelMap</code>。</li>
-    <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜（<code>rating</code> 虽在主表，地点评分不参与）。<b>只有打过分的条目参与</b>，参与条数写在栏下（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序（建议完成日期近者在前）与 N 的取值（建议 5~10）留待详细设计。</li>
-    <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。条形长度按最大计数归一（<code>12</code> 为满格），数字右对齐并用等宽数字。Top 10 之外收成「其余 14 个标签各出现 1 次 + 展开全部」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。</li>
-    <li><span class="new">新增</span>：<b>空态不写「暂无数据」</b>。换到没有记录的年份时，<b>页头保留但四个数归零</b>（与首页 hero「页头恒在、只换主体」的逻辑一致，避免整页跳变），主体给一句解释（你从哪翻过来的）+ 两个去处（影单 / 书单）。空态也说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。</li>
+    <li><span class="new">已拍板</span>：<b>回顾模块直接做成手绘</b>（0.0.7 的皮肤先在这一页灰度）。这不是另起一套语言：本屏 <code>&lt;link&gt;</code> 引的就是产品在用的 <code>shiguangji-web/src/views/front/plan/handdrawn.css</code>（设计图与产品同源，仓库里有测试守着这条约束），字体是自托管霞鹜文楷分片；令牌、纸张、胶带、抖线滤镜、类型配色全部照用，<b>新增的只有「报头布局」「路线」「骨架」三处</b>。页头 / 页脚 / 移动 tab 仍是冷雾——这与今天的 <code>/plan</code> 一模一样（手绘内容装在冷雾外壳里），也说明本页的灰度是干净的一步。</li>
+    <li><span class="new">新增</span>：<b>报头改成「年份在左、说明句在右」</b>。原来年份一行、说明句另起一行，年份右边的六七百像素全是空的；现在把年度汇总那句话和归因口径挪到年份右侧（左对齐、与年份垂直居中），四个统计卡拉成整行——<b>空位交给真信息，不撒装饰</b>。年份仍是页面最大的一个字（76px），说明句是它的题注。</li>
+    <li><span class="new">新增</span>：<b>归因口径写在页面上</b>（「条目按完成日期归年 · 笔记按写下时间归年」）。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
+    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常是第 7 个点，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 用手绘底图 + 虚线路线保住地理感，代价是坐标成为硬依赖、且底图只能是示意。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
+    <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜。<b>只有打过分的条目参与</b>，参与条数写在栏头（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序与 N 的取值留待详细设计。</li>
+    <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。手绘条形按最大计数归一，数字右对齐。Top 10 之外收成「其余 14 个标签各出现 1 次」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。标签只统计条目，笔记只贡献「写过」那个数。</li>
+    <li><span class="new">新增</span>：<b>空态与加载中都是手绘的</b>。空态：页头保留、四个数归零（与首页 hero「页头恒在、只换主体」一致，避免整页跳变），主体是一张纸上的便条加两处去处；并说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。加载中：<b>手绘骨架</b>（歪盒子轮廓 + 浅纸底）而不是转圈或真站的灰色骨架，加载完成不跳版。</li>
+    <li><span class="new">发现</span>：<b>共享皮肤有一处缺口——书籍 / 地点的手绘圈是看不见的</b>。<code>handdrawn.css</code> 只给影视写了 <code>.g-movie .ring ellipse{stroke:…}</code>，而 <code>.g-book</code> / <code>.g-place</code> 只设了字色、没设圈色，椭圆的 <code>fill="none"</code> 又让默认填充失效，于是这两类的圈根本不画。<code>/plan</code> 页里同理，只是恰好没暴露。本屏用一条 <code>.hd-page .row .glyph .ring ellipse{stroke:currentColor}</code> 统一成类型色，<b>0.0.7 收敛皮肤时应并回 <code>handdrawn.css</code></b>。</li>
   </ol>
-  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 的校验、非法年份的处理）、地图真实瓦片与图钉交互（点击进地点详情）、Top 榜点击跳转条目、标签点击筛选、导出成长图 / 海报（需求 §4 非目标）、跨年对比与连续记录天数（D-13 已拍板不做）、自定义时间段（D-12 已拍板不做）。<br><b>既有不改</b>：前台页头导航<b>仍是 6 项</b>（首页 / 影单 / 书单 / 足迹 / 笔记 / 心愿），回顾<b>不占导航位</b>，从首页 hero 进入——入口方案与隐私边界见 <a href="review-entry.html">入口与边界屏</a>。移动端底部 tab 仍是四项，不动。本屏省略了首页与各模块页，只画回顾页本体。<br><b>移动端差异</b>：hero 单列、年份降到 50px、统计卡两列等宽（不再固定 216px）、地图 240px 高、Top 两栏改单列（影视在上、书籍在下）、标签改单列、英文小标题 <code>sec-sub</code> 隐藏。</p>
+  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 校验、非法年份处理）、地图真实瓦片与图钉交互、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、超过 12 个地点的换行策略（本屏只画 7 个）。<br><b>既有不改</b>：页头导航仍是 6 项（回顾不占导航位，从首页 hero 进入，见 <a href="review-entry.html">入口与边界屏</a>）、移动 tab 仍是四项、页脚与主题切换不动。<br><b>移动端差异</b>：报头改单列（年份在上、说明句在下）、年份降到 54px、统计卡两列等宽、两案路线都转成竖向串珠、评分两栏改单列、标签改单列。<br><b>选型后的落点</b>：①足迹定 A 则需求 FR-004-2 从「复用 <code>TravelMap</code> 与图钉形态」改写为「按完成日期的先后串联」，定 B 则保留坐标依赖；②「路线」组件应沉淀进共享皮肤而不是留在本页，否则会重蹈「设计图与实现两份样式」的覆辙。</p>
 
 </section>
 
 <script>
-/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML */
-function setHTML(node, html){
-  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
-  node.replaceChildren(r.createContextualFragment(html || ''));
-}
-function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
-function setText(id, t){ const el=document.getElementById(id); if(el) el.textContent = t; }
+/* 静态设计稿：三种状态与两套足迹方案都是本文件里的字面量 */
+function show(id,on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+function setText(id,t){ const el=document.getElementById(id); if(el) el.textContent = t; }
+function setHTML(id,html){ const el=document.getElementById(id); if(!el) return;
+  const r=document.createRange(); r.selectNode(el); el.replaceChildren(r.createContextualFragment(html||'')); }
 
-/* 三种状态的数据（同一套版式，只换内容） */
 const DATA = {
-  default: { year:'2024', lead:'这一年，你记录了 <b>87</b> 件值得记住的小事。',
-             movie:'36', movieLabel:'看过 · 电影 24 · 剧集 12',
-             book:'8',  bookLabel:'读过 · 书籍',
-             place:'7', placeLabel:'去过 · 地点',
-             note:'36', noteLabel:'写过 · 笔记<span class="an" data-n="3"></span>',
-             chips:['2024','2023','2022'], chipOn:'2024' },
-  empty:   { year:'2021', lead:'这一年，你还没有开始记录。',
-             movie:'0', movieLabel:'看过 · 电影 0 · 剧集 0',
-             book:'0',  bookLabel:'读过 · 书籍',
-             place:'0', placeLabel:'去过 · 地点',
-             note:'0',  noteLabel:'写过 · 笔记',
-             chips:['2024','2023','2022'], chipOn:'' }
+  default:{ year:'2024', lead:'这一年，你记录了 <b>87</b> 件值得记住的小事。',
+            movie:'36', movieLbl:'看过 · 电影 24 · 剧集 12', book:'8', place:'7', note:'36' },
+  empty:  { year:'2021', lead:'这一年，你还没有开始记录。',
+            movie:'0', movieLbl:'看过 · 电影 0 · 剧集 0', book:'0', place:'0', note:'0' }
 };
-
-function renderChips(list, on){
-  document.getElementById('revChips').replaceChildren();
-  const box = document.getElementById('revChips');
-  list.forEach(y=>{
-    const b = document.createElement('button');
-    b.type='button'; b.className = 'chip' + (y===on ? ' on' : ''); b.textContent = y;
-    box.appendChild(b);
-  });
-  const cap = document.createElement('span');
-  cap.className='chip-cap';
-  setHTML(cap, '有记录的年份<span class="an" data-n="1"></span>');
-  box.appendChild(cap);
-}
-
 let state='default';
 function render(){
   const loading = state==='loading';
   const d = DATA[state] || DATA.default;
-
-  show('revHeroMain', !loading);
-  show('revHeroSk', loading);
-  show('revStatsMain', !loading);
-  show('revStatsSk', loading);
-  show('revMain', state==='default');
-  show('revEmpty', state==='empty');
-  show('revSk', loading);
-
+  show('hdHero', !loading);
+  show('hdHeroSk', loading);
+  show('hdMain', state==='default');
+  show('hdEmpty', state==='empty');
+  show('hdSk', loading);
   if(!loading){
-    setText('revYearNum', d.year);
-    setHTML(document.getElementById('revLead'), d.lead);
-    setText('statMovie', d.movie); setHTML(document.getElementById('statMovieLabel'), d.movieLabel);
-    setText('statBook', d.book);   setHTML(document.getElementById('statBookLabel'), d.bookLabel);
-    setText('statPlace', d.place); setHTML(document.getElementById('statPlaceLabel'), d.placeLabel);
-    setText('statNote', d.note);   setHTML(document.getElementById('statNoteLabel'), d.noteLabel);
-    renderChips(d.chips, d.chipOn);
-    /* 空态下 ‹ 仍可用（还能往前翻），› 指向有记录的年份，也可用 */
-    document.querySelectorAll('.rev-arrow').forEach(a=>a.disabled = (d.chipOn==='2024' && a.getAttribute('aria-label')==='下一年'));
-  } else {
-    document.querySelectorAll('.rev-arrow').forEach(a=>a.disabled = true);
+    setText('hdYear', d.year);
+    setHTML('hdLead', d.lead);
+    setText('numMovie', d.movie); setText('lblMovie', d.movieLbl);
+    setText('numBook', d.book); setText('numPlace', d.place); setText('numNote', d.note);
+    /* 胶囊：空态下没有「当前年」 */
+    const chips=document.querySelectorAll('#hdChips .hd-chip');
+    chips.forEach(c=>c.classList.toggle('doing', d.year==='2024' && c.textContent.trim()==='2024'));
+    document.querySelectorAll('.hd-round').forEach(a=>{
+      a.disabled = (d.year==='2024' && a.getAttribute('aria-label')==='下一年');
+    });
   }
 }
-
-document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+document.querySelectorAll('.review [data-state]').forEach(b=>b.addEventListener('click',()=>{
   state=b.dataset.state;
-  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  document.querySelectorAll('.review [data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
   render();
-  const dv=document.querySelector('.device-body'); if(dv && dv.scrollTop>0) dv.scrollTo({top:0,behavior:'auto'});
+  const dv=document.querySelector('.device-body'); if(dv&&dv.scrollTop>0) dv.scrollTo({top:0,behavior:'auto'});
+}));
+document.querySelectorAll('.review [data-scheme]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.scheme=b.dataset.scheme;
+  document.querySelectorAll('.review [data-scheme]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
 }));
 document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
   document.body.dataset.vp=b.dataset.vp;
@@ -620,7 +590,6 @@ document.getElementById('anBtn').addEventListener('click',e=>{
   const off=document.body.classList.toggle('no-annotate');
   e.currentTarget.setAttribute('aria-pressed',String(!off));
 });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ /* 本屏无弹窗 */ } });
 render();
 </script>
 </body>
