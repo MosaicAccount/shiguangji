@@ -194,12 +194,49 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 .hd-cl .c svg ellipse{fill:var(--hd-amber-soft);stroke:currentColor;stroke-width:2.2}
 .hd-cl .c b{position:relative;font-size:17px}
 .hd-cl .t{font-size:14px;color:var(--hd-ink);background:var(--hd-paper);padding:0 8px;
-  border-radius:9px 3px 9px 3px/3px 9px 3px 9px;white-space:nowrap}
-/* 移动端：窄屏里地图塞不下标签，就把名字挪到图下方、图上只留编号（真地图的常见形态） */
+  border-radius:9px 3px 9px 3px/3px 9px 3px 9px;white-space:nowrap;
+  box-shadow:0 0 0 5px var(--hd-paper)}   /* 纸色光晕：虚线经过标签时被干净地让开，不压字 */
 .hd-mapkey{display:none}
 .hd-mapkey .k{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;font-size:14px;line-height:1.85}
 .hd-mapkey .k b{font-weight:400;color:var(--hd-red)}
 .hd-mapkey .kh{font-size:13px;color:var(--hd-ink-faint);margin-bottom:4px}
+
+/* ===== 弹层（点详情 / 省地图）：手绘卡片，弹性展开 =====
+   原型里用顶部 seg 切换两种内容，不做真实点击流；真实实现里由点击图钉 / 省气泡触发 */
+.hd-layer{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:26px;
+  max-width:none;margin:0;   /* 覆盖 .plan-page 的纸页宽度与居中，弹层要盖满整个设备框 */
+  background:rgba(59,52,44,.3)}
+.hd-card{position:relative;width:100%;max-width:520px;max-height:92%;overflow:auto;background:var(--hd-paper);
+  border-radius:14px 5px 16px 6px/6px 16px 5px 14px;padding:18px 20px 20px;
+  box-shadow:5px 7px 0 var(--hd-line-soft);animation:hdspring .44s cubic-bezier(.2,1.45,.4,1) both}
+@keyframes hdspring{0%{transform:translateY(24px) scale(.955);opacity:0}62%{transform:translateY(-5px) scale(1.012)}100%{transform:none;opacity:1}}
+.hd-card::after{content:'';position:absolute;inset:0;border:2.4px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
+.hd-card .x{position:absolute;right:12px;top:10px;width:32px;height:32px;border:2px solid var(--hd-line);background:var(--hd-paper);
+  border-radius:50% 46% 52% 48%/48% 52% 46% 54%;cursor:pointer;font-size:16px;line-height:1;filter:url(#rough);z-index:2}
+/* 照片：贴进手账（胶带 + 手绘裱框 + 衬线占位字） */
+.hd-photo{position:relative;height:168px;margin:6px 0 14px;background:var(--hd-red-soft);
+  border-radius:8px 3px 9px 4px/4px 9px 3px 8px;display:flex;align-items:center;justify-content:center}
+.hd-photo::after{content:'';position:absolute;inset:0;border:2px solid var(--hd-line);border-radius:inherit;filter:url(#rough)}
+.hd-photo .g{font-size:40px;color:var(--hd-red);opacity:.55}
+.hd-photo .tf{position:absolute;left:50%;top:-11px;transform:translateX(-50%) rotate(-2deg);width:86px;height:22px;
+  background:var(--hd-tape);border-radius:2px}
+.hd-card h3{margin:0 0 4px;font-size:24px;font-weight:400;letter-spacing:1px}
+.hd-card .sub{font-size:14px;color:var(--hd-ink-soft);margin:0 0 12px}
+.hd-card .quote{margin:0 0 14px;font-size:16px;line-height:1.7;background:var(--hd-amber-soft);
+  border-radius:10px 4px 11px 5px/5px 11px 4px 10px;padding:10px 12px}
+.hd-card .rowm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.hd-card .acts{display:flex;gap:10px;flex-wrap:wrap}
+/* 省地图：手绘裱框里放高德瓦片（按需首开才加载），图上按真实坐标落图钉 */
+.hd-provmap{position:relative;height:250px;margin:8px 0 12px;background:var(--hd-paper-2);
+  border-radius:12px 5px 14px 6px/6px 14px 5px 12px}
+.hd-provmap::after{content:'';position:absolute;inset:0;border:2.4px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
+.hd-provmap .dotgrid{position:absolute;inset:10px;border-radius:6px;opacity:.6;
+  background-image:radial-gradient(var(--hd-line-soft) 1.2px,transparent 1.3px);
+  background-size:20px 20px;background-position:5px 5px}
+.hd-provmap .fnote{position:absolute;left:16px;bottom:14px;font-size:12.5px;color:var(--hd-ink-faint);background:var(--hd-paper);padding:0 8px;border-radius:8px 3px 8px 3px/3px 8px 3px 8px}
+.hd-provlist{margin-top:6px;border-top:2px dashed var(--hd-line-soft);padding-top:10px}
+.hd-provlist .k{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;font-size:14.5px;line-height:1.85}
+.hd-provlist .k b{font-weight:400;color:var(--hd-red)}
 
 /* 评分榜 / 标签 */
 .hd-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -277,6 +314,7 @@ body[data-vp=mobile] .hd-nocoord{display:none}
     <span class="seg" role="group" aria-label="状态"><button data-state="default" aria-pressed="true">默认</button><button data-state="empty" aria-pressed="false">空态</button><button data-state="loading" aria-pressed="false">加载中</button></span>
     <span class="seg" role="group" aria-label="足迹方案"><button data-scheme="a" aria-pressed="true">足迹 A · 串联</button><button data-scheme="b" aria-pressed="false">足迹 B · 地图</button></span>
     <span class="seg" role="group" aria-label="足迹点数"><button data-vol="few" aria-pressed="true">点少 7</button><button data-vol="mid" aria-pressed="false">中 16</button><button data-vol="many" aria-pressed="false">多 30</button></span>
+    <span class="seg" role="group" aria-label="弹层"><button data-modal="none" aria-pressed="true">弹层关</button><button data-modal="point" aria-pressed="false">点详情</button><button data-modal="province" aria-pressed="false">省地图</button></span>
     <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
     <span class="seg" role="group" aria-label="视口"><button data-vp="desktop" aria-pressed="true">桌面</button><button data-vp="mobile" aria-pressed="false">移动端</button></span>
     <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
@@ -519,6 +557,11 @@ body[data-vp=mobile] .hd-nocoord{display:none}
       <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
     </footer>
     <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+
+    <!-- 弹层：点详情 / 省地图。内容由 JS 渲染，弹性展开。
+         注意它挂在 .device 下而不是 .plan-page 里，所以必须自己带上 plan-page 这个令牌作用域，
+         否则 --hd-* 全是未定义、卡片会没有纸底与边框（踩过）。 -->
+    <div class="hd-layer plan-page" id="hdLayer" hidden></div>
   </div>
 </main>
 
@@ -530,15 +573,15 @@ body[data-vp=mobile] .hd-nocoord{display:none}
     <li><span class="new">新增</span>：<b>报头：年份在左、说明句在右，两者共用一条基线</b>。年份 76px 是页面最大的一个字，说明句是它的题注；四个统计卡（影 / 书 / 地 / 文）拉成整行，卡片等高等宽。年份与说明句<b>按基线对齐而不是按几何中心</b>——数字几乎没有下伸部，几何居中会把说明句吊在年份的腰上，看着就是没对齐。统计卡的类型色用 <code>hdk-</code> 前缀（曾与正文注记 <code>.hd-note</code> 撞名，见本屏第 6 条以外的实现注意）。</li>
     <li><span class="new">新增</span>：<b>年份是可翻的，不是筛出来的</b>。<code>‹ ›</code> 步进任意年份（含没有记录的年份，翻到那里就是空态）；胶囊只列<b>有记录的年份</b>，从数据推导而不是写死 <code>2020~2030</code>。</li>
     <li><span class="new">新增</span>：<b>归因口径写在页面上</b>（「条目按完成日期归年 · 笔记按写下时间归年」）。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
-    <li><span class="watch">待定</span>：<b>足迹两案可切（A 串联 / B 地图）</b>。两案取舍是「顺序准 vs 位置准」，不是好看难看：<b>A</b> 按 <code>finish_date</code> 的先后把地点串成一串，<b>不依赖坐标</b>（沙溪没填经纬度也照常出现，需求里「无坐标地点不导致渲染异常」那条边界直接消失），代价是丢掉地理感；<b>B</b> 用手绘示意底保住「去过哪一片」的地理感，<b>精确位置按需开高德</b>（点任一点），代价是坐标成为硬依赖。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。</li>
-    <li><span class="new">新增</span>：<b>足迹点变多了怎么办——两案各有一条规则</b>（用顶部「点少 7 / 中 16 / 多 30」三个量级试）。<b>A：站点 = 有出行的月份，不是地点</b>，所以一年最多 12 站，<b>版式永远不溢出</b>（原来的 7 列网格与写死的虚线路径在点数上是硬伤）。站上写什么按能否容纳决定：站点 ≤ 8 写地名（同月并列，放不下收成「首个 +n」）；站点 &gt; 8 只写月份 + 地点数，地名下移到清单。<b>清单只在「链上写不全所有地名」时出现</b>，按月列出、一个不少。<b>B：底不承担地理精度，所以只需两档密度</b>——点少时逐点标注（真实经纬度粗落位、自动缩放到这一年的范围、按屏幕距离并簇、标签上下换边），点多时按省计数。<b>按省聚合也不是万灵药</b>：现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合。</li>
-    <li><span class="watch">本次新增</span>：<b>B 改成「手绘示意底 + 按需开高德」，把手绘页从地图精度里解放出来。</b>原来那个假陆块（变形虫）之所以难看，是因为它<b>既是手绘又假装准确</b>：既画不出真实形状，又不给真坐标。现在责任分家——<b>示意底只管观感与顺序</b>（手账点阵纸 + 指北针 + 点 + 虚线，页面明写「手绘示意 · 非比例地图」），<b>精确位置在点开时才交给高德</b>。这样回顾页<b>不依赖第三方瓦片</b>（0.0.7「整页手绘」不破口子）、<b>首屏不加载高德 JS</b>（只在真的想看某个点时才付这个代价），而 D-45 对足迹页「真地图裱框」的定案也不受影响（那是足迹页，不是回顾页）。</li>
-    <li><span class="watch">待定</span>：<b>「点开看真实位置」用哪种形态</b>，两条路成本不同：<b>(a) 页内弹窗/抽屉里嵌一张单点高德</b> —— 体验连贯，但回顾页要加载高德 JS API（体积与网络依赖）；<b>(b) 跳去足迹页并定位该点</b>（如 <code>/travel?focus={id}</code>）—— 零新增依赖、复用已有的真地图，代价是离开回顾页，且 <code>/travel</code> 需支持 <code>focus</code> 参数。本原型只画了入口提示，没建模跳转后的样子。</li>
-    <li><span class="watch">一句实话</span>：<b>两案的原型可信度现在对等了。</b>改完之后 B 也是纯 CSS/SVG（点阵纸、手绘圈、虚线），不联网、不依赖瓦片，原型画成什么样、实现就是什么样——唯一的第三方依赖挪到了「点开」那一步，而它只在用户主动点的时候发生。剩下真正要选的，还是那个产品问题：<b>回顾这一页要讲「顺序」还是「位置」</b>。</li>
+    <li><span class="keep">已拍板</span>：<b>足迹选 B（地图），且分两档密度</b>——<b>点数 ≤ 10</b>（手机 ≤ 5）逐点画、按完成日期的先后连成虚线；<b>点数 &gt; 10</b>（手机 &gt; 5）按省计数。<b>阈值随屏幕变</b>不是洁癖：390px 里放 10 个图钉必然互相压，桌面 816px 才容得下。虚线是<b>时间顺序，不是行程轨迹</b>——所以页面明写「不是路线图」，否则是产品在撒谎。（原 A 案「按完成日期串联」不再需要，但它的「站点 = 月份」口径仍可作为 B 逐点档写不下标签时的兜底。）</li>
+    <li><span class="new">新增</span>：<b>点变多了怎么办——B 的两档各有一套</b>（用顶部「点少 7 / 中 16 / 多 30」试）。<b>逐点档</b>：按真实经纬度粗落位、自动缩放到这一年的范围、<b>按屏幕距离并簇</b>（5%，约桌面 40px / 手机 20px，比 46px 的圈小，所以圈不叠）、标签上下换边、窄屏把名字移出地图进下方图例。<b>按省档</b>：只画「去过哪几个省、各几个」，点省气泡进省地图。<b>按省聚合也不是万灵药</b>：现有测试数据里 11 个地点就横跨 11 个省级行政区 + 2 个国家，分散型数据聚合后一个省一个点，等于没聚合。</li>
+    <li><span class="keep">已拍板</span>：<b>B 的底是「手绘示意 + 按需开高德」，把手绘页从地图精度里解放出来。</b>原来那个假陆块（变形虫）之所以难看，是因为它<b>既是手绘又假装准确</b>：既画不出真实形状，又不给真坐标。现在责任分家——<b>示意底只管观感与顺序</b>（手账点阵纸 + 指北针 + 点 + 虚线，页面明写「手绘示意 · 非比例地图」），<b>精确位置在点开时才交给高德</b>。这样回顾页<b>不依赖第三方瓦片</b>（0.0.7「整页手绘」不破口子）、<b>首屏不加载高德 JS</b>（只在真的想看某个点时才付这个代价）。<b>连线压字</b>也一并修了：标签加纸色光晕（<code>box-shadow: 0 0 0 5px var(--hd-paper)</code>），虚线经过标签时被干净地让开。</li>
+    <li><span class="watch">待定</span>：<b>「点开」的形态与容器</b>。内容已定两套（用顶部「弹层关 / 点详情 / 省地图」看）：<b>点详情</b>是一张手绘卡片——胶带照片位 + 地名 + 日期与评分 + 短评 + 标签 + 「在地图上定位 / 看这条记录」，<b>弹性展开</b>（<code>@keyframes hdspring</code>）；<b>省地图</b>是手绘裱框里放高德瓦片、去过的地点按真实坐标落图钉（近点并簇），点图钉再下钻到点详情。<b>容器我倾向「页内弹层 + 首次打开才懒加载高德」</b>：体验连贯、首屏不受影响，代价是要引入高德 JS API。<b>另一条路是跳足迹页并定位</b>（如 <code>/travel?focus={id}</code>）：零新增依赖，但离开回顾页、且要 <code>/travel</code> 支持参数。这条请拍板。</li>
     <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜。<b>只有打过分的条目参与</b>，参与条数写在栏头（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序与 N 的取值留待详细设计。</li>
     <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。手绘条形按最大计数归一，数字右对齐。Top 10 之外收成「其余 14 个标签各出现 1 次」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。标签只统计条目，笔记只贡献「写过」那个数。</li>
     <li><span class="new">新增</span>：<b>空态与加载中都是手绘的</b>。空态：页头保留、四个数归零（与首页 hero「页头恒在、只换主体」一致，避免整页跳变），主体是一张纸上的便条加两处去处；并说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。加载中：<b>手绘骨架</b>（歪盒子轮廓 + 浅纸底）而不是转圈或真站的灰色骨架，加载完成不跳版。</li>
     <li><span class="new">发现</span>：<b>共享皮肤有一处缺口——书籍 / 地点的手绘圈是看不见的</b>。<code>handdrawn.css</code> 只给影视写了 <code>.g-movie .ring ellipse{stroke:…}</code>，而 <code>.g-book</code> / <code>.g-place</code> 只设了字色、没设圈色，椭圆的 <code>fill="none"</code> 又让默认填充失效，于是这两类的圈根本不画。<code>/plan</code> 页里同理，只是恰好没暴露。本屏用一条 <code>.hd-page .row .glyph .ring ellipse{stroke:currentColor}</code> 统一成类型色，<b>0.0.7 收敛皮肤时应并回 <code>handdrawn.css</code></b>。</li>
+    <li><span class="watch">一句实话</span>：<b>地图这一块，原型即终稿；第三方依赖只留在「点开」那一步。</b>示意底是纯 CSS/SVG（点阵纸、手绘圈、虚线），不联网、不要瓦片，画成什么样实现就是什么样；高德只在用户主动点开时才出场（按上面的容器方案）。代价是坐标成为硬依赖，而且「没填坐标的地点」必须在图上交代清楚——本屏给的做法是不落图、但在框里写一句（沙溪就是这么处理的）。</li>
   </ol>
   <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 校验、非法年份处理）、<b>真地图的四件事（瓦片 / 缩放 / 标签避让 / 聚合）—— 都由高德负责，本屏只是位置示意</b>、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、同一月份内地点超过 6 个时清单的折叠（本屏最多 3 个/月）。<br><b>既有不改</b>：页头导航仍是 6 项（回顾不占导航位，从首页 hero 进入，见 <a href="review-entry.html">入口与边界屏</a>）、移动 tab 仍是四项、页脚与主题切换不动。<br><b>移动端差异</b>：报头改单列（年份在上、说明句在下，说明句用 <code>flex-basis:100%</code> 强制换行）、年份降到 54px、统计卡两列等宽、A 的路线转成竖向串珠、评分两栏改单列、标签改单列。<br><b>需拍板 / 回写的</b>：①足迹三选一 —— 选 <b>A</b> 则 FR-004-2 从「复用 <code>TravelMap</code> 与图钉形态」改写为「按完成日期的先后串联」；选 <b>B</b> 则要写清「真地图裱框 + 逐点/按省两档密度」，并接受这一块依赖高德；选 <b>A + 跳转</b> 则要新增「<code>/travel</code> 支持按年筛选」这条需求。②「站点 = 月份」改变了 FR-004-2 的口径与验收标准（<b>年度地点数 ≠ 链上站点数</b>，两者都要能被解释）。③路线 / 清单 / 骨架这几个新组件应沉淀进共享皮肤，而不是留在本页。</p>
 
@@ -617,10 +660,10 @@ const TRAVEL = {
     { m:'2 月',  ps:[P('泉州 · 西街','福建'), P('平潭 · 北港','福建')] },
     { m:'3 月',  ps:[P('婺源 · 篁岭','江西'), P('景德镇','江西'), P('宏村','安徽')] },
     { m:'4 月',  ps:[P('黄山','安徽'), P('塔川','安徽'), P('西递','安徽')] },
-    { m:'5 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',null,1)] },
-    { m:'6 月',  ps:[P('丽江','云南'), P('束河','云南')] },
-    { m:'7 月',  ps:[P('香格里拉','云南'), P('梅里雪山','云南'), P('雨崩','云南')] },
-    { m:'8 月',  ps:[P('泸沽湖','云南'), P('稻城亚丁','四川')] },
+    { m:'5 月',  ps:[P('大理 · 洱海','云南',[25.61,100.27]), P('沙溪','云南',null,1)] },
+    { m:'6 月',  ps:[P('丽江','云南',[26.87,100.23]), P('束河','云南',[26.91,100.19])] },
+    { m:'7 月',  ps:[P('香格里拉','云南',[27.83,99.70]), P('梅里雪山','云南',[28.44,98.68]), P('雨崩','云南',[28.40,98.78])] },
+    { m:'8 月',  ps:[P('泸沽湖','云南',[27.70,100.78]), P('稻城亚丁','四川')] },
     { m:'9 月',  ps:[P('成都','四川'), P('都江堰','四川'), P('青城山','四川')] },
     { m:'10 月', ps:[P('平潭 · 东庠岛','福建'), P('福州 · 三坊七巷','福建')] },
     { m:'11 月', ps:[P('泉州 · 洛阳桥','福建'), P('崇武古城','福建'), P('厦门 · 鼓浪屿','福建')] },
@@ -629,6 +672,22 @@ const TRAVEL = {
 };
 /* 点多的那一档按省聚合：这两档的位置是示意用的（真实现里由高德定位） */
 const PROV_POS = { '福建':[76,52], '云南':[22,56], '广东':[68,74], '四川':[36,46], '安徽':[66,32], '江西':[58,28] };
+/* 点详情弹层的素材（照片是占位；评分 / 标签 / 短评照数据模型的字段来） */
+const DETAIL = {
+  '平潭':        { r:'8.6', t:'海岛,骑行', c:'北港村的石头厝住了一晚，风大得把帽子吹跑。' },
+  '泉州 · 西街': { r:'9.0', t:'人文,美食', c:'开元寺的东西塔下坐了很久，面线糊连吃了两天。' },
+  '潮州':        { r:'8.8', t:'美食,古城', c:'牌坊街走到广济桥，晚上的灯光比白天好看。' },
+  '景德镇':      { r:'9.1', t:'人文,手作', c:'在陶溪川捏了个歪杯子，烧出来居然没裂。' },
+  '婺源':        { r:'8.4', t:'自然,古村', c:'篁岭的晒秋是摆出来的，但还是好看。' },
+  '大理 · 洱海': { r:'9.3', t:'自然,骑行', c:'环海西路骑了一整天，日落时正好到才村。' },
+  '沙溪':        { r:'9.2', t:'古村,安静', c:'四方街的石板路，住了三晚不想走。' },
+  '丽江':        { r:'7.8', t:'古城,热闹', c:'人多，但清晨的巷子还是安静的。' },
+  '束河':        { r:'8.2', t:'古村,慢',   c:'比丽江安静，坐在溪边喝了一下午茶。' },
+  '香格里拉':    { r:'8.9', t:'高原,寺庙', c:'松赞林寺的台阶爬得喘，阳光很烈。' },
+  '梅里雪山':    { r:'9.4', t:'雪山,日出', c:'等了三天才看到日照金山，值。' },
+  '雨崩':        { r:'9.0', t:'徒步,雪山', c:'进村的最后一段全靠腿，腿废了但值得。' },
+  '泸沽湖':      { r:'8.7', t:'湖泊,慢',   c:'猪槽船上听船夫唱歌，水清得吓人。' }
+};
 
 function travelStats(key){
   const months = TRAVEL[key].months;
@@ -682,8 +741,22 @@ function renderA(key){
   }
 }
 
+/* 按屏幕距离并簇：真地图在某个缩放下也这么干（丽江与束河相距 5 公里、梅里与雨崩 8 公里，
+   不并就必然重叠）。gapX / gapY 的单位是百分比，因为「屏幕距离」在两个轴上不是同一把尺。 */
+function clusterBy(pts, gapX, gapY){
+  const cls = [];
+  pts.forEach(p=>{
+    const hit = cls.find(c=> Math.abs(c.x-p.x) < gapX && Math.abs(c.y-p.y) < gapY);
+    if(hit){ hit.items.push(p); hit.x = (hit.x*(hit.items.length-1) + p.x)/hit.items.length; hit.y = (hit.y*(hit.items.length-1) + p.y)/hit.items.length; }
+    else cls.push({ x:p.x, y:p.y, items:[p] });
+  });
+  return cls;
+}
+
 function renderB(key){
-  const d = travelStats(key), usePins = d.total <= 10;
+  /* 阈值随屏幕变：桌面 10 个点还读得过来；390px 手机里 10 个必然互相压，降到 5 */
+  const limit = document.body.dataset.vp === 'mobile' ? 5 : 10;
+  const d = travelStats(key), usePins = d.total <= limit;
   const frame = '<div class="dotgrid"></div>'
     + '<span class="tap">点任一点 → 高德看真实位置<span class="an" data-n="8"></span></span>'
     + '<span class="hd-compass"><svg viewBox="0 0 22 28" aria-hidden="true">'
@@ -695,15 +768,9 @@ function renderB(key){
     const projY = lat => 10 + (33 - lat) / 13 * 78;
     const seq = [];
     d.months.forEach(g=>g.ps.forEach(p=>{ if(p.ll) seq.push({ x:projX(p.ll[1]), y:projY(p.ll[0]), n:p.n, m:g.m }); }));
-    /* 近的点并簇 —— 真地图按屏幕距离并，所以阈值要按百分比给（不是按公里）：
-       5% 在 816 宽的框上约 40px、在 390 宽的手机上约 20px，都比 46px 的圈小，
-       于是不管桌面还是手机，圈都不会叠。 */
-    const cls = [];
-    seq.forEach(p=>{
-      const hit = cls.find(c=> Math.abs(c.x-p.x) < 5 && Math.abs(c.y-p.y) < 5);
-      if(hit){ hit.items.push(p); hit.x = (hit.x*(hit.items.length-1) + p.x)/hit.items.length; hit.y = (hit.y*(hit.items.length-1) + p.y)/hit.items.length; }
-      else cls.push({ x:p.x, y:p.y, items:[p] });
-    });
+    /* 近的点并簇 —— 5% 在 816 宽的框上约 40px、在 390 宽的手机上约 20px，
+       都比 46px 的圈小，于是不管桌面还是手机，圈都不会叠 */
+    const cls = clusterBy(seq, 5, 5);
     /* 缩放到这一年的范围并保持比例（真地图的自动缩放也是这么做的），
        否则固定视窗会把点全挤在一角、另一角空着 */
     if(cls.length > 1){
@@ -724,7 +791,7 @@ function renderB(key){
               + '<path d="' + path + '" fill="none" stroke="var(--hd-line)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="9 8"/></svg>' : '')
       + cls.map((c,i)=>{
           const names = c.items.map(it=>it.n).join(' · ');
-          return '<span class="hd-cl' + (i % 2 ? ' up' : '') + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
+          return '<span class="hd-cl' + (i % 2 ? ' up' : '') + '" data-place="' + c.items[0].n + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
                + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + (i+1) + '</b></span>'
                + '<span class="t">' + names + '</span></span>';
         }).join('')
@@ -758,6 +825,83 @@ function renderB(key){
 let vol = 'few';
 function renderTravel(){ renderA(vol); renderB(vol); }
 
+/* ===== 弹层：点详情 / 省地图 =====
+   「弹簧」= 弹性展开的动画（.hd-card 的 hdspring）。原型里可用顶部 seg 直接看两种内容，
+   真实实现里由「点图钉」触发点详情、「点省气泡」触发省地图，省地图里再点图钉继续下钻。 */
+let modal = 'none', modalPlace = '大理 · 洱海', modalProv = '云南';
+function monthOfPlace(n){
+  for(const k in TRAVEL){ for(const g of TRAVEL[k].months){ for(const p of g.ps){ if(p.n === n) return g.m; } } }
+  return '';
+}
+/* 把一组经纬度等比铺进一个框（真地图的自动缩放同理）；没坐标的返回空，交给清单交代 */
+function fitPins(items){
+  const idx = items.map((p,i)=>i).filter(i=> items[i].ll);
+  if(!idx.length) return [];
+  const X = idx.map(i=> (items[i].ll[1]-96)/28*100), Y = idx.map(i=> (33-items[i].ll[0])/13*100);
+  const x0 = Math.min.apply(null,X), x1 = Math.max.apply(null,X);
+  const y0 = Math.min.apply(null,Y), y1 = Math.max.apply(null,Y);
+  const k = Math.min(72/Math.max(x1-x0,1), 72/Math.max(y1-y0,1));
+  const cx = (x0+x1)/2, cy = (y0+y1)/2;
+  return idx.map(i=>({ i:i, n:items[i].n, x:50 + (X[idx.indexOf(i)]-cx)*k, y:50 + (Y[idx.indexOf(i)]-cy)*k }));
+}
+function renderLayer(){
+  const layer = document.getElementById('hdLayer');
+  if(modal === 'none'){ layer.hidden = true; setHTML('hdLayer',''); return; }
+  layer.hidden = false;
+  if(modal === 'point'){
+    const dt = DETAIL[modalPlace] || { r:'—', t:'', c:'' };
+    const chips = dt.t ? dt.t.split(',').map(t=>'<span class="hd-chip">' + t + '</span>').join('') : '';
+    const prov = (function(){ for(const g of TRAVEL[vol].months){ for(const p of g.ps){ if(p.n===modalPlace) return p.pv; } } return ''; })();
+    setHTML('hdLayer', '<div class="hd-card">'
+      + '<button class="x" type="button" aria-label="关闭">×</button>'
+      + '<div class="hd-photo"><span class="tf"></span><span class="g">' + modalPlace.slice(0,1) + '</span></div>'
+      + '<h3>' + modalPlace + '</h3>'
+      + '<p class="sub">2024 年 ' + monthOfPlace(modalPlace) + (prov ? ' · ' + prov : '') + ' · ★ ' + dt.r + '</p>'
+      + (dt.c ? '<p class="quote">' + dt.c + '</p>' : '')
+      + (chips ? '<div class="rowm">' + chips + '</div>' : '')
+      + '<div class="acts"><button class="hdbtn go" type="button">在地图上定位 →</button><button class="hdbtn" type="button">看这条记录 →</button></div>'
+      + '</div>');
+  } else {
+    /* 省地图：手绘裱框里放高德瓦片（首次打开才加载），图钉按真实坐标落位。
+       小图放不下标签，所以图上只留编号、名字进下方清单；靠得近的点并簇（丽江/束河、梅里/雨崩） */
+    const items = [];
+    TRAVEL[vol].months.forEach(g=>g.ps.forEach(p=>{ if(p.pv === modalProv) items.push(p); }));
+    /* 这张图约 480×250，46px 的圈对应 x 9% / y 16% */
+    const cls = clusterBy(fitPins(items), 9, 16);
+    const miss = items.filter(p=>!p.ll);
+    setHTML('hdLayer', '<div class="hd-card">'
+      + '<button class="x" type="button" aria-label="关闭">×</button>'
+      + '<h3>' + modalProv + ' · ' + items.length + ' 个地方</h3>'
+      + '<p class="sub">2024 年 · 点图钉看这条记录</p>'
+      + '<div class="hd-provmap"><div class="dotgrid"></div>'
+      + cls.map((c,i)=>'<span class="hd-cl" data-place="' + c.items[0].n + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
+          + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + (i+1) + '</b></span></span>').join('')
+      + '<span class="fnote">高德瓦片 · 手绘裱框 · 首次打开才加载</span></div>'
+      + '<div class="hd-provlist">'
+      + cls.map((c,i)=>'<div class="k"><b>' + (i+1) + '</b><span>'
+          + c.items.map(it=>it.n).join(' · ') + ' · ' + c.items.map(it=>monthOfPlace(it.n)).filter((v,j,a)=>a.indexOf(v)===j).join(' · ')
+          + '</span></div>').join('')
+      + miss.map(p=>'<div class="k"><b>—</b><span>' + p.n + ' · ' + monthOfPlace(p.n) + '（没填坐标，没落图）</span></div>').join('')
+      + '</div></div>');
+  }
+}
+function syncModalSeg(){
+  document.querySelectorAll('.review [data-modal]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.modal === modal)));
+}
+document.querySelectorAll('.review [data-modal]').forEach(b=>b.addEventListener('click',()=>{
+  modal = b.dataset.modal; syncModalSeg(); renderLayer();
+}));
+/* 点图钉（主图里 / 省地图里）→ 打开这个点的详情；省地图里再点即下钻 */
+document.getElementById('mapBDyn').addEventListener('click', e=>{
+  const el = e.target.closest('.hd-cl[data-place]');
+  if(el){ modal = 'point'; modalPlace = el.dataset.place; syncModalSeg(); renderLayer(); }
+});
+document.getElementById('hdLayer').addEventListener('click', e=>{
+  if(e.target.closest('.x')){ modal = 'none'; syncModalSeg(); renderLayer(); return; }
+  const el = e.target.closest('.hd-cl[data-place]');
+  if(el){ modal = 'point'; modalPlace = el.dataset.place; syncModalSeg(); renderLayer(); }
+});
+
 document.querySelectorAll('.review [data-state]').forEach(b=>b.addEventListener('click',()=>{
   state=b.dataset.state;
   document.querySelectorAll('.review [data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
@@ -771,11 +915,12 @@ document.querySelectorAll('.review [data-scheme]').forEach(b=>b.addEventListener
 document.querySelectorAll('.review [data-vol]').forEach(b=>b.addEventListener('click',()=>{
   vol=b.dataset.vol;
   document.querySelectorAll('.review [data-vol]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
-  renderTravel();
+  renderTravel(); renderLayer();   /* 省地图的清单跟着当前量级走 */
 }));
 document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
   document.body.dataset.vp=b.dataset.vp;
   document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  renderTravel();   /* 阈值随屏幕变（桌面 10 / 手机 5），切视口要重算 */
 }));
 document.getElementById('themeBtn').addEventListener('click',e=>{
   const dark=document.documentElement.classList.toggle('dark');
@@ -789,6 +934,7 @@ document.getElementById('anBtn').addEventListener('click',e=>{
 });
 render();
 renderTravel();
+renderLayer();
 </script>
 </body>
 </html>
