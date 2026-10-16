@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.4 设计图 · 回顾入口与隐私边界 — 拾光记</title>
+<link rel="icon" href="data:,">
+<style>
+
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+.seg small{color:#7D8783;font-size:11px;align-self:center;margin-left:6px}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;display:flex;flex-direction:column;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:hidden;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+.device-body{flex:1;min-height:0;overflow:auto}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台导航（既有样式，未改动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:36px;text-decoration:none}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:17px}
+.nav span{position:relative;padding:8px 0;color:var(--sgj-text-2);font-size:14px;white-space:nowrap}
+.nav span.on{font-weight:700;color:var(--sgj-primary)}
+.nav span.on::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--sgj-primary)}
+.nav .nav-review{color:var(--sgj-primary)}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px;flex-shrink:0}
+.page{padding:36px;max-width:1320px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh-in{padding:0 12px;gap:12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en{display:none}
+body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .theme-toggle{width:32px;height:32px;font-size:13px}
+body[data-vp=mobile] .page{padding:16px 12px 76px}
+body[data-vp=mobile] .tabbar{display:flex;height:60px;z-index:6;flex:none;
+  background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=desktop] .tabbar{display:none}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+
+/* ===== 前台页脚（既有样式，未改动）===== */
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep);margin-top:32px}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .ff{padding:16px 14px 24px}
+body[data-vp=mobile] .ff-line{font-size:12px}
+
+/* ===== 标注气泡 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:7px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .keep{color:#5D6F66;font-weight:600}
+.legend .watch{color:#B18458;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .keep{color:#7F9B8D}
+html.dark .legend .watch{color:#C69A67}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:14px;font-size:12px;color:#7D8783}
+
+/* ===== 前台共用控件 ===== */
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;
+  font-size:13px;font-weight:500;letter-spacing:.5px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+html.dark .btn{color:#171B1A}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.only-desktop{display:block}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 入口方案切换：hero 卡 vs 导航第 7 项 ===== */
+body[data-entry=hero] .nav-review{display:none}
+body[data-entry=nav] .entry-card{display:none}
+/* 场景容器：承接设备框的 flex 链（页头常驻 / 内容滚动 / tab 固定） */
+.scene{display:flex;flex-direction:column;flex:1;min-height:0}
+/* 访客：心愿与回顾都不渲染 */
+.scene.guest .nav-review,.scene.guest .nav-wish,.scene.guest .entry-card,.scene.guest .wish-bar{display:none !important}
+
+/* ===== 首页 hero（既有版式，复习用）===== */
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 452px;gap:48px;padding:40px 0 24px;margin-bottom:10px}
+.hero-blob{position:absolute;border-radius:50%;pointer-events:none}
+.hero-blob-1{right:96px;top:0;width:340px;height:340px;background:var(--sgj-primary-soft)}
+.hero-blob-2{right:-40px;top:260px;width:160px;height:160px;background:var(--sgj-moss-soft)}
+.hero-text{position:relative;z-index:1;align-self:center;min-width:0}
+.hero-text h1{margin:0 0 14px;color:var(--sgj-text);font-family:var(--sgj-font-serif);font-size:46px;font-weight:700;line-height:1.35}
+.hero-sub{margin:0;color:var(--sgj-text-2);font-family:var(--sgj-font-serif);font-size:19px;line-height:1.4}
+.hero-actions{display:flex;align-items:center;gap:14px;margin-top:32px;flex-wrap:wrap}
+.hero-entry{display:inline-flex;align-items:center;gap:12px;padding:0 20px;height:62px;background:var(--sgj-bg-card);
+  border:1px solid var(--sgj-border-card);border-radius:31px;cursor:pointer;box-shadow:var(--sgj-shadow-sm);
+  transition:transform .14s cubic-bezier(.23,1,.32,1)}
+.hero-entry:hover{transform:translateY(-2px)}
+.hero-entry-icon{font-size:19px;color:var(--sgj-primary)}
+.hero-entry-body{display:flex;flex-direction:column;line-height:1.25;text-align:left}
+.hero-entry-text{font-family:var(--sgj-font-serif);font-weight:700;font-size:14px;color:var(--sgj-text)}
+.hero-entry-sub{font-size:11px;color:var(--sgj-text-3);margin-top:2px;font-variant-numeric:tabular-nums}
+.hero-entry-arrow{font-size:16px;color:var(--sgj-primary)}
+.hero-cta{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 24px;height:48px;
+  background:var(--sgj-primary);color:#fff;font-size:14px;letter-spacing:.5px}
+html.dark .hero-cta{color:#171B1A}
+.hero-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,216px);gap:18px;justify-content:end}
+.stat-item{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:20px;width:216px}
+.stat-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-primary-dark);background:var(--sgj-primary-soft)}
+.stat-value{display:block;margin-top:14px;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.2;
+  color:var(--sgj-text);font-variant-numeric:tabular-nums}
+.stat-label{display:block;margin-top:6px;font-size:13px;color:var(--sgj-text-3)}
+.wish-bar{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:20px;background:var(--sgj-bg-card);
+  border:1px solid var(--sgj-border-card);border-radius:18px}
+.wish-bar-icon{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:20px;color:var(--sgj-amber);background:var(--sgj-amber-soft);flex-shrink:0}
+.wish-bar-num{font-family:var(--sgj-font-serif);font-weight:700;font-size:30px;color:var(--sgj-amber);font-variant-numeric:tabular-nums}
+.wish-bar-label{flex:1;font-size:12px;color:var(--sgj-text-3)}
+.wish-bar-more{font-size:12px;font-weight:500;color:var(--sgj-primary);white-space:nowrap}
+
+/* ===== 区块头 + 时间线（既有版式，复习用）===== */
+.section-head{display:flex;align-items:center;gap:16px;margin:26px 0 22px}
+.section-title{font-family:var(--sgj-font-serif);font-size:30px;font-weight:700;color:var(--sgj-text);margin:0;flex-shrink:0}
+.section-strip{flex:1;display:flex;gap:14px;justify-content:center;min-width:0}
+.perf{width:26px;height:10px;border-radius:5px;background:var(--sgj-bg-deep);flex-shrink:0}
+.section-sub{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);flex-shrink:0}
+.tl-date{font-size:12.5px;color:var(--sgj-text-3);margin:14px 0 10px;font-variant-numeric:tabular-nums}
+.tl-card{display:flex;align-items:center;gap:14px;background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);
+  border-radius:var(--sgj-r-lg);padding:12px 16px;box-shadow:var(--sgj-shadow-sm);margin-bottom:10px}
+.tl-cover{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:19px}
+.tl-title{font-size:15px;font-weight:600;color:var(--sgj-text)}
+.tl-meta{font-size:12px;color:var(--sgj-text-4);margin-top:3px}
+.tl-rating{font-family:var(--sgj-font-serif);font-weight:700;font-size:17px;color:var(--sgj-amber);margin-left:auto;font-variant-numeric:tabular-nums}
+
+/* ===== 守卫拦截 ===== */
+.guard-wrap{display:flex;align-items:center;justify-content:center;min-height:460px;padding:40px 20px}
+.guard{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);
+  padding:46px 40px;text-align:center;box-shadow:var(--sgj-shadow-sm);max-width:520px}
+.guard-icon{display:inline-flex;align-items:center;justify-content:center;width:62px;height:62px;border-radius:18px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:26px;color:var(--sgj-primary-dark);background:var(--sgj-primary-soft);margin-bottom:20px}
+.guard h3{margin:0 0 12px;font-family:var(--sgj-font-serif);font-size:23px;color:var(--sgj-text)}
+.guard p{margin:0 auto;color:var(--sgj-text-3);font-size:13.5px;max-width:400px}
+.guard .acts{margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.guard .hint{margin-top:20px;font-size:12px;color:var(--sgj-text-4)}
+
+/* ===== 移动端 ===== */
+body[data-vp=mobile] .hero{grid-template-columns:1fr;gap:24px;padding:20px 0 8px}
+body[data-vp=mobile] .hero-text h1{font-size:32px}
+body[data-vp=mobile] .hero-sub{font-size:16px}
+body[data-vp=mobile] .hero-actions{gap:10px;margin-top:22px}
+body[data-vp=mobile] .hero-entry{height:54px;padding:0 16px}
+body[data-vp=mobile] .hero-cta{height:44px;padding:0 18px}
+body[data-vp=mobile] .hero-stats{grid-template-columns:repeat(2,1fr);gap:12px;justify-content:stretch}
+body[data-vp=mobile] .stat-item{width:auto;padding:14px}
+body[data-vp=mobile] .stat-value{font-size:26px;margin-top:10px}
+body[data-vp=mobile] .stat-label{font-size:12px}
+body[data-vp=mobile] .wish-bar{padding:14px;gap:12px}
+body[data-vp=mobile] .wish-bar-icon{width:46px;height:46px;font-size:17px}
+body[data-vp=mobile] .wish-bar-num{font-size:24px}
+body[data-vp=mobile] .section-title{font-size:22px}
+body[data-vp=mobile] .section-sub{display:none}
+body[data-vp=mobile] .guard{padding:32px 20px}
+
+</style>
+</head>
+<body data-vp="desktop" data-entry="hero">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.4 设计图</b>
+    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html">回顾页</a><a href="review-entry.html" aria-current="page">入口与边界</a></nav>
+    <span class="seg" role="group" aria-label="场景"><button data-scene="owner" aria-pressed="true">站主首页</button><button data-scene="guest" aria-pressed="false">访客首页</button><button data-scene="guard" aria-pressed="false">访客直达 /review</button></span>
+    <span class="seg" role="group" aria-label="入口方案"><button data-entry="hero" aria-pressed="true">A · hero 卡</button><button data-entry="nav" aria-pressed="false">B · 导航第 7 项</button></span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+
+    <!-- ===== 场景 1 / 2：首页（站主 / 访客）===== -->
+    <div class="scene owner" id="sceneOwner">
+      <header class="fh">
+        <div class="fh-in">
+          <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+          <nav class="nav">
+            <span class="on">首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span>
+            <span class="nav-wish">心愿</span><span class="nav-review">回顾</span>
+          </nav>
+          <span class="theme-toggle">☾</span>
+        </div>
+      </header>
+
+      <div class="device-body">
+      <div class="page">
+        <section class="hero">
+          <div class="hero-blob hero-blob-1" aria-hidden="true"></div>
+          <div class="hero-blob hero-blob-2" aria-hidden="true"></div>
+
+          <div class="hero-text">
+            <h1>下午好，拾光人</h1>
+            <p class="hero-sub">你已经记录了 495 件值得记住的小事，</p>
+            <p class="hero-sub">日子正在被你慢慢写成照片。</p>
+            <div class="hero-actions">
+              <div class="hero-entry">
+                <span class="hero-entry-icon">✈</span>
+                <span class="hero-entry-body">
+                  <span class="hero-entry-text">旅行足迹地图</span>
+                  <span class="hero-entry-sub">87 个地点 · 把远方连成一条线</span>
+                </span>
+                <span class="hero-entry-arrow">↘</span>
+              </div>
+              <div class="hero-entry entry-card">
+                <span class="hero-entry-icon">◷</span>
+                <span class="hero-entry-body">
+                  <span class="hero-entry-text">历年回顾</span>
+                  <span class="hero-entry-sub">2024 · 87 件事</span>
+                </span>
+                <span class="hero-entry-arrow">↘</span>
+                <span class="an" data-n="1"></span>
+              </div>
+              <button class="hero-cta" type="button">开始记录 →</button>
+            </div>
+          </div>
+
+          <div class="hero-stats">
+            <div class="stat-item">
+              <span class="stat-icon">影</span><span class="stat-value">214</span><span class="stat-label">看过 · 电影/剧集</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon" style="color:var(--sgj-moss);background:var(--sgj-moss-soft)">书</span><span class="stat-value">38</span><span class="stat-label">读过 · 书籍</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon" style="color:var(--sgj-amber);background:var(--sgj-amber-soft)">地</span><span class="stat-value">87</span><span class="stat-label">去过 · 地点</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">文</span><span class="stat-value">156</span><span class="stat-label">写过 · 笔记</span>
+            </div>
+            <div class="wish-bar">
+              <span class="wish-bar-icon">愿</span>
+              <span class="wish-bar-num">12</span>
+              <span class="wish-bar-label">心愿 · 在想 8 / 在做 4</span>
+              <span class="wish-bar-more">待完成 →</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head">
+          <h2 class="section-title">我的时光</h2>
+          <div class="section-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+          <div class="section-sub">EVERYDAY MEMOIR</div>
+        </div>
+
+        <div class="tl-date">2024 年 12 月 28 日</div>
+        <div class="tl-card">
+          <span class="tl-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span>
+          <span class="tl-body"><span class="tl-title">宇宙探索编辑部</span><div class="tl-meta">电影 · 看过</div></span>
+          <span class="tl-rating">★ 8.5</span>
+        </div>
+        <div class="tl-date">2024 年 12 月 21 日</div>
+        <div class="tl-card">
+          <span class="tl-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">书</span>
+          <span class="tl-body"><span class="tl-title">房思琪的初恋乐园</span><div class="tl-meta">书籍 · 读过</div></span>
+          <span class="tl-rating">★ 8.7</span>
+        </div>
+      </div>
+
+      <footer class="ff">
+        <div class="ff-line">拾光记 · 把日子慢慢写成照片</div>
+        <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
+      </footer>
+      </div>
+
+      <nav class="tabbar"><div class="on">首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+    </div>
+
+    <!-- ===== 场景 2：访客首页（匿名）===== -->
+    <div class="scene guest" id="sceneGuest" hidden>
+      <header class="fh">
+        <div class="fh-in">
+          <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+          <nav class="nav">
+            <span class="on">首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span>
+            <span class="nav-wish">心愿</span><span class="nav-review">回顾</span>
+          </nav>
+          <span class="theme-toggle">☾</span>
+        </div>
+      </header>
+
+      <div class="device-body">
+      <div class="page">
+        <section class="hero">
+          <div class="hero-blob hero-blob-1" aria-hidden="true"></div>
+          <div class="hero-blob hero-blob-2" aria-hidden="true"></div>
+
+          <div class="hero-text">
+            <h1>欢迎来到拾光记</h1>
+            <p class="hero-sub">这里记录了 495 件值得记住的小事，</p>
+            <p class="hero-sub">日子正在被慢慢写成照片。</p>
+            <div class="hero-actions">
+              <div class="hero-entry">
+                <span class="hero-entry-icon">✈</span>
+                <span class="hero-entry-body">
+                  <span class="hero-entry-text">旅行足迹地图</span>
+                  <span class="hero-entry-sub">87 个地点 · 把远方连成一条线</span>
+                </span>
+                <span class="hero-entry-arrow">↘</span>
+              </div>
+              <div class="hero-entry entry-card">
+                <span class="hero-entry-icon">◷</span>
+                <span class="hero-entry-body">
+                  <span class="hero-entry-text">历年回顾</span>
+                  <span class="hero-entry-sub">2024 · 87 件事</span>
+                </span>
+                <span class="hero-entry-arrow">↘</span>
+              </div>
+              <button class="hero-cta" type="button">开始记录 →</button>
+              <span class="an" data-n="3"></span>
+            </div>
+          </div>
+
+          <div class="hero-stats">
+            <div class="stat-item">
+              <span class="stat-icon">影</span><span class="stat-value">214</span><span class="stat-label">看过 · 电影/剧集</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon" style="color:var(--sgj-moss);background:var(--sgj-moss-soft)">书</span><span class="stat-value">38</span><span class="stat-label">读过 · 书籍</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon" style="color:var(--sgj-amber);background:var(--sgj-amber-soft)">地</span><span class="stat-value">87</span><span class="stat-label">去过 · 地点</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">文</span><span class="stat-value">156</span><span class="stat-label">写过 · 笔记</span>
+            </div>
+            <div class="wish-bar">
+              <span class="wish-bar-icon">愿</span>
+              <span class="wish-bar-num">12</span>
+              <span class="wish-bar-label">心愿 · 在想 8 / 在做 4</span>
+              <span class="wish-bar-more">待完成 →</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head">
+          <h2 class="section-title">我的时光</h2>
+          <div class="section-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+          <div class="section-sub">EVERYDAY MEMOIR</div>
+        </div>
+        <div class="tl-date">2024 年 12 月 28 日</div>
+        <div class="tl-card">
+          <span class="tl-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span>
+          <span class="tl-body"><span class="tl-title">宇宙探索编辑部</span><div class="tl-meta">电影 · 看过</div></span>
+          <span class="tl-rating">★ 8.5</span>
+        </div>
+      </div>
+
+      <footer class="ff">
+        <div class="ff-line">拾光记 · 把日子慢慢写成照片</div>
+        <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
+      </footer>
+      </div>
+
+      <nav class="tabbar"><div class="on">首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+    </div>
+
+    <!-- ===== 场景 3：访客直达 /review → 守卫拦截 ===== -->
+    <div class="scene gate" id="sceneGuard" hidden>
+      <header class="fh">
+        <div class="fh-in">
+          <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+          <nav class="nav">
+            <span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span>
+          </nav>
+          <span class="theme-toggle">☾</span>
+        </div>
+      </header>
+
+      <div class="device-body">
+      <div class="page">
+        <div class="guard-wrap">
+          <div class="guard">
+            <div class="guard-icon">◷</div>
+            <h3>回顾是你自己的页面</h3>
+            <p>登录后可以回看每一年的积累——看过的、读过的、去过的，都收在一张纸上。</p>
+            <div class="acts">
+              <a class="btn" href="#">去登录</a>
+              <a class="btn line" href="#">返回首页</a>
+            </div>
+            <p class="hint">登录后会回到你刚才要看的这一页<span class="an" data-n="4"></span></p>
+          </div>
+        </div>
+      </div>
+
+      <footer class="ff">
+        <div class="ff-line">拾光记 · 把日子慢慢写成照片</div>
+        <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
+      </footer>
+      </div>
+
+      <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+    </div>
+
+  </div>
+</main>
+
+<section class="legend">
+
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>方案 A（推荐）：回顾卡放进首页 hero 的按钮排</b>。hero 已有「旅行足迹地图」入口卡的先例（62px 胶囊卡），同形制再加一张即可；桌面导航保持 <b>6 项不动</b>。卡片自带信息量——副标题给最近一年的数字「2024 · 87 件事」，与地图卡的「87 个地点 · 把远方连成一条线」同一读法：入口本身就是一句结论，不只是一句「查看」。</li>
+    <li><span class="watch">方案</span>：<b>方案 B：导航加第 7 项「回顾」</b>（切到右上「B · 导航第 7 项」看）。好处是常年可达、不必先回首页；代价有三——桌面导航从 6 项变 7 项（0.0.3 刚因「心愿」从 5 项加到 6 项）；回顾一年只进几次，占一个常驻位不划算；<b>移动端 tab 仍是 4 项，方案 B 在手机上其实没有入口</b>（除非同时改 tab）。两案功能完全相同，只差入口位置，择一即可。</li>
+    <li><span class="new">新增</span>：<b>入口对访客不出现</b>（D-11 已拍板「仅登录可见」）。与心愿条、心愿单同一套处理：访客的 hero 只有地图卡与「开始记录」，心愿条与回顾卡都不渲染（切到「访客首页」看完整对比）。访客拿到的是一份完整的、无私人模块的首页，不会看到灰掉的入口——<b>私人模块干脆不出现，比出现后拦截更省心</b>。</li>
+    <li><span class="new">新增</span>：<b>访客直达 <code>/review</code> 被守卫拦下</b>。复用 <code>/plan</code> 的同一套守卫：路由弹去登录并带回跳参数，接口对匿名请求返回 <code>401</code>。本屏画的是拦截结果（示意），不是登录页本体——真实实现里访客会被送到登录页，登录后回到 <code>/review</code>。</li>
+    <li><span class="watch">观察</span>：<b>前台目前没有独立登录页</b>——守卫把访客送去的是后台登录页 <code>/login</code>（Element Plus 后台风格），与前台视觉不同源。要不要为私人前台页做一个前台登录页，是另一个议题，<b>本屏不解决、本期不动</b>，仅在此记录。</li>
+    <li><span class="keep">沿用</span>：<b>首页 hero 与「我的时光」时间线均未改动</b>（本屏把它们画出来只为交代入口的上下文）。hero 统计数字仍只显示已完成（看过 / 读过 / 去过 / 笔记），规则来自 <code>buildSummary</code>，0.0.4 不触碰；心愿条仍只在登录态渲染。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：登录页本体与登录后的回跳、真实守卫实现（<code>beforeEach</code> 的 <code>redirect</code> 参数）、导航项的权限渲染细节、回顾卡在窄屏下的换行策略（现有 <code>hero-actions</code> 已 <code>flex-wrap</code>，本屏按换行画）。<br><b>可切组合</b>：站主首页 / 访客首页 / 访客直达 <b>×</b> 入口方案 A / B <b>×</b> 桌面 / 移动端 <b>×</b> 亮 / 暗。建议重点看两组对比：<b>站主 vs 访客</b>（隐私边界）、<b>方案 A 的移动端 vs 方案 B 的移动端</b>（后者没有入口）。</p>
+
+</section>
+
+<script>
+function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+
+const scenes = { owner:'sceneOwner', guest:'sceneGuest', guard:'sceneGuard' };
+document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{
+  const key=b.dataset.scene;
+  document.querySelectorAll('[data-scene]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  Object.entries(scenes).forEach(([k,id])=>show(id, k===key));
+  /* 拦截场景下入口方案与视口的组合没有意义，但保留切换不影响观感 */
+  const dv=document.querySelector('.device-body'); if(dv && dv.scrollTop>0) dv.scrollTo({top:0,behavior:'auto'});
+}));
+document.querySelectorAll('.review [data-entry]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.entry=b.dataset.entry;
+  document.querySelectorAll('.review [data-entry]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+</script>
+</body>
+</html>

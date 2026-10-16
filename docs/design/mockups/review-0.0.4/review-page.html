@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.4 设计图 · 回顾页 /review — 拾光记</title>
+<link rel="icon" href="data:,">
+<style>
+
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.screens a.here{background:#5D6F66;border-color:#5D6F66;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框（可滚动真视口）===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;display:flex;flex-direction:column;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:hidden;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto;transition:max-width .18s}
+.device-body{flex:1;min-height:0;overflow:auto}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台导航（既有样式，未改动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px;text-decoration:none}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:18px}
+.nav span{position:relative;padding:8px 0;color:var(--sgj-text-2);font-size:14px}
+.nav span.on{font-weight:700;color:var(--sgj-primary)}
+.nav span.on::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--sgj-primary)}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px;flex-shrink:0}
+.page{padding:36px;max-width:1320px;margin:0 auto}
+.tabbar{display:none}
+body[data-vp=mobile] .fh-in{padding:0 12px;gap:12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en{display:none}
+body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .theme-toggle{width:32px;height:32px;font-size:13px}
+body[data-vp=mobile] .page{padding:16px 12px 76px}
+body[data-vp=mobile] .tabbar{display:flex;height:60px;z-index:6;flex:none;
+  background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+
+/* ===== 前台页脚（既有样式，未改动）===== */
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep);margin-top:32px}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .ff{padding:16px 14px 24px}
+body[data-vp=mobile] .ff-line{font-size:12px}
+
+/* ===== 标注气泡 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;font-family:var(--sgj-font-sans);vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:7px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .keep{color:#5D6F66;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .keep{color:#7F9B8D}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:14px;font-size:12px;color:#7D8783}
+
+/* ===== 前台共用控件 ===== */
+.el-button{font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;padding:6px 12px;
+  font-size:12px;cursor:pointer;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);white-space:nowrap}
+.el-button--primary{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff}
+html.dark .el-button--primary{color:#171B1A}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:var(--sgj-r-pill);padding:0 20px;height:40px;background:var(--sgj-primary);color:#fff;
+  font-size:13px;font-weight:500;letter-spacing:.5px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+html.dark .btn{color:#171B1A}
+.btn.line{background:transparent;color:var(--sgj-text-2);border:1px solid var(--sgj-border)}
+.only-desktop{display:block}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin{width:13px;height:13px;border:2px solid var(--sgj-border);border-top-color:var(--sgj-primary);border-radius:50%;animation:sp .7s linear infinite;flex:none}
+.sk{display:block;background:var(--sgj-bg-deep);border-radius:6px;animation:sk 1.2s ease-in-out infinite}
+@keyframes sk{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+
+/* ===== 回顾页 · hero：年份是主角 ===== */
+.rev-hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 452px;gap:44px;padding:40px 0 18px;margin-bottom:6px}
+.rev-blob{position:absolute;border-radius:50%;pointer-events:none}
+.rev-blob-1{right:120px;top:-10px;width:320px;height:320px;background:var(--sgj-primary-soft)}
+.rev-blob-2{right:-34px;top:246px;width:150px;height:150px;background:var(--sgj-moss-soft)}
+.rev-hero-text{position:relative;z-index:1;align-self:center;min-width:0}
+.rev-eyebrow{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);margin-bottom:8px}
+.rev-year-row{display:flex;align-items:center;gap:10px}
+.rev-year{font-family:var(--sgj-font-serif);font-weight:700;font-size:74px;line-height:1.04;color:var(--sgj-text);
+  font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.rev-arrow{width:38px;height:38px;flex:none;border-radius:50%;border:1px solid var(--sgj-border);background:var(--sgj-bg-card);
+  color:var(--sgj-text-2);font-size:17px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  transition:transform .14s cubic-bezier(.23,1,.32,1)}
+.rev-arrow:hover{transform:translateY(-1px);box-shadow:var(--sgj-shadow-sm)}
+.rev-arrow[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none}
+.rev-lead{margin:12px 0 0;font-family:var(--sgj-font-serif);font-size:21px;line-height:1.5;color:var(--sgj-text-2)}
+.rev-lead b{font-size:25px;color:var(--sgj-primary-dark);font-variant-numeric:tabular-nums}
+.rev-caliber{margin:14px 0 0;font-size:12px;color:var(--sgj-text-4)}
+.rev-chips{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;align-items:center}
+.chip{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--sgj-border);background:var(--sgj-bg-card);color:var(--sgj-text-2);font-variant-numeric:tabular-nums}
+.chip.on{background:var(--sgj-primary);border-color:var(--sgj-primary);color:#fff;font-weight:600}
+html.dark .chip.on{color:#171B1A}
+.chip-cap{font-size:11px;color:var(--sgj-text-4);margin-left:2px}
+.rev-hero-sk{position:relative;z-index:1;align-self:center}
+
+/* hero 统计：沿用首页 hero 的 2×216px 网格与 stat-item 形状 */
+.rev-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,216px);gap:18px;justify-content:end}
+.stat-item{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:20px;width:216px;box-sizing:border-box}
+.stat-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-primary-dark);background:var(--sgj-primary-soft)}
+.stat-value{display:block;margin-top:14px;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.2;
+  color:var(--sgj-text);font-variant-numeric:tabular-nums}
+.stat-label{display:block;margin-top:6px;font-size:13px;color:var(--sgj-text-3)}
+.stat-sk{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:16px;padding:20px;width:216px}
+
+/* ===== 区块头：沿用首页「沉浸式分段标题 + 胶片齿孔」===== */
+.rev-sec{margin-top:46px}
+.sec-head{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.sec-title{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;color:var(--sgj-text);margin:0;flex-shrink:0}
+.sec-strip{flex:1;display:flex;gap:14px;justify-content:center;min-width:0}
+.perf{width:26px;height:10px;border-radius:5px;background:var(--sgj-bg-deep);flex-shrink:0}
+.sec-sub{font-size:11px;letter-spacing:4px;color:var(--sgj-text-4);flex-shrink:0}
+.sec-note{margin:14px 0 0;font-size:12.5px;color:var(--sgj-text-4)}
+
+/* ===== 地图：纯 CSS 示意底，不是真实瓦片 ===== */
+.map-wrap{position:relative;height:372px;border-radius:var(--sgj-r-lg);overflow:hidden;border:1px solid var(--sgj-border-card);
+  background:
+    repeating-linear-gradient(0deg,transparent 0 39px,var(--sgj-border-card) 39px 40px),
+    repeating-linear-gradient(90deg,transparent 0 39px,var(--sgj-border-card) 39px 40px),
+    var(--sgj-bg-deep);}
+.map-land{position:absolute;left:5%;top:9%;width:74%;height:78%;background:var(--sgj-bg-card);
+  border-radius:56% 44% 52% 48%/48% 52% 44% 56%;box-shadow:inset 0 0 0 1px var(--sgj-border-card)}
+.map-water{position:absolute;right:0;top:0;width:30%;height:100%;background:linear-gradient(180deg,rgba(93,111,102,.16),rgba(93,111,102,.06))}
+.map-road{position:absolute;height:2px;background:var(--sgj-border);transform-origin:left center;border-radius:2px}
+.pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:3px}
+.pin-dot{width:11px;height:11px;border-radius:50%;background:var(--sgj-primary);box-shadow:0 0 0 4px rgba(168,95,82,.16)}
+html.dark .pin-dot{box-shadow:0 0 0 4px rgba(194,122,109,.2)}
+.pin-label{font-size:11px;color:var(--sgj-text-2);background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);
+  border-radius:999px;padding:1px 8px;white-space:nowrap;box-shadow:var(--sgj-shadow-sm)}
+.map-legend{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--sgj-text-3);background:var(--sgj-bg-card);
+  border:1px solid var(--sgj-border-card);border-radius:999px;padding:3px 10px}
+.place-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.place{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 12px;border-radius:999px;
+  background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2)}
+.place i{width:7px;height:7px;border-radius:50%;background:var(--sgj-primary);flex:none}
+.place.off{color:var(--sgj-text-4);border-style:dashed;background:transparent}
+.place.off i{background:transparent;box-shadow:inset 0 0 0 1px var(--sgj-text-4)}
+.place small{font-size:10.5px;color:var(--sgj-text-4)}
+
+/* ===== 评分 Top：影视 / 书籍两栏 ===== */
+.top-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.top-col{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);
+  padding:16px 20px 10px;box-shadow:var(--sgj-shadow-sm)}
+.top-col h3{margin:0 0 12px;font-family:var(--sgj-font-serif);font-size:17px;display:flex;align-items:center;gap:8px;color:var(--sgj-text)}
+.top-col h3 span{font-family:var(--sgj-font-sans);font-size:11px;letter-spacing:2.4px;color:var(--sgj-text-4);font-weight:400}
+.rank{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--sgj-border-card)}
+.rank:first-of-type{border-top:0}
+.rank-no{font-family:var(--sgj-font-serif);font-weight:700;font-size:15px;color:var(--sgj-text-4);width:16px;flex:none;font-variant-numeric:tabular-nums}
+.rank-cover{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;
+  font-family:var(--sgj-font-serif);font-weight:700;font-size:16px}
+.rank-body{flex:1;min-width:0}
+.rank-title{display:block;font-size:14px;font-weight:600;color:var(--sgj-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{display:block;font-size:11.5px;color:var(--sgj-text-4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-score{font-family:var(--sgj-font-serif);font-weight:700;font-size:18px;color:var(--sgj-amber);flex:none;font-variant-numeric:tabular-nums}
+
+/* ===== 标签分布 ===== */
+.tags{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:20px;box-shadow:var(--sgj-shadow-sm)}
+.tag-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 30px}
+.tag-row{display:grid;grid-template-columns:62px 1fr 24px;align-items:center;gap:10px}
+.tag-name{font-size:13px;color:var(--sgj-text-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag-bar{height:8px;border-radius:999px;background:var(--sgj-bg-deep);overflow:hidden}
+.tag-bar i{display:block;height:100%;border-radius:999px;background:var(--sgj-primary-light)}
+.tag-cnt{font-size:12px;color:var(--sgj-text-3);text-align:right;font-variant-numeric:tabular-nums}
+.tag-rest{margin-top:16px;padding-top:14px;border-top:1px solid var(--sgj-border-card);font-size:12.5px;color:var(--sgj-text-4);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag-rest .place{font-size:12px;padding:3px 10px}
+
+/* ===== 空态 ===== */
+.rev-empty{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);
+  padding:54px 24px 50px;text-align:center;box-shadow:var(--sgj-shadow-sm)}
+.rev-empty h3{margin:0 0 10px;font-family:var(--sgj-font-serif);font-size:22px;color:var(--sgj-text)}
+.rev-empty p{margin:0 auto;color:var(--sgj-text-3);font-size:13.5px;max-width:520px}
+.rev-empty .acts{margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+/* ===== 骨架 ===== */
+.sk-sec{margin-top:46px}
+.sk-head{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.sk-line{height:14px;border-radius:6px}
+.sk-map{height:250px;border-radius:var(--sgj-r-lg)}
+.sk-card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px 20px}
+.sk-row{display:flex;align-items:center;gap:12px;padding:9px 0}
+.sk-sq{width:38px;height:38px;border-radius:9px;flex:none}
+
+/* ===== 移动端 ===== */
+body[data-vp=mobile] .rev-hero{grid-template-columns:1fr;gap:24px;padding:20px 0 8px}
+body[data-vp=mobile] .rev-year{font-size:50px}
+body[data-vp=mobile] .rev-arrow{width:32px;height:32px;font-size:15px}
+body[data-vp=mobile] .rev-lead{font-size:17px}
+body[data-vp=mobile] .rev-lead b{font-size:20px}
+body[data-vp=mobile] .rev-stats{grid-template-columns:repeat(2,1fr);gap:12px;justify-content:stretch}
+body[data-vp=mobile] .stat-item{width:auto;padding:14px}
+body[data-vp=mobile] .stat-sk{width:auto;padding:14px}
+body[data-vp=mobile] .stat-value{font-size:26px;margin-top:10px}
+body[data-vp=mobile] .stat-label{font-size:12px}
+body[data-vp=mobile] .rev-sec{margin-top:32px}
+body[data-vp=mobile] .sec-title{font-size:21px}
+body[data-vp=mobile] .sec-sub{display:none}
+body[data-vp=mobile] .map-wrap{height:240px}
+body[data-vp=mobile] .pin-label{font-size:10px}
+body[data-vp=mobile] .top-cols{grid-template-columns:1fr;gap:16px}
+body[data-vp=mobile] .tag-grid{grid-template-columns:1fr}
+body[data-vp=mobile] .rev-empty{padding:38px 18px}
+body[data-vp=mobile] .rev-empty h3{font-size:19px}
+
+</style>
+</head>
+<body data-vp="desktop">
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.4 设计图</b>
+    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html" aria-current="page">回顾页</a><a href="review-entry.html">入口与边界</a></nav>
+    <span class="seg" role="group" aria-label="状态"><button data-state="default" aria-pressed="true">默认</button><button data-state="empty" aria-pressed="false">空态</button><button data-state="loading" aria-pressed="false">加载中</button></span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口">
+      <button data-vp="desktop" aria-pressed="true">桌面</button>
+      <button data-vp="mobile" aria-pressed="false">移动端</button>
+    </span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <div class="fh-in">
+        <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+        <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span><span>心愿</span></nav>
+        <span class="theme-toggle">☾</span>
+      </div>
+    </header>
+
+    <div class="device-body">
+    <div class="page">
+
+      <!-- ===== hero：年份是主角 ===== -->
+      <section class="rev-hero">
+        <div class="rev-blob rev-blob-1" aria-hidden="true"></div>
+        <div class="rev-blob rev-blob-2" aria-hidden="true"></div>
+
+        <div class="rev-hero-text" id="revHeroMain">
+          <div class="rev-eyebrow">YEAR IN REVIEW</div>
+          <div class="rev-year-row">
+            <button class="rev-arrow" type="button" aria-label="上一年">‹</button>
+            <span class="rev-year" id="revYearNum">2024</span>
+            <button class="rev-arrow" type="button" aria-label="下一年" disabled>›</button>
+          </div>
+          <p class="rev-lead" id="revLead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
+          <p class="rev-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="2"></span></p>
+          <div class="rev-chips" id="revChips">
+            <button class="chip on" type="button">2024</button>
+            <button class="chip" type="button">2023</button>
+            <button class="chip" type="button">2022</button>
+            <span class="chip-cap">有记录的年份<span class="an" data-n="1"></span></span>
+          </div>
+        </div>
+
+        <div class="rev-hero-sk" id="revHeroSk" hidden>
+          <div class="rev-eyebrow">YEAR IN REVIEW</div>
+          <span class="sk" style="width:210px;height:74px;border-radius:12px;margin:4px 0 14px"></span>
+          <span class="sk sk-line" style="width:260px;height:20px"></span>
+          <span class="sk sk-line" style="width:180px;height:12px;margin-top:12px"></span>
+        </div>
+
+        <div class="rev-stats" id="revStatsMain">
+          <div class="stat-item">
+            <span class="stat-icon">影</span>
+            <span class="stat-value" id="statMovie">36</span>
+            <span class="stat-label" id="statMovieLabel">看过 · 电影 24 · 剧集 12</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon" style="color:var(--sgj-moss);background:var(--sgj-moss-soft)">书</span>
+            <span class="stat-value" id="statBook">8</span>
+            <span class="stat-label" id="statBookLabel">读过 · 书籍</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon" style="color:var(--sgj-amber);background:var(--sgj-amber-soft)">地</span>
+            <span class="stat-value" id="statPlace">7</span>
+            <span class="stat-label" id="statPlaceLabel">去过 · 地点</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">文</span>
+            <span class="stat-value" id="statNote">36</span>
+            <span class="stat-label" id="statNoteLabel">写过 · 笔记<span class="an" data-n="3"></span></span>
+          </div>
+        </div>
+
+        <div class="rev-stats" id="revStatsSk" hidden>
+          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
+            <span class="sk sk-line" style="width:70px;height:30px;margin-top:14px"></span>
+            <span class="sk sk-line" style="width:120px;height:11px;margin-top:8px"></span></div>
+          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
+            <span class="sk sk-line" style="width:50px;height:30px;margin-top:14px"></span>
+            <span class="sk sk-line" style="width:100px;height:11px;margin-top:8px"></span></div>
+          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
+            <span class="sk sk-line" style="width:50px;height:30px;margin-top:14px"></span>
+            <span class="sk sk-line" style="width:100px;height:11px;margin-top:8px"></span></div>
+          <div class="stat-sk"><span class="sk" style="width:40px;height:40px;border-radius:12px"></span>
+            <span class="sk sk-line" style="width:60px;height:30px;margin-top:14px"></span>
+            <span class="sk sk-line" style="width:110px;height:11px;margin-top:8px"></span></div>
+        </div>
+      </section>
+
+      <!-- ===== 主体：默认 ===== -->
+      <div id="revMain">
+        <section class="rev-sec">
+          <div class="sec-head">
+            <h2 class="sec-title">这一年走过的</h2>
+            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+            <div class="sec-sub">TRAVELED</div>
+          </div>
+          <div class="map-wrap">
+            <div class="map-water" aria-hidden="true"></div>
+            <div class="map-land" aria-hidden="true"></div>
+            <div class="map-road" style="left:12%;top:54%;width:60%;transform:rotate(-6deg)" aria-hidden="true"></div>
+            <div class="map-road" style="left:26%;top:74%;width:48%;transform:rotate(5deg)" aria-hidden="true"></div>
+            <div class="map-road" style="left:30%;top:26%;width:42%;transform:rotate(-4deg)" aria-hidden="true"></div>
+            <div class="pin" style="left:17%;top:60%"><span class="pin-dot"></span><span class="pin-label">大理 · 洱海</span></div>
+            <div class="pin" style="left:53%;top:80%"><span class="pin-dot"></span><span class="pin-label">潮州</span></div>
+            <div class="pin" style="left:57%;top:32%"><span class="pin-dot"></span><span class="pin-label">景德镇</span></div>
+            <div class="pin" style="left:67%;top:20%"><span class="pin-dot"></span><span class="pin-label">婺源</span></div>
+            <div class="pin" style="left:76%;top:54%"><span class="pin-dot"></span><span class="pin-label">泉州 · 西街</span></div>
+            <div class="pin" style="left:82%;top:36%"><span class="pin-dot"></span><span class="pin-label">平潭</span></div>
+            <div class="map-legend">示意底图 · 实际使用高德地图<span class="an" data-n="4"></span></div>
+          </div>
+          <div class="place-chips">
+            <span class="place"><i></i>大理 · 洱海</span>
+            <span class="place"><i></i>泉州 · 西街</span>
+            <span class="place"><i></i>潮州</span>
+            <span class="place"><i></i>景德镇</span>
+            <span class="place"><i></i>婺源</span>
+            <span class="place"><i></i>平潭</span>
+            <span class="place off"><i></i>沙溪 <small>没填坐标</small></span>
+          </div>
+          <p class="sec-note">这一年去过 7 个地方，6 个落在了图上。</p>
+        </section>
+
+        <section class="rev-sec">
+          <div class="sec-head">
+            <h2 class="sec-title">评分最高</h2>
+            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+            <div class="sec-sub">TOP RATED</div>
+          </div>
+          <div class="top-cols">
+            <div class="top-col">
+              <h3>影视 <span>FILM &amp; TV</span><span class="an" data-n="5"></span></h3>
+              <div class="rank"><span class="rank-no">1</span><span class="rank-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">剧</span>
+                <span class="rank-body"><span class="rank-title">漫长的季节</span><span class="rank-meta">剧集 · 5 月看完</span></span><span class="rank-score">9.4</span></div>
+              <div class="rank"><span class="rank-no">2</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span>
+                <span class="rank-body"><span class="rank-title">奥本海默</span><span class="rank-meta">电影 · 3 月看过</span></span><span class="rank-score">9.2</span></div>
+              <div class="rank"><span class="rank-no">3</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">影</span>
+                <span class="rank-body"><span class="rank-title">沙丘 2</span><span class="rank-meta">电影 · 9 月看过</span></span><span class="rank-score">8.8</span></div>
+              <div class="rank"><span class="rank-no">4</span><span class="rank-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">剧</span>
+                <span class="rank-body"><span class="rank-title">三体</span><span class="rank-meta">剧集 · 2 月看完</span></span><span class="rank-score">8.6</span></div>
+              <div class="rank"><span class="rank-no">5</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">影</span>
+                <span class="rank-body"><span class="rank-title">宇宙探索编辑部</span><span class="rank-meta">电影 · 11 月看过</span></span><span class="rank-score">8.5</span></div>
+            </div>
+            <div class="top-col">
+              <h3>书籍 <span>BOOKS</span></h3>
+              <div class="rank"><span class="rank-no">1</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">书</span>
+                <span class="rank-body"><span class="rank-title">红楼梦</span><span class="rank-meta">文学 · 8 月读完</span></span><span class="rank-score">9.5</span></div>
+              <div class="rank"><span class="rank-no">2</span><span class="rank-cover" style="background:var(--sgj-moss-soft);color:var(--sgj-moss)">书</span>
+                <span class="rank-body"><span class="rank-title">置身事内：中国政府与经济发展</span><span class="rank-meta">社科 · 4 月读完</span></span><span class="rank-score">9.3</span></div>
+              <div class="rank"><span class="rank-no">3</span><span class="rank-cover" style="background:var(--sgj-amber-soft);color:var(--sgj-amber)">书</span>
+                <span class="rank-body"><span class="rank-title">人类简史</span><span class="rank-meta">历史 · 6 月读完</span></span><span class="rank-score">9.0</span></div>
+              <div class="rank"><span class="rank-no">4</span><span class="rank-cover" style="background:var(--sgj-cover);color:var(--sgj-text-2)">书</span>
+                <span class="rank-body"><span class="rank-title">百年孤独</span><span class="rank-meta">文学 · 1 月读完</span></span><span class="rank-score">8.9</span></div>
+              <div class="rank"><span class="rank-no">5</span><span class="rank-cover" style="background:var(--sgj-primary-soft);color:var(--sgj-primary-dark)">书</span>
+                <span class="rank-body"><span class="rank-title">房思琪的初恋乐园</span><span class="rank-meta">文学 · 12 月读完</span></span><span class="rank-score">8.7</span></div>
+            </div>
+          </div>
+          <p class="sec-note">只有打过分的条目参与评选：这一年 51 条记录里，32 条有评分。</p>
+        </section>
+
+        <section class="rev-sec">
+          <div class="sec-head">
+            <h2 class="sec-title">都是些什么</h2>
+            <div class="sec-strip" aria-hidden="true"><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span><span class="perf"></span></div>
+            <div class="sec-sub">TAGS</div>
+          </div>
+          <div class="tags">
+            <div class="tag-grid">
+              <div class="tag-row"><span class="tag-name">治愈</span><span class="tag-bar"><i style="width:100%"></i></span><span class="tag-cnt">12</span></div>
+              <div class="tag-row"><span class="tag-name">悬疑</span><span class="tag-bar"><i style="width:100%"></i></span><span class="tag-cnt">12</span></div>
+              <div class="tag-row"><span class="tag-name">日剧</span><span class="tag-bar"><i style="width:75%"></i></span><span class="tag-cnt">9</span></div>
+              <div class="tag-row"><span class="tag-name">历史</span><span class="tag-bar"><i style="width:58%"></i></span><span class="tag-cnt">7</span></div>
+              <div class="tag-row"><span class="tag-name">文学</span><span class="tag-bar"><i style="width:50%"></i></span><span class="tag-cnt">6</span></div>
+              <div class="tag-row"><span class="tag-name">科幻</span><span class="tag-bar"><i style="width:50%"></i></span><span class="tag-cnt">6</span></div>
+              <div class="tag-row"><span class="tag-name">纪录片</span><span class="tag-bar"><i style="width:42%"></i></span><span class="tag-cnt">5</span></div>
+              <div class="tag-row"><span class="tag-name">长篇</span><span class="tag-bar"><i style="width:42%"></i></span><span class="tag-cnt">5</span></div>
+              <div class="tag-row"><span class="tag-name">云南</span><span class="tag-bar"><i style="width:25%"></i></span><span class="tag-cnt">3</span></div>
+              <div class="tag-row"><span class="tag-name">重看</span><span class="tag-bar"><i style="width:25%"></i></span><span class="tag-cnt">3</span></div>
+            </div>
+            <div class="tag-rest">
+              <span>常用的 10 个在上面，其余 <b>14 个</b>标签各出现 1 次</span>
+              <span class="place off" style="border-style:solid;background:var(--sgj-bg-deep)">展开全部 ▾</span>
+              <span class="an" data-n="6"></span>
+            </div>
+          </div>
+          <p class="sec-note">标签统计的是这一年的条目；笔记只贡献上面「写过」那个数，标签不并进来。</p>
+        </section>
+      </div>
+
+      <!-- ===== 主体：空态 ===== -->
+      <div id="revEmpty" hidden>
+        <div class="rev-empty">
+          <h3>2021 年还没有记录</h3>
+          <p>你是从 2022 年往前翻到这里的。去影单、书单或足迹添几笔，明年这个时候就有东西可看了；也可以往右翻回有记录的年份。</p>
+          <div class="acts">
+            <a class="btn" href="#">去影单看看</a>
+            <a class="btn line" href="#">去书单看看</a>
+          </div>
+          <p class="sec-note" style="margin-top:22px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="7"></span></p>
+        </div>
+      </div>
+
+      <!-- ===== 主体：加载中 ===== -->
+      <div id="revSk" hidden>
+        <div class="sk-sec">
+          <div class="sk-head"><span class="sk sk-line" style="width:150px;height:22px"></span><span style="flex:1"></span></div>
+          <div class="sk sk-map"></div>
+        </div>
+        <div class="sk-sec">
+          <div class="sk-head"><span class="sk sk-line" style="width:120px;height:22px"></span><span style="flex:1"></span></div>
+          <div class="top-cols">
+            <div class="sk-card">
+              <span class="sk sk-line" style="width:110px;height:15px;display:block;margin-bottom:14px"></span>
+              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:70%"></span><span class="sk sk-line" style="display:block;width:40%;height:10px;margin-top:7px"></span></span></div>
+              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:60%"></span><span class="sk sk-line" style="display:block;width:35%;height:10px;margin-top:7px"></span></span></div>
+              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:65%"></span><span class="sk sk-line" style="display:block;width:38%;height:10px;margin-top:7px"></span></span></div>
+            </div>
+            <div class="sk-card">
+              <span class="sk sk-line" style="width:90px;height:15px;display:block;margin-bottom:14px"></span>
+              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:72%"></span><span class="sk sk-line" style="display:block;width:42%;height:10px;margin-top:7px"></span></span></div>
+              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:58%"></span><span class="sk sk-line" style="display:block;width:33%;height:10px;margin-top:7px"></span></span></div>
+              <div class="sk-row"><span class="sk sk-sq"></span><span style="flex:1"><span class="sk sk-line" style="display:block;width:64%"></span><span class="sk sk-line" style="display:block;width:36%;height:10px;margin-top:7px"></span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="ff">
+      <div class="ff-line">拾光记 · 把日子慢慢写成照片</div>
+      <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
+    </footer>
+    </div>
+
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+  </div>
+</main>
+
+<section class="legend">
+
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="new">新增</span>：<b>年份是可翻的，不是筛出来的</b>。<code>‹ ›</code> 箭头步进任意年份（包括没有记录的年份，翻到那里就是空态）；下方胶囊只列<b>有记录的年份</b>，从数据推导而不是写死 <code>2020~2030</code>。翻页用箭头、跳转用胶囊，两种动作分工清楚。</li>
+    <li><span class="new">新增</span>：<b>年份是 hero 的主角</b>（74px 衬线数字），因为回顾的阅读单位就是一年。归因口径直接写在页面上——「条目按完成日期归年 · 笔记按写下时间归年」。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
+    <li><span class="keep">沿用</span>：<b>四个数沿用首页 hero 的同一套字形</b>（封面占位衬线字 + 40px 圆角底 + 衬线大数字），只有统计范围不同：首页是「到现在为止」，这里是「这一年」。<code>2×216px</code> 网格与卡片尺寸照搬，hero 的体量也与首页一致。电影 / 剧集的拆分放进标签行（「看过 · 电影 24 · 剧集 12」），不再多开一张卡。</li>
+    <li><span class="new">新增</span>：<b>地图只放这一年去过的点</b>，与 <code>/travel</code> 的全量地图分工不同：那里回答「一共走过哪」，这里回答「这一年走过哪」。<b>没坐标的地点不上图，但要交代</b>——「沙溪」在下面的地点列表里以虚线胶囊出现并标「没填坐标」，而不是静默丢掉；这也是需求 §3.2 FR-004-2 点名的边界情况。底图是纯 CSS 示意底（网格 + 陆地 / 水域色块 + 道路），实际实现用既有 <code>TravelMap</code>。</li>
+    <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜（<code>rating</code> 虽在主表，地点评分不参与）。<b>只有打过分的条目参与</b>，参与条数写在栏下（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序（建议完成日期近者在前）与 N 的取值（建议 5~10）留待详细设计。</li>
+    <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。条形长度按最大计数归一（<code>12</code> 为满格），数字右对齐并用等宽数字。Top 10 之外收成「其余 14 个标签各出现 1 次 + 展开全部」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。</li>
+    <li><span class="new">新增</span>：<b>空态不写「暂无数据」</b>。换到没有记录的年份时，<b>页头保留但四个数归零</b>（与首页 hero「页头恒在、只换主体」的逻辑一致，避免整页跳变），主体给一句解释（你从哪翻过来的）+ 两个去处（影单 / 书单）。空态也说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 的校验、非法年份的处理）、地图真实瓦片与图钉交互（点击进地点详情）、Top 榜点击跳转条目、标签点击筛选、导出成长图 / 海报（需求 §4 非目标）、跨年对比与连续记录天数（D-13 已拍板不做）、自定义时间段（D-12 已拍板不做）。<br><b>既有不改</b>：前台页头导航<b>仍是 6 项</b>（首页 / 影单 / 书单 / 足迹 / 笔记 / 心愿），回顾<b>不占导航位</b>，从首页 hero 进入——入口方案与隐私边界见 <a href="review-entry.html">入口与边界屏</a>。移动端底部 tab 仍是四项，不动。本屏省略了首页与各模块页，只画回顾页本体。<br><b>移动端差异</b>：hero 单列、年份降到 50px、统计卡两列等宽（不再固定 216px）、地图 240px 高、Top 两栏改单列（影视在上、书籍在下）、标签改单列、英文小标题 <code>sec-sub</code> 隐藏。</p>
+
+</section>
+
+<script>
+/* 静态设计稿：内容都是本文件里的字面量，用 range 解析而不走 innerHTML */
+function setHTML(node, html){
+  const r = document.createRange(); if (node.parentNode) r.selectNode(node);
+  node.replaceChildren(r.createContextualFragment(html || ''));
+}
+function show(id, on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+function setText(id, t){ const el=document.getElementById(id); if(el) el.textContent = t; }
+
+/* 三种状态的数据（同一套版式，只换内容） */
+const DATA = {
+  default: { year:'2024', lead:'这一年，你记录了 <b>87</b> 件值得记住的小事。',
+             movie:'36', movieLabel:'看过 · 电影 24 · 剧集 12',
+             book:'8',  bookLabel:'读过 · 书籍',
+             place:'7', placeLabel:'去过 · 地点',
+             note:'36', noteLabel:'写过 · 笔记<span class="an" data-n="3"></span>',
+             chips:['2024','2023','2022'], chipOn:'2024' },
+  empty:   { year:'2021', lead:'这一年，你还没有开始记录。',
+             movie:'0', movieLabel:'看过 · 电影 0 · 剧集 0',
+             book:'0',  bookLabel:'读过 · 书籍',
+             place:'0', placeLabel:'去过 · 地点',
+             note:'0',  noteLabel:'写过 · 笔记',
+             chips:['2024','2023','2022'], chipOn:'' }
+};
+
+function renderChips(list, on){
+  document.getElementById('revChips').replaceChildren();
+  const box = document.getElementById('revChips');
+  list.forEach(y=>{
+    const b = document.createElement('button');
+    b.type='button'; b.className = 'chip' + (y===on ? ' on' : ''); b.textContent = y;
+    box.appendChild(b);
+  });
+  const cap = document.createElement('span');
+  cap.className='chip-cap';
+  setHTML(cap, '有记录的年份<span class="an" data-n="1"></span>');
+  box.appendChild(cap);
+}
+
+let state='default';
+function render(){
+  const loading = state==='loading';
+  const d = DATA[state] || DATA.default;
+
+  show('revHeroMain', !loading);
+  show('revHeroSk', loading);
+  show('revStatsMain', !loading);
+  show('revStatsSk', loading);
+  show('revMain', state==='default');
+  show('revEmpty', state==='empty');
+  show('revSk', loading);
+
+  if(!loading){
+    setText('revYearNum', d.year);
+    setHTML(document.getElementById('revLead'), d.lead);
+    setText('statMovie', d.movie); setHTML(document.getElementById('statMovieLabel'), d.movieLabel);
+    setText('statBook', d.book);   setHTML(document.getElementById('statBookLabel'), d.bookLabel);
+    setText('statPlace', d.place); setHTML(document.getElementById('statPlaceLabel'), d.placeLabel);
+    setText('statNote', d.note);   setHTML(document.getElementById('statNoteLabel'), d.noteLabel);
+    renderChips(d.chips, d.chipOn);
+    /* 空态下 ‹ 仍可用（还能往前翻），› 指向有记录的年份，也可用 */
+    document.querySelectorAll('.rev-arrow').forEach(a=>a.disabled = (d.chipOn==='2024' && a.getAttribute('aria-label')==='下一年'));
+  } else {
+    document.querySelectorAll('.rev-arrow').forEach(a=>a.disabled = true);
+  }
+}
+
+document.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+  const dv=document.querySelector('.device-body'); if(dv && dv.scrollTop>0) dv.scrollTo({top:0,behavior:'auto'});
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ /* 本屏无弹窗 */ } });
+render();
+</script>
+</body>
+</html>
