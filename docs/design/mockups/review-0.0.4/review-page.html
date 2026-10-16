@@ -167,7 +167,9 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 .hd-nocoord{position:absolute;right:22px;bottom:20px;max-width:268px;text-align:right;font-size:13px;color:var(--hd-ink-soft);
   background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
 .hd-cl{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--hd-red)}
-.hd-cl.up{flex-direction:column-reverse}   /* 相邻点的标签换到上方，避免互相压 */
+.hd-cl.up{flex-direction:column-reverse}   /* 标签换到上方（由路线方向决定，见 renderB） */
+.hd-cl.l .t{align-self:flex-start}        /* 贴左边的组：标签向右长，不出框 */
+.hd-cl.r .t{align-self:flex-end}          /* 贴右边的组：标签向左长，不出框 */
 .hd-cl .c{position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center}
 .hd-cl .c svg{position:absolute;inset:0;filter:url(#rough)}
 .hd-cl .c svg ellipse{fill:var(--hd-amber-soft);stroke:currentColor;stroke-width:2.2}
@@ -754,6 +756,15 @@ function renderB(key){
     /* 虚线按第一次出现的先后串起来。
        坐标系与框同比例（816×352），否则 preserveAspectRatio=none 会把线拉成粗细不均 */
     const path = cls.length > 1 ? 'M' + cls.map(c=>(c.x*8.16).toFixed(1) + ' ' + (c.y*3.52).toFixed(1)).join(' L') : '';
+    /* 标签放哪一侧：由「路线往哪边走」决定，不能按列表奇偶交替 ——
+       奇偶与路线无关，实测四组标签会全部压在连线上，而标签有实心纸底，
+       连线从底下穿过就被切断，看起来像断了一截（上一版正是这个问题）。
+       规则：相邻点的平均高度在下方 → 标签放上面，反之亦然；贴左右边的组把标签往内收。 */
+    cls.forEach((c,i)=>{
+      const nb = [cls[i-1], cls[i+1]].filter(Boolean);
+      c.up = nb.length ? (nb.reduce((s,n)=>s+n.y, 0)/nb.length > c.y) : false;
+      c.edge = c.x < 26 ? ' l' : (c.x > 74 ? ' r' : '');
+    });
     const missing = d.months.reduce((a,g)=>a + g.ps.filter(p=>p.nc).map(p=>p.n + '（' + g.m + '）').join('、'), '');
     document.getElementById('mapBCount').textContent = d.total + ' 个地方 · ' + cls.length + ' 个点落在图上';
     setHTML('mapBDyn', '<div class="hd-frame">' + frame
@@ -761,7 +772,7 @@ function renderB(key){
               + '<path d="' + path + '" fill="none" stroke="var(--hd-line)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="9 8"/></svg>' : '')
       + cls.map((c,i)=>{
           const names = c.items.map(it=>it.n).join(' · ');
-          return '<span class="hd-cl' + (i % 2 ? ' up' : '') + '" data-place="' + c.items[0].n + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
+          return '<span class="hd-cl' + (c.up ? ' up' : '') + c.edge + '" data-place="' + c.items[0].n + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
                + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + (i+1) + '</b></span>'
                + '<span class="t">' + names + '</span></span>';
         }).join('')
