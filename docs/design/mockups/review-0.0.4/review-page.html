@@ -112,17 +112,16 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 
 /* 报头：年份在左，说明句在右（把年份右边的空位交给真信息，而不是装饰） */
 .hd-hero{padding:8px 4px 0}
-.hd-hero-top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 36px;align-items:center}
 .hd-eyebrow{font-size:12px;letter-spacing:5px;color:var(--hd-ink-faint)}
-.hd-year-row{display:flex;align-items:center;gap:12px;margin-top:2px}
+/* 报头主行：年份与说明句共用一条基线（说明句是年份的题注），箭头按钮居中不参与基线对齐 */
+.hd-hero-main{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:2px}
 .hd-year{font-size:76px;line-height:1.05;letter-spacing:1px}
-.hd-round{width:40px;height:40px;flex:none;border:2px solid var(--hd-line);background:var(--hd-paper);cursor:pointer;
+.hd-round{width:40px;height:40px;flex:none;align-self:center;border:2px solid var(--hd-line);background:var(--hd-paper);cursor:pointer;
   border-radius:50% 46% 52% 48%/48% 52% 46% 54%;font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;filter:url(#rough)}
 .hd-round[disabled]{opacity:.4;cursor:not-allowed}
-.hd-hero-say{min-width:0}
-.hd-lead{font-size:21px;margin:0}
+.hd-lead{font-size:21px;margin:0 0 0 16px}
 .hd-lead b{color:var(--hd-red);font-size:25px}
-.hd-caliber{font-size:13.5px;color:var(--hd-ink-soft);margin:8px 0 0}
+.hd-caliber{font-size:13.5px;color:var(--hd-ink-soft);margin:10px 0 0}
 .hd-chips{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap;align-items:center}
 .hd-chips .cap{font-size:13px;color:var(--hd-ink-faint)}
 .hd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
@@ -132,7 +131,9 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
 .hdg svg ellipse{fill:none;stroke:currentColor;stroke-width:1.9}
 .hd-stat .num{display:block;font-size:34px;margin-top:6px;line-height:1.15}
 .hd-stat .lbl{display:block;font-size:13.5px;color:var(--hd-ink-soft)}
-.hd-movie{color:var(--hd-red)} .hd-book{color:var(--hd-moss)} .hd-place{color:var(--hd-amber)} .hd-note{color:var(--hd-ink-soft)}
+/* 类型色：hdk- 前缀，避免与正文注记 .hd-note 撞名
+   （撞过一次：笔记卡片被 .hd-note 的 margin 加了 16px 上边距，比另外三张矮一截） */
+.hdk-movie{color:var(--hd-red)} .hdk-book{color:var(--hd-moss)} .hdk-place{color:var(--hd-amber)} .hdk-note{color:var(--hd-ink-soft)}
 
 /* 足迹 · 方案 A：按去过的先后横向串联 */
 .route{position:relative;margin-top:4px}
@@ -193,6 +194,7 @@ html.dark .legend code{background:#1C2220;color:#C27A6D}
   border-radius:10px 4px 12px 5px/5px 12px 4px 10px;filter:url(#rough);animation:hdsk 1.3s ease-in-out infinite;display:block}
 @keyframes hdsk{0%,100%{opacity:.5}50%{opacity:1}}
 .hdsk-line{height:14px}
+.hdsk-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 30px;align-items:center;margin-top:10px}
 .hdsk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
 .hdsk-stat{padding:12px 14px 14px}
 .hdsk-sheet{margin-top:30px}
@@ -205,10 +207,10 @@ body[data-scheme=b] .scheme-a{display:none}
 /* ===== 移动端：390px 设备框预览（窗口仍是桌面宽度），所以用 data-vp 作用域而非媒体查询。
    产品里这些声明最终应以媒体查询形式并入共享皮肤。===== */
 body[data-vp=mobile] .hd-page{padding:2px 12px 24px}
-body[data-vp=mobile] .hd-hero-top{grid-template-columns:1fr;gap:12px}
 body[data-vp=mobile] .hd-year{font-size:54px}
-body[data-vp=mobile] .hd-lead{font-size:18px}
+body[data-vp=mobile] .hd-lead{font-size:18px;margin-left:0;flex-basis:100%}
 body[data-vp=mobile] .hd-lead b{font-size:21px}
+body[data-vp=mobile] .hdsk-hero{grid-template-columns:1fr;gap:12px}
 body[data-vp=mobile] .hd-stats,body[data-vp=mobile] .hdsk-stats{grid-template-columns:repeat(2,1fr);gap:10px}
 body[data-vp=mobile] .hd-cols{grid-template-columns:1fr;gap:14px}
 body[data-vp=mobile] .hd-tags{grid-template-columns:1fr}
@@ -257,20 +259,14 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
 
         <!-- ===== 报头 ===== -->
         <section class="hd-hero" id="hdHero">
-          <div class="hd-hero-top">
-            <div class="hd-hero-year">
-              <div class="hd-eyebrow">YEAR IN REVIEW</div>
-              <div class="hd-year-row">
-                <button class="hd-round" type="button" aria-label="上一年">‹</button>
-                <span class="hd-year" id="hdYear">2024</span>
-                <button class="hd-round" type="button" aria-label="下一年" disabled>›</button>
-              </div>
-            </div>
-            <div class="hd-hero-say">
-              <p class="hd-lead" id="hdLead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
-              <p class="hd-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="2"></span></p>
-            </div>
+          <div class="hd-eyebrow">YEAR IN REVIEW</div>
+          <div class="hd-hero-main">
+            <button class="hd-round" type="button" aria-label="上一年">‹</button>
+            <span class="hd-year" id="hdYear">2024</span>
+            <button class="hd-round" type="button" aria-label="下一年" disabled>›</button>
+            <p class="hd-lead" id="hdLead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
           </div>
+          <p class="hd-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="2"></span></p>
           <div class="hd-chips" id="hdChips">
             <span class="hd-chip doing">2024</span>
             <span class="hd-chip">2023</span>
@@ -278,19 +274,19 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
             <span class="cap">有记录的年份<span class="an" data-n="1"></span></span>
           </div>
           <div class="hd-stats" id="hdStats">
-            <div class="hd-stat hd-movie">
+            <div class="hd-stat hdk-movie">
               <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>影</span></span>
               <span class="num" id="numMovie">36</span><span class="lbl" id="lblMovie">看过 · 电影 24 · 剧集 12</span>
             </div>
-            <div class="hd-stat hd-book">
+            <div class="hd-stat hdk-book">
               <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>书</span></span>
               <span class="num" id="numBook">8</span><span class="lbl">读过 · 书籍</span>
             </div>
-            <div class="hd-stat hd-place">
+            <div class="hd-stat hdk-place">
               <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>地</span></span>
               <span class="num" id="numPlace">7</span><span class="lbl">去过 · 地点</span>
             </div>
-            <div class="hd-stat hd-note">
+            <div class="hd-stat hdk-note">
               <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>文</span></span>
               <span class="num" id="numNote">36</span><span class="lbl">写过 · 笔记<span class="an" data-n="3"></span></span>
             </div>
@@ -298,12 +294,10 @@ body[data-vp=mobile] .pinb .lb{font-size:13px;white-space:normal;max-width:110px
         </section>
 
         <!-- ===== 加载中：手绘骨架（页头也换成骨架）===== -->
-        <section class="hd-hero only-loading" hidden id="hdHeroSk">
-          <div class="hd-hero-top">
-            <div>
-              <span class="hdsk hdsk-line" style="width:118px;height:12px"></span>
-              <span class="hdsk" style="width:224px;height:78px;border-radius:14px;margin-top:12px"></span>
-            </div>
+        <section class="hd-hero" hidden id="hdHeroSk">
+          <span class="hdsk hdsk-line" style="width:118px;height:12px"></span>
+          <div class="hdsk-hero">
+            <span class="hdsk" style="width:224px;height:78px;border-radius:14px"></span>
             <div>
               <span class="hdsk hdsk-line" style="width:300px;height:20px"></span>
               <span class="hdsk hdsk-line" style="width:200px;height:12px;margin-top:12px"></span>
