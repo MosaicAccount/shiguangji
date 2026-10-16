@@ -222,7 +222,7 @@ body[data-vp=mobile] .guard{padding:32px 20px}
 <div class="review">
   <div class="review-in">
     <b>0.0.4 设计图</b>
-    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html">回顾页</a><a href="review-entry.html" aria-current="page">入口与边界</a><a href="review-travel.html">足迹：路线 vs 地图</a></nav>
+    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html">回顾页</a><a href="review-entry.html" aria-current="page">入口与边界</a></nav>
     <span class="seg" role="group" aria-label="场景"><button data-scene="owner" aria-pressed="true">站主首页</button><button data-scene="guest" aria-pressed="false">访客首页</button><button data-scene="guard" aria-pressed="false">访客直达 /review</button></span>
     <span class="seg" role="group" aria-label="入口方案"><button data-entry="hero" aria-pressed="true">A · hero 卡</button><button data-entry="nav" aria-pressed="false">B · 导航第 7 项</button></span>
     <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
@@ -471,7 +471,7 @@ body[data-vp=mobile] .guard{padding:32px 20px}
     <li><span class="new">新增</span>：<b>入口对访客不出现</b>（D-11 已拍板「仅登录可见」）。与心愿条、心愿单同一套处理：访客的 hero 只有地图卡与「开始记录」，心愿条与回顾卡都不渲染（切到「访客首页」看完整对比）。访客拿到的是一份完整的、无私人模块的首页，不会看到灰掉的入口——<b>私人模块干脆不出现，比出现后拦截更省心</b>。</li>
     <li><span class="new">新增</span>：<b>访客直达 <code>/review</code> 被守卫拦下</b>。复用 <code>/plan</code> 的同一套守卫：路由弹去登录并带回跳参数，接口对匿名请求返回 <code>401</code>。本屏画的是拦截结果（示意），不是登录页本体——真实实现里访客会被送到登录页，登录后回到 <code>/review</code>。</li>
     <li><span class="watch">观察</span>：<b>前台目前没有独立登录页</b>——守卫把访客送去的是后台登录页 <code>/login</code>（Element Plus 后台风格），与前台视觉不同源。要不要为私人前台页做一个前台登录页，是另一个议题，<b>本屏不解决、本期不动</b>，仅在此记录。</li>
-    <li><span class="keep">沿用</span>：<b>首页 hero 与「我的时光」时间线均未改动</b>（本屏把它们画出来只为交代入口的上下文）。hero 统计数字仍只显示已完成（看过 / 读过 / 去过 / 笔记），规则来自 <code>buildSummary</code>，0.0.4 不触碰；心愿条仍只在登录态渲染。</li>
+    <li><span class="keep">沿用</span>：<b>首页 hero 与「我的时光」时间线均未改动</b>（本屏把它们画出来只为交代入口的上下文）。hero 统计数字仍只显示已完成（看过 / 读过 / 去过 / 笔记），规则来自 <code>buildSummary</code>，0.0.4 不触碰；心愿条仍只在登录态渲染。另外，<b>首页本身仍是冷雾风格</b>——本期只有回顾页换手绘（0.0.7 的皮肤先灰度一页），所以入口卡长在冷雾的 hero 里，与它所在的页面是一套；等 0.0.7 铺开时首页一起换，本屏届时自然过时。</li>
   </ol>
   <p class="scope"><b>未建模</b>：登录页本体与登录后的回跳、真实守卫实现（<code>beforeEach</code> 的 <code>redirect</code> 参数）、导航项的权限渲染细节、回顾卡在窄屏下的换行策略（现有 <code>hero-actions</code> 已 <code>flex-wrap</code>，本屏按换行画）。<br><b>可切组合</b>：站主首页 / 访客首页 / 访客直达 <b>×</b> 入口方案 A / B <b>×</b> 桌面 / 移动端 <b>×</b> 亮 / 暗。建议重点看两组对比：<b>站主 vs 访客</b>（隐私边界）、<b>方案 A 的移动端 vs 方案 B 的移动端</b>（后者没有入口）。</p>
 
