@@ -753,9 +753,23 @@ function renderB(key){
       const cx = (x0+x1)/2, cy = (y0+y1)/2;
       cls.forEach(c=>{ c.x = 50 + (c.x-cx)*k; c.y = 50 + (c.y-cy)*k; });
     }
-    /* 虚线按第一次出现的先后串起来。
-       坐标系与框同比例（816×352），否则 preserveAspectRatio=none 会把线拉成粗细不均 */
-    const path = cls.length > 1 ? 'M' + cls.map(c=>(c.x*8.16).toFixed(1) + ' ' + (c.y*3.52).toFixed(1)).join(' L') : '';
+    /* 虚线按第一次出现的先后串起来，但**每段在圈边收住**：
+       端点连圆心的话，线会从圈里穿过去（圈的填充是半透明浅色，虚线就透出来，很难看）。
+       坐标系按框的实际像素取（viewBox = 元素尺寸），于是 1 单位 = 1px ——
+       收边距离和线宽都准确，也不会被 preserveAspectRatio=none 拉成粗细不均。 */
+    const fr = document.getElementById('mapB');
+    const fw = fr.clientWidth || 816, fh = fr.clientHeight || 352, R = 27;   /* 圈半径 23 + 一点空隙 */
+    const segs = [];
+    for(let i=1;i<cls.length;i++){
+      const a = { x:cls[i-1].x/100*fw, y:cls[i-1].y/100*fh };
+      const b = { x:cls[i].x/100*fw,   y:cls[i].y/100*fh };
+      const dx = b.x-a.x, dy = b.y-a.y, len = Math.sqrt(dx*dx+dy*dy);
+      if(len <= R*2) continue;                       /* 两个圈几乎相切，这一段就不画 */
+      const ux = dx/len, uy = dy/len;
+      segs.push('M' + (a.x+ux*R).toFixed(1) + ' ' + (a.y+uy*R).toFixed(1)
+              + ' L' + (b.x-ux*R).toFixed(1) + ' ' + (b.y-uy*R).toFixed(1));
+    }
+    const path = segs.join(' ');
     /* 标签放哪一侧：由「路线往哪边走」决定，不能按列表奇偶交替 ——
        奇偶与路线无关，实测四组标签会全部压在连线上，而标签有实心纸底，
        连线从底下穿过就被切断，看起来像断了一截（上一版正是这个问题）。
@@ -768,7 +782,7 @@ function renderB(key){
     const missing = d.months.reduce((a,g)=>a + g.ps.filter(p=>p.nc).map(p=>p.n + '（' + g.m + '）').join('、'), '');
     document.getElementById('mapBCount').textContent = d.total + ' 个地方 · ' + cls.length + ' 个点落在图上';
     setHTML('mapBDyn', '<div class="hd-frame">' + frame
-      + (path ? '<svg class="trail-b" viewBox="0 0 816 352" preserveAspectRatio="none" aria-hidden="true">'
+      + (path ? '<svg class="trail-b" viewBox="0 0 ' + fw + ' ' + fh + '" preserveAspectRatio="none" aria-hidden="true">'
               + '<path d="' + path + '" fill="none" stroke="var(--hd-line)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="9 8"/></svg>' : '')
       + cls.map((c,i)=>{
           const names = c.items.map(it=>it.n).join(' · ');
