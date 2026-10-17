@@ -97,21 +97,6 @@
       </div>
     </div>
 
-    <!-- 组弹窗：只给清单（大区聚合与合并点一致）——地图只在「在地图上定位」里出现 -->
-    <div v-else-if="groupView" class="hd-card">
-      <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
-      <h3>{{ groupTitle }}</h3>
-      <p class="sub">{{ groupSub }}</p>
-      <div class="hd-provlist">
-        <button class="k" type="button" v-for="(p, i) in groupView.places" :key="p.itemId ?? i"
-                @click="$emit('openPlace', p)">
-          <b>{{ i + 1 }}</b>
-          <span>{{ p.title }} · {{ regionOf(p) }} · {{ monthOf(p) }}{{ hasCoord(p) ? '' : '（没填坐标）' }}</span>
-          <i aria-hidden="true">›</i>
-        </button>
-      </div>
-    </div>
-
     <!-- 在地图上定位：单独的地图视图，打开即聚焦该点；点地图上的点看详情 -->
     <div v-else-if="locating" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
@@ -135,14 +120,8 @@ import type { SgjItem } from '@/types/api/business/item'
 import type { ReviewNoteRef, ReviewPlace } from '@/types/api/front/review'
 
 const props = defineProps<{
-  mode: 'place' | 'group' | 'media' | null
+  mode: 'place' | 'media' | null
   place: ReviewPlace | null
-  group: {
-    key: string
-    level: '省' | '大区' | null
-    fromCluster?: boolean
-    places: ReviewPlace[]
-  } | null
   media: SgjItem | null
   year: number
 }>()
@@ -197,26 +176,7 @@ watch(
   { immediate: true }
 )
 
-/** 「在地图上定位」：同一弹层切成单点组地图（聚焦该点） */
-const locating = ref<ReviewPlace | null>(null)
-const groupView = computed(() => (props.mode === 'group' && props.group ? props.group : null))
-
-/** 组标题：合并点进来看的是「同一处」的多个地点，区域聚合看的是「某组」 */
-const groupTitle = computed(() => {
-  const g = groupView.value
-  if (!g) return ''
-  if (g.fromCluster) return `${g.key} · 同一处 ${g.places.length} 个地点`
-  return `${g.key} · ${g.places.length} 个地方`
-})
-
-/** 组副标题：两种组都用「点一条看详情」——都不带地图 */
-const groupSub = computed(() => {
-  const g = groupView.value
-  if (!g) return ''
-  const scope = g.fromCluster ? '同一处' : g.level ? `按${g.level}` : ''
-  return `${props.year} 年${scope ? ` · ${scope}` : ''} · 点一条看详情`
-})
-
+/* ===== 地点卡：照片 / 关联笔记 / 标签 / 时间与地区 ===== */
 const tags = computed(() =>
   (props.place?.tags || '').split(',').map((t) => t.trim()).filter(Boolean)
 )
@@ -226,13 +186,8 @@ const notes = computed<ReviewNoteRef[]>(() => props.place?.notes ?? [])
 function openNote(n: ReviewNoteRef) {
   if (n.noteId) router.push({ path: '/note/detail', query: { noteId: String(n.noteId) } })
 }
-
-function locate(p: ReviewPlace) {
-  locating.value = p
-}
-function viewRecord() {
-  // 地点条目的详情在足迹页（本期不建直达锚点，进列表即达）
-  router.push('/travel')
+function hasCoord(p?: ReviewPlace | null): boolean {
+  return !!p && p.latitude != null && p.longitude != null
 }
 function monthOf(p: ReviewPlace): string {
   const m = p.finishDate ? Number(p.finishDate.slice(5, 7)) : 0
@@ -241,23 +196,19 @@ function monthOf(p: ReviewPlace): string {
 function regionOf(p: ReviewPlace): string {
   return p.province || p.country || ''
 }
-function hasCoord(p: ReviewPlace): boolean {
-  return p.latitude != null && p.longitude != null
+
+/** 「在地图上定位」：切成地图视图并聚焦该点 */
+const locating = ref<ReviewPlace | null>(null)
+function locate(p: ReviewPlace) {
+  locating.value = p
 }
-
-watch(
-  () => [props.mode, props.place, props.group],
-  () => {
-    if (props.mode !== 'place') locating.value = null
-  }
-)
-
-/* 组地图：直接复用足迹模块的 TravelMap（高德按需加载在它内部完成），
-   这里只做「回顾地点 → TravelPoint」的字段映射。不再自建地图实例——
-   之前自建时第二次打开拿到的是已销毁容器的旧实例，页面空白。 */
+function viewRecord() {
+  router.push('/travel')
+}
+/** 地图实例（定位视图）：就绪后 focus 到该点 */
 const travelRef = ref<{ focus: (itemId?: number) => boolean } | null>(null)
 
-/** 地图上的点：定位视图只有该地点，组弹窗已不带地图 */
+/** 地图上的点：定位视图只有该地点 */
 const mapPlaces = computed(() => (locating.value ? [locating.value] : []))
 
 const travelPoints = computed(() => {

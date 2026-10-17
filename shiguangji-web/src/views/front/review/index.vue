@@ -122,7 +122,7 @@
         </div>
 
         <!-- 足迹 -->
-        <ReviewMap :places="data.places" @open-place="openPlace" @open-group="openGroup" />
+        <ReviewMap :places="data.places" @open-place="openPlace" />
 
         <!-- 评分榜 -->
         <section class="hd-sec">
@@ -192,7 +192,7 @@
     </template>
 
     <!-- 弹层：点详情 / 组地图（高德按需加载） -->
-    <ReviewDetailModal :mode="modalMode" :place="modalPlace" :group="modalGroup" :media="modalMedia" :year="year"
+    <ReviewDetailModal :mode="modalMode" :place="modalPlace" :media="modalMedia" :year="year"
                        @close="closeModal" @open-place="openPlace" />
   </div>
 </template>
@@ -259,15 +259,9 @@ function monthOf(finishDate?: string | null): string {
   return m > 0 ? `${m} 月` : ''
 }
 
-/* ===== 弹层状态：mode 四态（null 关闭）；条目详情与地点详情同一套手绘弹窗 ===== */
-const modalMode = ref<'place' | 'group' | 'media' | null>(null)
+/* ===== 弹层状态：地点详情 / 条目详情（同一套手绘弹窗） ===== */
+const modalMode = ref<'place' | 'media' | null>(null)
 const modalPlace = ref<ReviewPlace | null>(null)
-const modalGroup = ref<{
-  key: string
-  level: '省' | '大区' | null
-  fromCluster?: boolean
-  places: ReviewPlace[]
-} | null>(null)
 const modalMedia = ref<SgjItem | null>(null)
 
 /** 评分榜点开条目：取详情后用手绘弹窗展示（不跳列表、不用抽屉） */
@@ -284,15 +278,6 @@ function openItem(it: { itemId?: number }) {
 function openPlace(places: ReviewPlace | ReviewPlace[]) {
   modalPlace.value = Array.isArray(places) ? places[0] ?? null : places
   modalMode.value = 'place'
-}
-function openGroup(group: {
-  key: string
-  level: '省' | '大区' | null
-  fromCluster?: boolean
-  places: ReviewPlace[]
-}) {
-  modalGroup.value = group
-  modalMode.value = 'group'
 }
 function closeModal() {
   modalMode.value = null

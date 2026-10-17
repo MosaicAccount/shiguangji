@@ -38,7 +38,7 @@
             <!-- 聚合档：按省/大区计数，点气泡进该组的真实地图 -->
             <button v-for="g in bubbles" :key="g.key" type="button" class="hd-cl"
                     :style="{ left: g.x.toFixed(1) + '%', top: g.y.toFixed(1) + '%' }"
-                    @click="$emit('openGroup', { key: g.key, level: aggLevel, places: g.places })">
+                    @click="selectPlaces(g.places)">
               <span class="c">
                 <svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ g.places.length }}</b>
                 <span v-if="!g.dense" class="t">{{ g.label }}</span>
@@ -50,15 +50,18 @@
           </div>
         </div>
 
-        <!-- 图下清单：窄屏常显；桌面在「有合并 / 标签放不下」时显示，名字不会丢 -->
-        <div v-if="needKey" class="hd-mapkey shown">
-          <div class="kh">{{ usePins ? '图例 · 按月份（编号对应图上点位）' : `图例 · 按${aggLevel}` }}</div>
+        <!-- 这一年去过的地方：按月份升序，一行一条；点行看详情（图上点击只会选中这里） -->
+        <div v-if="usePins || props.places.length" class="hd-mapkey shown">
+          <div class="kh">这一年走过的 {{ props.places.length }} 个地方 · 按月份</div>
           <div v-for="(g, gi) in legendGroups" :key="g.title + gi" class="mk-group">
-            <div class="mk-month">{{ g.title }}<em v-if="g.meta"> · {{ g.meta }}</em></div>
-            <div class="k" v-for="(r, i) in g.rows" :key="r.badge + i">
-              <b>{{ r.badge }}</b>
+            <div class="mk-month">{{ g.title }}</div>
+            <button class="k" type="button" v-for="(r, i) in g.rows" :key="r.title + i"
+                    :class="{ sel: selected.includes(r.id) }"
+                    @click="emit('openPlace', [placeById(r.id)])">
+              <b v-if="r.badge">{{ r.badge }}</b>
               <span>{{ r.title }}<em v-if="r.meta"> · {{ r.meta }}</em></span>
-            </div>
+              <i aria-hidden="true">›</i>
+            </button>
           </div>
         </div>
 
@@ -93,13 +96,8 @@ import type { PinCluster } from './mapLayout'
 
 const props = defineProps<{ places: ReviewPlace[] }>()
 const emit = defineEmits<{
+  /** 列表行点开详情（唯一详情入口） */
   (e: 'openPlace', places: ReviewPlace[]): void
-  (e: 'openGroup', group: {
-    key: string
-    level: '省' | '大区' | null
-    fromCluster?: boolean
-    places: ReviewPlace[]
-  }): void
 }>()
 
 const mapEl = ref<HTMLElement>()
@@ -218,75 +216,67 @@ const countText = computed(() => {
 
 const noteText = computed(() =>
   usePins.value
-    ? `虚线按去过的先后连，不是路线图 · 底图示意、不按比例${inset.value ? ' · 境外单独示意' : ''} · 点开看真实位置`
-    : ''
+    ? `虚线按去过的先后连，不是路线图 · 底图示意、不按比例${inset.value ? ' · 境外单独示意' : ''} · 点一下在清单里定位`
+    : '点气泡 → 在下方清单里定位该档的地点'
 )
 
-/** 聚合档的图下清单：每个大区/省一组，逐条列出地点与月份 */
-const aggLegend = computed(() =>
-  bubbles.value.map((b) => ({
-    key: b.key,
-    span: monthSpan(b.places),
-    places: b.places.map((p) => ({
-      title: p.title || '',
-      month: p.finishDate ? `${Number(String(p.finishDate).slice(5, 7))} 月` : '月份未填',
-      net: p.province || p.country || ''
-    }))
-  }))
-)
-
-/** 图例（两种档位同一套结构）：组标题 + 行（徽标 / 地点 / 省·国）
- *  逐点档：组 = 月份，徽标 = 图上点号；聚合档：组 = 大区/省，徽标 = 月份 */
+/** 图下清单：永远按完成月份升序分组，一条地点一行（点行 = 看详情）。
+ *  逐点档带上图上点号，聚合档不带号（没有单点可对应）。 */
 interface LegendRow {
+  /** itemId，用于选中高亮与打开详情（与徽标无关） */
+  id: string
   badge: string
   title: string
   meta: string
 }
 interface LegendGroup {
   title: string
-  meta: string
   rows: LegendRow[]
 }
 
 const legendGroups = computed<LegendGroup[]>(() => {
-  if (!usePins.value) {
-    return aggLegend.value.map((g) => ({
-      title: g.key,
-      meta: `${g.places.length} 个地方${g.span ? ` · ${g.span}` : ''}`,
-      rows: g.places.map((p) => ({ badge: p.month, title: p.title, meta: p.net }))
-    }))
-  }
+  // 点号表：逐点档才有意义（同一地点的行共用点号，因为可能被并簇）
+  const numberByPlace = new Map<ReviewPlace, string>()
+  clusters.value.forEach((c, i) => c.places.forEach((p) => numberByPlace.set(p, String(i + 1))))
+
   const byMonth = new Map<number, LegendRow[]>()
-  clusters.value.forEach((c, i) => {
-    c.places.forEach((p) => {
-      const mi = p.finishDate ? Number(p.finishDate.slice(5, 7)) : 0
+  props.places
+    .filter((p) => p.title)
+    .forEach((p) => {
+      const mi = p.finishDate ? Number(String(p.finishDate).slice(5, 7)) : 0
       const list = byMonth.get(mi) || []
-      list.push({ badge: String(i + 1), title: p.title || '', meta: p.province || p.country || '' })
+      list.push({
+        id: String(p.itemId ?? ''),
+        badge: numberByPlace.get(p) ?? '',
+        title: p.title || '',
+        meta: p.province || p.country || ''
+      })
       byMonth.set(mi, list)
     })
-  })
+
   return [...byMonth.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([mi, rows]) => ({
-      title: mi > 0 ? `${mi} 月` : '月份未填',
-      // 单个月份只有一个地点时不写「1 个地方」——那是噪音
-      meta: rows.length > 1 ? `${rows.length} 个地方` : '',
-      rows
-    }))
+    .map(([mi, rows]) => ({ title: mi > 0 ? `${mi} 月` : '月份未填', rows }))
 })
 
-/** 单点直接进详情；合并的多点先进「同一处」清单，逐个点开（不让第二个地点被藏起来） */
-function onClusterClick(c: PinCluster<ReviewPlace>) {
-  if (c.places.length === 1) {
-    emit('openPlace', c.places)
-    return
-  }
-  emit('openGroup', {
-    key: c.places[0]?.title || '',
-    level: null,
-    fromCluster: true,
-    places: c.places
+/** 清单行回找地点（列表按标题展示，itemId 用来选中与打开详情） */
+function placeById(id: string): ReviewPlace {
+  return props.places.find((p) => String(p.itemId ?? '') === id) ?? ({} as ReviewPlace)
+}
+
+/** 图上选中：把对应清单行标出来并滚过去（详情只在列表点开，避免两条入口） */
+const selected = ref<string[]>([])
+
+function selectPlaces(places: ReviewPlace[]) {
+  selected.value = places.map((p) => String(p.itemId ?? ''))
+  nextTick(() => {
+    const el = document.querySelector<HTMLElement>('.hd-mapkey .k.sel')
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   })
+}
+
+function onClusterClick(c: PinCluster<ReviewPlace>) {
+  selectPlaces(c.places)
 }
 
 function clusterTitle(c: PinCluster): string {
@@ -349,12 +339,18 @@ function monthOf(finishDate?: string | null): string {
 /* 窄屏图例（桌面隐藏） */
 .hd-mapkey { display: none }
 .hd-mapkey.shown { display: block; margin-top: 12px }
-.hd-mapkey .k { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; font-size: 14px; line-height: 1.85 }
-.hd-mapkey .k b { font-weight: 400; color: var(--hd-red) }
-.hd-mapkey .kh { font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 4px }
-.hd-mapkey .mk-group + .mk-group { margin-top: 8px }
-.hd-mapkey .mk-month { font-size: 13px; color: var(--hd-ink-soft); margin-bottom: 2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.hd-mapkey .kh { font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 6px }
+.hd-mapkey .mk-group + .mk-group { margin-top: 10px }
+.hd-mapkey .mk-month { font-size: 13px; color: var(--hd-ink-soft); margin-bottom: 2px }
+/* 一行一条：徽标（点号）+ 地点 + 地区 + 箭头；徽标列按内容自适应，不会把「4 月」挤成两行 */
+.hd-mapkey .k { display: flex; align-items: baseline; gap: 10px; width: 100%; font: inherit;
+  font-size: 14.5px; line-height: 1.9; text-align: left; color: inherit; background: none;
+  border: 0; border-radius: 6px; padding: 1px 6px; cursor: pointer }
+.hd-mapkey .k:hover { background: var(--hd-amber-soft) }
+.hd-mapkey .k.sel { background: var(--hd-amber-soft); box-shadow: inset 2px 0 0 var(--hd-red) }
+.hd-mapkey .k b { flex: none; min-width: 16px; font-weight: 400; color: var(--hd-red) }
+.hd-mapkey .k span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.hd-mapkey .k i { flex: none; font-style: normal; color: var(--hd-ink-faint) }
 .hd-mapkey .k em { font-style: normal; color: var(--hd-ink-faint) }
 .hd-note { font-size: 13.5px; color: var(--hd-ink-soft); margin: 16px 0 0;
   display: flex; align-items: flex-start; gap: 7px }
