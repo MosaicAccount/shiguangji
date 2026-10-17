@@ -1,7 +1,7 @@
 <template>
   <div v-if="open" class="hd-layer" @click.self="$emit('close')">
     <!-- 点详情：手绘卡片弹性展开（点「在地图上定位」后让位给地图视图） -->
-    <div v-if="mode === 'place' && place && !locating" class="hd-card">
+    <div v-if="mode === 'place' && place" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
       <div class="hd-photo">
         <span class="tf"></span>
@@ -54,7 +54,6 @@
         <span v-for="t in tags" :key="t" class="hd-chip">{{ t }}</span>
       </div>
       <div class="acts">
-        <button v-if="hasCoord(place)" class="hdbtn go" type="button" @click="locate(place)">在地图上定位 →</button>
         <button class="hdbtn" type="button" @click="viewRecord">看这条记录 →</button>
       </div>
     </div>
@@ -97,11 +96,11 @@
       </div>
     </div>
 
-    <!-- 在地图上定位：单独的地图视图，打开即聚焦该点；点地图上的点看详情 -->
-    <div v-else-if="locating" class="hd-card">
+    <!-- 地图视图：从清单点进来，打开即聚焦该点；点地图上的点 → 详情（详情里不再有「定位」按钮，链是单向的） -->
+    <div v-else-if="mode === 'map' && place" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
-      <h3>{{ locating.title }} · 在地图上</h3>
-      <p class="sub">{{ year }} 年 · {{ regionOf(locating) }} · 点图钉看这条记录</p>
+      <h3>{{ place.title }} · 在地图上</h3>
+      <p class="sub">{{ year }} 年 · {{ regionOf(place) }} · 点图钉看这条记录</p>
       <div class="hd-provmap">
         <TravelMap :visited="travelPoints" :wish="[]" :height="260" @select="onMapSelect"
                    @ready="onMapReady" ref="travelRef" />
@@ -120,7 +119,7 @@ import type { SgjItem } from '@/types/api/business/item'
 import type { ReviewNoteRef, ReviewPlace } from '@/types/api/front/review'
 
 const props = defineProps<{
-  mode: 'place' | 'media' | null
+  mode: 'place' | 'media' | 'map' | null
   place: ReviewPlace | null
   media: SgjItem | null
   year: number
@@ -197,19 +196,14 @@ function regionOf(p: ReviewPlace): string {
   return p.province || p.country || ''
 }
 
-/** 「在地图上定位」：切成地图视图并聚焦该点 */
-const locating = ref<ReviewPlace | null>(null)
-function locate(p: ReviewPlace) {
-  locating.value = p
-}
 function viewRecord() {
   router.push('/travel')
 }
 /** 地图实例（定位视图）：就绪后 focus 到该点 */
 const travelRef = ref<{ focus: (itemId?: number) => boolean } | null>(null)
 
-/** 地图上的点：定位视图只有该地点 */
-const mapPlaces = computed(() => (locating.value ? [locating.value] : []))
+/** 地图上的点：地图视图只有该地点 */
+const mapPlaces = computed(() => (props.mode === 'map' && props.place ? [props.place] : []))
 
 const travelPoints = computed(() => {
   const places = mapPlaces.value
@@ -230,16 +224,15 @@ const travelPoints = computed(() => {
 
 /** 地图上的点被点中 → 打开该地点详情（先退出「定位」态，否则地点卡会被定位视图挡住） */
 function onMapSelect(itemId: number) {
-  const place = mapPlaces.value.find((p) => p.itemId === itemId)
-  if (!place) return
-  locating.value = null
-  emit('openPlace', place)
+  const hit = mapPlaces.value.find((p) => p.itemId === itemId)
+  if (!hit) return
+  emit('openPlace', hit)
 }
 
 /** 地图就绪后再定位（实例未建好时 focus 无效） */
 function onMapReady() {
-  const p = locating.value
-  if (p) travelRef.value?.focus(p.itemId)
+  const p = props.place
+  if (props.mode === 'map' && p) travelRef.value?.focus(p.itemId)
 }
 </script>
 

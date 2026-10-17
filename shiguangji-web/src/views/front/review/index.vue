@@ -122,7 +122,7 @@
         </div>
 
         <!-- 足迹 -->
-        <ReviewMap :places="data.places" @open-place="openPlace" />
+        <ReviewMap :places="data.places" @locate="openLocate" @open-place="openPlace" />
 
         <!-- 评分榜 -->
         <section class="hd-sec">
@@ -260,7 +260,7 @@ function monthOf(finishDate?: string | null): string {
 }
 
 /* ===== 弹层状态：地点详情 / 条目详情（同一套手绘弹窗） ===== */
-const modalMode = ref<'place' | 'media' | null>(null)
+const modalMode = ref<'place' | 'media' | 'map' | null>(null)
 const modalPlace = ref<ReviewPlace | null>(null)
 const modalMedia = ref<SgjItem | null>(null)
 
@@ -278,6 +278,11 @@ function openItem(it: { itemId?: number }) {
 function openPlace(places: ReviewPlace | ReviewPlace[]) {
   modalPlace.value = Array.isArray(places) ? places[0] ?? null : places
   modalMode.value = 'place'
+}
+/** 清单行 → 地图视图（定位该点，再由图上的点进详情） */
+function openLocate(p: ReviewPlace) {
+  modalPlace.value = p
+  modalMode.value = 'map'
 }
 function closeModal() {
   modalMode.value = null

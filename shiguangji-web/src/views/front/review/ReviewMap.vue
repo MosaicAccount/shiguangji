@@ -57,7 +57,7 @@
             <div class="mk-month">{{ g.title }}</div>
             <button class="k" type="button" v-for="(r, i) in g.rows" :key="r.title + i"
                     :class="{ sel: selected.includes(r.id) }"
-                    @click="emit('openPlace', [placeById(r.id)])">
+                    @click="onRowPick(r.id)">
               <b v-if="r.badge">{{ r.badge }}</b>
               <span>{{ r.title }}<em v-if="r.meta"> · {{ r.meta }}</em></span>
               <i aria-hidden="true">›</i>
@@ -96,7 +96,8 @@ import type { PinCluster } from './mapLayout'
 
 const props = defineProps<{ places: ReviewPlace[] }>()
 const emit = defineEmits<{
-  /** 列表行点开详情（唯一详情入口） */
+  /** 清单行 → 高德定位该点（有坐标时）；无坐标的地点直接看详情 */
+  (e: 'locate', place: ReviewPlace): void
   (e: 'openPlace', places: ReviewPlace[]): void
 }>()
 
@@ -262,6 +263,14 @@ const legendGroups = computed<LegendGroup[]>(() => {
 /** 清单行回找地点（列表按标题展示，itemId 用来选中与打开详情） */
 function placeById(id: string): ReviewPlace {
   return props.places.find((p) => String(p.itemId ?? '') === id) ?? ({} as ReviewPlace)
+}
+
+/** 清单只负责定位（有坐标）；没坐标的地点没有可定位的点，直接看详情 */
+function onRowPick(id: string) {
+  const p = placeById(id)
+  if (!p.itemId) return
+  if (p.latitude != null && p.longitude != null) emit('locate', p)
+  else emit('openPlace', [p])
 }
 
 /** 图上选中：把对应清单行标出来并滚过去（详情只在列表点开，避免两条入口） */
