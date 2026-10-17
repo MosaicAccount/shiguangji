@@ -51,30 +51,18 @@
         </div>
 
         <!-- 图下清单：窄屏常显；桌面在「有合并 / 标签放不下」时显示，名字不会丢 -->
-        <div v-if="needKey && usePins" class="hd-mapkey shown">
-          <div class="kh">图例 · 按月份（编号对应图上点位）</div>
-          <div v-for="g in mapkeyGroups" :key="g.month" class="mk-group">
-            <div v-if="g.month" class="mk-month">{{ g.month }}</div>
-            <div class="k" v-for="(r, i) in g.rows" :key="g.month + i">
-              <b>{{ r.n }}</b>
-              <span>{{ r.text }}<em v-if="r.net"> · {{ r.net }}</em></span>
+        <div v-if="needKey" class="hd-mapkey shown">
+          <div class="kh">{{ usePins ? '图例 · 按月份（编号对应图上点位）' : `图例 · 按${aggLevel}` }}</div>
+          <div v-for="(g, gi) in legendGroups" :key="g.title + gi" class="mk-group">
+            <div class="mk-month">{{ g.title }}<em v-if="g.meta"> · {{ g.meta }}</em></div>
+            <div class="k" v-for="(r, i) in g.rows" :key="r.badge + i">
+              <b>{{ r.badge }}</b>
+              <span>{{ r.title }}<em v-if="r.meta"> · {{ r.meta }}</em></span>
             </div>
           </div>
         </div>
 
-        <!-- 聚合档清单：每个大区/省一组，逐条给出地点与月份 -->
-        <div v-if="!usePins" class="hd-mapkey shown">
-          <div class="kh">图例 · 按{{ aggLevel }}（点气泡看该组的真实位置）</div>
-          <div v-for="g in aggLegend" :key="g.key" class="mk-group">
-            <div class="mk-month">{{ g.key }} · {{ g.places.length }} 个地方<em v-if="g.span"> · {{ g.span }}</em></div>
-            <div class="k" v-for="(r, i) in g.places" :key="g.key + i">
-              <b>{{ r.month }}</b>
-              <span>{{ r.title }}<em v-if="r.net"> · {{ r.net }}</em></span>
-            </div>
-          </div>
-        </div>
-
-        <p class="hd-note">
+        <p v-if="noteText" class="hd-note">
           <svg class="nicon" viewBox="0 0 20 20" aria-hidden="true">
             <path d="M3 15 Q6 8 10 11 T17 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2.4"/>
             <circle cx="3" cy="15" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/>
@@ -231,7 +219,7 @@ const countText = computed(() => {
 const noteText = computed(() =>
   usePins.value
     ? `虚线按去过的先后连，不是路线图 · 底图示意、不按比例${inset.value ? ' · 境外单独示意' : ''} · 点开看真实位置`
-    : `点数超过 ${pinClusterLimit(mapW.value)} 个就不再逐点画：按${aggLevel.value}计数，点气泡看该组的真实位置`
+    : ''
 )
 
 /** 聚合档的图下清单：每个大区/省一组，逐条列出地点与月份 */
@@ -247,30 +235,44 @@ const aggLegend = computed(() =>
   }))
 )
 
-/** 图下清单：逐点档按「月份」分组（同月的点排在一起） */
-const mapkeyGroups = computed(() => {
+/** 图例（两种档位同一套结构）：组标题 + 行（徽标 / 地点 / 省·国）
+ *  逐点档：组 = 月份，徽标 = 图上点号；聚合档：组 = 大区/省，徽标 = 月份 */
+interface LegendRow {
+  badge: string
+  title: string
+  meta: string
+}
+interface LegendGroup {
+  title: string
+  meta: string
+  rows: LegendRow[]
+}
+
+const legendGroups = computed<LegendGroup[]>(() => {
   if (!usePins.value) {
-    return [
-      {
-        month: '',
-        rows: []
-      }
-    ]
+    return aggLegend.value.map((g) => ({
+      title: g.key,
+      meta: `${g.places.length} 个地方${g.span ? ` · ${g.span}` : ''}`,
+      rows: g.places.map((p) => ({ badge: p.month, title: p.title, meta: p.net }))
+    }))
   }
-  const byMonth = new Map<number, { n: string; text: string; net: string }[]>()
+  const byMonth = new Map<number, LegendRow[]>()
   clusters.value.forEach((c, i) => {
     c.places.forEach((p) => {
       const mi = p.finishDate ? Number(p.finishDate.slice(5, 7)) : 0
-      // 只列「月份归属」，点号沿用簇号，便于在地图上找到它
-      const row = { n: String(i + 1), text: p.title || '', net: p.province || p.country || '' }
       const list = byMonth.get(mi) || []
-      list.push(row)
+      list.push({ badge: String(i + 1), title: p.title || '', meta: p.province || p.country || '' })
       byMonth.set(mi, list)
     })
   })
   return [...byMonth.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([mi, rows]) => ({ month: mi > 0 ? `${mi} 月` : '月份未填', rows }))
+    .map(([mi, rows]) => ({
+      title: mi > 0 ? `${mi} 月` : '月份未填',
+      // 单个月份只有一个地点时不写「1 个地方」——那是噪音
+      meta: rows.length > 1 ? `${rows.length} 个地方` : '',
+      rows
+    }))
 })
 
 /** 单点直接进详情；合并的多点先进「同一处」清单，逐个点开（不让第二个地点被藏起来） */
@@ -351,7 +353,8 @@ function monthOf(finishDate?: string | null): string {
 .hd-mapkey .k b { font-weight: 400; color: var(--hd-red) }
 .hd-mapkey .kh { font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 4px }
 .hd-mapkey .mk-group + .mk-group { margin-top: 8px }
-.hd-mapkey .mk-month { font-size: 13px; color: var(--hd-ink-soft); margin-bottom: 2px }
+.hd-mapkey .mk-month { font-size: 13px; color: var(--hd-ink-soft); margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .hd-mapkey .k em { font-style: normal; color: var(--hd-ink-faint) }
 .hd-note { font-size: 13.5px; color: var(--hd-ink-soft); margin: 16px 0 0;
   display: flex; align-items: flex-start; gap: 7px }

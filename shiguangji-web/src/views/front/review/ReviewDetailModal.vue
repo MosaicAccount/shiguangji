@@ -102,16 +102,14 @@
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
       <h3>{{ groupTitle }}</h3>
       <p class="sub">{{ groupSub }}</p>
-      <!-- 「同一处」只有几个地点：不加载地图，直接给可点的清单 -->
+      <!-- 组地图：复用足迹模块的 TravelMap（分层聚合 + 足迹风标记），点清单行定位、点地图点看详情 -->
       <div v-if="!groupView.fromCluster" class="hd-provmap">
-        <div v-show="mapState === 'ready'" ref="amapEl" class="amap"></div>
-        <div v-if="mapState === 'loading'" class="hd-provempty">地图加载中…</div>
-        <div v-else-if="mapState === 'error'" class="hd-provempty">地图加载失败，以下是该组地点清单</div>
-        <span class="fnote">高德瓦片 · 手绘裱框 · 首次打开才加载</span>
+        <TravelMap :visited="travelPoints" :wish="[]" :height="260" @select="onMapSelect" ref="travelRef" />
       </div>
+
       <div class="hd-provlist">
         <button class="k" type="button" v-for="(p, i) in groupView.places" :key="p.itemId ?? i"
-                @click="$emit('openPlace', p)">
+                @click="onRowClick(p)">
           <b>{{ i + 1 }}</b>
           <span>{{ p.title }} · {{ monthOf(p) }}{{ hasCoord(p) ? '' : '（没填坐标，没落图）' }}</span>
           <i aria-hidden="true">›</i>
@@ -124,9 +122,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { loadAMap } from '@/utils/map'
 import { listFrontNote } from '@/api/front/note'
 import { photoUrl } from '@/utils/sgj'
+import TravelMap from '@/components/TravelMap/index.vue'
 import type { SgjItem } from '@/types/api/business/item'
 import type { ReviewNoteRef, ReviewPlace } from '@/types/api/front/review'
 
@@ -255,50 +253,42 @@ watch(
   }
 )
 
-/* 高德按需加载（D-49）：首屏不引入 SDK，首次打开组地图才 loadAMap（进程内单例） */
-const amapEl = ref<HTMLElement>()
-const mapState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let amapNs: any = null // AMap 命名空间（Marker/Map 等构造器在这上面）
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let map: any = null // 地图实例
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const markers: any[] = []
+/* 组地图：直接复用足迹模块的 TravelMap（高德按需加载在它内部完成），
+   这里只做「回顾地点 → TravelPoint」的字段映射。不再自建地图实例——
+   之前自建时第二次打开拿到的是已销毁容器的旧实例，页面空白。 */
+const travelRef = ref<{ focus: (itemId?: number) => boolean } | null>(null)
 
-async function ensureMap() {
-  if (map) return
-  mapState.value = 'loading'
-  try {
-    amapNs = await loadAMap()
-    map = new amapNs.Map(amapEl.value, { zoom: 5, viewMode: '2D' })
-    mapState.value = 'ready'
-  } catch {
-    mapState.value = 'error'
-  }
+const travelPoints = computed(() => {
+  const places = groupView.value?.places ?? []
+  return places
+    .filter((p) => p.latitude != null && p.longitude != null)
+    .map((p) => ({
+      itemId: p.itemId,
+      title: p.title || '',
+      province: p.province || undefined,
+      country: p.country || undefined,
+      latitude: p.latitude as number,
+      longitude: p.longitude as number,
+      finishDate: p.finishDate || undefined,
+      // 回顾的地图只用来定位：不喂照片，免得先弹「照片聚合牌」多一步
+      photoCount: 0
+    }))
+})
+
+/** 地图上的点被点中 → 打开该地点详情（先退出「定位」态，否则地点卡会被定位视图挡住） */
+function onMapSelect(itemId: number) {
+  const place = groupView.value?.places.find((p) => p.itemId === itemId)
+  if (!place) return
+  locating.value = null
+  emit('openPlace', place)
 }
 
-function renderMarkers(places: ReviewPlace[]) {
-  if (!map || !amapNs) return
-  markers.splice(0).forEach((m) => map.remove(m))
-  places.filter(hasCoord).forEach((p) => {
-    const marker = new amapNs.Marker({ position: [p.longitude, p.latitude], title: p.title })
-    marker.on('click', () => emit('openPlace', p))
-    map.add(marker)
-    markers.push(marker)
-  })
-  if (markers.length) map.setFitView(markers)
+/** 清单行：有坐标就定位到地图上的那个点（再由点进详情）；没坐标直接进详情 */
+function onRowClick(p: ReviewPlace) {
+  if (hasCoord(p) && travelRef.value?.focus(p.itemId)) return
+  locating.value = null
+  emit('openPlace', p)
 }
-
-watch(
-  groupView,
-  async (g) => {
-    if (!g || g.fromCluster) return // 「同一处」清单不加载地图
-    await nextTick()
-    await ensureMap()
-    renderMarkers(g.places)
-  },
-  { immediate: true }
-)
 </script>
 
 <style scoped>
@@ -358,15 +348,9 @@ watch(
 .hd-rnotes .ra { color: var(--hd-ink-faint); font-size: 16px; line-height: 1 }
 
 /* 组地图：高德瓦片区（按需加载），无坐标/失败时清单兜底 */
-.hd-provmap { position: relative; height: 250px; margin: 8px 0 12px; background: var(--hd-paper-2);
-  border-radius: 12px 5px 14px 6px/6px 14px 5px 12px }
+.hd-provmap { position: relative; margin: 8px 0 12px; border-radius: 10px; overflow: hidden }
 .hd-provmap::after { content: ''; position: absolute; inset: 0; border: 2.4px solid var(--hd-line); border-radius: inherit; filter: url(#rough); pointer-events: none }
-.hd-provmap .amap { position: absolute; inset: 0 }
-.hd-provmap .hd-provempty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: var(--hd-ink-faint) }
-.hd-provmap .fnote { position: absolute; left: 16px; bottom: 14px; font-size: 12.5px; color: var(--hd-ink-faint);
-  background: var(--hd-paper); padding: 0 8px; border-radius: 8px 3px 8px 3px/3px 8px 3px 8px; z-index: 1 }
-.hd-provlist { margin-top: 6px; border-top: 2px dashed var(--hd-line-soft); padding-top: 10px }
+
 .hd-provlist .k { display: grid; grid-template-columns: 20px minmax(0, 1fr) 12px; gap: 8px; width: 100%;
   font: inherit; font-size: 14.5px; line-height: 1.85; text-align: left; color: inherit;
   background: none; border: 0; border-radius: 6px; padding: 2px 4px; cursor: pointer }
