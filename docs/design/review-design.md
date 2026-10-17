@@ -128,9 +128,11 @@ where del_flag='0' and status='DONE' and finish_date is not null
 ### 3.1 分档判定（D-48）
 
 ```ts
-const PIN_LIMIT = { desktop: 10, mobile: 5 }   // mobile = 容器宽 < 768px
-const usePins = places.length <= limit
+const PIN_MAX_CLUSTERS = { desktop: 6, mobile: 4 }   // mobile = 容器宽 < 768px
+const usePins = pinLayout.clusters.length <= limit   // 按「图上点数」，不按地点数
 ```
+
+**按点数而不是地点数分档**：先算逐点布局，得到的簇数 ≤ 6（移动端 4）才逐点画，超过直接聚合。原先按 10 个地点分档，实测 9 个点时连线已经到处穿、8/9 号的线看不清；点一多，聚合比「硬画连线 + 挤标签」诚实得多。
 
 ### 3.2 逐点档绘制规则（顺序即管线）
 
@@ -159,10 +161,12 @@ const LEVELS = [
   { name: '省',   key: p => isCN(p) ? p.province : p.country },        // 境外按国家成泡
   { name: '大区', key: p => isCN(p) ? REGION[p.province] ?? p.province : '境外' }
 ]
-const AGG_MAX = 12
+const AGG_MAX = 8
 ```
 
-从「省」开始试，泡数 ≤ 12 即用；否则降到「大区」（大区仅 8 个，必然 ≤ 12，两级必够）。`isCN(p) = p.country == null || p.country === '' || p.country === '中国'`；`province` 与 `country` 皆空的归「未分类」。气泡位置取该级的**示意坐标表**（与原型 `PROV_POS` / `REGION_POS` 一致，真实现由高德定位）。计数文案「{total} 个地方 · 按{level} {n} 个」，图下标注「手绘示意 · 非比例 · 按{level}计数」。移动端：图上只留计数、省名进图下清单。
+从「省」开始试，泡数 ≤ 8 即用；否则降到「大区」（大区仅 8 个，两级必够）。`AGG_MAX` 从 12 收到 8：12 个省级气泡里多半各只有 1 个地点，那等于「没聚合，只是不画连线」。`isCN(p) = p.country == null || p.country === '' || p.country === '中国'`；`province` 与 `country` 皆空的归「未分类」。
+
+**气泡位置**：不再查示意坐标表，取组内地点**真实坐标的中心**，与逐点档共用「境内外分开拟合」；再跑 `spreadPoints`（像素域成对推开，最小间距 = 圆径 + 6px，夹在安全区），保证上海/浙江这种只差 28px 的省气泡也不叠。气泡同样跑标签避让。计数文案「{total} 个地方 · 按{level} {n} 个」，图下标注「手绘示意 · 非比例 · 按{level}计数」。移动端：图上只留计数、省名进图下清单。
 
 ## 4. 弹层（`ReviewDetailModal.vue`）
 
