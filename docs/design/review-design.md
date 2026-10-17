@@ -66,7 +66,7 @@ select i.item_id, i.title, i.rating, i.comment, i.tags, i.cover_url,
 from sgj_item i
 left join sgj_item_place p on p.item_id = i.item_id
 where i.del_flag='0' and i.status='DONE' and i.finish_date is not null
-  and year(i.finish_date)=#{year} and i.create_by=#{createBy}
+  and i.item_type='PLACE' and year(i.finish_date)=#{year} and i.create_by=#{createBy}
 order by i.finish_date asc, i.update_time asc, i.item_id asc;
 
 -- 评分榜（type = 'MOVIE' | 'BOOK'，各一次）

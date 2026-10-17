@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguangji.business.mapper.SgjReviewMapper">
+
+    <!-- 条目按 finish_date 归年；finish_date 为空的 DONE 条目无法归因，显式排除（总数 = 各年之和） -->
+    <sql id="itemYearWhere">
+        del_flag = '0'
+          and status = 'DONE'
+          and finish_date is not null
+          and year(finish_date) = #{year}
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+    </sql>
+
+    <select id="selectItemYears" resultType="int">
+        select distinct year(finish_date) as y
+        from sgj_item
+        where del_flag = '0'
+          and status = 'DONE'
+          and finish_date is not null
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+        order by y
+    </select>
+
+    <select id="selectNoteYears" resultType="int">
+        select distinct year(create_time) as y
+        from sgj_note
+        where del_flag = '0'
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+        order by y
+    </select>
+
+    <select id="selectYearTypeStats" resultType="java.util.HashMap">
+        select item_type as itemType,
+               count(*) as cnt
+        from sgj_item
+        where
+        <include refid="itemYearWhere"/>
+        group by item_type
+    </select>
+
+    <select id="selectYearNoteCount" resultType="long">
+        select count(*)
+        from sgj_note
+        where del_flag = '0'
+          and year(create_time) = #{year}
+        <if test="createBy != null and createBy != ''">
+          and create_by = #{createBy}
+        </if>
+    </select>
+
+    <!-- place 联查列照抄 SgjItemMapper.selectSgjItemVo 的 place 部分，只取回顾展示字段 -->
+    <select id="selectYearPlaces" resultType="SgjItem">
+        select i.item_id as itemId,
+               i.title as title,
+               i.rating as rating,
+               i.comment as comment,
+               i.tags as tags,
+               i.cover_url as coverUrl,
+               i.finish_date as finishDate,
+               p.province as province,
+               p.country as country,
+               p.latitude as latitude,
+               p.longitude as longitude,
+               (select count(*) from sgj_item_photo pc where pc.item_id = i.item_id) as photoCount
+        from sgj_item i
+        left join sgj_item_place p on p.item_id = i.item_id
+        where i.del_flag = '0'
+          and i.status = 'DONE'
+          and i.finish_date is not null
+          and year(i.finish_date) = #{year}
+          and i.item_type = 'PLACE'
+        <if test="createBy != null and createBy != ''">
+          and i.create_by = #{createBy}
+        </if>
+        order by i.finish_date asc, i.update_time asc, i.item_id asc
+    </select>
+
+    <select id="selectYearTopRated" resultType="SgjItem">
+        select item_id as itemId,
+               title as title,
+               rating as rating,
+               finish_date as finishDate,
+               cover_url as coverUrl
+        from sgj_item
+        where
+        <include refid="itemYearWhere"/>
+          and rating is not null
+          and item_type in
+        <foreach collection="itemTypes" item="t" open="(" separator="," close=")">#{t}</foreach>
+        order by rating desc, finish_date desc, item_id desc
+        limit #{limit}
+    </select>
+
+    <select id="selectYearRatedCounts" resultType="java.util.HashMap">
+        select item_type as itemType,
+               count(*) as cnt
+        from sgj_item
+        where
+        <include refid="itemYearWhere"/>
+          and rating is not null
+        group by item_type
+    </select>
+
+    <select id="selectYearTags" resultType="String">
+        select tags
+        from sgj_item
+        where
+        <include refid="itemYearWhere"/>
+          and tags is not null
+          and tags != ''
+    </select>
+</mapper>
