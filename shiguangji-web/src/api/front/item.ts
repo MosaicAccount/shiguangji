@@ -12,8 +12,10 @@ export function listFrontItem(query: FrontItemQuery): Promise<AjaxResult<SgjItem
   })
 }
 
-// 前台查询计划页条目（0.0.3：未完成 WANT/DOING 汇总，按计划日期升序、无日期置后；返回 data 条目集合 + total）
-export function listPlanItems(query: FrontItemQuery): Promise<AjaxResult<SgjItem[]> & { total: number }> {
+// 前台查询计划页条目（0.0.3：未完成 WANT/DOING 汇总，按计划日期升序、无日期置后）
+// issue #92：status 可选传 WANT/DOING 单档筛选；total 跟随筛选，
+// wantTotal/doingTotal 是全量分档总数（胶囊数字口径，不受筛选影响）
+export function listPlanItems(query: FrontItemQuery): Promise<AjaxResult<SgjItem[]> & { total: number; wantTotal: number; doingTotal: number }> {
   return request({
     url: '/app/item/plan/list',
     method: 'get',
