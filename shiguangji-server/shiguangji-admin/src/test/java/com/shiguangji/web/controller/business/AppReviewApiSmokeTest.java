@@ -176,12 +176,13 @@ class AppReviewApiSmokeTest
         // movie 合并 MOVIE+TV（页面统计卡口径「看过 · 电影/剧集」）
         JsonNode summary = data.path("summary");
         assertThat(summary.path("total").asLong()).isEqualTo(dbCount(DONE_ITEM + "2024"));
-        assertThat(summary.path("movie").asLong()).isEqualTo(dbCount(DONE_ITEM + "2024 and item_type in ('MOVIE','TV')"));
+        assertThat(summary.path("movie").asLong()).isEqualTo(dbCount(DONE_ITEM + "2024 and item_type = 'MOVIE'"));
+        assertThat(summary.path("tv").asLong()).isEqualTo(dbCount(DONE_ITEM + "2024 and item_type = 'TV'"));
         assertThat(summary.path("book").asLong()).isEqualTo(dbCount(DONE_ITEM + "2024 and item_type = 'BOOK'"));
         assertThat(summary.path("place").asLong()).isEqualTo(dbCount(DONE_ITEM + "2024 and item_type = 'PLACE'"));
         assertThat(summary.path("total").asLong())
-                .isEqualTo(summary.path("movie").asLong() + summary.path("book").asLong()
-                        + summary.path("place").asLong());
+                .isEqualTo(summary.path("movie").asLong() + summary.path("tv").asLong()
+                        + summary.path("book").asLong() + summary.path("place").asLong());
         assertThat(summary.path("note").asLong())
                 .isEqualTo(dbCount("select count(*) from sgj_note where del_flag='0' and year(create_time)=2024"));
 
@@ -235,7 +236,7 @@ class AppReviewApiSmokeTest
         // 夹具 F 创建于今年（create_time=now()）但 finish_date=2023-12-31 → 归因 2023（对账）
         JsonNode y2023 = reviewYear(2023);
         assertThat(y2023.path("summary").path("movie").asLong())
-                .isEqualTo(dbCount(DONE_ITEM + "2023 and item_type in ('MOVIE','TV')"));
+                .isEqualTo(dbCount(DONE_ITEM + "2023 and item_type = 'MOVIE'"));
         assertThat(y2023.path("summary").path("movie").asLong()).isGreaterThanOrEqualTo(1L);
         assertThat(y2023.path("summary").path("note").asLong())
                 .isEqualTo(dbCount("select count(*) from sgj_note where del_flag='0' and year(create_time)=2023"));

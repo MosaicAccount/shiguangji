@@ -86,6 +86,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectYearTopRated" resultType="SgjItem">
         select item_id as itemId,
                title as title,
+               item_type as itemType,
                rating as rating,
                finish_date as finishDate,
                cover_url as coverUrl

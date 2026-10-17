@@ -64,14 +64,15 @@ public class AppReviewServiceImpl implements IAppReviewService
         long total = 0;
         for (Map<String, Object> row : reviewMapper.selectYearTypeStats(year, createBy))
         {
-            String type = cardType((String) row.get("itemType"));
-            long cnt = ((Number) row.get("cnt")).longValue();
-            typeCount.merge(type, cnt, Long::sum);
-            total += cnt;
+            // summary 下发原始类型数（movie/tv 分开）：统计卡要显示「电影 n · 剧集 m」分项
+            String type = (String) row.get("itemType");
+            typeCount.merge(type == null ? "" : type.toLowerCase(), ((Number) row.get("cnt")).longValue(), Long::sum);
+            total += ((Number) row.get("cnt")).longValue();
         }
         Map<String, Object> summary = new HashMap<>();
         summary.put("total", total);
         summary.put("movie", typeCount.getOrDefault("movie", 0L));
+        summary.put("tv", typeCount.getOrDefault("tv", 0L));
         summary.put("book", typeCount.getOrDefault("book", 0L));
         summary.put("place", typeCount.getOrDefault("place", 0L));
         summary.put("note", reviewMapper.selectYearNoteCount(year, createBy));
@@ -129,6 +130,7 @@ public class AppReviewServiceImpl implements IAppReviewService
             Map<String, Object> m = new HashMap<>();
             m.put("itemId", it.getItemId());
             m.put("title", it.getTitle());
+            m.put("itemType", it.getItemType());
             m.put("rating", it.getRating());
             m.put("finishDate", dateStr(it.getFinishDate()));
             m.put("coverUrl", it.getCoverUrl());
