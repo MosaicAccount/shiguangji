@@ -15,6 +15,11 @@
             <span class="tap">点任一点 → 高德看真实位置</span>
             <span class="hd-compass" aria-hidden="true"><svg viewBox="0 0 22 28"><path d="M11 26 L11 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5 15 L11 4 L17 15" fill="none" stroke="var(--hd-red)" stroke-width="2" stroke-linejoin="round"/></svg>北</span>
 
+            <div v-if="inset" class="hd-inset"
+                 :style="{ left: inset.x + '%', top: inset.y + '%', width: inset.w + '%', height: inset.h + '%' }">
+              <span class="cap">境外 · 单独示意</span>
+            </div>
+
             <svg v-if="trail" class="trail-b" :viewBox="`0 0 ${mapW} ${mapH}`" preserveAspectRatio="none" aria-hidden="true">
               <path :d="trail" fill="none" stroke="var(--hd-line)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="9 8"/>
             </svg>
@@ -108,12 +113,18 @@ onBeforeUnmount(() => ro?.disconnect())
 
 const usePins = computed(() => shouldUsePins(props.places.length, mapW.value))
 
+const layout = computed(() =>
+  usePins.value ? layoutPins(props.places, mapW.value, mapH.value) : { clusters: [], inset: null }
+)
+
 const clusters = computed(() => {
-  if (!usePins.value) return []
-  const list = layoutPins(props.places, mapW.value, mapH.value)
+  const list = layout.value.clusters
   if (list.length) planLabelBoxes(list, fitBoxFor(mapW.value, mapH.value))
   return list
 })
+
+/** 境外插图区（有境外点时才出现）：境内按自身范围铺开，境外单独放进右侧小框 */
+const inset = computed(() => layout.value.inset)
 
 /** 是否有簇被合并/退成编号——有就在图下列清单，名字不能只靠图上标签 */
 const needKey = computed(
@@ -164,7 +175,7 @@ const countText = computed(() => {
 
 const noteText = computed(() =>
   usePins.value
-    ? '虚线按去过的先后连，不是路线图 · 底图示意、不按比例 · 点开看真实位置'
+    ? `虚线按去过的先后连，不是路线图 · 底图示意、不按比例${inset.value ? ' · 境外单独示意' : ''} · 点开看真实位置`
     : `按${agg.value?.level}计数（点多的年份不逐点画）· 点气泡看该组的真实位置`
 )
 
@@ -215,6 +226,10 @@ function avg(nums: number[]): number {
 .hd-compass { position: absolute; right: 22px; top: 18px; display: flex; flex-direction: column; align-items: center; gap: 3px;
   color: var(--hd-ink-soft); font-size: 12px; line-height: 1 }
 .hd-compass svg { width: 22px; height: 28px; filter: url(#rough) }
+.hd-inset { position: absolute; border: 2px dashed var(--hd-line-soft); border-radius: 8px 3px 9px 4px/4px 9px 3px 8px;
+  pointer-events: none }
+.hd-inset .cap { position: absolute; left: 8px; top: -10px; font-size: 12px; color: var(--hd-ink-faint);
+  background: var(--hd-paper); padding: 0 6px; border-radius: 7px 3px 7px 3px/3px 7px 3px 7px }
 .hd-nocoord { position: absolute; right: 22px; bottom: 20px; max-width: 268px; text-align: right; font-size: 13px; color: var(--hd-ink-soft);
   background: var(--hd-paper); padding: 1px 9px; border-radius: 9px 3px 9px 3px/3px 9px 3px 9px }
 
@@ -254,6 +269,10 @@ function avg(nums: number[]): number {
   .hd-cl .t { display: none }
   .hd-mapkey { display: block; margin-top: 12px }
   .hd-frame .fnote { font-size: 12px; max-width: 150px }
-  .hd-nocoord { display: none }
+  .hd-inset { position: absolute; border: 2px dashed var(--hd-line-soft); border-radius: 8px 3px 9px 4px/4px 9px 3px 8px;
+  pointer-events: none }
+.hd-inset .cap { position: absolute; left: 8px; top: -10px; font-size: 12px; color: var(--hd-ink-faint);
+  background: var(--hd-paper); padding: 0 6px; border-radius: 7px 3px 7px 3px/3px 7px 3px 7px }
+.hd-nocoord { display: none }
 }
 </style>

@@ -72,7 +72,7 @@ describe('B2 等比投影与自动缩放', () => {
 
 describe('B2b 拟合安全区（贴边的点不被框裁掉）', () => {
   it('最北/最南的点留出标签边距', () => {
-    const pts = layoutPins([p('南', 20, 100), p('北', 40, 100)], 900, 400)
+    const pts = layoutPins([p('南', 20, 100), p('北', 40, 100)], 900, 400).clusters
     // padY=62px / 高 400px → 纵向至少留 15.5%
     for (const c of pts) {
       expect(c.y).toBeGreaterThanOrEqual(15)
@@ -82,7 +82,7 @@ describe('B2b 拟合安全区（贴边的点不被框裁掉）', () => {
     }
   })
   it('最东/最西的点同样内缩', () => {
-    const pts = layoutPins([p('西', 30, 90), p('东', 30, 130)], 900, 400)
+    const pts = layoutPins([p('西', 30, 90), p('东', 30, 130)], 900, 400).clusters
     for (const c of pts) {
       expect(c.x).toBeGreaterThanOrEqual(6)
       expect(c.x).toBeLessThanOrEqual(94)
@@ -90,11 +90,51 @@ describe('B2b 拟合安全区（贴边的点不被框裁掉）', () => {
   })
 })
 
+describe('B2c 境外插图区（境内不再被境外把比例撑死）', () => {
+  const W = 900
+  const H = 400
+
+  it('有境外点时返回插图区，境内点全部落在左侧主区', () => {
+    const { clusters, inset } = layoutPins(MIXED, W, H)
+    expect(inset).not.toBeNull()
+    const cnPts = clusters.filter((c) => c.places.some((x) => x.country !== '澳大利亚'))
+    for (const c of cnPts) {
+      expect(c.x).toBeLessThan(((W * (1 - 0.34)) / W) * 100 + 4)
+    }
+    // 境外点落在插图框内
+    const ab = clusters.find((c) => c.places.some((x) => x.country === '澳大利亚'))
+    expect(ab).toBeTruthy()
+    expect(ab!.x).toBeGreaterThanOrEqual(inset!.x - 2)
+    expect(ab!.x).toBeLessThanOrEqual(inset!.x + inset!.w + 2)
+    expect(ab!.y).toBeGreaterThanOrEqual(inset!.y - 2)
+    expect(ab!.y).toBeLessThanOrEqual(inset!.y + inset!.h + 2)
+  })
+
+  it('境内点不再挤成一团：相邻簇中心距明显拉开', () => {
+    const { clusters } = layoutPins(MIXED, W, H)
+    const cn = clusters.filter((c) => !c.places.some((x) => x.country === '澳大利亚'))
+    let min = Infinity
+    for (let i = 0; i < cn.length; i++) {
+      for (let j = i + 1; j < cn.length; j++) {
+        const d = Math.hypot(((cn[i].x - cn[j].x) / 100) * W, ((cn[i].y - cn[j].y) / 100) * H)
+        min = Math.min(min, d)
+      }
+    }
+    // 圆径 46px：中心距至少大于圆径，连线才有可见长度
+    expect(min).toBeGreaterThan(46)
+  })
+
+  it('纯境内数据不出现插图区', () => {
+    const { inset } = layoutPins([p('甲', 30, 110), p('乙', 30, 130)], W, H)
+    expect(inset).toBeNull()
+  })
+})
+
 describe('B3 按屏幕距离并簇', () => {
   it('5% 内并为一簇且保持时间序，6% 不并', () => {
     // 跨度 8° 铺进 788px → 98.5px/°：甲乙差 0.3°≈29px≈3.3%<5% 并簇；丙距乙 7.5° 远不并
     const base = [p('甲', 30, 110), p('乙', 30, 110.3), p('丙', 30, 118)]
-    const clusters = layoutPins(base, 900, 400)
+    const clusters = layoutPins(base, 900, 400).clusters
     expect(clusters.length).toBe(2)
     expect(clusters[0].places.map((x) => x.title)).toEqual(['甲', '乙'])
     expect(clusters[1].places[0]?.title).toBe('丙')
@@ -104,28 +144,20 @@ describe('B3 按屏幕距离并簇', () => {
 describe('B4 标签避让（四向择优，放不下退编号）', () => {
   it('合并簇的标签收成「首个 +n」', () => {
     // 带一个远处的点定住比例尺：甲乙相距 0.2° 在 20° 跨度下约 8px → 并簇
-    const cls = layoutPins(
-      [p('甲', 30, 110), p('乙', 30, 110.2), p('丙', 30, 130)],
-      900,
-      400
-    )
+    const cls = layoutPins([p('甲', 30, 110), p('乙', 30, 110.2), p('丙', 30, 130)], 900, 400).clusters
     expect(cls.length).toBe(2)
     expect(clusterLabelText(cls[0])).toBe('甲 +1')
   })
 
   it('单点标签用全名', () => {
-    const cls = layoutPins([p('独', 30, 110), p('远', 30, 130)], 900, 400)
+    const cls = layoutPins([p('独', 30, 110), p('远', 30, 130)], 900, 400).clusters
     const solo = cls.find((c) => c.places[0]?.title === '独')
     expect(clusterLabelText(solo!)).toBe('独')
   })
 
   it('放下的标签互相不压盖、且都在框内', () => {
     const box = fitBoxFor(900, 400)
-    const cls = layoutPins(
-      [p('故宫博物院东华门', 30, 110), p('布达拉宫白宫', 30, 111.5), p('悉尼歌剧院', 30, 130)],
-      900,
-      400
-    )
+    const cls = layoutPins([p('故宫博物院东华门', 30, 110), p('布达拉宫白宫', 30, 111.5), p('悉尼歌剧院', 30, 130)], 900, 400).clusters
     planLabelBoxes(cls, box)
     const boxes = cls
       .filter((c) => !c.dense)
@@ -160,7 +192,7 @@ describe('B4 标签避让（四向择优，放不下退编号）', () => {
   it('挤到放不下时退成编号（dense），不强行叠字', () => {
     // 窄框 + 超长标题：四个方向都越界或压盖 → 只留编号
     const long = '非常非常长的地点名称用来占满整行标签宽度'
-    const cls = layoutPins([p(long, 30, 110), p(long + '二', 30, 111), p(long + '三', 30, 112)], 420, 140)
+    const cls = layoutPins([p(long, 30, 110), p(long + '二', 30, 111), p(long + '三', 30, 112)], 420, 140).clusters
     planLabelBoxes(cls, fitBoxFor(420, 140))
     // 窄框里放不下的簇退成编号；退了的 side 必须是 none（图上不渲染标签）
     expect(cls.some((c) => c.dense)).toBe(true)
@@ -173,7 +205,7 @@ describe('B4 标签避让（四向择优，放不下退编号）', () => {
 })
 
 describe('B5 连线收边', () => {
-  const clusters = layoutPins(MIXED, 900, 400)
+  const clusters = layoutPins(MIXED, 900, 400).clusters
 
   it('每段两端距圆心不小于缩进量，且不穿入圆内', () => {
     const path = trailPath(clusters, 900, 400)
@@ -200,7 +232,7 @@ describe('B5 连线收边', () => {
   })
   it('段长不足两倍缩进的整段不画', () => {
     // 两个几乎重合的簇（已在并簇中合并为一点）→ 无连线
-    expect(trailPath(layoutPins([p('独', 30, 110)], 900, 400), 900, 400)).toBe('')
+    expect(trailPath(layoutPins([p('独', 30, 110)], 900, 400).clusters, 900, 400)).toBe('')
   })
 })
 

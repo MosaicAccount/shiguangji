@@ -59,6 +59,44 @@
       </div>
     </div>
 
+    <!-- 条目详情（影视 / 书籍）：与地点卡同一套手绘卡片，不用抽屉 -->
+    <div v-else-if="mode === 'media' && media" class="hd-card">
+      <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
+      <div class="hd-photo">
+        <span class="tf"></span>
+        <img v-if="media.coverUrl" :src="photoUrl(media.coverUrl)" :alt="media.title || ''" />
+        <span v-else class="g">{{ mediaGlyph }}</span>
+      </div>
+      <h3>{{ media.title }}</h3>
+      <p class="sub">{{ mediaMeta }}</p>
+      <p v-if="media.comment" class="quote">{{ media.comment }}</p>
+      <div v-if="mediaTags.length" class="rowm">
+        <span v-for="t in mediaTags" :key="t" class="hd-chip">{{ t }}</span>
+      </div>
+      <div v-if="mediaNotes.length" class="hd-rnotes">
+        <div class="sh">
+          <svg class="shicon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M5 2.5h6l4 4v11H5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M11 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M7.6 11h4.8M7.6 14h3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          关联笔记 <b>{{ mediaNotes.length }}</b>
+        </div>
+        <button v-for="n in mediaNotes" :key="n.noteId" type="button" class="rn" @click="openNote(n)">
+          <svg class="rnicon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M5 2.5h6l4 4v11H5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M11 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+          <span class="rt">{{ n.title }}</span>
+          <span class="rd">{{ (n.createTime || '').slice(0, 10) }}</span>
+          <span class="ra" aria-hidden="true">›</span>
+        </button>
+      </div>
+      <div class="acts">
+        <button class="hdbtn go" type="button" @click="openMediaList">去列表看全部 →</button>
+      </div>
+    </div>
+
     <!-- 组地图：高德瓦片裱手绘框，SDK 首次打开才加载；点图钉下钻到点详情 -->
     <div v-else-if="groupView" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
@@ -84,19 +122,68 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { loadAMap } from '@/utils/map'
+import { listFrontNote } from '@/api/front/note'
 import { photoUrl } from '@/utils/sgj'
+import type { SgjItem } from '@/types/api/business/item'
 import type { ReviewNoteRef, ReviewPlace } from '@/types/api/front/review'
 
 const props = defineProps<{
-  mode: 'place' | 'group' | null
+  mode: 'place' | 'group' | 'media' | null
   place: ReviewPlace | null
   group: { key: string; level: '省' | '大区'; places: ReviewPlace[] } | null
+  media: SgjItem | null
   year: number
 }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'openPlace', place: ReviewPlace): void }>()
 const router = useRouter()
 
 const open = computed(() => props.mode !== null)
+
+/* ===== 条目详情（影视 / 书籍）：手绘卡片 ===== */
+const MEDIA_GLYPH: Record<string, string> = { MOVIE: '影', TV: '剧', BOOK: '书', PLACE: '地' }
+const mediaGlyph = computed(() => MEDIA_GLYPH[props.media?.itemType || ''] || '拾')
+const mediaTags = computed(() =>
+  (props.media?.tags || '').split(',').map((t) => t.trim()).filter(Boolean)
+)
+const mediaMeta = computed(() => {
+  const m = props.media
+  if (!m) return ''
+  const month = m.finishDate ? `${Number(String(m.finishDate).slice(5, 7))} 月` : ''
+  const type = m.itemType === 'BOOK' ? '书籍' : m.itemType === 'TV' ? '剧集' : '电影'
+  const verb = m.itemType === 'BOOK' ? '读完' : m.itemType === 'TV' ? '看完' : '看过'
+  const parts = [type, month ? `${month}${verb}` : verb]
+  if (m.genre) parts.unshift(m.genre)
+  const line = parts.join(' · ')
+  return m.rating != null ? `${props.year} 年 · ${line} · ★ ${m.rating}` : `${props.year} 年 · ${line}`
+})
+
+const mediaNotes = ref<ReviewNoteRef[]>([])
+function loadMediaNotes(itemId?: number) {
+  mediaNotes.value = []
+  if (!itemId) return
+  listFrontNote({ itemId, pageNum: 1, pageSize: 50 })
+    .then((res) => {
+      mediaNotes.value = (res.data || []).map((n) => ({
+        noteId: n.noteId,
+        title: n.title,
+        createTime: n.createTime
+      }))
+    })
+    .catch(() => {})
+}
+
+function openMediaList() {
+  const t = props.media?.itemType
+  router.push(t === 'BOOK' ? '/book' : '/movie')
+}
+
+watch(
+  () => props.media?.itemId,
+  (id) => {
+    if (props.mode === 'media') loadMediaNotes(id)
+  },
+  { immediate: true }
+)
 
 /** 「在地图上定位」：同一弹层切成单点组地图（聚焦该点） */
 const locating = ref<ReviewPlace | null>(null)

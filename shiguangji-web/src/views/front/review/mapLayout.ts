@@ -235,21 +235,87 @@ export function planLabelBoxes<T extends MappablePlace>(clusters: PinCluster<T>[
   })
 }
 
-/** 逐点档完整布局：投影 → 缩放（按容器安全区）→ 并簇 → 标签规划 */
+/** 境外插图区：容器百分比矩形（画虚线框与「境外」标注用） */
+export interface InsetRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** 有境外点时，右侧留给插图区的宽度比例 */
+export const ABROAD_RATIO = 0.34
+
+/** 逐点档完整布局：境内 / 境外分开拟合（境外进右侧插图区）→ 各自并簇 → 时间序合并 */
 export function layoutPins<T extends MappablePlace>(
   places: T[],
   containerWidth: number,
   containerHeight: number
-): PinCluster<T>[] {
+): { clusters: PinCluster<T>[]; inset: InsetRect | null } {
   const box = fitBoxFor(containerWidth, containerHeight)
   // 并簇阈值按圆径的 0.8 折成百分比：两个圆明显叠上才并。
-  // 用整圆径会链式合并——缩放后中国那一片的点会被一个个串成一个大簇（实测过）。
-  const gap = PIN_DIAMETER_PX * 0.8
-  return clusterPoints(
-    layoutPoints(places, box),
-    (gap / containerWidth) * 100,
-    (gap / containerHeight) * 100
-  )
+  // 用整圆径会链式合并——缩放后同一片区的点会被一个个串成一个大簇（实测过）。
+  const gapX = ((PIN_DIAMETER_PX * 0.8) / containerWidth) * 100
+  const gapY = ((PIN_DIAMETER_PX * 0.8) / containerHeight) * 100
+
+  const cn = places.filter((p) => isChina(p) && p.latitude != null && p.longitude != null)
+  const abroad = places.filter((p) => !isChina(p) && p.latitude != null && p.longitude != null)
+
+  // 无境外点：整幅给境内（单组并簇）
+  if (abroad.length === 0) {
+    return { clusters: clusterPoints(layoutPoints(places, box), gapX, gapY), inset: null }
+  }
+
+  const mainW = containerWidth * (1 - ABROAD_RATIO)
+  const mainBox: FitBox = { width: mainW, height: containerHeight, padX: box.padX, padY: box.padY }
+  const insetPx = {
+    x: mainW + 6,
+    y: containerHeight * 0.52,
+    w: containerWidth * ABROAD_RATIO - 16,
+    h: containerHeight * 0.4
+  }
+
+  // 主区拟合出的是「相对主区宽」的百分比，必须换算回整幅容器（否则点会跑到插图区里）
+  const cnPts = fitPoints(projectPlaces(cn), mainBox).map((pt) => ({
+    ...pt,
+    x: ((pt.x / 100) * mainW / containerWidth) * 100
+  }))
+  // 境外点只在插图区内拟合：把它们平移到插图区原点后再按小框缩放
+  const abRaw = projectPlaces(abroad)
+  const abFit = fitPoints(abRaw, {
+    width: insetPx.w,
+    height: insetPx.h,
+    padX: 22,
+    padY: 22
+  })
+  const abPts = abFit.map((pt) => ({
+    ...pt,
+    x: ((insetPx.x + (pt.x / 100) * insetPx.w) / containerWidth) * 100,
+    y: ((insetPx.y + (pt.y / 100) * insetPx.h) / containerHeight) * 100
+  }))
+
+  const clusters = [
+    ...clusterPoints(cnPts, gapX, gapY),
+    ...clusterPoints(abPts, gapX, gapY)
+  ]
+  // 时间序：按簇内最早的地点在原数组中的位置排序（保证连线仍是「去过的先后」）
+  const order = new Map<T, number>()
+  places.forEach((p, i) => order.set(p, i))
+  clusters.sort((a, b) => {
+    const ai = Math.min(...a.places.map((p) => order.get(p) ?? 0))
+    const bi = Math.min(...b.places.map((p) => order.get(p) ?? 0))
+    return ai - bi
+  })
+
+  return {
+    clusters,
+    inset: {
+      x: (insetPx.x / containerWidth) * 100,
+      y: (insetPx.y / containerHeight) * 100,
+      w: (insetPx.w / containerWidth) * 100,
+      h: (insetPx.h / containerHeight) * 100
+    }
+  }
 }
 
 /**

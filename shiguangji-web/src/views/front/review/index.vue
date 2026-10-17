@@ -191,19 +191,8 @@
       </div>
     </template>
 
-    <!-- 条目详情抽屉（复用既有 MediaDetailDrawer：封面 + 评分 + 短评 + 关联笔记） -->
-    <media-detail-drawer
-      v-model="itemDetailOpen"
-      :item="itemDetail"
-      :glyph="drawerGlyph"
-      :done-label="drawerLabels.done"
-      :want-label="drawerLabels.want"
-      :doing-label="drawerLabels.doing"
-      memory-label="MY THOUGHTS · 我的短评"
-    />
-
     <!-- 弹层：点详情 / 组地图（高德按需加载） -->
-    <ReviewDetailModal :mode="modalMode" :place="modalPlace" :group="modalGroup" :year="year"
+    <ReviewDetailModal :mode="modalMode" :place="modalPlace" :group="modalGroup" :media="modalMedia" :year="year"
                        @close="closeModal" @open-place="openPlace" />
   </div>
 </template>
@@ -213,7 +202,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getReviewYear } from '@/api/front/review'
 import type { ReviewPlace, ReviewYearData } from '@/types/api/front/review'
-import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
 import { getFrontItem } from '@/api/front/item'
 import type { SgjItem } from '@/types/api/business/item'
 import ReviewMap from './ReviewMap.vue'
@@ -271,35 +259,22 @@ function monthOf(finishDate?: string | null): string {
   return m > 0 ? `${m} 月` : ''
 }
 
-/* ===== 条目详情抽屉：评分榜点开看详情（复用既有抽屉，不新造详情页） ===== */
-const itemDetail = ref<SgjItem | null>(null)
-const itemDetailOpen = ref(false)
+/* ===== 弹层状态：mode 四态（null 关闭）；条目详情与地点详情同一套手绘弹窗 ===== */
+const modalMode = ref<'place' | 'group' | 'media' | null>(null)
+const modalPlace = ref<ReviewPlace | null>(null)
+const modalGroup = ref<{ key: string; level: '省' | '大区'; places: ReviewPlace[] } | null>(null)
+const modalMedia = ref<SgjItem | null>(null)
 
-const drawerGlyph = computed(() => {
-  const t = itemDetail.value?.itemType
-  return t === 'TV' ? '剧' : t === 'BOOK' ? '书' : t === 'PLACE' ? '地' : '影'
-})
-const drawerLabels = computed(() => {
-  const t = itemDetail.value?.itemType
-  if (t === 'TV') return { done: '看完', want: '想看', doing: '在看' }
-  if (t === 'BOOK') return { done: '读完', want: '想读', doing: '在读' }
-  return { done: '看过', want: '想看', doing: '在看' }
-})
-
+/** 评分榜点开条目：取详情后用手绘弹窗展示（不跳列表、不用抽屉） */
 function openItem(it: { itemId?: number }) {
   if (!it.itemId) return
   getFrontItem(it.itemId)
     .then((res) => {
-      itemDetail.value = (res.data as SgjItem) || null
-      itemDetailOpen.value = true
+      modalMedia.value = (res.data as SgjItem) || null
+      modalMode.value = 'media'
     })
     .catch(() => {})
 }
-
-/* ===== 弹层状态：mode 三态（null 关闭），组地图内点图钉可下钻到点详情 ===== */
-const modalMode = ref<'place' | 'group' | null>(null)
-const modalPlace = ref<ReviewPlace | null>(null)
-const modalGroup = ref<{ key: string; level: '省' | '大区'; places: ReviewPlace[] } | null>(null)
 
 function openPlace(places: ReviewPlace | ReviewPlace[]) {
   modalPlace.value = Array.isArray(places) ? places[0] ?? null : places
