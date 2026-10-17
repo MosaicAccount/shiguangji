@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.4 设计图 · 回顾 — 拾光记</title>
+<link rel="icon" href="data:,">
+<style>
+
+/* ===== 设计令牌：取自 shiguangji-web/src/assets/styles/front-tokens.scss（冷雾胶片 v3.3）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC; --sgj-brick:#934C47;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-cover:#DCE2DF; --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-success:#5D6F66; --sgj-warning:#B18458; --sgj-danger:#934C47; --sgj-link:#A85F52;
+  --sgj-r-sm:6px; --sgj-r-md:10px; --sgj-r-lg:16px; --sgj-r-xl:20px; --sgj-r-pill:999px;
+  --sgj-shadow-sm:0 1px 3px rgba(23,27,26,.05); --sgj-shadow-card:0 4px 16px rgba(23,27,26,.05);
+  --sgj-shadow-hover:0 8px 24px rgba(23,27,26,.1);
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-dark:#D4968A; --sgj-primary-light:#D4968A; --sgj-primary-soft:#3D2D2A;
+  --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833; --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329; --sgj-brick:#D67870;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-cover:#303835; --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+  --sgj-success:#7F9B8D; --sgj-warning:#C69A67; --sgj-danger:#D67870; --sgj-link:#C27A6D;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-link)}
+strong,b{font-weight:600}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
+
+/* ===== 评审工具条（不是产品的一部分）===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+.wrap{max-width:1080px;margin:0 auto;padding:40px 20px 70px}
+.banner{position:relative;background:#282e2c;color:#e7ece9;border-radius:24px;padding:34px 40px;overflow:hidden;margin-bottom:26px}
+.banner .blob{position:absolute;right:-40px;top:-120px;width:300px;height:300px;border-radius:50%;background:rgba(168,95,82,.35)}
+.banner .blob2{position:absolute;right:140px;bottom:-100px;width:200px;height:200px;border-radius:50%;background:rgba(93,111,102,.4)}
+.banner .in{position:relative;z-index:1}
+.banner h1{margin:0;font-family:var(--sgj-font-serif);font-weight:700;font-size:34px;line-height:1.3}
+.banner p{margin:12px 0 0;font-size:14px;color:#aeb8b3;letter-spacing:.4px;max-width:720px}
+.banner code{background:rgba(255,255,255,.1);color:#e7ece9;border-radius:4px;padding:1px 5px;font-size:12.5px}
+h2{font-family:var(--sgj-font-serif);font-size:19px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--sgj-border)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.card{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:18px 20px;
+  box-shadow:var(--sgj-shadow-sm);display:block;color:inherit;text-decoration:none}
+.card:hover{box-shadow:var(--sgj-shadow-hover);transform:translateY(-2px);transition:box-shadow .16s,transform .16s}
+.card h3{margin:0 0 6px;font-family:var(--sgj-font-serif);font-size:17px}
+.card .route{font-size:12px;color:var(--sgj-text-4);font-family:var(--sgj-font-mono)}
+.card p{margin:8px 0 0;font-size:13px;color:var(--sgj-text-2)}
+.card ul{margin:8px 0 0;padding-left:20px;font-size:12.5px;color:var(--sgj-text-3)}
+.card li{margin:3px 0}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.tag.new{background:var(--sgj-primary-soft);color:var(--sgj-primary)}
+.tag.chg{background:var(--sgj-amber-soft);color:var(--sgj-amber)}
+.tag.fix{background:var(--sgj-moss-soft);color:var(--sgj-moss)}
+.box{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:16px 20px}
+.box ul{margin:0;padding-left:20px}
+.box li{margin:6px 0;font-size:13.5px}
+.box p{margin:10px 0 0}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+code{font-family:var(--sgj-font-mono);font-size:12.5px;background:var(--sgj-bg-deep);border-radius:4px;padding:1px 5px;color:var(--sgj-primary)}
+.note{font-size:12.5px;color:var(--sgj-text-4);margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border:1px solid var(--sgj-border-card);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--sgj-bg-deep);font-weight:600;color:var(--sgj-text)}
+td code{font-size:12px}
+.dec{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.dec .d{background:var(--sgj-bg-card);border:1px solid var(--sgj-border-card);border-radius:var(--sgj-r-lg);padding:14px 18px;box-shadow:var(--sgj-shadow-sm)}
+.dec .d > b{display:block;font-size:13px;color:var(--sgj-primary);margin-bottom:4px;font-family:var(--sgj-font-mono)}
+.dec .d p{margin:0;font-size:13px;color:var(--sgj-text-2)}
+.wrap-scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.4 设计图</b>
+    <nav class="screens"><a href="index.html" aria-current="page">索引</a><a href="review-page.html">回顾页</a><a href="review-entry.html">入口与边界</a></nav>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="banner">
+    <div class="blob"></div><div class="blob2"></div>
+    <div class="in">
+      <h1>回顾 · 回看一段时间的积累</h1>
+      <p>写入路径已经完整（标签、封面、地图、照片、评分、短评），但回读侧只有一条按月分组的时间线。本期新增回顾页 <code>/review</code>：按年份把这一年的条目与笔记收成一张纸——有多少、去过哪、最好的是什么、都是些什么。<b>零表结构变更</b>，全部基于 <code>finish_date</code>、<code>rating</code>、<code>tags</code>、地点经纬度与笔记数量聚合。</p>
+    </div>
+  </div>
+
+  <h2>怎么用</h2>
+  <div class="box">
+    <ul>
+      <li>每屏一页，页内用顶部工具条切换：<b>状态</b>（默认 / 空态 / 加载中）、<b>场景与入口方案</b>（仅入口屏）、<b>深色模式</b>、<b>桌面 / 移动端</b>、<b>标注</b>。</li>
+      <li>橙色数字气泡与页脚「本屏标注」一一对应；关掉「标注」是无打扰观感。</li>
+      <li>设备框是<b>可滚动的真视口</b>：回顾页的四个区块、入口屏的首页 hero 与时间线都能滚，可以据此判断遮挡与留白。</li>
+      <li>视觉基线取自 <code>shiguangji-web/src/assets/styles/front-tokens.scss</code>（冷雾胶片 v3.3）；回顾页沿用首页 hero 的<b>统计卡字形</b>与<b>「沉浸式分段标题 + 胶片齿孔」</b>，让新页跟既有前台是同一个体系，而不是一套数据看板。</li>
+    </ul>
+    <p class="note">本组图是<b>静态保真</b>，不连接真实接口：年份可翻、状态可切、主题与视口可换，但地图、评分榜、标签的点击跳转均为示意。这些是刻意的边界，不是缺失。</p>
+  </div>
+
+  <h2>各屏</h2>
+  <div class="grid">
+    <a class="card" href="review-page.html">
+      <h3>回顾页 /review（手绘）</h3>
+      <span class="route">/review · 新增 · 手绘皮肤</span>
+      <p><span class="tag new">新增</span>年份在左、说明句在右的报头；四类条目 + 笔记的年度汇总、足迹地图、影视 / 书籍两张评分榜、标签分布。整页用 0.0.7 的手绘皮肤（与产品 <code>/plan</code> 同源）</p>
+      <ul><li>状态：默认（2024 有数据） / 空态（2021 无记录） / 加载中骨架 —— 三态都是手绘的</li>
+        <li>足迹：<b>已定 B（地图）</b>与两档密度；顶部可切换「点少 7 / 中 16 / 多 30 / 散 15」看分档与聚合降级</li>
+        <li>弹层：点详情的卡片、组地图（高德裱框 + 图钉下钻）两态，页内切换</li>
+        <li>覆盖 FR-004-1 ~ FR-004-4</li></ul>
+    </a>
+    <a class="card" href="review-entry.html">
+      <h3>回顾入口与隐私边界</h3>
+      <span class="route">/home · 入口位置与 D-11 的落点</span>
+      <p><span class="tag new">新增</span>入口放 hero 卡还是导航第 7 项；<span class="tag chg">边界</span>访客看不到入口、直达 <code>/review</code> 被守卫拦下</p>
+      <ul><li>场景：站主首页 / 访客首页 / 访客直达 <b>×</b> 方案 A（hero 卡）/ 方案 B（导航项）</li>
+        <li>覆盖 FR-004-5 与 D-11。<b>首页仍是冷雾</b>——本期只有回顾页换手绘</li></ul>
+    </a>
+  </div>
+
+  <h2>已拍板决策与本组图的关系</h2>
+  <div class="dec">
+    <div class="d"><b>D-11</b><p><b>仅登录可见</b>（定稿时复议翻转：原建议公开）。目录公开、回看私有——入口屏按此画，含访客侧对比与守卫拦截。</p></div>
+    <div class="d"><b>D-12</b><p><b>仅自然年</b>。年份用 <code>‹ ›</code> 步进、胶囊只列有记录的年份；不做自定义起止时间段。</p></div>
+    <div class="d"><b>D-13</b><p><b>不做</b>连续记录天数等激励型指标。本组图不含任何打卡 / 连续 / 排行类元素。</p></div>
+    <div class="d"><b>本轮拍板</b><p><b>回顾模块直接做成手绘</b>——0.0.7 的皮肤先在这一页灰度。据此<b>原冷雾版原型已作废并重建</b>；回写需求文档时需补一条范围决策（并确认编号）。</p></div>
+    <div class="d"><b>本轮拍板</b><p><b>足迹做 B（地图），A 案撤掉</b>：点数 ≤ 10（手机 ≤ 5）逐点画、更多则聚合，聚合粒度<b>自适应（省 → 大区）</b>。原 A 方案的「按完成日期串联」不再保留；FR-004-2 需按 B 的口径重写，见回顾页标注 5 / 6。</p></div>
+    <div class="d"><b>待拍板</b><p><b>「点开」的容器</b>：页内弹层（首次打开懒加载高德）还是跳足迹页并定位（<code>/travel?focus=</code>）。内容已定两套，见回顾页标注 8。</p></div>
+  </div>
+
+  <h2>出图口径</h2>
+  <div class="box">
+    <ul>
+      <li><b>覆盖</b>：FR-004-1 ~ FR-004-5 的用户可见部分。两屏分工是——回顾页是<b>本体</b>（新增页面，三个区块 + 三种状态 + 足迹分档 + 两种弹层），入口屏是<b>入口位置与隐私边界</b>（FR-004-5 的两案对比 + D-11 的落点）。</li>
+      <li><b>视觉</b>：回顾页整体采用 <b>0.0.7 的手绘皮肤</b>（原冷雾版原型已作废并重建）。这一屏的 <code>&lt;link&gt;</code> 直接引产品在用的 <code>shiguangji-web/src/views/front/plan/handdrawn.css</code> 与自托管霞鹜文楷分片——令牌、纸张、胶带、抖线滤镜、类型配色全部照用，新增的只有报头布局、示意地图、骨架三处。<b>页头 / 页脚 / 移动 tab 仍是冷雾</b>（它们不属于本期改动），与今天的 <code>/plan</code> 一样是「手绘内容装在冷雾外壳里」。</li>
+      <li><b>每屏都有</b>桌面与移动端、亮色与暗色两组变体——页内切换，不另存文件。<b>移动端差异</b>：回顾页报头改单列（年份在上、说明句在下）、年份降到 54px、统计卡两列等宽、逐点阈值从 10 降到 5、图上只留编号而名字进图下清单、评分两栏改单列、标签改单列；入口屏 hero 单列、入口卡与 CTA 按既有 <code>flex-wrap</code> 换行、移动端 tab 仍是四项。</li>
+      <li><b>文案即定稿</b>：两屏里的中文文案会与实现逐字对齐——尤其「这一年，你记录了 87 件值得记住的小事。」「条目按完成日期归年 · 笔记按写下时间归年」「按去过的先后串起来，不是路线图 —— 两点之间没有画『怎么走』」「只有打过分的条目参与评选」「2021 年还没有记录」「回顾是你自己的页面」。图里的说明性文字只出现在标注、口径表与页脚，不混进界面文案。</li>
+      <li><b>既有口径不动</b>：首页 hero 统计数字仍<b>只显示已完成</b>，时间线仍只含 <code>DONE</code>，导航仍是 6 项（回顾不占导航位），移动端 tab 仍是四项。本组图不触碰任何既有页面的行为。</li>
+      <li><b>图片与地图占位</b>：封面用手绘圈 + 衬线字（影 / 剧 / 书）表示，<b>不引用任何外部图片</b>。足迹在回顾页里可切四种点数档：<b>逐点档</b>（手绘示意底 + 真实坐标落点 + 按先后连虚线）与<b>聚合档</b>（按省，压不到上限就自动降到大区）。</li>
+      <li><b>本组图不含</b>：后端聚合接口的形状与 SQL、年份参数校验与非法年份处理、高德瓦片与 SDK 懒加载、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、后台管理端任何改动、0.0.7 其余页面的换装。</li>
+    </ul>
+    <p class="note">一处<b>已知的产品观察</b>：前台目前没有独立登录页，守卫把访客送去的是后台登录页 <code>/login</code>，与前台视觉不同源。本组图把拦截结果画成提示卡（示意），该议题本期不解决，见入口屏标注 5。</p>
+  </div>
+
+  <h2>口径与状态对照</h2>
+  <div class="box wrap-scroll">
+    <table>
+      <tr><th>区块</th><th>数据来源</th><th>归因口径</th><th>参与条件</th><th>空态</th></tr>
+      <tr>
+        <td>年度汇总<br><span class="note">FR-004-1</span></td>
+        <td><code>sgj_item</code> + <code>sgj_note</code></td>
+        <td>条目按 <code>finish_date</code> 归年；笔记按 <code>create_time</code> 归年。<b>两类时间轴不同，不混用</b></td>
+        <td><code>status='DONE'</code> + <code>del_flag='0'</code>；<code>finish_date</code> 为空的 DONE 条目<b>不计入任何年度</b></td>
+        <td>页头保留、四个数归零；主体换成空态面板</td>
+      </tr>
+      <tr>
+        <td>足迹<br><span class="note">FR-004-2 · 已定 B（地图）</span></td>
+        <td><code>sgj_item</code>（次序按 <code>finish_date</code>）+ <code>sgj_item_place</code> 的 <code>latitude</code> / <code>longitude</code>、<code>province</code>、<code>country</code></td>
+        <td>同上年份口径（按完成日期归年），<b>连线的先后也按完成日期</b></td>
+        <td>该年度 <code>DONE</code> 的地点。≤ 10（手机 ≤ 5）逐点画，没坐标的不上图但必须交代；更多则按省聚合，压不到 12 个泡就降到大区（境外按国家成泡）</td>
+        <td>随主体一起隐藏（空态面板取代）</td>
+      </tr>
+      <tr>
+        <td>评分 Top<br><span class="note">FR-004-3</span></td>
+        <td><code>sgj_item.rating</code>（<code>decimal(3,1)</code>，0-10）</td>
+        <td>同上</td>
+        <td><b><code>rating</code> 非空</b>才参与；影视与书籍<b>分两榜</b>，地点不设榜；N 值与同分次级排序留待详细设计（建议 N=5~10，同分按完成日期近者在前）</td>
+        <td>该榜显示空</td>
+      </tr>
+      <tr>
+        <td>标签分布<br><span class="note">FR-004-4</span></td>
+        <td><code>sgj_item.tags</code>（<code>varchar(500)</code>，英文逗号分隔）</td>
+        <td>同上</td>
+        <td>只统计该年度<b>条目</b>的标签；<b>笔记标签不并入</b>（笔记只贡献「写过」那个数）；需处理空串与标签内空格</td>
+        <td>随主体一起隐藏（空态面板取代）</td>
+      </tr>
+      <tr>
+        <td>可见性<br><span class="note">D-11 · 全部区块</span></td>
+        <td>—</td>
+        <td colspan="2">仅登录可见：路由守卫弹登录、接口不标 <code>@Anonymous</code>（匿名 <code>401</code>）、访客不渲染入口。聚合范围经 <code>AppScopeHelper.resolveCreateBy()</code> 解析，<b>不另写过滤</b>；每个登录用户各自回看自己的年度</td>
+        <td>访客被守卫拦下</td>
+      </tr>
+    </table>
+    <p class="note">这张表的每一行都是需求文档 §3.2 的直接落地，也是实现与测试的对照依据：<b>数字对不上时，先回到「归因口径」这一列找分歧</b>。</p>
+  </div>
+
+  <h2>与既有页面的分工</h2>
+  <div class="box">
+    <table>
+      <tr><th>页面</th><th>阅读单位</th><th>回答的问题</th><th>可见性</th><th>本期</th></tr>
+      <tr><td><code>/home</code> 时间线</td><td>一条</td><td>最近发生了什么</td><td>访客可见（脱敏）</td><td>不动</td></tr>
+      <tr><td><code>/plan</code> 心愿页</td><td>一件事</td><td>接下来做什么</td><td>仅登录</td><td>不动（先例来源）</td></tr>
+      <tr><td><code>/travel</code> 地图</td><td>一个点</td><td>一共走过哪</td><td>访客可见</td><td>不动</td></tr>
+      <tr><td><b><code>/review</code> 回顾页</b></td><td><b>一年</b></td><td><b>这一年积累了什么</b></td><td><b>仅登录</b></td><td><b>新增</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+</script>
+</body>
+</html>

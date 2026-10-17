@@ -1,12 +1,12 @@
 <template>
   <div class="travel-map">
-    <div class="map-tip">📷 照片按就近区域聚合 · 点击聚合牌翻看回忆</div>
-    <div class="map-legend">
+    <div v-if="hasPhotos" class="map-tip">📷 照片按就近区域聚合 · 点击聚合牌翻看回忆</div>
+    <div v-if="hasWish || hasPhotos" class="map-legend">
       <span><i class="legend-pin visited" aria-hidden="true"></i>去过</span>
-      <span><i class="legend-pin want" aria-hidden="true"></i>想去</span>
-      <span>🂠 照片聚合</span>
+      <span v-if="hasWish"><i class="legend-pin want" aria-hidden="true"></i>想去</span>
+      <span v-if="hasPhotos">🂠 照片聚合</span>
     </div>
-    <div ref="mapRef" class="map-chart"></div>
+    <div ref="mapRef" class="map-chart" :style="{ height: height + 'px' }"></div>
   </div>
 </template>
 
@@ -26,10 +26,20 @@ const props = defineProps<{
   visited: TravelPoint[]
   /** 想去地点 */
   wish: TravelPoint[]
+  /** 地图高度（px）：默认足迹页的 540，嵌在弹窗里传小值 */
+  height?: number
 }>()
+
+const height = computed(() => props.height ?? 540)
+const hasWish = computed(() => (props.wish?.length ?? 0) > 0)
+const hasPhotos = computed(() =>
+  [...(props.visited || []), ...(props.wish || [])].some((p) => (p.photoCount || 0) > 0)
+)
 
 const emit = defineEmits<{
   (e: 'select', itemId: number): void
+  /** 地图实例就绪（外部可在此之后调 focus/定位） */
+  (e: 'ready'): void
 }>()
 
 /** 带展示状态的轨迹点（status 由所在数组推断：visited=DONE / wish=WANT） */
@@ -343,6 +353,7 @@ async function initMap(): Promise<void> {
   map.on('zoomend', () => renderOverlays())
   renderOverlays()
   window.addEventListener('resize', onResize)
+  emit('ready')
 }
 
 function onResize(): void {
@@ -361,6 +372,22 @@ watch(
   },
   { deep: true }
 )
+
+/**
+ * 外部定位到某个点：放大到逐点层级并居中，用户再点地图上的点看详情。
+ * 供「清单行 → 定位到地图」这类用法（回顾模块先用）。
+ */
+function focus(itemId?: number): boolean {
+  if (!map || itemId == null) return false
+  const point = toMapPoints().find((p) => p.itemId === itemId)
+  if (!point) return false
+  // zoom 超过 HOOD_MAX_ZOOM → 逐点渲染，该点会自己成为一枚标记
+  map.setZoomAndCenter(13, [point.gLng, point.gLat])
+  renderOverlays()
+  return true
+}
+
+defineExpose({ focus })
 
 onMounted(() => {
   initMap().catch(() => {})

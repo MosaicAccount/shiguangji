@@ -18,6 +18,10 @@ describe('isPublicRoute 公开路由白名单', () => {
     expect(isPublicRoute('/plan'), '/plan 是私人页，应要求登录').toBe(false)
   })
 
+  it('回顾页是私人内容，不得免登录（D-11）', () => {
+    expect(isPublicRoute('/review'), '/review 是私人页，应要求登录').toBe(false)
+  })
+
   it('写笔记与后台不在白名单', () => {
     for (const path of ['/note/edit', '/note/draft', '/index', '/admin', '/system/user', '/business/item']) {
       expect(isPublicRoute(path), `${path} 不应免登录`).toBe(false)
