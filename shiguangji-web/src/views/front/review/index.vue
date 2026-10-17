@@ -138,7 +138,8 @@
                 <div class="g-head g-movie"><h2 class="g-title">影视<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
                 <div class="rows g-movie">
                   <div v-if="!data.topRated.movie.length" class="hd-note">这一年还没有打过分的影视。</div>
-                  <div v-for="(it, i) in data.topRated.movie" :key="it.itemId" class="row">
+                  <div v-for="(it, i) in data.topRated.movie" :key="it.itemId" class="row clickable"
+                       role="button" tabindex="0" @click="openItem(it)" @keydown.enter="openItem(it)">
                     <span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>{{ it.itemType === 'TV' ? '剧' : '影' }}</span></span>
                     <div class="main"><div class="t">{{ it.title }}</div><div class="m"><span>{{ topMeta(it) }}</span></div></div>
                     <span class="hd-score">{{ it.rating }}</span>
@@ -153,7 +154,8 @@
                 <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
                 <div class="rows g-book">
                   <div v-if="!data.topRated.book.length" class="hd-note">这一年还没有打过分的书。</div>
-                  <div v-for="it in data.topRated.book" :key="it.itemId" class="row">
+                  <div v-for="it in data.topRated.book" :key="it.itemId" class="row clickable"
+                       role="button" tabindex="0" @click="openItem(it)" @keydown.enter="openItem(it)">
                     <span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span>
                     <div class="main"><div class="t">{{ it.title }}</div><div class="m"><span>{{ topMeta(it) }}</span></div></div>
                     <span class="hd-score">{{ it.rating }}</span>
@@ -189,6 +191,17 @@
       </div>
     </template>
 
+    <!-- 条目详情抽屉（复用既有 MediaDetailDrawer：封面 + 评分 + 短评 + 关联笔记） -->
+    <media-detail-drawer
+      v-model="itemDetailOpen"
+      :item="itemDetail"
+      :glyph="drawerGlyph"
+      :done-label="drawerLabels.done"
+      :want-label="drawerLabels.want"
+      :doing-label="drawerLabels.doing"
+      memory-label="MY THOUGHTS · 我的短评"
+    />
+
     <!-- 弹层：点详情 / 组地图（高德按需加载） -->
     <ReviewDetailModal :mode="modalMode" :place="modalPlace" :group="modalGroup" :year="year"
                        @close="closeModal" @open-place="openPlace" />
@@ -200,6 +213,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getReviewYear } from '@/api/front/review'
 import type { ReviewPlace, ReviewYearData } from '@/types/api/front/review'
+import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
+import { getFrontItem } from '@/api/front/item'
+import type { SgjItem } from '@/types/api/business/item'
 import ReviewMap from './ReviewMap.vue'
 import ReviewDetailModal from './ReviewDetailModal.vue'
 // 手绘皮肤唯一来源：与 /plan 共用同一份（全局 import，不能放进 scoped style）
@@ -253,6 +269,31 @@ function topMeta(it: { itemType?: string; finishDate?: string | null }): string 
 function monthOf(finishDate?: string | null): string {
   const m = finishDate ? Number(finishDate.slice(5, 7)) : 0
   return m > 0 ? `${m} 月` : ''
+}
+
+/* ===== 条目详情抽屉：评分榜点开看详情（复用既有抽屉，不新造详情页） ===== */
+const itemDetail = ref<SgjItem | null>(null)
+const itemDetailOpen = ref(false)
+
+const drawerGlyph = computed(() => {
+  const t = itemDetail.value?.itemType
+  return t === 'TV' ? '剧' : t === 'BOOK' ? '书' : t === 'PLACE' ? '地' : '影'
+})
+const drawerLabels = computed(() => {
+  const t = itemDetail.value?.itemType
+  if (t === 'TV') return { done: '看完', want: '想看', doing: '在看' }
+  if (t === 'BOOK') return { done: '读完', want: '想读', doing: '在读' }
+  return { done: '看过', want: '想看', doing: '在看' }
+})
+
+function openItem(it: { itemId?: number }) {
+  if (!it.itemId) return
+  getFrontItem(it.itemId)
+    .then((res) => {
+      itemDetail.value = (res.data as SgjItem) || null
+      itemDetailOpen.value = true
+    })
+    .catch(() => {})
 }
 
 /* ===== 弹层状态：mode 三态（null 关闭），组地图内点图钉可下钻到点详情 ===== */
@@ -365,6 +406,9 @@ onMounted(() => load())
 .hd-cols .sheet { min-width: 0 }
 .hd-cols .row .main { min-width: 0 }
 .hd-cols .row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.hd-cols .row.clickable { cursor: pointer; border-radius: 8px }
+.hd-cols .row.clickable:hover { background: var(--hd-amber-soft) }
+.hd-cols .row.clickable:focus-visible { outline: 2px solid var(--hd-red); outline-offset: 2px }
 .hd-cols .sheet { margin-top: 0 }
 .hd-cols .paper { padding: 6px 16px 10px }
 .hd-score { margin-left: auto; font-size: 20px; color: var(--hd-amber); flex: none }

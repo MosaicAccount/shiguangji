@@ -24,14 +24,17 @@ export interface PinPoint<T extends MappablePlace = MappablePlace> {
   place: T
 }
 
-/** 并簇结果：places 保持时间序，up/edge 由标签规划写入 */
+/** 标签方向（由避让结果决定；none 表示放不下，退成编号进图下清单） */
+export type LabelSide = 'down' | 'up' | 'left' | 'right' | 'none'
+
+/** 并簇结果：places 保持时间序，side/dense 由标签规划写入 */
 export interface PinCluster<T extends MappablePlace = MappablePlace> {
   x: number
   y: number
-  /** 标签放上方（由相邻簇的路线走向决定，不按奇偶交替） */
-  up: boolean
-  /** 贴边内收：l=贴左边标签向右长，r=贴右边标签向左长 */
-  edge: '' | 'l' | 'r'
+  /** 标签方向：四向择优，避让其他标签与图钉 */
+  side: LabelSide
+  /** 放不下（四向都被占）：图上只留编号，名字进图下清单 */
+  dense: boolean
   places: T[]
 }
 
@@ -145,25 +148,91 @@ export function clusterPoints<T extends MappablePlace>(
       hit.y = (hit.y * hit.places.length + p.y) / (hit.places.length + 1)
       hit.places.push(p.place)
     } else {
-      clusters.push({ x: p.x, y: p.y, up: false, edge: '', places: [p.place] })
+      clusters.push({ x: p.x, y: p.y, side: 'down', dense: false, places: [p.place] })
     }
   }
   return clusters
 }
 
+/** 标签盒（px，左上角） */
+export interface LabelBox {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+const LABEL_H = 24   // 14px 字号 × 1.6 行高 + 余量
+const LABEL_GAP = 7
+const LABEL_PAD = 8
+
+/** 估算标签宽度（中文按字号、西文按 0.55 字号；加左右内边距） */
+export function labelWidth(text: string, fontPx = 14): number {
+  let w = 0
+  for (const ch of text) {
+    w += /[\u4e00-\u9fa5·]/.test(ch) ? fontPx : fontPx * 0.55
+  }
+  return Math.round(w + 18)
+}
+
+/** 簇标签文案：单点用全名；多点收成「首个 +n」（全名在图下清单与悬停里） */
+export function clusterLabelText<T extends MappablePlace>(c: PinCluster<T>): string {
+  const first = c.places[0]?.title || ''
+  return c.places.length === 1 ? first : `${first} +${c.places.length - 1}`
+}
+
+function rectsOverlap(a: LabelBox, b: LabelBox): boolean {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
+function rectHitsCircle(r: LabelBox, cx: number, cy: number, radius: number): boolean {
+  const nx = Math.max(r.x, Math.min(cx, r.x + r.w))
+  const ny = Math.max(r.y, Math.min(cy, r.y + r.h))
+  return Math.hypot(nx - cx, ny - cy) < radius
+}
+
 /**
- * 标签侧规划：标签放哪一侧由「路线往哪边走」决定——相邻簇（前 / 后）的 y 均值在
- * 下方则标签放上方，反之放下方；按奇偶交替与路线无关，实测会把标签正好压在连线上
- * （标签有实心纸底，连线从底下穿过会被切断，看起来像断了一截）。
- * 贴左右边的簇把标签向内收，长标签不出框。
+ * 标签避让：每个簇依次尝试 下 / 上 / 右 / 左 四个方向，选第一个既不越框、
+ * 不压其他标签、也不压其他图钉的位置；四向都放不下就退成编号（dense），
+ * 名字搬到图下清单。按构造顺序贪心，纯函数、可单测。
  */
-export function planLabels<T extends MappablePlace>(clusters: PinCluster<T>[]): PinCluster<T>[] {
+export function planLabelBoxes<T extends MappablePlace>(clusters: PinCluster<T>[], box: FitBox): void {
+  const radius = PIN_DIAMETER_PX / 2
+  const placed: LabelBox[] = []
+  const circles = clusters.map((c) => ({ x: (c.x / 100) * box.width, y: (c.y / 100) * box.height }))
+
   clusters.forEach((c, i) => {
-    const neighbors = [clusters[i - 1], clusters[i + 1]].filter(Boolean) as PinCluster<T>[]
-    c.up = neighbors.length > 0 && neighbors.reduce((s, n) => s + n.y, 0) / neighbors.length > c.y
-    c.edge = c.x < 26 ? 'l' : c.x > 74 ? 'r' : ''
+    const cx = circles[i].x
+    const cy = circles[i].y
+    const text = clusterLabelText(c)
+    const w = labelWidth(text)
+    const h = LABEL_H
+    const candidates: { side: Exclude<LabelSide, 'none'>; x: number; y: number }[] = [
+      { side: 'down', x: cx - w / 2, y: cy + radius + LABEL_GAP },
+      { side: 'up', x: cx - w / 2, y: cy - radius - LABEL_GAP - h },
+      { side: 'right', x: cx + radius + LABEL_GAP, y: cy - h / 2 },
+      { side: 'left', x: cx - radius - LABEL_GAP - w, y: cy - h / 2 }
+    ]
+    const free = candidates.find((cd) => {
+      const rect = { x: cd.x, y: cd.y, w, h }
+      const inside =
+        cd.x >= LABEL_PAD &&
+        cd.y >= LABEL_PAD &&
+        cd.x + w <= box.width - LABEL_PAD &&
+        cd.y + h <= box.height - LABEL_PAD
+      if (!inside) return false
+      if (placed.some((p) => rectsOverlap(p, rect))) return false
+      return !circles.some((cc, j) => j !== i && rectHitsCircle(rect, cc.x, cc.y, radius + 6))
+    })
+    if (free) {
+      c.side = free.side
+      c.dense = false
+      placed.push({ x: free.x, y: free.y, w, h })
+    } else {
+      c.side = 'none'
+      c.dense = true
+    }
   })
-  return clusters
 }
 
 /** 逐点档完整布局：投影 → 缩放（按容器安全区）→ 并簇 → 标签规划 */
@@ -173,10 +242,13 @@ export function layoutPins<T extends MappablePlace>(
   containerHeight: number
 ): PinCluster<T>[] {
   const box = fitBoxFor(containerWidth, containerHeight)
-  // 并簇阈值按「圈径」折算成百分比：46px 的圆只要叠上就该并，不能按固定 5% 算
-  const gap = PIN_DIAMETER_PX
-  return planLabels(
-    clusterPoints(layoutPoints(places, box), (gap / containerWidth) * 100, (gap / containerHeight) * 100)
+  // 并簇阈值按圆径的 0.8 折成百分比：两个圆明显叠上才并。
+  // 用整圆径会链式合并——缩放后中国那一片的点会被一个个串成一个大簇（实测过）。
+  const gap = PIN_DIAMETER_PX * 0.8
+  return clusterPoints(
+    layoutPoints(places, box),
+    (gap / containerWidth) * 100,
+    (gap / containerHeight) * 100
   )
 }
 

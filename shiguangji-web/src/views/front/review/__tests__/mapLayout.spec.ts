@@ -4,7 +4,11 @@ import {
   layoutPins,
   trailPath,
   aggregatePlaces,
+  clusterLabelText,
+  fitBoxFor,
   fitPoints,
+  labelWidth,
+  planLabelBoxes,
   projectPlaces,
   MOBILE_WIDTH
 } from '../mapLayout'
@@ -97,19 +101,74 @@ describe('B3 按屏幕距离并簇', () => {
   })
 })
 
-describe('B4 标签侧由路线方向决定', () => {
-  it('邻居均值在下方 → 标签放上方', () => {
-    // 中间点比两侧都高（邻居在下方）
-    const clusters = layoutPins([p('低', 30, 100), p('高', 40, 110), p('低2', 30, 120)], 900, 400)
-    const high = clusters.find((c) => c.places[0]?.title === '高')
-    expect(high?.up).toBe(true)
+describe('B4 标签避让（四向择优，放不下退编号）', () => {
+  it('合并簇的标签收成「首个 +n」', () => {
+    // 带一个远处的点定住比例尺：甲乙相距 0.2° 在 20° 跨度下约 8px → 并簇
+    const cls = layoutPins(
+      [p('甲', 30, 110), p('乙', 30, 110.2), p('丙', 30, 130)],
+      900,
+      400
+    )
+    expect(cls.length).toBe(2)
+    expect(clusterLabelText(cls[0])).toBe('甲 +1')
   })
-  it('贴右边（x>74）标签向内收', () => {
-    const clusters = layoutPins([p('东', 30, 130), p('西', 30, 100)], 900, 400)
-    const east = clusters.find((c) => c.places[0]?.title === '东')
-    const west = clusters.find((c) => c.places[0]?.title === '西')
-    expect(east?.edge).toBe('r')
-    expect(west?.edge).toBe('l')
+
+  it('单点标签用全名', () => {
+    const cls = layoutPins([p('独', 30, 110), p('远', 30, 130)], 900, 400)
+    const solo = cls.find((c) => c.places[0]?.title === '独')
+    expect(clusterLabelText(solo!)).toBe('独')
+  })
+
+  it('放下的标签互相不压盖、且都在框内', () => {
+    const box = fitBoxFor(900, 400)
+    const cls = layoutPins(
+      [p('故宫博物院东华门', 30, 110), p('布达拉宫白宫', 30, 111.5), p('悉尼歌剧院', 30, 130)],
+      900,
+      400
+    )
+    planLabelBoxes(cls, box)
+    const boxes = cls
+      .filter((c) => !c.dense)
+      .map((c) => {
+        const text = clusterLabelText(c)
+        const w = labelWidth(text)
+        const h = 24
+        const cx = (c.x / 100) * box.width
+        const cy = (c.y / 100) * box.height
+        const r = 23
+        const gap = 7
+        if (c.side === 'down') return { x: cx - w / 2, y: cy + r + gap, w, h }
+        if (c.side === 'up') return { x: cx - w / 2, y: cy - r - gap - h, w, h }
+        if (c.side === 'right') return { x: cx + r + gap, y: cy - h / 2, w, h }
+        return { x: cx - r - gap - w, y: cy - h / 2, w, h }
+      })
+    expect(boxes.length).toBeGreaterThanOrEqual(2)
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i]
+      expect(b.x).toBeGreaterThanOrEqual(0)
+      expect(b.y).toBeGreaterThanOrEqual(0)
+      expect(b.x + b.w).toBeLessThanOrEqual(box.width)
+      expect(b.y + b.h).toBeLessThanOrEqual(box.height)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const o = boxes[j]
+        const overlap = b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h
+        expect(overlap, `标签 ${i} 与 ${j} 不应重叠`).toBe(false)
+      }
+    }
+  })
+
+  it('挤到放不下时退成编号（dense），不强行叠字', () => {
+    // 窄框 + 超长标题：四个方向都越界或压盖 → 只留编号
+    const long = '非常非常长的地点名称用来占满整行标签宽度'
+    const cls = layoutPins([p(long, 30, 110), p(long + '二', 30, 111), p(long + '三', 30, 112)], 420, 140)
+    planLabelBoxes(cls, fitBoxFor(420, 140))
+    // 窄框里放不下的簇退成编号；退了的 side 必须是 none（图上不渲染标签）
+    expect(cls.some((c) => c.dense)).toBe(true)
+    expect(cls.filter((c) => c.dense).every((c) => c.side === 'none')).toBe(true)
+  })
+
+  it('标签宽度随中文长度增长（估算用）', () => {
+    expect(labelWidth('故宫')).toBeLessThan(labelWidth('故宫博物院'))
   })
 })
 

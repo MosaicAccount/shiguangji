@@ -17,18 +17,36 @@
 
       <!-- 照片：条目图集（点击新窗口看大图） -->
       <div v-if="photos.length" class="hd-shots">
-        <span class="sh">照片 {{ photos.length }}</span>
+        <span class="sh">
+          <svg class="shicon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 6.5h3l1.4-2h5.2L14 6.5h3v9H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <circle cx="10" cy="11" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+          照片 <b>{{ photos.length }}</b>
+        </span>
         <a v-for="(u, i) in photos" :key="u + i" class="shot" :href="photoUrl(u)" target="_blank" rel="noopener">
           <img :src="photoUrl(u)" :alt="`${place.title} 照片 ${i + 1}`" loading="lazy" />
         </a>
       </div>
 
-      <!-- 关联笔记 -->
+      <!-- 关联笔记：一行一条，左侧笔记图标 + 标题 + 日期 -->
       <div v-if="notes.length" class="hd-rnotes">
-        <span class="sh">关联笔记 {{ notes.length }}</span>
+        <div class="sh">
+          <svg class="shicon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M5 2.5h6l4 4v11H5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M11 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M7.6 11h4.8M7.6 14h3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          关联笔记 <b>{{ notes.length }}</b>
+        </div>
         <button v-for="n in notes" :key="n.noteId" type="button" class="rn" @click="openNote(n)">
+          <svg class="rnicon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M5 2.5h6l4 4v11H5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M11 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
           <span class="rt">{{ n.title }}</span>
           <span class="rd">{{ n.createTime }}</span>
+          <span class="ra" aria-hidden="true">›</span>
         </button>
       </div>
 
@@ -198,20 +216,32 @@ watch(
 .hd-card .rowm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px }
 .hd-card .acts { display: flex; gap: 10px; flex-wrap: wrap }
 
-/* 照片条：小图横向排，可点开原图 */
+/* 照片 / 关联笔记：同一种分组头（图标 + 计数），条目用卡片行 */
 .hd-shots, .hd-rnotes { margin: 0 0 14px }
-.hd-shots .sh, .hd-rnotes .sh { display: block; font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 6px }
+.hd-shots .sh, .hd-rnotes .sh { display: flex; align-items: center; gap: 6px; font-size: 13px;
+  color: var(--hd-ink-faint); margin-bottom: 7px }
+.hd-shots .sh b, .hd-rnotes .sh b { color: var(--hd-ink-soft); font-weight: 600 }
+.shicon { width: 15px; height: 15px; flex: none }
+
 .hd-shots { display: grid; grid-template-columns: repeat(auto-fill, 74px); gap: 8px }
 .hd-shots .sh { grid-column: 1 / -1 }
 .hd-shots .shot { display: block; width: 74px; height: 74px; border-radius: 6px 3px 7px 4px/4px 7px 3px 6px;
-  overflow: hidden; border: 1.6px solid var(--hd-line-soft); background: var(--hd-paper-2) }
+  overflow: hidden; border: 1.6px solid var(--hd-line-soft); background: var(--hd-paper-2);
+  transition: transform .12s }
+.hd-shots .shot:hover { transform: translateY(-2px) rotate(-.6deg) }
 .hd-shots .shot img { width: 100%; height: 100%; object-fit: cover; display: block }
-.hd-rnotes .rn { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; font: inherit;
-  background: none; border: 0; border-top: 1.5px dashed var(--hd-line-soft); padding: 7px 2px; cursor: pointer; color: inherit }
-.hd-rnotes .rn:first-of-type { border-top: 0 }
-.hd-rnotes .rt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
+.hd-rnotes .rn { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 12px; align-items: center;
+  gap: 9px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--hd-paper-2); border: 1.4px solid var(--hd-line-soft);
+  border-radius: 9px 4px 10px 5px/5px 10px 4px 9px; padding: 8px 10px; margin-top: 6px;
+  transition: transform .12s }
+.hd-rnotes .rn:hover { transform: translateY(-1px); border-color: var(--hd-line) }
+.rnicon { width: 18px; height: 18px; color: var(--hd-amber) }
+.hd-rnotes .rt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px }
 .hd-rnotes .rn:hover .rt { text-decoration: underline }
-.hd-rnotes .rd { flex: none; font-size: 12.5px; color: var(--hd-ink-faint) }
+.hd-rnotes .rd { flex: none; font-size: 12.5px; color: var(--hd-ink-faint); font-variant-numeric: tabular-nums }
+.hd-rnotes .ra { color: var(--hd-ink-faint); font-size: 16px; line-height: 1 }
 
 /* 组地图：高德瓦片区（按需加载），无坐标/失败时清单兜底 */
 .hd-provmap { position: relative; height: 250px; margin: 8px 0 12px; background: var(--hd-paper-2);

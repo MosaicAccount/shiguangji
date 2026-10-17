@@ -21,19 +21,23 @@
 
             <!-- 逐点档：时间序编号，标签侧由路线方向决定（mapLayout.planLabels） -->
             <button v-for="(c, i) in clusters" :key="'p' + i" type="button"
-                    class="hd-cl" :class="[c.up && 'up', c.edge]"
+                    class="hd-cl" :class="['side-' + c.side, c.dense && 'dense']"
                     :style="{ left: c.x.toFixed(1) + '%', top: c.y.toFixed(1) + '%' }"
                     :title="clusterTitle(c)" @click="$emit('openPlace', c.places)">
-              <span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ i + 1 }}</b></span>
-              <span class="t">{{ clusterLabel(c) }}</span>
+              <span class="c">
+                <svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ i + 1 }}</b>
+                <span v-if="!c.dense" class="t">{{ clusterLabelText(c) }}</span>
+              </span>
             </button>
 
             <!-- 聚合档：按省/大区计数，点气泡进该组的真实地图 -->
             <button v-for="g in bubbles" :key="g.key" type="button" class="hd-cl"
                     :style="{ left: g.x.toFixed(1) + '%', top: g.y.toFixed(1) + '%' }"
                     @click="$emit('openGroup', { key: g.key, level: agg!.level, places: g.places })">
-              <span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ g.places.length }}</b></span>
-              <span class="t">{{ g.key }}</span>
+              <span class="c">
+                <svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ g.places.length }}</b>
+                <span class="t">{{ g.key }}</span>
+              </span>
             </button>
 
             <span class="fnote">{{ usePins ? '手绘示意 · 非比例地图' : `手绘示意 · 非比例 · 按${agg?.level}计数` }}</span>
@@ -41,8 +45,8 @@
           </div>
         </div>
 
-        <!-- 窄屏图例：地图上只留编号，名字进这里（桌面端图上直接写了名字） -->
-        <div class="hd-mapkey">
+        <!-- 图下清单：窄屏常显；桌面在「有合并 / 标签放不下」时显示，名字不会丢 -->
+        <div v-if="needKey" class="hd-mapkey shown">
           <div class="kh">{{ usePins ? '图例 · 按去过的先后' : `图例 · 每个${agg?.level}的地点数` }}</div>
           <div class="k" v-for="r in mapkeyRows" :key="r.n"><b>{{ r.n }}</b><span>{{ r.text }}</span></div>
         </div>
@@ -65,8 +69,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ReviewPlace } from '@/types/api/front/review'
 import {
   aggregatePlaces,
+  clusterLabelText,
   fitBoxFor,
   layoutPins,
+  planLabelBoxes,
   REGION_POS,
   shouldUsePins,
   trailPath
@@ -102,8 +108,19 @@ onBeforeUnmount(() => ro?.disconnect())
 
 const usePins = computed(() => shouldUsePins(props.places.length, mapW.value))
 
-const clusters = computed(() =>
-  usePins.value ? layoutPins(props.places, mapW.value, mapH.value) : []
+const clusters = computed(() => {
+  if (!usePins.value) return []
+  const list = layoutPins(props.places, mapW.value, mapH.value)
+  if (list.length) planLabelBoxes(list, fitBoxFor(mapW.value, mapH.value))
+  return list
+})
+
+/** 是否有簇被合并/退成编号——有就在图下列清单，名字不能只靠图上标签 */
+const needKey = computed(
+  () =>
+    !usePins.value ||
+    clusters.value.some((c) => c.dense) ||
+    clusters.value.length !== props.places.filter((p) => p.latitude != null && p.longitude != null).length
 )
 
 const trail = computed(() =>
@@ -136,7 +153,11 @@ const noCoordText = computed(() =>
 
 const countText = computed(() => {
   if (usePins.value) {
-    return `${props.places.length} 个地方 · ${clusters.value.length} 个点落在图上`
+    const total = props.places.length
+    const shown = clusters.value.length
+    return shown === total
+      ? `${total} 个地方 · ${shown} 个点`
+      : `${total} 个地方 · 合为 ${shown} 个点`
   }
   return `${props.places.length} 个地方 · 按${agg.value?.level} ${agg.value?.groups.length} 个`
 })
@@ -161,9 +182,6 @@ const mapkeyRows = computed(() => {
   }))
 })
 
-function clusterLabel(c: PinCluster): string {
-  return c.places.map((p) => p.title).join(' · ')
-}
 function clusterTitle(c: PinCluster): string {
   return c.places.map((p) => `${p.title}（${monthOf(p.finishDate)}）`).join('、')
 }
@@ -200,23 +218,29 @@ function avg(nums: number[]): number {
 .hd-nocoord { position: absolute; right: 22px; bottom: 20px; max-width: 268px; text-align: right; font-size: 13px; color: var(--hd-ink-soft);
   background: var(--hd-paper); padding: 1px 9px; border-radius: 9px 3px 9px 3px/3px 9px 3px 9px }
 
-/* 图钉 / 气泡：标签带纸色光晕，虚线经过时被干净地让开 */
-.hd-cl { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px;
-  color: var(--hd-red); border: 0; background: none; padding: 0; cursor: pointer; font: inherit }
-.hd-cl.up { flex-direction: column-reverse }
-.hd-cl.l :deep(.t) { align-self: flex-start }
-.hd-cl.r :deep(.t) { align-self: flex-end }
+/* 图钉 / 气泡：按钮盒就是圆本身（46×46），标签绝对定位——
+   之前按钮里塞了标签，translate(-50%,-50%) 居中的是「圆+标签」整体，
+   圆心会偏移 ±(标签高/2)，导致避让规划算的位置和渲染对不上。 */
+.hd-cl { position: absolute; width: 46px; height: 46px; transform: translate(-50%, -50%);
+  border: 0; background: none; padding: 0; cursor: pointer; font: inherit; color: var(--hd-red) }
 .hd-cl .c { position: relative; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center }
-.hd-cl .c svg { position: absolute; inset: 0; filter: url(#rough) }
-.hd-cl .c svg ellipse { fill: var(--hd-amber-soft); stroke: currentColor; stroke-width: 2.2 }
-.hd-cl .c b { position: relative; font-size: 17px }
-.hd-cl .t { font-size: 14px; color: var(--hd-ink); background: var(--hd-paper); padding: 0 8px;
-  border-radius: 9px 3px 9px 3px/3px 9px 3px 9px; white-space: nowrap;
+.hd-cl .c > svg { position: absolute; inset: 0; filter: url(#rough) }
+.hd-cl .c > svg ellipse { fill: var(--hd-amber-soft); stroke: currentColor; stroke-width: 2.2 }
+.hd-cl .c > b { position: relative; font-size: 17px }
+
+/* 标签：四向贴圆，距离与 mapLayout 的 LABEL_GAP 一致（7px） */
+.hd-cl .t { position: absolute; font-size: 14px; line-height: 1; color: var(--hd-ink); background: var(--hd-paper);
+  padding: 4px 8px; border-radius: 9px 3px 9px 3px/3px 9px 3px 9px; white-space: nowrap;
   box-shadow: 0 0 0 5px var(--hd-paper) }
-.hd-cl:hover .c svg ellipse { stroke-width: 3 }
+.hd-cl.side-down .t { top: calc(100% + 7px); left: 50%; transform: translateX(-50%) }
+.hd-cl.side-up .t { bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%) }
+.hd-cl.side-right .t { left: calc(100% + 7px); top: 50%; transform: translateY(-50%) }
+.hd-cl.side-left .t { right: calc(100% + 7px); top: 50%; transform: translateY(-50%) }
+.hd-cl:hover .c > svg ellipse { stroke-width: 3 }
 
 /* 窄屏图例（桌面隐藏） */
 .hd-mapkey { display: none }
+.hd-mapkey.shown { display: block; margin-top: 12px }
 .hd-mapkey .k { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; font-size: 14px; line-height: 1.85 }
 .hd-mapkey .k b { font-weight: 400; color: var(--hd-red) }
 .hd-mapkey .kh { font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 4px }
