@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +72,17 @@ public class SgjItemServiceImpl implements ISgjItemService
     public List<SgjItem> selectPlanItems(SgjItem sgjItem)
     {
         return sgjItemMapper.selectPlanItems(sgjItem);
+    }
+
+    @Override
+    public Map<String, Long> countPlanByStatus(SgjItem sgjItem)
+    {
+        Map<String, Long> counts = new HashMap<>();
+        for (Map<String, Object> row : sgjItemMapper.selectPlanStatusCount(sgjItem))
+        {
+            counts.put((String) row.get("status"), ((Number) row.get("cnt")).longValue());
+        }
+        return counts;
     }
 
     @Override

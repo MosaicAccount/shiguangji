@@ -1,6 +1,7 @@
 package com.shiguangji.business.service;
 
 import java.util.List;
+import java.util.Map;
 
 import com.shiguangji.business.domain.SgjItem;
 
@@ -34,6 +35,14 @@ public interface ISgjItemService
      * @return 条目集合
      */
     public List<SgjItem> selectPlanItems(SgjItem sgjItem);
+
+    /**
+     * 统计计划页条目分态数量（issue #92：全量分档，不受当前筛选影响）
+     *
+     * @param sgjItem 条目（createBy 过滤）
+     * @return 状态值 -&gt; 数量（缺档不计入）
+     */
+    public Map<String, Long> countPlanByStatus(SgjItem sgjItem);
 
     /**
      * 查询回收站条目列表（del_flag='2'）

@@ -1,6 +1,7 @@
 package com.shiguangji.business.mapper;
 
 import java.util.List;
+import java.util.Map;
 
 import com.shiguangji.business.domain.SgjItem;
 
@@ -37,6 +38,14 @@ public interface SgjItemMapper
      * @return 条目集合
      */
     public List<SgjItem> selectPlanItems(SgjItem sgjItem);
+
+    /**
+     * 统计计划页条目分态数量（issue #92：胶囊数字口径，全量分档、不受当前筛选影响）
+     *
+     * @param sgjItem 条目信息（createBy 过滤）
+     * @return status/cnt 行集合
+     */
+    public List<Map<String, Object>> selectPlanStatusCount(SgjItem sgjItem);
 
     /**
      * 查询回收站条目列表（del_flag='2'）

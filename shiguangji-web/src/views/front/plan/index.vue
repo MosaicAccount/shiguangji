@@ -11,10 +11,11 @@
     <header class="hd-head">
       <h1>心愿<span class="dot"> · </span>想到就排上</h1>
       <p>影单 / 书单 / 足迹里<strong>还没做完</strong>的心愿，按你定的日子排在一起：定了日子的在前，没定日子的在最后一组。</p>
+      <!-- 状态胶囊即筛选（issue #92）：点「在做/在想」单选该档，点「共 N 项」回全部；数字是全量分档，不随筛选变 -->
       <div class="hd-chips">
-        <span class="hd-chip">共 {{ total }} 项</span>
-        <span class="hd-chip doing">在做 {{ doingCount }}</span>
-        <span class="hd-chip">在想 {{ wantCount }}</span>
+        <button type="button" class="hd-chip" :class="{ on: !activeStatus }" @click="switchStatus('')">共 {{ wantTotal + doingTotal }} 项</button>
+        <button type="button" class="hd-chip" :class="{ on: activeStatus === 'DOING' }" @click="switchStatus('DOING')">在做 {{ doingTotal }}</button>
+        <button type="button" class="hd-chip" :class="{ on: activeStatus === 'WANT' }" @click="switchStatus('WANT')">在想 {{ wantTotal }}</button>
       </div>
     </header>
 
@@ -121,11 +122,20 @@
           <path d="M96 30 q6 -12 14 -2 q8 -10 14 2 q6 8 -14 16 q-20 -8 -14 -16z" stroke="var(--hd-amber)" />
           <path d="M28 24 q10 -8 18 0 M112 78 q12 -6 20 2" stroke="var(--hd-ink-soft)" stroke-dasharray="3 6" />
         </svg>
-        <p>还没有心愿 —— 去影单 / 书单挑一个，填上打算哪天看。</p>
-        <div class="acts">
-          <button type="button" class="hdbtn go" @click="router.push('/movie')">去影单</button>
-          <button type="button" class="hdbtn" @click="router.push('/book')">去书单</button>
-        </div>
+        <!-- 空态分两种：筛出来的空（这一档没有）与真的没心愿（引导去挑） -->
+        <template v-if="activeStatus">
+          <p>这一档还没有心愿。</p>
+          <div class="acts">
+            <button type="button" class="hdbtn go" @click="switchStatus('')">看全部心愿</button>
+          </div>
+        </template>
+        <template v-else>
+          <p>还没有心愿 —— 去影单 / 书单挑一个，填上打算哪天看。</p>
+          <div class="acts">
+            <button type="button" class="hdbtn go" @click="router.push('/movie')">去影单</button>
+            <button type="button" class="hdbtn" @click="router.push('/book')">去书单</button>
+          </div>
+        </template>
       </div>
 
       <div v-if="loadError" class="load-error">
@@ -164,6 +174,9 @@ import type { SgjItem } from '@/types/api/business/item'
  * 排序口径在服务端（start_date 升序、无日期置后），分组口径在前端（utils/plan.ts，设计 结论 78）。
  * 状态流转全部复用既有端点：开始/退回/改日期走 PUT /app/item/{id}，完成走统一完成弹窗。
  *
+ * 胶囊筛选（issue #92）：页头「共/在做/在想」即筛选开关，status 由服务端单档过滤；
+ * 数字用响应的 wantTotal/doingTotal 全量分档，不受筛选与分页影响。
+ *
  * 皮肤（issue #84）：样式全部来自 ./handdrawn.css —— 它是设计图
  * docs/design/mockups/plan-0.0.3/handdrawn-checklist.html 与产品共用的唯一来源，
  * 类名也与设计图逐一对齐（sheet/paper/row/ck/glyph/hdbtn…），因此「实现即设计图」，
@@ -194,8 +207,36 @@ const completeOpen = ref(false)
 const completeItem = ref<SgjItem | null>(null)
 
 const groups = computed(() => groupPlanItems(list.value, today.value))
-const wantCount = computed(() => list.value.filter(i => i.status === 'WANT').length)
-const doingCount = computed(() => list.value.filter(i => i.status === 'DOING').length)
+
+/** 胶囊筛选档位（issue #92）：''=全部 / WANT=在想 / DOING=在做；服务端筛选，分页口径不被「只筛当前页」破坏 */
+const activeStatus = ref<'' | 'WANT' | 'DOING'>('')
+/** 胶囊数字：全量分档（响应 wantTotal/doingTotal）。旧口径按当前页 count，超过一页（10 条）后三数必对不上 */
+const wantTotal = ref(0)
+const doingTotal = ref(0)
+
+function loadData(): Promise<void> {
+  loading.value = true
+  loadError.value = false
+  pageNum.value = 1
+  today.value = localDateKey(new Date())
+  return listPlanItems({ status: activeStatus.value || undefined, pageNum: pageNum.value, pageSize }).then(response => {
+    list.value = response.data || []
+    total.value = Number(response.total) || 0
+    wantTotal.value = Number(response.wantTotal) || 0
+    doingTotal.value = Number(response.doingTotal) || 0
+  }).catch(() => {
+    loadError.value = true
+  }).finally(() => {
+    loading.value = false
+  })
+}
+
+/** 胶囊切换：同档不重复取数（与影单页状态胶囊同一交互） */
+function switchStatus(status: '' | 'WANT' | 'DOING'): void {
+  if (activeStatus.value === status) return
+  activeStatus.value = status
+  loadData()
+}
 
 /** 状态文案：字典优先，查不到用中文兜底（utils/itemStatus.ts，绝不显示裸枚举） */
 const dictTable = computed<Record<string, any[]>>(() => ({
@@ -207,26 +248,12 @@ function statusLabel(item: SgjItem): string {
   return itemStatusLabel(item, dictTable.value)
 }
 
-function loadData(): Promise<void> {
-  loading.value = true
-  loadError.value = false
-  pageNum.value = 1
-  today.value = localDateKey(new Date())
-  return listPlanItems({ pageNum: pageNum.value, pageSize }).then(response => {
-    list.value = response.data || []
-    total.value = Number(response.total) || 0
-  }).catch(() => {
-    loadError.value = true
-  }).finally(() => {
-    loading.value = false
-  })
-}
-
 function loadMore(): void {
   if (loadingMore.value || !hasMore.value) return
   loadingMore.value = true
   pageNum.value += 1
-  listPlanItems({ pageNum: pageNum.value, pageSize }).then(response => {
+  // 翻页带同一档位：不带 status 的话第二页会混进其他档的条目
+  listPlanItems({ status: activeStatus.value || undefined, pageNum: pageNum.value, pageSize }).then(response => {
     list.value = list.value.concat(response.data || [])
     total.value = Number(response.total) || 0
   }).catch(() => {

@@ -18,6 +18,7 @@
 | T-77 | 首页汇总不向访客下发心愿数字（结论 108） | 户主 `/app/home/index` → `wishTotal + doingTotal > 0`；匿名同一接口 → `wishTotal == 0`、`doingTotal == 0`、`wish` / `doing` 分态映射为空，而公开目录口径（`itemTotal`）仍 > 0 | 同上 |
 | T-78 | 字典值域与排序 | `sgj_movie_status` / `sgj_book_status` 各 3 条且 `dict_sort` 为 `1/2/3` 对应 `WANT/DOING/DONE`；`sgj_place_status` **仍只有 2 条**（`DOING` 不得出现在地点）；三套字典无重复 `dict_value` | `SgjStatusDictTest`（纯 SQL 断言，或并入 smoke） |
 | T-79 | 时间线仍只含 `DONE`（回归） | 存在 `DOING` 条目时：`/app/home/index` 的 `timeline` 与 `/app/home/timeline` 的 `rows` 都不含它；`total` 与按同一条件独立统计的行数相等 | `AppPlanApiSmokeTest` |
+| T-97 | 计划接口胶囊筛选与分态总数（结论 109，issue #92） | `status=WANT/DOING` → 只返回该档且 `total` 跟随筛选；`status=DONE` 或乱码 → 仍按 `WANT ∪ DOING` 合集（不得筛空）；响应 `wantTotal`/`doingTotal` 为**全量分档**——与库内 `count(*) group by status` 对账，且带任何筛选调用都不变 | `AppPlanApiSmokeTest` |
 
 ### 1.2 前端
 
@@ -29,6 +30,7 @@
 | T-83 | 完成弹窗提交用用户选的日期 | 把日期改成 `2026-10-01` 后提交 → 以 `{finishDate:'2026-10-01'}` 调用 `completeFrontItem`（断言出参而不是只断言被调用）；成功后 `emit('submitted')` | 同上 |
 | T-84 | 首页心愿条、状态文案与心愿单脚 | 心愿条数字 = `wishTotal + doingTotal`；`DOING` 条目状态文案是「在看 / 在读」；心愿条链接指向 `/plan`（回归：改前误指 `/note`）；心愿单展示计划日期、只渲染首屏 10 条，右下角「查看全部心愿 →」链接指向 `/plan` 且与最近笔记同一 `.note-more` 视觉（结论 95/96） | `views/front/home/__tests__/wishlist.spec.ts` |
 | T-96 | 访客口径：心愿入口与数据都不可见（结论 108） | 前端：`isPublicRoute('/plan') === false`；访客首页不渲染 `.wish-bar` / `.wishlist-card` 且**不请求** `plan/list`（`publicRoutes.spec.ts` + `home/__tests__/wishlist.spec.ts`）。人工真机：匿名打开 `/plan` → 落登录页；访客首页导航无「心愿」、右栏只有「最近笔记」 | 自动化 + 人工 |
+| T-98 | 心愿页状态胶囊即筛选（结论 109，issue #92） | 胶囊是真实按钮：初始不带 `status`、默认「共 N 项」高亮；点「在做 / 在想」→ 请求带对应 `status`、列表只剩该档、高亮挪过去、数字仍是全量分档（`wantTotal`/`doingTotal`，不随筛选缩水）、分页脚「已展示 X / 共 N」跟随筛选；同档重复点击不重新请求；「加载更多」沿用当前档位；筛空的空态是「这一档还没有心愿 + 看全部心愿」而非「去影单 / 书单挑一个」，点「看全部心愿」回到不带 `status` | `views/front/plan/__tests__/status-filter.spec.ts` |
 
 ## 2. 人工用例（只有人能跑）
 
