@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  shouldShowLabels,
   shouldUsePins,
   layoutPins,
   trailPath,
@@ -127,6 +128,14 @@ describe('B2c 境外插图区（境内不再被境外把比例撑死）', () => 
   it('纯境内数据不出现插图区', () => {
     const { inset } = layoutPins([p('甲', 30, 110), p('乙', 30, 130)], W, H)
     expect(inset).toBeNull()
+  })
+})
+
+describe('B4b 点多时只留编号', () => {
+  it('≤6 个簇才铺标签，更多交给图下按月清单', () => {
+    expect(shouldShowLabels(6)).toBe(true)
+    expect(shouldShowLabels(7)).toBe(false)
+    expect(shouldShowLabels(9)).toBe(false)
   })
 })
 

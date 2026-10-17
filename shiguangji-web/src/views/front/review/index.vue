@@ -262,7 +262,12 @@ function monthOf(finishDate?: string | null): string {
 /* ===== 弹层状态：mode 四态（null 关闭）；条目详情与地点详情同一套手绘弹窗 ===== */
 const modalMode = ref<'place' | 'group' | 'media' | null>(null)
 const modalPlace = ref<ReviewPlace | null>(null)
-const modalGroup = ref<{ key: string; level: '省' | '大区'; places: ReviewPlace[] } | null>(null)
+const modalGroup = ref<{
+  key: string
+  level: '省' | '大区' | null
+  fromCluster?: boolean
+  places: ReviewPlace[]
+} | null>(null)
 const modalMedia = ref<SgjItem | null>(null)
 
 /** 评分榜点开条目：取详情后用手绘弹窗展示（不跳列表、不用抽屉） */
@@ -280,7 +285,12 @@ function openPlace(places: ReviewPlace | ReviewPlace[]) {
   modalPlace.value = Array.isArray(places) ? places[0] ?? null : places
   modalMode.value = 'place'
 }
-function openGroup(group: { key: string; level: '省' | '大区'; places: ReviewPlace[] }) {
+function openGroup(group: {
+  key: string
+  level: '省' | '大区' | null
+  fromCluster?: boolean
+  places: ReviewPlace[]
+}) {
   modalGroup.value = group
   modalMode.value = 'group'
 }

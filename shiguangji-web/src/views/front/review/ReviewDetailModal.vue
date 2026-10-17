@@ -100,19 +100,22 @@
     <!-- 组地图：高德瓦片裱手绘框，SDK 首次打开才加载；点图钉下钻到点详情 -->
     <div v-else-if="groupView" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
-      <h3>{{ groupView.key }} · {{ groupView.places.length }} 个地方</h3>
-      <p class="sub">{{ year }} 年<template v-if="groupView.level"> · 按{{ groupView.level }}</template> · 点图钉看这条记录</p>
-      <div class="hd-provmap">
+      <h3>{{ groupTitle }}</h3>
+      <p class="sub">{{ groupSub }}</p>
+      <!-- 「同一处」只有几个地点：不加载地图，直接给可点的清单 -->
+      <div v-if="!groupView.fromCluster" class="hd-provmap">
         <div v-show="mapState === 'ready'" ref="amapEl" class="amap"></div>
         <div v-if="mapState === 'loading'" class="hd-provempty">地图加载中…</div>
         <div v-else-if="mapState === 'error'" class="hd-provempty">地图加载失败，以下是该组地点清单</div>
         <span class="fnote">高德瓦片 · 手绘裱框 · 首次打开才加载</span>
       </div>
       <div class="hd-provlist">
-        <div class="k" v-for="(p, i) in groupView.places" :key="p.itemId ?? i">
+        <button class="k" type="button" v-for="(p, i) in groupView.places" :key="p.itemId ?? i"
+                @click="$emit('openPlace', p)">
           <b>{{ i + 1 }}</b>
           <span>{{ p.title }} · {{ monthOf(p) }}{{ hasCoord(p) ? '' : '（没填坐标，没落图）' }}</span>
-        </div>
+          <i aria-hidden="true">›</i>
+        </button>
       </div>
     </div>
   </div>
@@ -130,7 +133,12 @@ import type { ReviewNoteRef, ReviewPlace } from '@/types/api/front/review'
 const props = defineProps<{
   mode: 'place' | 'group' | 'media' | null
   place: ReviewPlace | null
-  group: { key: string; level: '省' | '大区'; places: ReviewPlace[] } | null
+  group: {
+    key: string
+    level: '省' | '大区' | null
+    fromCluster?: boolean
+    places: ReviewPlace[]
+  } | null
   media: SgjItem | null
   year: number
 }>()
@@ -189,8 +197,27 @@ watch(
 const locating = ref<ReviewPlace | null>(null)
 const groupView = computed(() => {
   if (props.mode === 'group' && props.group) return props.group
-  if (locating.value) return { key: locating.value.title || '定位', level: null as unknown as '省', places: [locating.value] }
+  if (locating.value) {
+    return { key: locating.value.title || '定位', level: null as '省' | null, fromCluster: false, places: [locating.value] }
+  }
   return null
+})
+
+/** 组标题：合并点进来看的是「同一处」的多个地点，区域聚合看的是「某组」 */
+const groupTitle = computed(() => {
+  const g = groupView.value
+  if (!g) return ''
+  if (g.fromCluster) return `${g.key} · 同一处 ${g.places.length} 个地点`
+  return `${g.key} · ${g.places.length} 个地方`
+})
+
+/** 组副标题：同一处清单不写「按省」，区域聚合才写粒度 */
+const groupSub = computed(() => {
+  const g = groupView.value
+  if (!g) return ''
+  if (g.fromCluster) return `${props.year} 年 · 点一条看详情`
+  if (g.level) return `${props.year} 年 · 按${g.level} · 点图钉看这条记录`
+  return `${props.year} 年 · 点图钉看这条记录`
 })
 
 const tags = computed(() =>
@@ -265,7 +292,7 @@ function renderMarkers(places: ReviewPlace[]) {
 watch(
   groupView,
   async (g) => {
-    if (!g) return
+    if (!g || g.fromCluster) return // 「同一处」清单不加载地图
     await nextTick()
     await ensureMap()
     renderMarkers(g.places)
@@ -340,8 +367,12 @@ watch(
 .hd-provmap .fnote { position: absolute; left: 16px; bottom: 14px; font-size: 12.5px; color: var(--hd-ink-faint);
   background: var(--hd-paper); padding: 0 8px; border-radius: 8px 3px 8px 3px/3px 8px 3px 8px; z-index: 1 }
 .hd-provlist { margin-top: 6px; border-top: 2px dashed var(--hd-line-soft); padding-top: 10px }
-.hd-provlist .k { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; font-size: 14.5px; line-height: 1.85 }
+.hd-provlist .k { display: grid; grid-template-columns: 20px minmax(0, 1fr) 12px; gap: 8px; width: 100%;
+  font: inherit; font-size: 14.5px; line-height: 1.85; text-align: left; color: inherit;
+  background: none; border: 0; border-radius: 6px; padding: 2px 4px; cursor: pointer }
+.hd-provlist .k:hover { background: var(--hd-amber-soft) }
 .hd-provlist .k b { font-weight: 400; color: var(--hd-red) }
+.hd-provlist .k i { font-style: normal; color: var(--hd-ink-faint) }
 
 @media (max-width: 768px) {
   .hd-layer { align-items: flex-end; padding: 0 }

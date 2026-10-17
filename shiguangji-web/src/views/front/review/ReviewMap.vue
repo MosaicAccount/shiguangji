@@ -28,7 +28,7 @@
             <button v-for="(c, i) in clusters" :key="'p' + i" type="button"
                     class="hd-cl" :class="['side-' + c.side, c.dense && 'dense']"
                     :style="{ left: c.x.toFixed(1) + '%', top: c.y.toFixed(1) + '%' }"
-                    :title="clusterTitle(c)" @click="$emit('openPlace', c.places)">
+                    :title="clusterTitle(c)" @click="onClusterClick(c)">
               <span class="c">
                 <svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ i + 1 }}</b>
                 <span v-if="!c.dense" class="t">{{ clusterLabelText(c) }}</span>
@@ -52,8 +52,14 @@
 
         <!-- 图下清单：窄屏常显；桌面在「有合并 / 标签放不下」时显示，名字不会丢 -->
         <div v-if="needKey" class="hd-mapkey shown">
-          <div class="kh">{{ usePins ? '图例 · 按去过的先后' : `图例 · 每个${agg?.level}的地点数` }}</div>
-          <div class="k" v-for="r in mapkeyRows" :key="r.n"><b>{{ r.n }}</b><span>{{ r.text }}</span></div>
+          <div class="kh">{{ usePins ? '图例 · 按月份（编号对应图上点位）' : `图例 · 每个${agg?.level}的地点数` }}</div>
+          <div v-for="g in mapkeyGroups" :key="g.month" class="mk-group">
+            <div v-if="g.month" class="mk-month">{{ g.month }}</div>
+            <div class="k" v-for="(r, i) in g.rows" :key="g.month + i">
+              <b>{{ r.n }}</b>
+              <span>{{ r.text }}<em v-if="r.net"> · {{ r.net }}</em></span>
+            </div>
+          </div>
         </div>
 
         <p class="hd-note">
@@ -79,15 +85,21 @@ import {
   layoutPins,
   planLabelBoxes,
   REGION_POS,
+  shouldShowLabels,
   shouldUsePins,
   trailPath
 } from './mapLayout'
 import type { PinCluster } from './mapLayout'
 
 const props = defineProps<{ places: ReviewPlace[] }>()
-defineEmits<{
+const emit = defineEmits<{
   (e: 'openPlace', places: ReviewPlace[]): void
-  (e: 'openGroup', group: { key: string; level: '省' | '大区'; places: ReviewPlace[] }): void
+  (e: 'openGroup', group: {
+    key: string
+    level: '省' | '大区' | null
+    fromCluster?: boolean
+    places: ReviewPlace[]
+  }): void
 }>()
 
 const mapEl = ref<HTMLElement>()
@@ -119,7 +131,16 @@ const layout = computed(() =>
 
 const clusters = computed(() => {
   const list = layout.value.clusters
-  if (list.length) planLabelBoxes(list, fitBoxFor(mapW.value, mapH.value))
+  if (!list.length) return list
+  if (shouldShowLabels(list.length)) {
+    planLabelBoxes(list, fitBoxFor(mapW.value, mapH.value))
+  } else {
+    // 点多时不铺标签：全部只留编号，名字进图下按月清单（否则标签必然互相压）
+    list.forEach((c) => {
+      c.side = 'none'
+      c.dense = true
+    })
+  }
   return list
 })
 
@@ -179,19 +200,45 @@ const noteText = computed(() =>
     : `按${agg.value?.level}计数（点多的年份不逐点画）· 点气泡看该组的真实位置`
 )
 
-/** 窄屏图例行（桌面端隐藏，CSS 控制） */
-const mapkeyRows = computed(() => {
-  if (usePins.value) {
-    return clusters.value.map((c, i) => ({
-      n: String(i + 1),
-      text: c.places.map((p) => `${p.title} · ${monthOf(p.finishDate)}`).join(' / ')
-    }))
+/** 图下清单：逐点档按「月份」分组（同月的点排在一起），聚合档按组 */
+const mapkeyGroups = computed(() => {
+  if (!usePins.value) {
+    return [
+      {
+        month: '',
+        rows: (agg.value?.groups ?? []).map((g) => ({ n: String(g.places.length), text: g.key, net: '' }))
+      }
+    ]
   }
-  return (agg.value?.groups ?? []).map((g) => ({
-    n: String(g.places.length),
-    text: g.key
-  }))
+  const byMonth = new Map<number, { n: string; text: string; net: string }[]>()
+  clusters.value.forEach((c, i) => {
+    c.places.forEach((p) => {
+      const mi = p.finishDate ? Number(p.finishDate.slice(5, 7)) : 0
+      // 只列「月份归属」，点号沿用簇号，便于在地图上找到它
+      const row = { n: String(i + 1), text: p.title || '', net: p.province || p.country || '' }
+      const list = byMonth.get(mi) || []
+      list.push(row)
+      byMonth.set(mi, list)
+    })
+  })
+  return [...byMonth.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([mi, rows]) => ({ month: mi > 0 ? `${mi} 月` : '月份未填', rows }))
 })
+
+/** 单点直接进详情；合并的多点先进「同一处」清单，逐个点开（不让第二个地点被藏起来） */
+function onClusterClick(c: PinCluster<ReviewPlace>) {
+  if (c.places.length === 1) {
+    emit('openPlace', c.places)
+    return
+  }
+  emit('openGroup', {
+    key: c.places[0]?.title || '',
+    level: null,
+    fromCluster: true,
+    places: c.places
+  })
+}
 
 function clusterTitle(c: PinCluster): string {
   return c.places.map((p) => `${p.title}（${monthOf(p.finishDate)}）`).join('、')
@@ -259,6 +306,9 @@ function avg(nums: number[]): number {
 .hd-mapkey .k { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; font-size: 14px; line-height: 1.85 }
 .hd-mapkey .k b { font-weight: 400; color: var(--hd-red) }
 .hd-mapkey .kh { font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 4px }
+.hd-mapkey .mk-group + .mk-group { margin-top: 8px }
+.hd-mapkey .mk-month { font-size: 13px; color: var(--hd-ink-soft); margin-bottom: 2px }
+.hd-mapkey .k em { font-style: normal; color: var(--hd-ink-faint) }
 .hd-note { font-size: 13.5px; color: var(--hd-ink-soft); margin: 16px 0 0;
   display: flex; align-items: flex-start; gap: 7px }
 .hd-note .nicon { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--hd-ink-faint) }

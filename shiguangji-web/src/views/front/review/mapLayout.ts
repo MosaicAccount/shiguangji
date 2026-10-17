@@ -58,6 +58,13 @@ export const PIN_LIMIT_MOBILE = 5
 export const MOBILE_WIDTH = 768
 /** 图钉圆直径（px）：并簇阈值与连线收边都以它为基准 */
 export const PIN_DIAMETER_PX = 46
+/** 图上最多同时铺多少个文字标签：再多就只留编号，名字交给图下按月清单 */
+export const LABEL_MAX_CLUSTERS = 6
+
+/** 当前簇数是否还适合在图上铺标签 */
+export function shouldShowLabels(clusterCount: number): boolean {
+  return clusterCount <= LABEL_MAX_CLUSTERS
+}
 
 export function pinLimit(containerWidth: number): number {
   return containerWidth < MOBILE_WIDTH ? PIN_LIMIT_MOBILE : PIN_LIMIT_DESKTOP
