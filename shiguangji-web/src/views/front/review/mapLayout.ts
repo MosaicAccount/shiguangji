@@ -35,6 +35,8 @@ export interface PinCluster<T extends MappablePlace = MappablePlace> {
   side: LabelSide
   /** 放不下（四向都被占）：图上只留编号，名字进图下清单 */
   dense: boolean
+  /** 外部给定标签文案（聚合气泡用「大区 · 月份跨度」），不传则按地点名生成 */
+  label?: string
   places: T[]
 }
 
@@ -179,8 +181,20 @@ export function labelWidth(text: string, fontPx = 14): number {
 
 /** 簇标签文案：单点用全名；多点收成「首个 +n」（全名在图下清单与悬停里） */
 export function clusterLabelText<T extends MappablePlace>(c: PinCluster<T>): string {
+  if (c.label) return c.label
   const first = c.places[0]?.title || ''
   return c.places.length === 1 ? first : `${first} +${c.places.length - 1}`
+}
+
+/** 一组地点的月份跨度：单月「5 月」，跨月「5–10 月」（只取完成月份） */
+export function monthSpan(places: MappablePlace[]): string {
+  const months = places
+    .map((p) => (p.finishDate ? Number(String(p.finishDate).slice(5, 7)) : 0))
+    .filter((m) => m >= 1 && m <= 12)
+  if (!months.length) return ''
+  const min = Math.min(...months)
+  const max = Math.max(...months)
+  return min === max ? `${min} 月` : `${min}–${max} 月`
 }
 
 function rectsOverlap(a: LabelBox, b: LabelBox): boolean {

@@ -10,6 +10,7 @@ import {
   fitBoxFor,
   fitPoints,
   labelWidth,
+  monthSpan,
   planLabelBoxes,
   projectPlaces,
   MOBILE_WIDTH
@@ -185,6 +186,20 @@ describe('B1b 聚合气泡（点数超限后的展示）', () => {
     }
     // 气泡撑开到「圆径 46 + 间隙 6」附近，肉眼不叠
     expect(min).toBeGreaterThan(40)
+  })
+})
+
+describe('B1c 月份跨度（聚合档要看得出什么时候去的）', () => {
+  const at = (m: number) => ({ title: 'x', finishDate: `2026-${String(m).padStart(2, '0')}-10` })
+
+  it('单月只写月份，跨月写区间', () => {
+    expect(monthSpan([at(5), at(5)])).toBe('5 月')
+    expect(monthSpan([at(5), at(10)])).toBe('5–10 月')
+    expect(monthSpan([at(11), at(4)])).toBe('4–11 月')
+  })
+
+  it('没有日期时留空', () => {
+    expect(monthSpan([{ title: 'x', finishDate: null }])).toBe('')
   })
 })
 

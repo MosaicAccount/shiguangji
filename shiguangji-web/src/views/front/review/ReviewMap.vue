@@ -41,7 +41,7 @@
                     @click="$emit('openGroup', { key: g.key, level: aggLevel, places: g.places })">
               <span class="c">
                 <svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ g.places.length }}</b>
-                <span v-if="!g.dense" class="t">{{ g.key }}</span>
+                <span v-if="!g.dense" class="t">{{ g.label }}</span>
               </span>
             </button>
 
@@ -51,13 +51,25 @@
         </div>
 
         <!-- 图下清单：窄屏常显；桌面在「有合并 / 标签放不下」时显示，名字不会丢 -->
-        <div v-if="needKey" class="hd-mapkey shown">
-          <div class="kh">{{ usePins ? '图例 · 按月份（编号对应图上点位）' : `图例 · 每个${aggLevel}的地点数` }}</div>
+        <div v-if="needKey && usePins" class="hd-mapkey shown">
+          <div class="kh">图例 · 按月份（编号对应图上点位）</div>
           <div v-for="g in mapkeyGroups" :key="g.month" class="mk-group">
             <div v-if="g.month" class="mk-month">{{ g.month }}</div>
             <div class="k" v-for="(r, i) in g.rows" :key="g.month + i">
               <b>{{ r.n }}</b>
               <span>{{ r.text }}<em v-if="r.net"> · {{ r.net }}</em></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 聚合档清单：每个大区/省一组，逐条给出地点与月份 -->
+        <div v-if="!usePins" class="hd-mapkey shown">
+          <div class="kh">图例 · 按{{ aggLevel }}（点气泡看该组的真实位置）</div>
+          <div v-for="g in aggLegend" :key="g.key" class="mk-group">
+            <div class="mk-month">{{ g.key }} · {{ g.places.length }} 个地方<em v-if="g.span"> · {{ g.span }}</em></div>
+            <div class="k" v-for="(r, i) in g.places" :key="g.key + i">
+              <b>{{ r.month }}</b>
+              <span>{{ r.title }}<em v-if="r.net"> · {{ r.net }}</em></span>
             </div>
           </div>
         </div>
@@ -83,6 +95,7 @@ import {
   clusterLabelText,
   fitBoxFor,
   layoutPins,
+  monthSpan,
   pinClusterLimit,
   planLabelBoxes,
   shouldShowLabels,
@@ -174,16 +187,21 @@ const bubbles = computed(() => {
   const res = aggResult.value
   if (!res) return []
   // 借用逐点档的簇结构跑避让：气泡共用同一套「下/上/右/左」规则
-  const pseudo = res.bubbles.map((b) => ({
-    x: b.x,
-    y: b.y,
-    side: 'down' as const,
-    dense: false,
-    places: b.places
-  }))
+  const pseudo = res.bubbles.map((b) => {
+    const span = monthSpan(b.places)
+    return {
+      x: b.x,
+      y: b.y,
+      side: 'down' as const,
+      dense: false,
+      label: span ? `${b.key} · ${span}` : b.key,
+      places: b.places
+    }
+  })
   planLabelBoxes(pseudo, fitBoxFor(mapW.value, mapH.value))
   return res.bubbles.map((b, i) => ({
     ...b,
+    label: pseudo[i].label,
     side: pseudo[i].side,
     dense: pseudo[i].dense
   }))
@@ -216,13 +234,26 @@ const noteText = computed(() =>
     : `点数超过 ${pinClusterLimit(mapW.value)} 个就不再逐点画：按${aggLevel.value}计数，点气泡看该组的真实位置`
 )
 
-/** 图下清单：逐点档按「月份」分组（同月的点排在一起），聚合档按组 */
+/** 聚合档的图下清单：每个大区/省一组，逐条列出地点与月份 */
+const aggLegend = computed(() =>
+  bubbles.value.map((b) => ({
+    key: b.key,
+    span: monthSpan(b.places),
+    places: b.places.map((p) => ({
+      title: p.title || '',
+      month: p.finishDate ? `${Number(String(p.finishDate).slice(5, 7))} 月` : '月份未填',
+      net: p.province || p.country || ''
+    }))
+  }))
+)
+
+/** 图下清单：逐点档按「月份」分组（同月的点排在一起） */
 const mapkeyGroups = computed(() => {
   if (!usePins.value) {
     return [
       {
         month: '',
-        rows: bubbles.value.map((g) => ({ n: String(g.places.length), text: g.key, net: '' }))
+        rows: []
       }
     ]
   }
