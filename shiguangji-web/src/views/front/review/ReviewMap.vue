@@ -47,7 +47,14 @@
           <div class="k" v-for="r in mapkeyRows" :key="r.n"><b>{{ r.n }}</b><span>{{ r.text }}</span></div>
         </div>
 
-        <p class="hd-note">{{ noteText }}</p>
+        <p class="hd-note">
+          <svg class="nicon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 15 Q6 8 10 11 T17 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2.4"/>
+            <circle cx="3" cy="15" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <circle cx="17" cy="5" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+          <span>{{ noteText }}</span>
+        </p>
       </div>
     </div>
   </section>
@@ -58,6 +65,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ReviewPlace } from '@/types/api/front/review'
 import {
   aggregatePlaces,
+  fitBoxFor,
   layoutPins,
   REGION_POS,
   shouldUsePins,
@@ -95,7 +103,7 @@ onBeforeUnmount(() => ro?.disconnect())
 const usePins = computed(() => shouldUsePins(props.places.length, mapW.value))
 
 const clusters = computed(() =>
-  usePins.value ? layoutPins(props.places, mapW.value) : []
+  usePins.value ? layoutPins(props.places, mapW.value, mapH.value) : []
 )
 
 const trail = computed(() =>
@@ -105,7 +113,7 @@ const trail = computed(() =>
 /** 聚合档：位置优先取组内真实坐标的拟合中心，无坐标组用大区示意位兜底 */
 const bubbles = computed<{ key: string; x: number; y: number; places: ReviewPlace[] }[]>(() => {
   if (usePins.value) return []
-  const groups = aggregatePlaces(props.places).groups
+  const groups = aggregatePlaces(props.places, fitBoxFor(mapW.value, mapH.value)).groups
   return groups.map((g) => {
     if (g.points.length > 0) {
       return { key: g.key, x: avg(g.points.map((p) => p.x)), y: avg(g.points.map((p) => p.y)), places: g.places }
@@ -115,7 +123,9 @@ const bubbles = computed<{ key: string; x: number; y: number; places: ReviewPlac
   })
 })
 
-const agg = computed(() => (usePins.value ? null : aggregatePlaces(props.places)))
+const agg = computed(() =>
+  usePins.value ? null : aggregatePlaces(props.places, fitBoxFor(mapW.value, mapH.value))
+)
 
 const noCoordText = computed(() =>
   props.places
@@ -133,8 +143,8 @@ const countText = computed(() => {
 
 const noteText = computed(() =>
   usePins.value
-    ? '按去过的先后串起虚线，不是路线图——两点之间没有画「怎么走」。底是手绘示意（不铺地图瓦片、不按比例），精确位置点开后交给高德；靠得近的地点会并成一个点。'
-    : `点数一多就不再逐点画，改成按${agg.value?.level}计数——想看某一组，点它的气泡进真实地图。`
+    ? '虚线按去过的先后连，不是路线图 · 底图示意、不按比例 · 点开看真实位置'
+    : `按${agg.value?.level}计数（点多的年份不逐点画）· 点气泡看该组的真实位置`
 )
 
 /** 窄屏图例行（桌面端隐藏，CSS 控制） */
@@ -169,7 +179,6 @@ function avg(nums: number[]): number {
 </script>
 
 <style scoped>
-@import '../plan/handdrawn.css';
 
 .hd-sec { margin-top: 30px }
 
@@ -211,7 +220,9 @@ function avg(nums: number[]): number {
 .hd-mapkey .k { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; font-size: 14px; line-height: 1.85 }
 .hd-mapkey .k b { font-weight: 400; color: var(--hd-red) }
 .hd-mapkey .kh { font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 4px }
-.hd-note { font-size: 13.5px; color: var(--hd-ink-soft); margin: 16px 0 0 }
+.hd-note { font-size: 13.5px; color: var(--hd-ink-soft); margin: 16px 0 0;
+  display: flex; align-items: flex-start; gap: 7px }
+.hd-note .nicon { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--hd-ink-faint) }
 
 @media (max-width: 768px) {
   .hd-map { height: 300px }

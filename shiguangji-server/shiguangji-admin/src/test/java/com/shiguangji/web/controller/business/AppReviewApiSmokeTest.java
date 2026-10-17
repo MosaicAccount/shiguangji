@@ -112,6 +112,12 @@ class AppReviewApiSmokeTest
         jdbcTemplate.update("insert into sgj_item_place (item_id, province, country, latitude, longitude) "
                 + "values (?, '云南', null, null, null)", idE);
 
+        // 地点 D 的关联照片与关联笔记（回顾地点详情展示用；笔记日期放 2026，不影响 2024/2023 计数）
+        jdbcTemplate.update("insert into sgj_item_photo (item_id, url, sort_order, create_by, create_time) "
+                + "values (?, '/profile/upload/qat13-place.jpg', 0, ?, now())", idD, PUBLIC_OWNER);
+        jdbcTemplate.update("insert into sgj_note (item_id, title, content, is_public, del_flag, create_by, create_time) "
+                + "values (?, ?, 'c', '1', '0', ?, '2026-05-01 10:00:00')", idD, TITLE + "-关联笔记", PUBLIC_OWNER);
+
         // 笔记两条：2024 一条、2023 一条（年份并集与归年分支）
         jdbcTemplate.update("insert into sgj_note (title, content, is_public, del_flag, create_by, create_time) "
                 + "values ('" + TITLE + "-笔记1', 'c', '1', '0', '" + PUBLIC_OWNER + "', '2024-08-15 10:00:00')");
@@ -196,6 +202,9 @@ class AppReviewApiSmokeTest
         assertThat(places.get(idxD).path("province").asText()).isEqualTo("福建");
         assertThat(places.get(idxD).path("latitude").asDouble()).isEqualTo(25.50);
         assertThat(places.get(idxD).path("finishDate").asText()).isEqualTo("2024-03-12");
+        // 关联照片与关联笔记（按 itemId 批量取）
+        assertThat(places.get(idxD).path("photos").toString()).contains("/profile/upload/qat13-place.jpg");
+        assertThat(places.get(idxD).path("notes").toString()).contains(TITLE + "-关联笔记");
         assertThat(places.get(idxE).path("latitude").isMissingNode()
                 || places.get(idxE).path("latitude").isNull()).as("无坐标地点仍在列表里").isTrue();
 

@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 
 import com.shiguangji.business.domain.SgjItem;
+import com.shiguangji.business.domain.SgjNote;
 
 /**
  * 0.0.4 年度回顾 数据层（只读聚合，不改任何既有 mapper）
@@ -42,4 +43,7 @@ public interface SgjReviewMapper
 
     /** 该年 DONE 条目的原始 tags 串（Java 侧拆分聚合） */
     List<String> selectYearTags(@Param("year") int year, @Param("createBy") String createBy);
+
+    /** 按条目批量查关联笔记（回顾地点详情展示「关联笔记」用） */
+    List<SgjNote> selectNotesByItemIds(@Param("itemIds") List<Long> itemIds, @Param("createBy") String createBy);
 }

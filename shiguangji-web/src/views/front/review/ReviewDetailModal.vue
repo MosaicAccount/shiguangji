@@ -14,6 +14,24 @@
         <template v-if="place.rating != null"> · ★ {{ place.rating }}</template>
       </p>
       <p v-if="place.comment" class="quote">{{ place.comment }}</p>
+
+      <!-- 照片：条目图集（点击新窗口看大图） -->
+      <div v-if="photos.length" class="hd-shots">
+        <span class="sh">照片 {{ photos.length }}</span>
+        <a v-for="(u, i) in photos" :key="u + i" class="shot" :href="photoUrl(u)" target="_blank" rel="noopener">
+          <img :src="photoUrl(u)" :alt="`${place.title} 照片 ${i + 1}`" loading="lazy" />
+        </a>
+      </div>
+
+      <!-- 关联笔记 -->
+      <div v-if="notes.length" class="hd-rnotes">
+        <span class="sh">关联笔记 {{ notes.length }}</span>
+        <button v-for="n in notes" :key="n.noteId" type="button" class="rn" @click="openNote(n)">
+          <span class="rt">{{ n.title }}</span>
+          <span class="rd">{{ n.createTime }}</span>
+        </button>
+      </div>
+
       <div v-if="tags.length" class="rowm">
         <span v-for="t in tags" :key="t" class="hd-chip">{{ t }}</span>
       </div>
@@ -48,7 +66,8 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { loadAMap } from '@/utils/map'
-import type { ReviewPlace } from '@/types/api/front/review'
+import { photoUrl } from '@/utils/sgj'
+import type { ReviewNoteRef, ReviewPlace } from '@/types/api/front/review'
 
 const props = defineProps<{
   mode: 'place' | 'group' | null
@@ -72,6 +91,12 @@ const groupView = computed(() => {
 const tags = computed(() =>
   (props.place?.tags || '').split(',').map((t) => t.trim()).filter(Boolean)
 )
+const photos = computed(() => props.place?.photos ?? [])
+const notes = computed<ReviewNoteRef[]>(() => props.place?.notes ?? [])
+
+function openNote(n: ReviewNoteRef) {
+  if (n.noteId) router.push({ path: '/note/detail', query: { noteId: String(n.noteId) } })
+}
 
 function locate(p: ReviewPlace) {
   locating.value = p
@@ -145,7 +170,6 @@ watch(
 </script>
 
 <style scoped>
-@import '../plan/handdrawn.css';
 
 /* 弹层盖满视口；自带 plan-page 令牌作用域外的兜底不需要——组件渲染在 .plan-page 内 */
 .hd-layer { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center;
@@ -173,6 +197,21 @@ watch(
   border-radius: 10px 4px 11px 5px/5px 11px 4px 10px; padding: 10px 12px }
 .hd-card .rowm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px }
 .hd-card .acts { display: flex; gap: 10px; flex-wrap: wrap }
+
+/* 照片条：小图横向排，可点开原图 */
+.hd-shots, .hd-rnotes { margin: 0 0 14px }
+.hd-shots .sh, .hd-rnotes .sh { display: block; font-size: 13px; color: var(--hd-ink-faint); margin-bottom: 6px }
+.hd-shots { display: grid; grid-template-columns: repeat(auto-fill, 74px); gap: 8px }
+.hd-shots .sh { grid-column: 1 / -1 }
+.hd-shots .shot { display: block; width: 74px; height: 74px; border-radius: 6px 3px 7px 4px/4px 7px 3px 6px;
+  overflow: hidden; border: 1.6px solid var(--hd-line-soft); background: var(--hd-paper-2) }
+.hd-shots .shot img { width: 100%; height: 100%; object-fit: cover; display: block }
+.hd-rnotes .rn { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; font: inherit;
+  background: none; border: 0; border-top: 1.5px dashed var(--hd-line-soft); padding: 7px 2px; cursor: pointer; color: inherit }
+.hd-rnotes .rn:first-of-type { border-top: 0 }
+.hd-rnotes .rt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.hd-rnotes .rn:hover .rt { text-decoration: underline }
+.hd-rnotes .rd { flex: none; font-size: 12.5px; color: var(--hd-ink-faint) }
 
 /* 组地图：高德瓦片区（按需加载），无坐标/失败时清单兜底 */
 .hd-provmap { position: relative; height: 250px; margin: 8px 0 12px; background: var(--hd-paper-2);

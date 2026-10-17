@@ -140,7 +140,7 @@
                   <div v-if="!data.topRated.movie.length" class="hd-note">这一年还没有打过分的影视。</div>
                   <div v-for="(it, i) in data.topRated.movie" :key="it.itemId" class="row">
                     <span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>{{ it.itemType === 'TV' ? '剧' : '影' }}</span></span>
-                    <div class="main"><div class="t">{{ it.title }}</div><div class="m"><span>{{ monthOf(it.finishDate) }}看过</span></div></div>
+                    <div class="main"><div class="t">{{ it.title }}</div><div class="m"><span>{{ topMeta(it) }}</span></div></div>
                     <span class="hd-score">{{ it.rating }}</span>
                   </div>
                 </div>
@@ -155,7 +155,7 @@
                   <div v-if="!data.topRated.book.length" class="hd-note">这一年还没有打过分的书。</div>
                   <div v-for="it in data.topRated.book" :key="it.itemId" class="row">
                     <span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span>
-                    <div class="main"><div class="t">{{ it.title }}</div><div class="m"><span>{{ monthOf(it.finishDate) }}读完</span></div></div>
+                    <div class="main"><div class="t">{{ it.title }}</div><div class="m"><span>{{ topMeta(it) }}</span></div></div>
                     <span class="hd-score">{{ it.rating }}</span>
                   </div>
                 </div>
@@ -174,6 +174,7 @@
             <div class="paper">
               <span class="tape"></span>
               <div class="lines"><span class="frame"></span></div>
+              <p class="hd-note" style="margin: 2px 0 10px">统计影视 / 书籍 / 地点的条目标签，笔记不参与。</p>
               <div class="hd-tags">
                 <div v-for="t in topTags" :key="t.name" class="hd-tag">
                   <span class="tn">{{ t.name }}</span>
@@ -181,7 +182,7 @@
                   <span class="tc">{{ t.count }}</span>
                 </div>
               </div>
-              <p v-if="restTagCount" class="hd-note" style="margin-top:6px">其余 {{ restTagCount }} 个标签 · 笔记只贡献「写过」那个数，标签不并进来。</p>
+              <p v-if="restTagCount" class="hd-note" style="margin-top:6px">其余 {{ restTagCount }} 个标签未进前十。</p>
             </div>
           </div>
         </section>
@@ -201,6 +202,8 @@ import { getReviewYear } from '@/api/front/review'
 import type { ReviewPlace, ReviewYearData } from '@/types/api/front/review'
 import ReviewMap from './ReviewMap.vue'
 import ReviewDetailModal from './ReviewDetailModal.vue'
+// 手绘皮肤唯一来源：与 /plan 共用同一份（全局 import，不能放进 scoped style）
+import '../plan/handdrawn.css'
 
 defineOptions({ name: 'FrontReview' })
 
@@ -237,6 +240,14 @@ const restTagCount = computed(() =>
 function barWidth(count: number): number {
   const max = topTags.value[0]?.count ?? 1
   return Math.max(8, Math.round((count / max) * 100))
+}
+
+/** 评分榜行内元信息：电影 · 5 月看过 / 剧集 · 9 月看完 / 书籍 · 4 月读完 */
+function topMeta(it: { itemType?: string; finishDate?: string | null }): string {
+  const at = monthOf(it.finishDate)
+  if (it.itemType === 'TV') return `剧集 · ${at}看完`
+  if (it.itemType === 'BOOK') return `书籍 · ${at}读完`
+  return `电影 · ${at}看过`
 }
 
 function monthOf(finishDate?: string | null): string {
@@ -314,7 +325,6 @@ onMounted(() => load())
 </script>
 
 <style scoped>
-@import '../plan/handdrawn.css';
 
 .hd-page { max-width: 900px }
 .hd-sec { margin-top: 30px }
@@ -351,7 +361,10 @@ onMounted(() => load())
 .hd-note { font-size: 13.5px; color: var(--hd-ink-soft); margin: 16px 0 0 }
 
 /* 评分榜 / 标签 */
-.hd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px }
+.hd-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px }
+.hd-cols .sheet { min-width: 0 }
+.hd-cols .row .main { min-width: 0 }
+.hd-cols .row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .hd-cols .sheet { margin-top: 0 }
 .hd-cols .paper { padding: 6px 16px 10px }
 .hd-score { margin-left: auto; font-size: 20px; color: var(--hd-amber); flex: none }

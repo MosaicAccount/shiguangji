@@ -110,6 +110,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         group by item_type
     </select>
 
+    <!-- 回顾地点详情：关联笔记（只取展示字段；范围与条目同口径） -->
+    <select id="selectNotesByItemIds" resultType="SgjNote">
+        select n.note_id as noteId,
+               n.item_id as itemId,
+               n.title as title,
+               n.create_time as createTime
+        from sgj_note n
+        where n.del_flag = '0'
+          and n.item_id in
+        <foreach collection="itemIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        <if test="createBy != null and createBy != ''">
+          and n.create_by = #{createBy}
+        </if>
+        order by n.create_time desc
+    </select>
+
     <select id="selectYearTags" resultType="String">
         select tags
         from sgj_item

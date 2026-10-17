@@ -53,6 +53,8 @@ export interface AggResult<T extends MappablePlace = MappablePlace> {
 export const PIN_LIMIT_DESKTOP = 10
 export const PIN_LIMIT_MOBILE = 5
 export const MOBILE_WIDTH = 768
+/** 图钉圆直径（px）：并簇阈值与连线收边都以它为基准 */
+export const PIN_DIAMETER_PX = 46
 
 export function pinLimit(containerWidth: number): number {
   return containerWidth < MOBILE_WIDTH ? PIN_LIMIT_MOBILE : PIN_LIMIT_DESKTOP
@@ -70,12 +72,29 @@ export function projectPlaces<T extends MappablePlace>(places: T[]): PinPoint<T>
     .map((p) => ({ x: p.longitude as number, y: -(p.latitude as number), place: p }))
 }
 
+/** 拟合安全区：容器像素尺寸 + 留给图钉圆与文字标签的像素边距 */
+export interface FitBox {
+  width: number
+  height: number
+  padX: number
+  padY: number
+}
+
+/** 圆半径 23 + 标签一行 → 上下要留出标签的空间，否则贴边的点会被框裁掉 */
+export function fitBoxFor(containerWidth: number, containerHeight: number): FitBox {
+  const mobile = containerWidth < MOBILE_WIDTH
+  return mobile
+    ? { width: containerWidth, height: containerHeight, padX: 34, padY: 34 }
+    : { width: containerWidth, height: containerHeight, padX: 56, padY: 62 }
+}
+
 /**
- * 自动缩放（真地图的自动缩放同理）：bbox 等比缩放到 [14%, 86%]，单点居中。
- * ponytail: span 下限 0.5°——同一点重复出现时防除零；真实数据里两点相距小于
- * 0.5° 会退化成单点布局，可接受（那个缩放下它们必然并簇）。
+ * 自动缩放（真地图的自动缩放同理）：bbox 等比铺进容器，可选按像素安全区内缩（贴边的点不被裁掉），
+ * 单点居中。传入 box 时以「像素」为尺度等比缩放（经纬度 1:1，不拉伸）；
+ * 不传时退回百分比拟合（14%~86%），供无容器尺寸的场景使用。
+ * ponytail: span 下限 0.5°——同一点重复出现时防除零；更近的两点在该缩放下必然并簇。
  */
-export function fitPoints<T extends MappablePlace>(points: PinPoint<T>[]): PinPoint<T>[] {
+export function fitPoints<T extends MappablePlace>(points: PinPoint<T>[], box?: FitBox): PinPoint<T>[] {
   if (points.length === 0) return []
   if (points.length === 1) return [{ ...points[0], x: 50, y: 50 }]
   const xs = points.map((p) => p.x)
@@ -84,15 +103,27 @@ export function fitPoints<T extends MappablePlace>(points: PinPoint<T>[]): PinPo
   const x1 = Math.max(...xs)
   const y0 = Math.min(...ys)
   const y1 = Math.max(...ys)
-  const k = Math.min(72 / Math.max(x1 - x0, 0.5), 72 / Math.max(y1 - y0, 0.5))
   const cx = (x0 + x1) / 2
   const cy = (y0 + y1) / 2
-  return points.map((p) => ({ ...p, x: 50 + (p.x - cx) * k, y: 50 + (p.y - cy) * k }))
+
+  if (!box) {
+    const k = Math.min(72 / Math.max(x1 - x0, 0.5), 72 / Math.max(y1 - y0, 0.5))
+    return points.map((p) => ({ ...p, x: 50 + (p.x - cx) * k, y: 50 + (p.y - cy) * k }))
+  }
+
+  const usableW = Math.max(1, box.width - box.padX * 2)
+  const usableH = Math.max(1, box.height - box.padY * 2)
+  const k = Math.min(usableW / Math.max(x1 - x0, 0.5), usableH / Math.max(y1 - y0, 0.5))
+  return points.map((p) => ({
+    ...p,
+    x: ((box.width / 2 + (p.x - cx) * k) / box.width) * 100,
+    y: ((box.height / 2 + (p.y - cy) * k) / box.height) * 100
+  }))
 }
 
 /** 投影 + 缩放一步到位（逐点档用） */
-export function layoutPoints<T extends MappablePlace>(places: T[]): PinPoint<T>[] {
-  return fitPoints(projectPlaces(places))
+export function layoutPoints<T extends MappablePlace>(places: T[], box?: FitBox): PinPoint<T>[] {
+  return fitPoints(projectPlaces(places), box)
 }
 
 /**
@@ -135,9 +166,18 @@ export function planLabels<T extends MappablePlace>(clusters: PinCluster<T>[]): 
   return clusters
 }
 
-/** 逐点档完整布局：投影 → 缩放 → 并簇 → 标签规划 */
-export function layoutPins<T extends MappablePlace>(places: T[], containerWidth: number): PinCluster<T>[] {
-  return planLabels(clusterPoints(layoutPoints(places), 5, 5))
+/** 逐点档完整布局：投影 → 缩放（按容器安全区）→ 并簇 → 标签规划 */
+export function layoutPins<T extends MappablePlace>(
+  places: T[],
+  containerWidth: number,
+  containerHeight: number
+): PinCluster<T>[] {
+  const box = fitBoxFor(containerWidth, containerHeight)
+  // 并簇阈值按「圈径」折算成百分比：46px 的圆只要叠上就该并，不能按固定 5% 算
+  const gap = PIN_DIAMETER_PX
+  return planLabels(
+    clusterPoints(layoutPoints(places, box), (gap / containerWidth) * 100, (gap / containerHeight) * 100)
+  )
 }
 
 /**
@@ -215,7 +255,7 @@ export function regionKey(p: MappablePlace): string {
  * 为什么需要自适应：分散型数据按省压不动（15 个地点跨 13 个省级行政区 + 2 个国家
  * 时按省是 15 个泡，超上限等于没聚合）。
  */
-export function aggregatePlaces<T extends MappablePlace>(places: T[]): AggResult<T> {
+export function aggregatePlaces<T extends MappablePlace>(places: T[], box?: FitBox): AggResult<T> {
   const tryLevel = (keyOf: (p: T) => string): AggGroup<T>[] => {
     const map = new Map<string, T[]>()
     for (const p of places) {
@@ -231,7 +271,7 @@ export function aggregatePlaces<T extends MappablePlace>(places: T[]): AggResult
     groups = tryLevel(regionKey)
     level = '大区'
   }
-  groups.forEach((g) => (g.points = fitPoints(projectPlaces(g.places))))
+  groups.forEach((g) => (g.points = fitPoints(projectPlaces(g.places), box)))
   return { level, groups }
 }
 

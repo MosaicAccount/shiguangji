@@ -14,6 +14,17 @@ export interface ReviewPlace {
   tags?: string | null
   coverUrl?: string | null
   photoCount?: number
+  /** 条目照片（相对路径，展示时经 photoUrl 补全） */
+  photos?: string[]
+  /** 关联笔记（笔记关联到该地点条目） */
+  notes?: ReviewNoteRef[]
+}
+
+/** 地点关联的笔记摘要 */
+export interface ReviewNoteRef {
+  noteId?: number
+  title?: string
+  createTime?: string
 }
 
 /** 评分榜条目（FR-004-3） */

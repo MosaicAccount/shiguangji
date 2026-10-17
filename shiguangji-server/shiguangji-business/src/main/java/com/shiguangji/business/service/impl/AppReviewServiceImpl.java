@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.shiguangji.business.domain.SgjItem;
+import com.shiguangji.business.domain.SgjItemPhoto;
+import com.shiguangji.business.domain.SgjNote;
+import com.shiguangji.business.mapper.SgjItemPhotoMapper;
 import com.shiguangji.business.mapper.SgjReviewMapper;
 import com.shiguangji.business.service.IAppReviewService;
 import com.shiguangji.common.utils.DateUtils;
@@ -35,6 +38,9 @@ public class AppReviewServiceImpl implements IAppReviewService
 
     @Autowired
     private SgjReviewMapper reviewMapper;
+
+    @Autowired
+    private SgjItemPhotoMapper itemPhotoMapper;
 
     @Override
     public Map<String, Object> getYearData(int year, String createBy)
@@ -79,11 +85,36 @@ public class AppReviewServiceImpl implements IAppReviewService
         return summary;
     }
 
-    /** 地点转契约结构：日期统一 yyyy-MM-dd，无坐标字段原样下发（前端在图内交代） */
+    /** 地点转契约结构：日期统一 yyyy-MM-dd，无坐标字段原样下发（前端在图内交代）；
+     *  照片与关联笔记按 itemId 批量取（一次查库，不逐点查） */
     private List<Map<String, Object>> buildPlaces(int year, String createBy)
     {
         List<Map<String, Object>> places = new ArrayList<>();
-        for (SgjItem p : reviewMapper.selectYearPlaces(year, createBy))
+        List<SgjItem> rows = reviewMapper.selectYearPlaces(year, createBy);
+        if (rows.isEmpty())
+        {
+            return places;
+        }
+        List<Long> itemIds = new ArrayList<>();
+        for (SgjItem p : rows)
+        {
+            itemIds.add(p.getItemId());
+        }
+        Map<Long, List<String>> photosByItem = new HashMap<>();
+        for (SgjItemPhoto photo : itemPhotoMapper.selectPhotosByItemIds(itemIds))
+        {
+            photosByItem.computeIfAbsent(photo.getItemId(), k -> new ArrayList<>()).add(photo.getUrl());
+        }
+        Map<Long, List<Map<String, Object>>> notesByItem = new HashMap<>();
+        for (SgjNote note : reviewMapper.selectNotesByItemIds(itemIds, createBy))
+        {
+            Map<String, Object> n = new HashMap<>();
+            n.put("noteId", note.getNoteId());
+            n.put("title", note.getTitle());
+            n.put("createTime", dateStr(note.getCreateTime()));
+            notesByItem.computeIfAbsent(note.getItemId(), k -> new ArrayList<>()).add(n);
+        }
+        for (SgjItem p : rows)
         {
             Map<String, Object> m = new HashMap<>();
             m.put("itemId", p.getItemId());
@@ -98,6 +129,8 @@ public class AppReviewServiceImpl implements IAppReviewService
             m.put("tags", p.getTags());
             m.put("coverUrl", p.getCoverUrl());
             m.put("photoCount", p.getPhotoCount() == null ? 0 : p.getPhotoCount());
+            m.put("photos", photosByItem.getOrDefault(p.getItemId(), new ArrayList<>()));
+            m.put("notes", notesByItem.getOrDefault(p.getItemId(), new ArrayList<>()));
             places.add(m);
         }
         return places;
