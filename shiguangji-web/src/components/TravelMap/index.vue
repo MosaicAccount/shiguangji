@@ -38,6 +38,8 @@ const hasPhotos = computed(() =>
 
 const emit = defineEmits<{
   (e: 'select', itemId: number): void
+  /** 地图实例就绪（外部可在此之后调 focus/定位） */
+  (e: 'ready'): void
 }>()
 
 /** 带展示状态的轨迹点（status 由所在数组推断：visited=DONE / wish=WANT） */
@@ -351,6 +353,7 @@ async function initMap(): Promise<void> {
   map.on('zoomend', () => renderOverlays())
   renderOverlays()
   window.addEventListener('resize', onResize)
+  emit('ready')
 }
 
 function onResize(): void {

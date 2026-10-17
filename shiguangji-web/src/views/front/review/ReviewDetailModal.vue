@@ -1,6 +1,6 @@
 <template>
   <div v-if="open" class="hd-layer" @click.self="$emit('close')">
-    <!-- 点详情：手绘卡片弹性展开（点「在地图上定位」后让位给组地图） -->
+    <!-- 点详情：手绘卡片弹性展开（点「在地图上定位」后让位给地图视图） -->
     <div v-if="mode === 'place' && place && !locating" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
       <div class="hd-photo">
@@ -54,7 +54,7 @@
         <span v-for="t in tags" :key="t" class="hd-chip">{{ t }}</span>
       </div>
       <div class="acts">
-        <button class="hdbtn go" type="button" @click="locate(place)">在地图上定位 →</button>
+        <button v-if="hasCoord(place)" class="hdbtn go" type="button" @click="locate(place)">在地图上定位 →</button>
         <button class="hdbtn" type="button" @click="viewRecord">看这条记录 →</button>
       </div>
     </div>
@@ -97,23 +97,29 @@
       </div>
     </div>
 
-    <!-- 组地图：高德瓦片裱手绘框，SDK 首次打开才加载；点图钉下钻到点详情 -->
+    <!-- 组弹窗：只给清单（大区聚合与合并点一致）——地图只在「在地图上定位」里出现 -->
     <div v-else-if="groupView" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
       <h3>{{ groupTitle }}</h3>
       <p class="sub">{{ groupSub }}</p>
-      <!-- 组地图：复用足迹模块的 TravelMap（分层聚合 + 足迹风标记），点清单行定位、点地图点看详情 -->
-      <div v-if="!groupView.fromCluster" class="hd-provmap">
-        <TravelMap :visited="travelPoints" :wish="[]" :height="260" @select="onMapSelect" ref="travelRef" />
-      </div>
-
       <div class="hd-provlist">
         <button class="k" type="button" v-for="(p, i) in groupView.places" :key="p.itemId ?? i"
-                @click="onRowClick(p)">
+                @click="$emit('openPlace', p)">
           <b>{{ i + 1 }}</b>
-          <span>{{ p.title }} · {{ monthOf(p) }}{{ hasCoord(p) ? '' : '（没填坐标，没落图）' }}</span>
+          <span>{{ p.title }} · {{ regionOf(p) }} · {{ monthOf(p) }}{{ hasCoord(p) ? '' : '（没填坐标）' }}</span>
           <i aria-hidden="true">›</i>
         </button>
+      </div>
+    </div>
+
+    <!-- 在地图上定位：单独的地图视图，打开即聚焦该点；点地图上的点看详情 -->
+    <div v-else-if="locating" class="hd-card">
+      <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
+      <h3>{{ locating.title }} · 在地图上</h3>
+      <p class="sub">{{ year }} 年 · {{ regionOf(locating) }} · 点图钉看这条记录</p>
+      <div class="hd-provmap">
+        <TravelMap :visited="travelPoints" :wish="[]" :height="260" @select="onMapSelect"
+                   @ready="onMapReady" ref="travelRef" />
       </div>
     </div>
   </div>
@@ -193,13 +199,7 @@ watch(
 
 /** 「在地图上定位」：同一弹层切成单点组地图（聚焦该点） */
 const locating = ref<ReviewPlace | null>(null)
-const groupView = computed(() => {
-  if (props.mode === 'group' && props.group) return props.group
-  if (locating.value) {
-    return { key: locating.value.title || '定位', level: null as '省' | null, fromCluster: false, places: [locating.value] }
-  }
-  return null
-})
+const groupView = computed(() => (props.mode === 'group' && props.group ? props.group : null))
 
 /** 组标题：合并点进来看的是「同一处」的多个地点，区域聚合看的是「某组」 */
 const groupTitle = computed(() => {
@@ -209,13 +209,12 @@ const groupTitle = computed(() => {
   return `${g.key} · ${g.places.length} 个地方`
 })
 
-/** 组副标题：同一处清单不写「按省」，区域聚合才写粒度 */
+/** 组副标题：两种组都用「点一条看详情」——都不带地图 */
 const groupSub = computed(() => {
   const g = groupView.value
   if (!g) return ''
-  if (g.fromCluster) return `${props.year} 年 · 点一条看详情`
-  if (g.level) return `${props.year} 年 · 按${g.level} · 点图钉看这条记录`
-  return `${props.year} 年 · 点图钉看这条记录`
+  const scope = g.fromCluster ? '同一处' : g.level ? `按${g.level}` : ''
+  return `${props.year} 年${scope ? ` · ${scope}` : ''} · 点一条看详情`
 })
 
 const tags = computed(() =>
@@ -258,8 +257,11 @@ watch(
    之前自建时第二次打开拿到的是已销毁容器的旧实例，页面空白。 */
 const travelRef = ref<{ focus: (itemId?: number) => boolean } | null>(null)
 
+/** 地图上的点：定位视图只有该地点，组弹窗已不带地图 */
+const mapPlaces = computed(() => (locating.value ? [locating.value] : []))
+
 const travelPoints = computed(() => {
-  const places = groupView.value?.places ?? []
+  const places = mapPlaces.value
   return places
     .filter((p) => p.latitude != null && p.longitude != null)
     .map((p) => ({
@@ -277,17 +279,16 @@ const travelPoints = computed(() => {
 
 /** 地图上的点被点中 → 打开该地点详情（先退出「定位」态，否则地点卡会被定位视图挡住） */
 function onMapSelect(itemId: number) {
-  const place = groupView.value?.places.find((p) => p.itemId === itemId)
+  const place = mapPlaces.value.find((p) => p.itemId === itemId)
   if (!place) return
   locating.value = null
   emit('openPlace', place)
 }
 
-/** 清单行：有坐标就定位到地图上的那个点（再由点进详情）；没坐标直接进详情 */
-function onRowClick(p: ReviewPlace) {
-  if (hasCoord(p) && travelRef.value?.focus(p.itemId)) return
-  locating.value = null
-  emit('openPlace', p)
+/** 地图就绪后再定位（实例未建好时 focus 无效） */
+function onMapReady() {
+  const p = locating.value
+  if (p) travelRef.value?.focus(p.itemId)
 }
 </script>
 
