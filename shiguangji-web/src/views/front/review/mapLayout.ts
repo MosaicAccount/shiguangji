@@ -194,10 +194,20 @@ export function provinceKey(p: MappablePlace): string {
   return p.province || '未分类'
 }
 
-/** 大区级分组键：境外并入「境外」 */
+/** 省级行政区全称归一化：北京市→北京、西藏自治区→西藏、广西壮族自治区→广西 */
+export function normalizeProvince(province: string): string {
+  return province
+    .replace(/特别行政区$/, '')
+    .replace(/(维吾尔|回族|壮族)?自治区$/, '')
+    .replace(/省$/, '')
+    .replace(/市$/, '')
+}
+
+/** 大区级分组键：境外并入「境外」；省份按全称归一化后查表（库内存「北京市」这类全称） */
 export function regionKey(p: MappablePlace): string {
   if (!isChina(p)) return '境外'
-  return REGION[p.province || ''] || p.province || '未分类'
+  if (!p.province) return '未分类'
+  return REGION[normalizeProvince(p.province)] || p.province
 }
 
 /**

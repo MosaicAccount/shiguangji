@@ -1,7 +1,7 @@
 <template>
   <div v-if="open" class="hd-layer" @click.self="$emit('close')">
-    <!-- 点详情：手绘卡片弹性展开 -->
-    <div v-if="mode === 'place' && place" class="hd-card">
+    <!-- 点详情：手绘卡片弹性展开（点「在地图上定位」后让位给组地图） -->
+    <div v-if="mode === 'place' && place && !locating" class="hd-card">
       <button class="x" type="button" aria-label="关闭" @click="$emit('close')">×</button>
       <div class="hd-photo">
         <span class="tf"></span>
@@ -102,7 +102,9 @@ watch(
 const amapEl = ref<HTMLElement>()
 const mapState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let map: any = null
+let amapNs: any = null // AMap 命名空间（Marker/Map 等构造器在这上面）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let map: any = null // 地图实例
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const markers: any[] = []
 
@@ -110,8 +112,8 @@ async function ensureMap() {
   if (map) return
   mapState.value = 'loading'
   try {
-    const AMap = await loadAMap()
-    map = new AMap.Map(amapEl.value, { zoom: 5, viewMode: '2D' })
+    amapNs = await loadAMap()
+    map = new amapNs.Map(amapEl.value, { zoom: 5, viewMode: '2D' })
     mapState.value = 'ready'
   } catch {
     mapState.value = 'error'
@@ -119,10 +121,10 @@ async function ensureMap() {
 }
 
 function renderMarkers(places: ReviewPlace[]) {
-  if (!map) return
+  if (!map || !amapNs) return
   markers.splice(0).forEach((m) => map.remove(m))
   places.filter(hasCoord).forEach((p) => {
-    const marker = new map.Marker({ position: [p.longitude, p.latitude], title: p.title })
+    const marker = new amapNs.Marker({ position: [p.longitude, p.latitude], title: p.title })
     marker.on('click', () => emit('openPlace', p))
     map.add(marker)
     markers.push(marker)
