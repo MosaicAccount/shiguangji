@@ -38,21 +38,21 @@
             <!-- 聚合档：按省/大区计数，点气泡进该组的真实地图 -->
             <button v-for="g in bubbles" :key="g.key" type="button" class="hd-cl"
                     :style="{ left: g.x.toFixed(1) + '%', top: g.y.toFixed(1) + '%' }"
-                    @click="$emit('openGroup', { key: g.key, level: agg!.level, places: g.places })">
+                    @click="$emit('openGroup', { key: g.key, level: aggLevel, places: g.places })">
               <span class="c">
                 <svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>{{ g.places.length }}</b>
-                <span class="t">{{ g.key }}</span>
+                <span v-if="!g.dense" class="t">{{ g.key }}</span>
               </span>
             </button>
 
-            <span class="fnote">{{ usePins ? '手绘示意 · 非比例地图' : `手绘示意 · 非比例 · 按${agg?.level}计数` }}</span>
+            <span class="fnote">{{ usePins ? '手绘示意 · 非比例地图' : `手绘示意 · 非比例 · 按${aggLevel}计数` }}</span>
             <span v-if="usePins && noCoordText" class="hd-nocoord">{{ noCoordText }} 没填坐标，没落在图上</span>
           </div>
         </div>
 
         <!-- 图下清单：窄屏常显；桌面在「有合并 / 标签放不下」时显示，名字不会丢 -->
         <div v-if="needKey" class="hd-mapkey shown">
-          <div class="kh">{{ usePins ? '图例 · 按月份（编号对应图上点位）' : `图例 · 每个${agg?.level}的地点数` }}</div>
+          <div class="kh">{{ usePins ? '图例 · 按月份（编号对应图上点位）' : `图例 · 每个${aggLevel}的地点数` }}</div>
           <div v-for="g in mapkeyGroups" :key="g.month" class="mk-group">
             <div v-if="g.month" class="mk-month">{{ g.month }}</div>
             <div class="k" v-for="(r, i) in g.rows" :key="g.month + i">
@@ -79,14 +79,13 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ReviewPlace } from '@/types/api/front/review'
 import {
-  aggregatePlaces,
+  aggregateBubbles,
   clusterLabelText,
   fitBoxFor,
   layoutPins,
+  pinClusterLimit,
   planLabelBoxes,
-  REGION_POS,
   shouldShowLabels,
-  shouldUsePins,
   trailPath
 } from './mapLayout'
 import type { PinCluster } from './mapLayout'
@@ -123,10 +122,17 @@ onMounted(() => {
 })
 onBeforeUnmount(() => ro?.disconnect())
 
-const usePins = computed(() => shouldUsePins(props.places.length, mapW.value))
+/** 逐点布局总是先算出来（要用它数「图上会有几个点」），点数超限才退回聚合 */
+const pinLayout = computed(() => layoutPins(props.places, mapW.value, mapH.value))
+
+const usePins = computed(
+  () =>
+    pinLayout.value.clusters.length > 0 &&
+    pinLayout.value.clusters.length <= pinClusterLimit(mapW.value)
+)
 
 const layout = computed(() =>
-  usePins.value ? layoutPins(props.places, mapW.value, mapH.value) : { clusters: [], inset: null }
+  usePins.value ? pinLayout.value : { clusters: [], inset: null }
 )
 
 const clusters = computed(() => {
@@ -159,22 +165,32 @@ const trail = computed(() =>
   clusters.value.length > 1 ? trailPath(clusters.value, mapW.value, mapH.value) : ''
 )
 
-/** 聚合档：位置优先取组内真实坐标的拟合中心，无坐标组用大区示意位兜底 */
-const bubbles = computed<{ key: string; x: number; y: number; places: ReviewPlace[] }[]>(() => {
-  if (usePins.value) return []
-  const groups = aggregatePlaces(props.places, fitBoxFor(mapW.value, mapH.value)).groups
-  return groups.map((g) => {
-    if (g.points.length > 0) {
-      return { key: g.key, x: avg(g.points.map((p) => p.x)), y: avg(g.points.map((p) => p.y)), places: g.places }
-    }
-    const pos = REGION_POS[g.key] || [50, 50]
-    return { key: g.key, x: pos[0], y: pos[1], places: g.places }
-  })
+/** 聚合档：按组内真实坐标求中心拟合，气泡本身也跑同一套标签避让 */
+const aggResult = computed(() =>
+  usePins.value ? null : aggregateBubbles(props.places, fitBoxFor(mapW.value, mapH.value))
+)
+
+const bubbles = computed(() => {
+  const res = aggResult.value
+  if (!res) return []
+  // 借用逐点档的簇结构跑避让：气泡共用同一套「下/上/右/左」规则
+  const pseudo = res.bubbles.map((b) => ({
+    x: b.x,
+    y: b.y,
+    side: 'down' as const,
+    dense: false,
+    places: b.places
+  }))
+  planLabelBoxes(pseudo, fitBoxFor(mapW.value, mapH.value))
+  return res.bubbles.map((b, i) => ({
+    ...b,
+    side: pseudo[i].side,
+    dense: pseudo[i].dense
+  }))
 })
 
-const agg = computed(() =>
-  usePins.value ? null : aggregatePlaces(props.places, fitBoxFor(mapW.value, mapH.value))
-)
+/** 聚合粒度文案用 */
+const aggLevel = computed(() => aggResult.value?.level ?? '省')
 
 const noCoordText = computed(() =>
   props.places
@@ -191,13 +207,13 @@ const countText = computed(() => {
       ? `${total} 个地方 · ${shown} 个点`
       : `${total} 个地方 · 合为 ${shown} 个点`
   }
-  return `${props.places.length} 个地方 · 按${agg.value?.level} ${agg.value?.groups.length} 个`
+  return `${props.places.length} 个地方 · 按${aggLevel.value} ${bubbles.value.length} 个`
 })
 
 const noteText = computed(() =>
   usePins.value
     ? `虚线按去过的先后连，不是路线图 · 底图示意、不按比例${inset.value ? ' · 境外单独示意' : ''} · 点开看真实位置`
-    : `按${agg.value?.level}计数（点多的年份不逐点画）· 点气泡看该组的真实位置`
+    : `点数超过 ${pinClusterLimit(mapW.value)} 个就不再逐点画：按${aggLevel.value}计数，点气泡看该组的真实位置`
 )
 
 /** 图下清单：逐点档按「月份」分组（同月的点排在一起），聚合档按组 */
@@ -206,7 +222,7 @@ const mapkeyGroups = computed(() => {
     return [
       {
         month: '',
-        rows: (agg.value?.groups ?? []).map((g) => ({ n: String(g.places.length), text: g.key, net: '' }))
+        rows: bubbles.value.map((g) => ({ n: String(g.places.length), text: g.key, net: '' }))
       }
     ]
   }
@@ -249,9 +265,6 @@ function monthOf(finishDate?: string | null): string {
   return m > 0 ? `${m} 月` : ''
 }
 
-function avg(nums: number[]): number {
-  return nums.reduce((s, n) => s + n, 0) / nums.length
-}
 </script>
 
 <style scoped>

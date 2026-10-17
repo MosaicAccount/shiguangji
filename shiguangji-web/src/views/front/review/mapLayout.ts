@@ -18,7 +18,7 @@ export interface MappablePlace {
 }
 
 /** 有坐标的点（投影后，x/y 为容器百分比） */
-export interface PinPoint<T extends MappablePlace = MappablePlace> {
+export interface PinPoint<T = MappablePlace> {
   x: number
   y: number
   place: T
@@ -52,9 +52,9 @@ export interface AggResult<T extends MappablePlace = MappablePlace> {
   groups: AggGroup<T>[]
 }
 
-/** 逐点档阈值（D-48）：390px 宽的手机里 10 个图钉必然互相压 */
-export const PIN_LIMIT_DESKTOP = 10
-export const PIN_LIMIT_MOBILE = 5
+/** 逐点档的**点数**上限：超过就聚合（连线一多必然到处穿，实测 9 个点已看不清） */
+export const PIN_MAX_CLUSTERS = 6
+export const PIN_MAX_CLUSTERS_MOBILE = 4
 export const MOBILE_WIDTH = 768
 /** 图钉圆直径（px）：并簇阈值与连线收边都以它为基准 */
 export const PIN_DIAMETER_PX = 46
@@ -66,13 +66,8 @@ export function shouldShowLabels(clusterCount: number): boolean {
   return clusterCount <= LABEL_MAX_CLUSTERS
 }
 
-export function pinLimit(containerWidth: number): number {
-  return containerWidth < MOBILE_WIDTH ? PIN_LIMIT_MOBILE : PIN_LIMIT_DESKTOP
-}
-
-/** 分档判定：地点数不超过阈值 → 逐点绘制 */
-export function shouldUsePins(placeCount: number, containerWidth: number): boolean {
-  return placeCount <= pinLimit(containerWidth)
+export function pinClusterLimit(containerWidth: number): number {
+  return containerWidth < MOBILE_WIDTH ? PIN_MAX_CLUSTERS_MOBILE : PIN_MAX_CLUSTERS
 }
 
 /** 等比投影：x=经度、y=-纬度（不拉伸，南半球同样落框） */
@@ -104,7 +99,7 @@ export function fitBoxFor(containerWidth: number, containerHeight: number): FitB
  * 不传时退回百分比拟合（14%~86%），供无容器尺寸的场景使用。
  * ponytail: span 下限 0.5°——同一点重复出现时防除零；更近的两点在该缩放下必然并簇。
  */
-export function fitPoints<T extends MappablePlace>(points: PinPoint<T>[], box?: FitBox): PinPoint<T>[] {
+export function fitPoints<P>(points: PinPoint<P>[], box?: FitBox): PinPoint<P>[] {
   if (points.length === 0) return []
   if (points.length === 1) return [{ ...points[0], x: 50, y: 50 }]
   const xs = points.map((p) => p.x)
@@ -254,23 +249,17 @@ export interface InsetRect {
 export const ABROAD_RATIO = 0.34
 
 /** 逐点档完整布局：境内 / 境外分开拟合（境外进右侧插图区）→ 各自并簇 → 时间序合并 */
-export function layoutPins<T extends MappablePlace>(
-  places: T[],
+export function fitSplit<P extends MappablePlace>(
+  points: PinPoint<P>[],
   containerWidth: number,
   containerHeight: number
-): { clusters: PinCluster<T>[]; inset: InsetRect | null } {
+): { points: PinPoint<P>[]; inset: InsetRect | null } {
   const box = fitBoxFor(containerWidth, containerHeight)
-  // 并簇阈值按圆径的 0.8 折成百分比：两个圆明显叠上才并。
-  // 用整圆径会链式合并——缩放后同一片区的点会被一个个串成一个大簇（实测过）。
-  const gapX = ((PIN_DIAMETER_PX * 0.8) / containerWidth) * 100
-  const gapY = ((PIN_DIAMETER_PX * 0.8) / containerHeight) * 100
+  const cn = points.filter((p) => isChina(p.place))
+  const abroad = points.filter((p) => !isChina(p.place))
 
-  const cn = places.filter((p) => isChina(p) && p.latitude != null && p.longitude != null)
-  const abroad = places.filter((p) => !isChina(p) && p.latitude != null && p.longitude != null)
-
-  // 无境外点：整幅给境内（单组并簇）
   if (abroad.length === 0) {
-    return { clusters: clusterPoints(layoutPoints(places, box), gapX, gapY), inset: null }
+    return { points: fitPoints(points, box), inset: null }
   }
 
   const mainW = containerWidth * (1 - ABROAD_RATIO)
@@ -283,28 +272,96 @@ export function layoutPins<T extends MappablePlace>(
   }
 
   // 主区拟合出的是「相对主区宽」的百分比，必须换算回整幅容器（否则点会跑到插图区里）
-  const cnPts = fitPoints(projectPlaces(cn), mainBox).map((pt) => ({
+  const cnPts = fitPoints(cn, mainBox).map((pt) => ({
     ...pt,
     x: ((pt.x / 100) * mainW / containerWidth) * 100
   }))
-  // 境外点只在插图区内拟合：把它们平移到插图区原点后再按小框缩放
-  const abRaw = projectPlaces(abroad)
-  const abFit = fitPoints(abRaw, {
+  // 境外点只在插图区内拟合：先按小框缩放，再平移到插图区原点
+  const abPts = fitPoints(abroad, {
     width: insetPx.w,
     height: insetPx.h,
     padX: 22,
     padY: 22
-  })
-  const abPts = abFit.map((pt) => ({
+  }).map((pt) => ({
     ...pt,
     x: ((insetPx.x + (pt.x / 100) * insetPx.w) / containerWidth) * 100,
     y: ((insetPx.y + (pt.y / 100) * insetPx.h) / containerHeight) * 100
   }))
 
-  const clusters = [
-    ...clusterPoints(cnPts, gapX, gapY),
-    ...clusterPoints(abPts, gapX, gapY)
-  ]
+  return {
+    points: [...cnPts, ...abPts],
+    inset: {
+      x: (insetPx.x / containerWidth) * 100,
+      y: (insetPx.y / containerHeight) * 100,
+      w: (insetPx.w / containerWidth) * 100,
+      h: (insetPx.h / containerHeight) * 100
+    }
+  }
+}
+
+/**
+ * 把过近的点推开：像素域迭代，成对沿连线方向各推一半，最后夹回容器安全区。
+ * 聚合气泡用（不同省份可能真的挨着，但气泡不能叠），确定性、无随机。
+ */
+export function spreadPoints<P>(points: PinPoint<P>[], minPx: number, box: FitBox, iterations = 120): PinPoint<P>[] {
+  const w = box.width
+  const h = box.height
+  const padX = Math.max(box.padX, minPx / 2)
+  const padY = Math.max(box.padY, minPx / 2)
+  const px = points.map((p) => ({
+    ...p,
+    px: (p.x / 100) * w,
+    py: (p.y / 100) * h
+  }))
+
+  for (let it = 0; it < iterations; it++) {
+    let moved = false
+    for (let i = 0; i < px.length; i++) {
+      for (let j = i + 1; j < px.length; j++) {
+        let dx = px[j].px - px[i].px
+        let dy = px[j].py - px[i].py
+        let d = Math.hypot(dx, dy)
+        if (d >= minPx) continue
+        if (d < 0.001) {
+          // 完全重合：按固定角度散开，避免除零
+          dx = 1
+          dy = 0
+          d = 1
+        }
+        const push = (minPx - d) / 2
+        const ux = dx / d
+        const uy = dy / d
+        px[i].px -= ux * push
+        px[i].py -= uy * push
+        px[j].px += ux * push
+        px[j].py += uy * push
+        moved = true
+      }
+    }
+    px.forEach((p) => {
+      p.px = Math.min(Math.max(p.px, padX), w - padX)
+      p.py = Math.min(Math.max(p.py, padY), h - padY)
+    })
+    if (!moved) break
+  }
+
+  return px.map((p) => ({ ...p, x: (p.px / w) * 100, y: (p.py / h) * 100 }))
+}
+
+/** 逐点档完整布局：投影 → 境内外分开拟合 → 并簇 → 时间序 */
+export function layoutPins<T extends MappablePlace>(
+  places: T[],
+  containerWidth: number,
+  containerHeight: number
+): { clusters: PinCluster<T>[]; inset: InsetRect | null } {
+  // 并簇阈值按圆径的 0.8 折成百分比：两个圆明显叠上才并。
+  // 用整圆径会链式合并——缩放后同一片区的点会被一个个串成一个大簇（实测过）。
+  const gapX = ((PIN_DIAMETER_PX * 0.95) / containerWidth) * 100
+  const gapY = ((PIN_DIAMETER_PX * 0.95) / containerHeight) * 100
+
+  const { points, inset } = fitSplit(projectPlaces(places), containerWidth, containerHeight)
+  const clusters = clusterPoints(points, gapX, gapY)
+
   // 时间序：按簇内最早的地点在原数组中的位置排序（保证连线仍是「去过的先后」）
   const order = new Map<T, number>()
   places.forEach((p, i) => order.set(p, i))
@@ -313,16 +370,7 @@ export function layoutPins<T extends MappablePlace>(
     const bi = Math.min(...b.places.map((p) => order.get(p) ?? 0))
     return ai - bi
   })
-
-  return {
-    clusters,
-    inset: {
-      x: (insetPx.x / containerWidth) * 100,
-      y: (insetPx.y / containerHeight) * 100,
-      w: (insetPx.w / containerWidth) * 100,
-      h: (insetPx.h / containerHeight) * 100
-    }
-  }
+  return { clusters, inset }
 }
 
 /**
@@ -366,7 +414,11 @@ export const REGION: Record<string, string> = {
 }
 
 /** 聚合泡数上限：超过就降一级粒度（大区仅 8 个必不超，两级必然够用） */
-export const AGG_MAX = 12
+/**
+ * 省级气泡上限：超过就再上一级（大区）。
+ * 取 8 而不是 12——12 个省级气泡里多半各只有 1 个地点，那等于「没聚合，只是不连线」。
+ */
+export const AGG_MAX = 8
 
 /** 境外判定：country 缺省视为中国（历史数据未填国家） */
 export function isChina(p: MappablePlace): boolean {
@@ -420,8 +472,57 @@ export function aggregatePlaces<T extends MappablePlace>(places: T[], box?: FitB
   return { level, groups }
 }
 
-/** 无坐标分组的示意位置兜底（大区级；省级无坐标组按 50,50 居中） */
-export const REGION_POS: Record<string, [number, number]> = {
-  华北: [62, 20], 东北: [90, 15], 华东: [84, 46], 华中: [58, 56],
-  华南: [72, 78], 西南: [26, 66], 西北: [40, 28], 境外: [93, 82]
+/** 聚合气泡：位置 = 组内真实坐标的中心，统一拟合进安全区；无坐标的组排到最下一行 */
+export interface AggBubble<T extends MappablePlace> {
+  key: string
+  places: T[]
+  x: number
+  y: number
+}
+
+export function aggregateBubbles<T extends MappablePlace>(
+  places: T[],
+  box: FitBox
+): { level: '省' | '大区'; bubbles: AggBubble<T>[] } {
+  const agg = aggregatePlaces(places)
+  const located: { g: AggGroup<T>; x: number; y: number }[] = []
+  const blind: AggGroup<T>[] = []
+
+  agg.groups.forEach((g) => {
+    const pts = projectPlaces(g.places)
+    if (!pts.length) {
+      blind.push(g)
+      return
+    }
+    located.push({
+      g,
+      x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+      y: pts.reduce((s, p) => s + p.y, 0) / pts.length
+    })
+  })
+
+  // 气泡中心同样按「境内外分开」拟合，否则远端点会把整幅比例压扁（实测气泡挤到 6px）
+  const fitted = fitSplit(
+    located.map((l, i) => ({ x: l.x, y: l.y, place: { ...l.g.places[0], __i: i } as T })),
+    box.width,
+    box.height
+  ).points
+
+  const spread = spreadPoints(fitted, PIN_DIAMETER_PX + 6, box)
+  const bubbles: AggBubble<T>[] = spread.map((pt) => {
+    const idx = (pt.place as T & { __i: number }).__i
+    return { key: located[idx].g.key, places: located[idx].g.places, x: pt.x, y: pt.y }
+  })
+
+  // 无坐标组排在底部一行（等分），保证不会堆到中心互相压
+  const rowY = 92
+  blind.forEach((g, i) => {
+    bubbles.push({
+      key: g.key,
+      places: g.places,
+      x: blind.length === 1 ? 50 : 22 + (i * 56) / Math.max(1, blind.length - 1),
+      y: rowY
+    })
+  })
+  return { level: agg.level, bubbles }
 }

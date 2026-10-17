@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
   shouldShowLabels,
-  shouldUsePins,
+  pinClusterLimit,
   layoutPins,
   trailPath,
+  aggregateBubbles,
   aggregatePlaces,
   clusterLabelText,
   fitBoxFor,
@@ -34,14 +35,10 @@ const MIXED = [
   p('悉尼', -33.86, 151.21, undefined, '澳大利亚')
 ]
 
-describe('B1 分档', () => {
-  it('桌面 10 个逐点、11 个聚合', () => {
-    expect(shouldUsePins(10, 900)).toBe(true)
-    expect(shouldUsePins(11, 900)).toBe(false)
-  })
-  it('移动端阈值降为 5', () => {
-    expect(shouldUsePins(5, MOBILE_WIDTH - 1)).toBe(true)
-    expect(shouldUsePins(6, MOBILE_WIDTH - 1)).toBe(false)
+describe('B1 分档（按图上点数，不按地点数）', () => {
+  it('桌面最多 6 个点，移动端 4 个', () => {
+    expect(pinClusterLimit(900)).toBe(6)
+    expect(pinClusterLimit(MOBILE_WIDTH - 1)).toBe(4)
   })
 })
 
@@ -136,6 +133,58 @@ describe('B4b 点多时只留编号', () => {
     expect(shouldShowLabels(6)).toBe(true)
     expect(shouldShowLabels(7)).toBe(false)
     expect(shouldShowLabels(9)).toBe(false)
+  })
+})
+
+describe('B1b 聚合气泡（点数超限后的展示）', () => {
+  const box = fitBoxFor(900, 400)
+  const many = [
+    p('北京', 39.9, 116.4, '北京'),
+    p('拉萨', 29.65, 91.12, '西藏'),
+    p('九寨', 33.26, 103.92, '四川'),
+    p('上海', 31.14, 121.67, '上海'),
+    p('杭州', 30.25, 120.15, '浙江'),
+    p('西安', 34.34, 108.94, '陕西'),
+    p('张家界', 29.12, 110.48, '湖南'),
+    p('重庆', 29.56, 106.55, '重庆'),
+    p('悉尼', -33.86, 151.21, undefined, '澳大利亚'),
+    p('富士山', 35.36, 138.73, '静冈县', '日本')
+  ]
+
+  it('省级不超过 8 个时按省聚合', () => {
+    // 四个不同省份（按 title 取子集）
+    const few = many.filter((x) => ['北京', '拉萨', '九寨', '上海'].includes(x.title || ''))
+    const { level, bubbles } = aggregateBubbles(few, box)
+    expect(level).toBe('省')
+    expect(bubbles.length).toBe(4)
+  })
+
+  it('省级超过 8 个就上大区，气泡都落在安全区内', () => {
+    const { level, bubbles } = aggregateBubbles(many, box)
+    expect(level).toBe('大区')
+    expect(bubbles.length).toBeLessThan(many.length)
+    expect(bubbles.length).toBeGreaterThan(3)
+    for (const b of bubbles) {
+      expect(b.x).toBeGreaterThan(0)
+      expect(b.x).toBeLessThan(100)
+      expect(b.y).toBeGreaterThan(0)
+      expect(b.y).toBeLessThan(100)
+    }
+  })
+
+  it('气泡按真实坐标铺开，不会挤在中心', () => {
+    const { bubbles } = aggregateBubbles(many, box)
+    const w = 900
+    const h = 400
+    let min = Infinity
+    for (let i = 0; i < bubbles.length; i++) {
+      for (let j = i + 1; j < bubbles.length; j++) {
+        const d = Math.hypot(((bubbles[i].x - bubbles[j].x) / 100) * w, ((bubbles[i].y - bubbles[j].y) / 100) * h)
+        min = Math.min(min, d)
+      }
+    }
+    // 气泡撑开到「圆径 46 + 间隙 6」附近，肉眼不叠
+    expect(min).toBeGreaterThan(40)
   })
 })
 
