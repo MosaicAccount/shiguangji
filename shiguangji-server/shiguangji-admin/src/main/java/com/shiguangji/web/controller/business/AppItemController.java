@@ -2,6 +2,7 @@ package com.shiguangji.web.controller.business;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -63,18 +64,27 @@ public class AppItemController extends BaseController
      *
      * 心愿是私人内容（设计 结论 108）：本接口**不开放匿名访问**，未登录一律 401；
      * 登录用户只看自己（resolveCreateBy 给出当前用户），故没有访客脱敏分支。
+     *
+     * issue #92 胶囊筛选：status 可选传 WANT/DOING 做单档筛选（其余值仍按两态合集）；
+     * 响应附 wantTotal/doingTotal 分态总数（全量口径，不受当前筛选影响，供页头胶囊数字使用）。
      */
     @GetMapping("/plan/list")
     public AjaxResult planList(SgjItem sgjItem)
     {
         // 强制按当前请求的可见范围过滤，防止越权查看他人数据（设计 结论 79：与 /app/item/list 同口径）
         sgjItem.setCreateBy(appScopeHelper.resolveCreateBy());
-        // 计划页不看单状态，忽略调用方误传的 status，集合固定为 WANT/DOING
-        sgjItem.setStatus(null);
+        // issue #92：status 只放行 WANT/DOING 单档筛选，DONE 等其余值仍按两态合集处理
+        if (!"WANT".equals(sgjItem.getStatus()) && !"DOING".equals(sgjItem.getStatus()))
+        {
+            sgjItem.setStatus(null);
+        }
         startPage();
         List<SgjItem> list = sgjItemService.selectPlanItems(sgjItem);
         AjaxResult result = success(list);
         result.put("total", ((Page<?>) list).getTotal());
+        Map<String, Long> statusCount = sgjItemService.countPlanByStatus(sgjItem);
+        result.put("wantTotal", statusCount.getOrDefault("WANT", 0L));
+        result.put("doingTotal", statusCount.getOrDefault("DOING", 0L));
         return result;
     }
 

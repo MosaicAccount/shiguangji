@@ -9,7 +9,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -394,6 +396,37 @@ class AppPlanApiSmokeTest
     }
 
     // ------------------------------------------------------------------
+    // 9. T-97（issue #92，结论 109）：计划接口胶囊筛选（status 单档）与分态总数口径
+    // ------------------------------------------------------------------
+
+    @Test
+    @Order(9)
+    void planListStatusFilterAndStatusTotals() throws Exception
+    {
+        // 单档筛选只保留该状态：WANT = C（无日期置后）+ E（地点，2026-11-01）；DOING = A → B
+        assertThat(titles(planListRoot("WANT").path("data"))).containsExactly(TITLE_E, TITLE_C);
+        assertThat(titles(planListRoot("DOING").path("data"))).containsExactly(TITLE_A, TITLE_B);
+
+        // 非法档（DONE / 乱码）不做单选，仍按两态合集返回，不会把列表筛空
+        assertThat(titles(planListRoot("DONE").path("data")))
+                .containsExactly(TITLE_A, TITLE_B, TITLE_E, TITLE_C);
+        assertThat(titles(planListRoot("PAUSED").path("data"))).hasSize(4);
+
+        // total 跟随筛选（筛选后的条数），不是全集条数
+        assertThat(planListRoot("DOING").path("total").asLong()).isEqualTo(2);
+
+        // 分态总数：全库口径（admin 不限 create_by，与 T-76 同源）、不随筛选变化，并与库内分布对账
+        long wantTotal = planListRoot("DOING").path("wantTotal").asLong();
+        long doingTotal = planListRoot("DOING").path("doingTotal").asLong();
+        assertThat(wantTotal).isEqualTo(countByStatus("WANT"));
+        assertThat(doingTotal).isEqualTo(countByStatus("DOING"));
+        assertThat(planListRoot("WANT").path("wantTotal").asLong()).isEqualTo(wantTotal);
+        assertThat(planListRoot("WANT").path("doingTotal").asLong()).isEqualTo(doingTotal);
+        assertThat(planListRoot(null).path("wantTotal").asLong()).isEqualTo(wantTotal);
+        assertThat(planListRoot(null).path("doingTotal").asLong()).isEqualTo(doingTotal);
+    }
+
+    // ------------------------------------------------------------------
     // 辅助方法
     // ------------------------------------------------------------------
 
@@ -431,6 +464,29 @@ class AppPlanApiSmokeTest
     {
         return objectMapper.readTree(mockMvc.perform(planListRequest(pageNum, pageSize))
                 .andReturn().getResponse().getContentAsString()).path("data");
+    }
+
+    /** 计划页响应根节点（admin 视角，可带单档 status；title 夹具前缀与其他用例一致） */
+    private JsonNode planListRoot(String status) throws Exception
+    {
+        MockHttpServletRequestBuilder builder = planListRequest(1, 50);
+        if (status != null)
+        {
+            builder = builder.param("status", status);
+        }
+        return objectMapper.readTree(mockMvc.perform(builder)
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    /** 取 data 数组的标题列表（断言集合与排序用） */
+    private List<String> titles(JsonNode rows)
+    {
+        List<String> result = new ArrayList<>();
+        for (JsonNode row : rows)
+        {
+            result.add(row.path("title").asText());
+        }
+        return result;
     }
 
     /** 取计划页 total（分页场景下 data 只含当前页，total 必须单独取） */
