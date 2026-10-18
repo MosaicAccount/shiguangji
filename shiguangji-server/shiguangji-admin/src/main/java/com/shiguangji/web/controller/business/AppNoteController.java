@@ -81,6 +81,8 @@ public class AppNoteController extends BaseController {
                 || (appScopeHelper.isAnonymous() && !"1".equals(note.getIsPublic()))) {
             return error("笔记不存在或无权访问");
         }
+        // 0.0.5 互链：正文仍是纯 Markdown，解析结果与反链随详情一次下发（编辑页的改名提醒也复用）
+        sgjNoteService.attachLinkContext(note, appScopeHelper.resolveCreateBy(), appScopeHelper.isAnonymous());
         // 访客响应脱敏：清空笔记私人备注
         appScopeHelper.maskNoteForGuest(note);
         return success(note);

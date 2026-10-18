@@ -219,4 +219,46 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         and del_flag = '2'
     </delete>
 
+    <!-- 0.0.5 互链：标题候选。只做候选，逐字判定（含大小写）在 Java——库排序规则不区分大小写，
+         title in 会把大小写仅异的标题一并捞回，由 SgjNoteLinkUtils.resolveLinks 分组时剔除 -->
+    <select id="selectNoteRefsByTitles" resultMap="SgjNoteResult">
+        select n.note_id, n.title, n.is_public, n.create_by, n.update_time, n.create_time
+        from sgj_note n
+        where n.del_flag = '0'
+        <if test="createBy != null and createBy != ''">
+            and n.create_by = #{createBy}
+        </if>
+        <if test="publicOnly">
+            and n.is_public = '1'
+        </if>
+        <choose>
+            <when test="titles != null and titles.size() > 0">
+                and n.title in
+                <foreach item="title" collection="titles" open="(" separator="," close=")">
+                    #{title}
+                </foreach>
+            </when>
+            <otherwise>
+                and 1 = 0
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 0.0.5 反链：正文 LIKE 候选（%/_ 已在 Java 转义、escape '\\'）；
+         代码块里的 [[...]] 不算引用，假候选由 SgjNoteLinkUtils.buildBacklinks 剔除 -->
+    <select id="selectBacklinkCandidates" resultMap="SgjNoteResult">
+        select n.note_id, n.title, n.content, n.update_time, n.create_time
+        from sgj_note n
+        where n.del_flag = '0'
+        and n.note_id != #{excludeNoteId}
+        and n.content like concat('%', #{likeTitle}, '%') escape '\\'
+        <if test="createBy != null and createBy != ''">
+            and n.create_by = #{createBy}
+        </if>
+        <if test="publicOnly">
+            and n.is_public = '1'
+        </if>
+        order by coalesce(n.update_time, n.create_time) desc, n.note_id desc
+    </select>
+
 </mapper>
