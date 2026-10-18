@@ -1,6 +1,10 @@
 package com.shiguangji.business.service.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -10,10 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 
 import com.shiguangji.business.constants.SgjNoteConstants;
+import com.shiguangji.business.domain.NoteBacklink;
+import com.shiguangji.business.domain.NoteLink;
 import com.shiguangji.business.domain.SgjNote;
 import com.shiguangji.business.mapper.SgjNoteMapper;
 import com.shiguangji.business.service.ISgjNoteDraftService;
 import com.shiguangji.business.service.ISgjNoteService;
+import com.shiguangji.business.utils.SgjNoteLinkUtils;
 import com.shiguangji.business.utils.SgjNoteUtils;
 import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.PageUtils;
@@ -131,6 +138,54 @@ public class SgjNoteServiceImpl implements ISgjNoteService {
     @Override
     public List<SgjNote> selectRecycleNoteList(SgjNote sgjNote) {
         return sgjNoteMapper.selectRecycleNoteList(sgjNote);
+    }
+
+    /**
+     * 附加互链上下文（0.0.5 FR-005-1/2/3）：正文 [[标题]] 的目标解析、反向链接与同名计数。
+     *
+     * <p>判定逻辑收敛在 {@link SgjNoteLinkUtils} 的静态纯函数里；这里只做编排：
+     * 一次标题候选查询（distinct 标题）解析 links，一次同名计数查询判定重名，
+     * 重名时反链不列来源（指向本篇的链接此时全部降级，D-14），否则一次正文 LIKE 候选
+     * 查询交给纯函数精确校验（代码块里的 [[...]] 不算引用）。</p>
+     *
+     * <p>ponytail: 反链是详情页一次 LIKE 扫描（content 为 longtext、前通配不走索引），
+     * 个人量级（千篇以内）可接受、不做缓存；笔记量或公开访问量上来后新增 sgj_note_link
+     * 关系表 + 一次性回填，本方法出参形状不变。</p>
+     */
+    @Override
+    public void attachLinkContext(SgjNote note, String createBy, boolean anonymous) {
+        List<SgjNoteLinkUtils.NoteToken> tokens = SgjNoteLinkUtils.extractNoteTokens(note.getBody());
+        List<NoteLink> links;
+        if (tokens.isEmpty()) {
+            links = new ArrayList<>();
+        } else {
+            Set<String> titles = new LinkedHashSet<>();
+            for (SgjNoteLinkUtils.NoteToken token : tokens) {
+                titles.add(token.getTitle());
+            }
+            links = SgjNoteLinkUtils.resolveLinks(tokens,
+                    sgjNoteMapper.selectNoteRefsByTitles(titles, createBy, anonymous));
+        }
+        note.setLinks(links);
+
+        String title = note.getTitle() == null ? "" : note.getTitle().trim();
+        if (title.isEmpty() || note.getNoteId() == null) {
+            // 存量脏数据兜底：无标题无法定位目标，反链空、不下发同名计数
+            note.setBacklinks(new ArrayList<>());
+            return;
+        }
+        List<SgjNote> sameTitleRefs =
+                sgjNoteMapper.selectNoteRefsByTitles(Collections.singletonList(title), createBy, anonymous);
+        note.setSameTitleCount(SgjNoteLinkUtils.countExactTitle(sameTitleRefs, title));
+        if (note.getSameTitleCount() > 1) {
+            // 标题重名：指向本篇的链接全部降级，反链不列来源（D-14）
+            note.setBacklinks(new ArrayList<>());
+            return;
+        }
+        note.setBacklinks(SgjNoteLinkUtils.buildBacklinks(
+                sgjNoteMapper.selectBacklinkCandidates(SgjNoteLinkUtils.escapeLike(title),
+                        note.getNoteId(), createBy, anonymous),
+                title));
     }
 
     @Override
