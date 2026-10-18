@@ -121,23 +121,28 @@ const savedTitle = ref('')
 const savedBacklinkCount = ref(0)
 
 /**
- * 标题引用检测（0.0.5）：有笔记引用本篇标题时随输入实时提示——
- * 未改动给中性说明，已改动升级为琥珀警告（保存时的确认框是最后一道闸，不是第一道）。
- * 反链数取自打开时的详情快照，与保存前确认的口径一致。
+ * 标题引用检测（0.0.5）：改名必给反馈——
+ * 有引用 → 琥珀警告；无引用 → 中性确认「不会影响其他笔记」。
+ * 未改动时仅在有引用的情况下提示一次（没有引用的笔记不必占一行噪音）。
+ * 反链数取自打开时的详情快照，与保存前确认框口径一致。
  */
 const titleChangeHint = computed<{ level: 'info' | 'warn'; text: string } | null>(() => {
-  if (!form.noteId || !savedTitle.value || savedBacklinkCount.value <= 0) return null
+  if (!form.noteId || !savedTitle.value) return null
   const changed = (form.title || '').trim() !== savedTitle.value
   if (changed) {
-    return {
-      level: 'warn',
-      text: `标题已修改：${savedBacklinkCount.value} 篇笔记仍引用旧标题「${savedTitle.value}」，保存后这些链接会失效`
-    }
+    return savedBacklinkCount.value > 0
+      ? {
+          level: 'warn',
+          text: `标题已修改：${savedBacklinkCount.value} 篇笔记仍引用旧标题「${savedTitle.value}」，保存后这些链接会失效`
+        }
+      : { level: 'info', text: '标题已修改；当前没有笔记引用旧标题，不会影响其他笔记的互链' }
   }
-  return {
-    level: 'info',
-    text: `有 ${savedBacklinkCount.value} 篇笔记引用了本篇标题；修改标题会让这些链接失效，保存前会再确认一次`
-  }
+  return savedBacklinkCount.value > 0
+    ? {
+        level: 'info',
+        text: `有 ${savedBacklinkCount.value} 篇笔记引用了本篇标题；修改标题会让这些链接失效，保存前会再确认一次`
+      }
+    : null
 })
 
 /** 编辑器高度：视口高度扣除顶栏/表单/页脚的占位，保证分栏尽量占满屏幕 */
