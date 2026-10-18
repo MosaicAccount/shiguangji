@@ -5,8 +5,8 @@
         <!-- 插图（#56）：上传到 /profile 后在光标处插入；粘贴截图走同一条链路 -->
         <el-button size="small" plain :loading="uploadingCount > 0" @click="imageInput?.click()">插图</el-button>
         <!-- 插入笔记链接（0.0.5 FR-005-7）：从已有笔记里选一条，光标处插入 [[标题]]；
-             前后台编辑共用本组件，两处同时生效 -->
-        <el-button size="small" plain @click="notePickerOpen = true">
+             前后台编辑共用本组件，两处同时生效。强调样式按原型（accent 底 + 链接图标） -->
+        <el-button size="small" class="md-note-link-btn" @click="notePickerOpen = true">
           <svg-icon icon-class="link" class="md-link-icon" />插入笔记链接
         </el-button>
         <span class="md-tip">上传后插入到光标处；也可以直接粘贴截图</span>
@@ -220,6 +220,25 @@ function insertNoteToken(title: string): void {
       .md-link-icon {
         margin-right: 4px;
         font-size: 13px;
+      }
+
+      /* 互链入口用强调色（原型 .btn.accent）：浅陶红底 + 深陶红字，与「插图」的中性 plain 拉开层次 */
+      .md-note-link-btn.el-button {
+        color: var(--sgj-primary-dark);
+        background: var(--sgj-primary-soft);
+        border-color: rgba(168, 95, 82, 0.36);
+
+        &:hover,
+        &:focus-visible {
+          color: var(--sgj-primary-dark);
+          background: var(--sgj-primary-soft);
+          border-color: var(--sgj-primary);
+        }
+      }
+
+      html.dark .md-note-link-btn.el-button {
+        color: var(--sgj-primary-light);
+        border-color: rgba(194, 122, 109, 0.4);
       }
     }
 
