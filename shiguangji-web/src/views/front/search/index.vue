@@ -21,9 +21,13 @@
       </div>
     </div>
 
-    <!-- 状态区：未输入 / 加载失败；无结果在分组区统一交代 -->
-    <div v-if="!searched && !loading && !loadError" class="search-tip">
-      试试「三体」「时间」「番茄」——条目和笔记会分组返回，空组自动隐藏。
+    <!-- 状态区：可点建议词（未搜索或无结果时显示，帮用户起步/换词）；失败可重试 -->
+    <div v-if="(!searched || !total) && !loading && !loadError" class="search-suggest">
+      <span>试试：</span>
+      <button v-for="word in SUGGESTIONS" :key="word" type="button" class="suggest-word" @click="applySuggestion(word)">
+        {{ word }}
+      </button>
+      <span class="suggest-note">至少 2 个字；空组自动隐藏</span>
     </div>
     <div v-if="loadError" class="search-error">
       <span>搜索失败，请稍后重试</span>
@@ -101,6 +105,9 @@ const searched = ref(false)
 const coverErrorKeys = ref(new Set<string>())
 
 const total = computed(() => groups.value.reduce((sum, group) => sum + group.total, 0))
+
+/** 建议词（原型同款）：点击即搜索——开发库真实存在的词，各覆盖一类命中 */
+const SUGGESTIONS = ['三体', '时间', '番茄']
 
 /** 类型徽标文案（影单组内电影/电视剧混排，靠它区分） */
 const TYPE_TEXT: Record<string, string> = { MOVIE: '电影', TV: '电视剧', BOOK: '书籍', PLACE: '地点' }
@@ -184,6 +191,12 @@ function coverFailed(key: string): boolean {
 
 function onCoverError(key: string): void {
   coverErrorKeys.value.add(key)
+}
+
+/** 点建议词 = 填入输入框并按用户提交走（同步 URL，可回退） */
+function applySuggestion(word: string): void {
+  keyword.value = word
+  search(true)
 }
 
 /**
@@ -333,13 +346,33 @@ watch(() => route.query.keyword, value => {
   }
 }
 
-.search-tip {
+.search-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   margin-top: 18px;
-  padding: 14px 18px;
-  border: 1px dashed var(--sgj-border);
-  border-radius: var(--sgj-radius-md);
-  font-size: 13px;
-  color: var(--sgj-text-3);
+  font-size: 12px;
+  color: var(--sgj-text-4);
+
+  .suggest-word {
+    border: 1px solid var(--sgj-border);
+    background: var(--sgj-bg-card);
+    border-radius: var(--sgj-radius-pill);
+    padding: 2px 10px;
+    font-size: 12px;
+    color: var(--sgj-text-3);
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--sgj-primary);
+      color: var(--sgj-primary);
+    }
+  }
+
+  .suggest-note {
+    margin-left: 4px;
+  }
 }
 
 .search-error {
