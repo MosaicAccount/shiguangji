@@ -9,7 +9,7 @@ import { isPublicRoute, PUBLIC_ROUTES } from '@/utils/publicRoutes'
 
 describe('isPublicRoute 公开路由白名单', () => {
   it('前台公开只读页免登录', () => {
-    for (const path of ['/login', '/register', '/home', '/movie', '/book', '/travel', '/note', '/note/detail']) {
+    for (const path of ['/login', '/register', '/home', '/movie', '/book', '/travel', '/note', '/note/detail', '/search']) {
       expect(isPublicRoute(path), `${path} 应免登录`).toBe(true)
     }
   })

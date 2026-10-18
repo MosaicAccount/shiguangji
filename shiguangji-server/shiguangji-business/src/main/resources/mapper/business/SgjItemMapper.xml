@@ -385,4 +385,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         and del_flag = '2'
     </delete>
 
+    <!-- 0.0.5 全局搜索：条目按标题 LIKE（%/_ 已在 Java 转义）；type 集合内混排，
+         分页（前 N + total）由调用方 PageHelper 控制；与列表页同口径的可见范围过滤 -->
+    <select id="selectSearchItems" resultMap="SgjItemResult">
+        <include refid="selectSgjItemVo"/>
+        where i.del_flag = '0'
+        and i.item_type in
+        <foreach item="type" collection="itemTypes" open="(" separator="," close=")">
+            #{type}
+        </foreach>
+        and i.title like concat('%', #{titleLike}, '%') escape '\\'
+        <if test="createBy != null and createBy != ''">
+            and i.create_by = #{createBy}
+        </if>
+        order by i.update_time desc, i.item_id desc
+    </select>
+
 </mapper>

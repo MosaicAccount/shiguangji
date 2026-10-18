@@ -172,6 +172,20 @@ export const constantRoutes = [
     ]
   },
   {
+    // 全站检索（0.0.5）：匿名可用的聚合页，数据可见性与前台目录同一套口径
+    path: '/search',
+    component: FrontLayout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/front/search/index.vue'),
+        name: 'FrontSearch',
+        meta: { title: '搜索' }
+      }
+    ]
+  },
+  {
     path: '/admin',
     redirect: '/index',
     hidden: true
