@@ -112,6 +112,10 @@ const rules = {
   title: [{ required: true, message: '请输入笔记标题', trigger: 'blur' }]
 }
 
+/** 服务器侧的旧标题与反链数（0.0.5 FR-005-6：改名保存前的引用提醒用） */
+const savedTitle = ref('')
+const savedBacklinkCount = ref(0)
+
 /** 编辑器高度：视口高度扣除顶栏/表单/页脚的占位，保证分栏尽量占满屏幕 */
 const editorHeight = 'calc(100vh - 360px)'
 
@@ -199,6 +203,9 @@ async function initEditor(): Promise<void> {
     }
     applyForm(note)
     form.isPublic = note.isPublic === '1' ? '1' : '0'
+    // 0.0.5 FR-005-6：记录服务器侧的标题与反链数，保存时判断「改名会断链」
+    savedTitle.value = (note.title || '').trim()
+    savedBacklinkCount.value = note.backlinks?.length ?? 0
   } else if (route.query.itemId && Number(route.query.itemId)) {
     applyForm({ itemId: Number(route.query.itemId) })
   }
@@ -507,12 +514,14 @@ function rollbackToBaseline(): void {
 
 /** 保存：新增或修改，成功后清掉本地缓冲并回列表页 */
 function submitForm(): void {
-  proxy.$refs['editFormRef'].validate((valid: boolean) => {
+  proxy.$refs['editFormRef'].validate(async (valid: boolean) => {
     if (!valid) return
     if (contentTooLong.value) {
       proxy.$modal.msgError(`正文长度不能超过 ${CONTENT_MAX_LENGTH} 个字符`)
       return
     }
+    // 0.0.5 FR-005-6：改标题且旧标题仍有引用时，先确认再落库；取消则整个保存中止
+    if (!(await confirmTitleChangeIfNeeded())) return
     saving.value = true
     const payload = { ...form, draftId }
     const request = form.noteId ? updateFrontNote(payload) : addFrontNote(payload)
@@ -526,6 +535,25 @@ function submitForm(): void {
       saving.value = false
     })
   })
+}
+
+/**
+ * 标题变更提醒（0.0.5）：互链按标题解析，改名会让旧标题的引用全部失效。
+ * 只提示、不自动改写任何笔记正文（需求 §3.3.6）；反链数取自打开时的详情快照。
+ */
+async function confirmTitleChangeIfNeeded(): Promise<boolean> {
+  const nextTitle = (form.title || '').trim()
+  if (!form.noteId || !savedTitle.value) return true
+  if (nextTitle === savedTitle.value) return true
+  if (savedBacklinkCount.value <= 0) return true
+  try {
+    await proxy.$modal.confirm(
+      `有 ${savedBacklinkCount.value} 篇笔记仍引用旧标题「${savedTitle.value}」，保存后这些链接会失效。系统不会自动改写正文。`
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 </script>
 
