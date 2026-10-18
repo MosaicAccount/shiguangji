@@ -32,6 +32,10 @@
       <el-form ref="editFormRef" :model="form" :rules="rules" label-position="top" class="edit-form">
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" placeholder="请输入笔记标题" maxlength="200" class="title-input" />
+          <!-- 标题引用检测（0.0.5 FR-005-6）：有引用时随输入实时提示；改名的警告在保存确认框之前就能看到 -->
+          <p v-if="titleChangeHint" class="title-change-hint" :class="`is-${titleChangeHint.level}`" role="status">
+            {{ titleChangeHint.text }}
+          </p>
         </el-form-item>
         <div class="meta-row">
           <el-form-item label="关联条目">
@@ -111,6 +115,35 @@ const form = reactive<SgjNote>({
 const rules = {
   title: [{ required: true, message: '请输入笔记标题', trigger: 'blur' }]
 }
+
+/** 服务器侧的旧标题与反链数（0.0.5 FR-005-6：改名保存前的引用提醒用） */
+const savedTitle = ref('')
+const savedBacklinkCount = ref(0)
+
+/**
+ * 标题引用检测（0.0.5）：改名必给反馈——
+ * 有引用 → 琥珀警告；无引用 → 中性确认「不会影响其他笔记」。
+ * 未改动时仅在有引用的情况下提示一次（没有引用的笔记不必占一行噪音）。
+ * 反链数取自打开时的详情快照，与保存前确认框口径一致。
+ */
+const titleChangeHint = computed<{ level: 'info' | 'warn'; text: string } | null>(() => {
+  if (!form.noteId || !savedTitle.value) return null
+  const changed = (form.title || '').trim() !== savedTitle.value
+  if (changed) {
+    return savedBacklinkCount.value > 0
+      ? {
+          level: 'warn',
+          text: `标题已修改：${savedBacklinkCount.value} 篇笔记仍引用旧标题「${savedTitle.value}」，保存后这些链接会失效`
+        }
+      : { level: 'info', text: '标题已修改；当前没有笔记引用旧标题，不会影响其他笔记的互链' }
+  }
+  return savedBacklinkCount.value > 0
+    ? {
+        level: 'info',
+        text: `有 ${savedBacklinkCount.value} 篇笔记引用了本篇标题；修改标题会让这些链接失效，保存前会再确认一次`
+      }
+    : null
+})
 
 /** 编辑器高度：视口高度扣除顶栏/表单/页脚的占位，保证分栏尽量占满屏幕 */
 const editorHeight = 'calc(100vh - 360px)'
@@ -199,6 +232,9 @@ async function initEditor(): Promise<void> {
     }
     applyForm(note)
     form.isPublic = note.isPublic === '1' ? '1' : '0'
+    // 0.0.5 FR-005-6：记录服务器侧的标题与反链数，保存时判断「改名会断链」
+    savedTitle.value = (note.title || '').trim()
+    savedBacklinkCount.value = note.backlinks?.length ?? 0
   } else if (route.query.itemId && Number(route.query.itemId)) {
     applyForm({ itemId: Number(route.query.itemId) })
   }
@@ -507,12 +543,14 @@ function rollbackToBaseline(): void {
 
 /** 保存：新增或修改，成功后清掉本地缓冲并回列表页 */
 function submitForm(): void {
-  proxy.$refs['editFormRef'].validate((valid: boolean) => {
+  proxy.$refs['editFormRef'].validate(async (valid: boolean) => {
     if (!valid) return
     if (contentTooLong.value) {
       proxy.$modal.msgError(`正文长度不能超过 ${CONTENT_MAX_LENGTH} 个字符`)
       return
     }
+    // 0.0.5 FR-005-6：改标题且旧标题仍有引用时，先确认再落库；取消则整个保存中止
+    if (!(await confirmTitleChangeIfNeeded())) return
     saving.value = true
     const payload = { ...form, draftId }
     const request = form.noteId ? updateFrontNote(payload) : addFrontNote(payload)
@@ -526,6 +564,25 @@ function submitForm(): void {
       saving.value = false
     })
   })
+}
+
+/**
+ * 标题变更提醒（0.0.5）：互链按标题解析，改名会让旧标题的引用全部失效。
+ * 只提示、不自动改写任何笔记正文（需求 §3.3.6）；反链数取自打开时的详情快照。
+ */
+async function confirmTitleChangeIfNeeded(): Promise<boolean> {
+  const nextTitle = (form.title || '').trim()
+  if (!form.noteId || !savedTitle.value) return true
+  if (nextTitle === savedTitle.value) return true
+  if (savedBacklinkCount.value <= 0) return true
+  try {
+    await proxy.$modal.confirm(
+      `有 ${savedBacklinkCount.value} 篇笔记仍引用旧标题「${savedTitle.value}」，保存后这些链接会失效。系统不会自动改写正文。`
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 </script>
 
@@ -605,6 +662,26 @@ function submitForm(): void {
 .edit-form {
   .title-input {
     max-width: 560px;
+  }
+
+  /* 标题引用检测提示（0.0.5，按原型 .proto-hint 的两态）：info 中性 / warn 琥珀 */
+  .title-change-hint {
+    width: 100%;
+    max-width: 560px;
+    margin: 8px 0 0;
+    padding: 7px 12px;
+    border: 1px dashed var(--sgj-border);
+    border-radius: 8px;
+    background: var(--sgj-bg);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--sgj-text-3);
+
+    &.is-warn {
+      border-color: rgba(177, 132, 88, 0.55);
+      background: var(--sgj-amber-soft);
+      color: var(--sgj-text-2);
+    }
   }
 
   .meta-row {

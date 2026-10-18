@@ -4,6 +4,11 @@
       <div class="md-toolbar-left">
         <!-- 插图（#56）：上传到 /profile 后在光标处插入；粘贴截图走同一条链路 -->
         <el-button size="small" plain :loading="uploadingCount > 0" @click="imageInput?.click()">插图</el-button>
+        <!-- 插入笔记链接（0.0.5 FR-005-7）：从已有笔记里选一条，光标处插入 [[标题]]；
+             前后台编辑共用本组件，两处同时生效。强调样式按原型（accent 底 + 链接图标） -->
+        <el-button size="small" class="md-note-link-btn" @click="notePickerOpen = true">
+          <svg-icon icon-class="link" class="md-link-icon" />插入笔记链接
+        </el-button>
         <span class="md-tip">上传后插入到光标处；也可以直接粘贴截图</span>
       </div>
       <span class="md-hint">{{ isMobile ? '支持 Markdown 语法' : '支持 Markdown 语法，右侧实时预览' }}</span>
@@ -47,6 +52,8 @@
         <markdown-viewer :content="innerValue" />
       </div>
     </el-dialog>
+    <!-- 插入笔记链接（0.0.5）：预览不解析互链（保存后的详情页才成链），插入后给一句提示 -->
+    <note-link-picker v-model="notePickerOpen" @select="insertNoteToken" />
   </div>
 </template>
 
@@ -55,6 +62,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
+import NoteLinkPicker from '@/components/NoteLinkPicker/index.vue'
 import { uploadNoteImage } from '@/api/common/upload'
 import {
   NOTE_IMAGE_EXTENSIONS,
@@ -83,6 +91,8 @@ const uploadingCount = ref(0)
 
 const imageInput = ref<HTMLInputElement>()
 const inputRef = ref<{ textarea?: HTMLTextAreaElement }>()
+/** 插入笔记链接选择器（0.0.5 FR-005-7） */
+const notePickerOpen = ref(false)
 
 const paneHeight = computed(() => (isMobile.value ? '55vh' : props.height || '320px'))
 const acceptTypes = computed(() => NOTE_IMAGE_EXTENSIONS.map(ext => `.${ext}`).join(','))
@@ -165,6 +175,24 @@ function insertAtCursor(markdowns: string[]): void {
     textarea?.setSelectionRange(cursor, cursor)
   })
 }
+
+/**
+ * 插入笔记链接（0.0.5 FR-005-7）。互链是行内语法，不能复用插图的独占一行插入
+ * （那个会强加前后空行），这里原样落在光标处并覆盖选中区；预览不解析 token，保存后才成链。
+ */
+function insertNoteToken(title: string): void {
+  const textarea = inputRef.value?.textarea
+  const token = `[[${title}]]`
+  const position = textarea?.selectionStart ?? innerValue.value.length
+  const end = textarea?.selectionEnd ?? position
+  innerValue.value = innerValue.value.slice(0, position) + token + innerValue.value.slice(end)
+  emitValue()
+  nextTick(() => {
+    textarea?.focus()
+    textarea?.setSelectionRange(position + token.length, position + token.length)
+  })
+  ElMessage.success(`已插入 ${token}，保存后在详情页生效`)
+}
 </script>
 
 <style scoped lang="scss">
@@ -187,6 +215,30 @@ function insertAtCursor(markdowns: string[]): void {
       .md-tip {
         font-size: 12px;
         color: var(--sgj-text-4);
+      }
+
+      .md-link-icon {
+        margin-right: 4px;
+        font-size: 13px;
+      }
+
+      /* 互链入口用强调色（原型 .btn.accent）：浅陶红底 + 深陶红字，与「插图」的中性 plain 拉开层次 */
+      .md-note-link-btn.el-button {
+        color: var(--sgj-primary-dark);
+        background: var(--sgj-primary-soft);
+        border-color: rgba(168, 95, 82, 0.36);
+
+        &:hover,
+        &:focus-visible {
+          color: var(--sgj-primary-dark);
+          background: var(--sgj-primary-soft);
+          border-color: var(--sgj-primary);
+        }
+      }
+
+      html.dark .md-note-link-btn.el-button {
+        color: var(--sgj-primary-light);
+        border-color: rgba(194, 122, 109, 0.4);
       }
     }
 
