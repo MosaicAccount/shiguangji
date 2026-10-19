@@ -22,6 +22,15 @@
             </span>
             <span class="hero-map-arrow">↘</span>
           </div>
+          <!-- 年度回顾入口（0.0.4；仅登录态渲染，访客不出现私人内容入口） -->
+          <div v-if="isLogin" class="hero-map-entry anim" :style="{ '--d': '112ms' }" @click="goReview">
+            <span class="hero-map-icon">✦</span>
+            <span class="hero-map-body">
+              <span class="hero-map-text">年度回顾</span>
+              <span class="hero-map-sub">把一年攒成一面墙</span>
+            </span>
+            <span class="hero-map-arrow">↘</span>
+          </div>
           <button class="hero-cta anim" :style="{ '--d': '128ms' }" type="button" @click="scrollToTimeline">开始记录 →</button>
         </div>
       </div>
@@ -274,6 +283,11 @@ function openNoteDetail(note: SgjNote): void {
 /**  旅行足迹地图入口卡：直达 /travel?mode=map */
 function goTravelMap(): void {
   router.push({ path: '/travel', query: { mode: 'map' } })
+}
+
+/** 年度回顾（私人内容，路由守卫兜底；此处仅登录态渲染入口） */
+function goReview(): void {
+  router.push('/review')
 }
 
 /** 开始记录：平滑滚动到时间线区块 */

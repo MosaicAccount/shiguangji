@@ -1,5 +1,7 @@
 package com.shiguangji.business.domain;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.shiguangji.common.core.domain.BaseEntity;
 
@@ -46,6 +48,15 @@ public class SgjNote extends BaseEntity {
 
     /** 保存时携带的草稿ID（入参，非表字段）：保存成功后在同一事务里删除该草稿 */
     private Long draftId;
+
+    /** 正文互链解析结果（0.0.5，前台详情接口出参，非表字段；按 distinct raw 去重） */
+    private List<NoteLink> links;
+
+    /** 反向链接来源（0.0.5，前台详情接口出参，非表字段；本篇标题重名时为空列表） */
+    private List<NoteBacklink> backlinks;
+
+    /** 可见范围内同名笔记数（含本篇；0.0.5 详情接口出参，非表字段，>1 表示标题重名） */
+    private Integer sameTitleCount;
 
     public Long getNoteId() {
         return noteId;
@@ -145,5 +156,32 @@ public class SgjNote extends BaseEntity {
 
     public void setDraftId(Long draftId) {
         this.draftId = draftId;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public List<NoteLink> getLinks() {
+        return links;
+    }
+
+    public void setLinks(List<NoteLink> links) {
+        this.links = links;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public List<NoteBacklink> getBacklinks() {
+        return backlinks;
+    }
+
+    public void setBacklinks(List<NoteBacklink> backlinks) {
+        this.backlinks = backlinks;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public Integer getSameTitleCount() {
+        return sameTitleCount;
+    }
+
+    public void setSameTitleCount(Integer sameTitleCount) {
+        this.sameTitleCount = sameTitleCount;
     }
 }

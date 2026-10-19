@@ -1,6 +1,9 @@
 package com.shiguangji.business.mapper;
 
 import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Param;
 
 import com.shiguangji.business.domain.SgjItem;
 
@@ -37,6 +40,14 @@ public interface SgjItemMapper
      * @return 条目集合
      */
     public List<SgjItem> selectPlanItems(SgjItem sgjItem);
+
+    /**
+     * 统计计划页条目分态数量（issue #92：胶囊数字口径，全量分档、不受当前筛选影响）
+     *
+     * @param sgjItem 条目信息（createBy 过滤）
+     * @return status/cnt 行集合
+     */
+    public List<Map<String, Object>> selectPlanStatusCount(SgjItem sgjItem);
 
     /**
      * 查询回收站条目列表（del_flag='2'）
@@ -109,4 +120,16 @@ public interface SgjItemMapper
      * @return 结果
      */
     public int purgeSgjItemByIds(Long[] itemIds);
+
+    /**
+     * 全局搜索的条目检索（0.0.5 FR-005-5）：item_type 集合内混排、标题 LIKE、按更新时间倒序。
+     * 分页由调用方 PageHelper 控制（每组取前 N 条 + total）。
+     *
+     * @param itemTypes 条目类型集合（影单组为 MOVIE+TV 混排）
+     * @param titleLike 已转义的标题 LIKE 片段
+     * @param createBy 可见范围（null＝不限）
+     * @return 条目集合（含扩展字段；comment/remark 由调用方置空）
+     */
+    public List<SgjItem> selectSearchItems(@Param("itemTypes") List<String> itemTypes,
+            @Param("titleLike") String titleLike, @Param("createBy") String createBy);
 }

@@ -9,13 +9,17 @@ import { isPublicRoute, PUBLIC_ROUTES } from '@/utils/publicRoutes'
 
 describe('isPublicRoute 公开路由白名单', () => {
   it('前台公开只读页免登录', () => {
-    for (const path of ['/login', '/register', '/home', '/movie', '/book', '/travel', '/note', '/note/detail']) {
+    for (const path of ['/login', '/register', '/home', '/movie', '/book', '/travel', '/note', '/note/detail', '/search']) {
       expect(isPublicRoute(path), `${path} 应免登录`).toBe(true)
     }
   })
 
   it('心愿页是私人内容，不得免登录（结论 108）', () => {
     expect(isPublicRoute('/plan'), '/plan 是私人页，应要求登录').toBe(false)
+  })
+
+  it('回顾页是私人内容，不得免登录（D-11）', () => {
+    expect(isPublicRoute('/review'), '/review 是私人页，应要求登录').toBe(false)
   })
 
   it('写笔记与后台不在白名单', () => {

@@ -75,8 +75,10 @@ html.dark .plan-page {
 .plan-page .hd-head h1 .dot { color:var(--hd-red) }
 .plan-page .hd-head p { margin:6px 0 0;font-size:16px;color:var(--hd-ink-soft) }
 .plan-page .hd-chips { display:flex;gap:10px;margin-top:12px;flex-wrap:wrap }
-.plan-page .hd-chip { border:2px solid var(--hd-line);border-radius:14px 4px 16px 5px/5px 16px 4px 14px;padding:0 12px;font-size:14px;background:var(--hd-paper) }
-.plan-page .hd-chip.doing { border-color:var(--hd-red);color:var(--hd-red);background:var(--hd-red-soft) }
+/* issue #92：胶囊即筛选开关（共/在做/在想），选中档红描边红底（原 .doing 的视觉挪作选中态） */
+.plan-page .hd-chip { border:2px solid var(--hd-line);border-radius:14px 4px 16px 5px/5px 16px 4px 14px;padding:0 12px;font-size:14px;background:var(--hd-paper);cursor:pointer;transition:color .12s,border-color .12s,background .12s }
+.plan-page .hd-chip:hover { border-color:var(--hd-red);color:var(--hd-red) }
+.plan-page .hd-chip.on { border-color:var(--hd-red);color:var(--hd-red);background:var(--hd-red-soft) }
 .plan-page .sheet { position:relative;margin-top:30px }
 .plan-page .paper { position:relative;background:var(--hd-paper);border-radius:6px;padding:6px 20px 10px;box-shadow:2px 3px 0 var(--hd-line-soft) }
 .plan-page .sheet:nth-of-type(odd) { transform:rotate(-.35deg) }

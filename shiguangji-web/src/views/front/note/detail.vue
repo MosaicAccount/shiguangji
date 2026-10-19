@@ -39,7 +39,8 @@
             </header>
 
             <!-- 正文：文章排版，行宽与行距为长文阅读优化；顶部内嵌可折叠目录（移动端主要导航，桌面端隐藏走侧栏） -->
-            <div ref="bodyRef" class="article-body">
+            <!-- 正文点击交给事件委托：互链的 a.note-link 在这里接管跳转（DOM 是渲染后注入的，无法逐个绑事件） -->
+            <div ref="bodyRef" class="article-body" @click="onBodyClick">
               <div v-if="headings.length" class="outline-inline">
                 <button class="outline-toggle" @click="outlineOpen = !outlineOpen">
                   <el-icon><List /></el-icon>
@@ -63,6 +64,8 @@
               </div>
               <markdown-viewer :content="note?.body ?? ''" />
               <div class="article-end" aria-hidden="true">· 完 ·</div>
+              <!-- 反向链接（0.0.5 FR-005-2）：正文末尾统一位置，桌面/移动一致；无来源时整块不渲染 -->
+              <note-backlinks :backlinks="note?.backlinks" :same-title-count="note?.sameTitleCount" />
             </div>
           </template>
         </div>
@@ -130,8 +133,10 @@
 <script setup lang="ts" name="FrontNoteDetail">
 import { ArrowDown, ArrowLeft, Delete, Download, EditPen, List } from '@element-plus/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer/index.vue'
+import NoteBacklinks from '@/components/NoteBacklinks/index.vue'
 import { getFrontNote, delFrontNote, noteExportUrl } from '@/api/front/note'
 import { applyKeywordHighlights, clearKeywordHighlights, splitByKeyword } from '@/utils/sgj'
+import { linkifyNoteTokens } from '@/utils/noteLinks'
 import type { SgjNote } from '@/types/api/business/note'
 import { getToken } from '@/utils/auth'
 import useUserStore from '@/store/modules/user'
@@ -188,6 +193,8 @@ watch(note, () => {
       headings.value = []
       return
     }
+    // 互链先于大纲与关键词高亮：高亮会把文本节点切进 mark，切完再找 raw 就找不全
+    linkifyNoteTokens(root.querySelector('.markdown-viewer') as HTMLElement | null, note.value?.links)
     let chapter = 0
     headings.value = Array.from(root.querySelectorAll('h1, h2, h3'))
       .map((el, index) => {
@@ -222,6 +229,8 @@ watch(routeKeyword, kw => {
 function applyHighlight(): void {
   // 只在正文渲染区高亮：内嵌目录的条目文本与正文重复，标亮目录反而是噪音
   const bodyRoot = bodyRef.value?.querySelector('.markdown-viewer') as HTMLElement | null
+  // 高亮重开会切开文本节点，先补一次互链（幂等：已替换的 raw 不再存在于文本里）
+  linkifyNoteTokens(bodyRoot, note.value?.links)
   clearKeywordHighlights(bodyRoot)
   if (!highlightOn.value) {
     hitEls.value = []
@@ -303,6 +312,15 @@ watch(headings, () => nextTick(updateActive))
 
 loadNote()
 
+/**
+ * 互链跳转是「同组件换 query」（/note/detail?noteId=A → ?noteId=B），Vue 会复用组件实例，
+ * 必须监听 noteId 重载——0.0.3 之前没有这条路径，漏掉的表现是点了链接地址变了、内容不变。
+ */
+watch(() => route.query.noteId, (value, old) => {
+  if (!value || value === old || !Number(value)) return
+  loadNote()
+})
+
 /** 按 ?noteId= 加载笔记，缺参/不存在/加载失败均回列表页 */
 function loadNote(): void {
   const noteId = Number(route.query.noteId)
@@ -323,6 +341,21 @@ function loadNote(): void {
   }).finally(() => {
     loading.value = false
   })
+}
+
+/**
+ * 正文点击的事件委托：互链的 a.note-link 是渲染后注入的 DOM，无法逐个绑事件。
+ * 跳转不带旧关键词——新篇不带上一篇的搜索高亮打开。
+ */
+function onBodyClick(event: MouseEvent): void {
+  const target = event.target as Element | null
+  const anchor = target?.closest?.('a.note-link') as HTMLAnchorElement | null
+  if (!anchor) return
+  event.preventDefault()
+  const noteId = Number(anchor.dataset.noteId)
+  if (noteId) {
+    router.push({ path: '/note/detail', query: { noteId: String(noteId) } })
+  }
 }
 
 /** 返回列表页 */
@@ -550,6 +583,33 @@ html.dark .article-hero {
     :deep(h1),
     :deep(h2) {
       margin-top: 26px;
+    }
+  }
+
+  /* 互链（0.0.5）：点状下划线 + hover 浅底，与普通链接区分；降级样式不可点、悬停给原因 */
+  :deep(a.note-link) {
+    color: var(--sgj-primary);
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 1px dotted var(--sgj-primary);
+    padding: 0 1px;
+    border-radius: 3px;
+    transition: background 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--sgj-primary-soft);
+      color: var(--sgj-primary-dark);
+    }
+  }
+
+  :deep(.note-link.is-broken) {
+    color: var(--sgj-text-3);
+    border-bottom: 1px dashed var(--sgj-text-4);
+    cursor: help;
+
+    &:hover {
+      background: var(--sgj-bg-deep);
     }
   }
 

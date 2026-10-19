@@ -82,4 +82,14 @@ public interface ISgjNoteService
      * @return 结果
      */
     public int purgeSgjNoteByIds(Long[] noteIds);
+
+    /**
+     * 附加互链上下文（0.0.5）：解析正文 [[标题]] 的目标（links）、计算反向链接（backlinks）
+     * 与可见范围内同名计数（sameTitleCount）。只应在前台详情接口调用。
+     *
+     * @param note 笔记（须已带 body 与 title）
+     * @param createBy 可见范围（AppScopeHelper.resolveCreateBy()，null＝不限）
+     * @param anonymous 是否匿名访客（匿名仅公开笔记参与解析与反链）
+     */
+    public void attachLinkContext(SgjNote note, String createBy, boolean anonymous);
 }

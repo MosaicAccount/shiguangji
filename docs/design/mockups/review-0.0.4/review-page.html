@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.4 设计图 · 回顾页 /review（手绘）— 拾光记</title>
+<link rel="icon" href="data:,">
+<!-- 手绘皮肤与字体：与产品 /plan 页面同源（不是另画一套） -->
+<link rel="stylesheet" href="../../../../shiguangji-web/src/views/front/plan/handdrawn.css">
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<style>
+
+/* ===== 站点令牌：只用于外壳（页头 / 页脚 / 移动 tab 仍是冷雾，本屏不换）===== */
+:root{
+  --sgj-font-serif:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --sgj-font-sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --sgj-font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sgj-primary:#A85F52; --sgj-primary-dark:#874A41; --sgj-primary-light:#C27A6D; --sgj-primary-soft:#EFE0DC;
+  --sgj-moss:#5D6F66; --sgj-moss-soft:#E1E9E5; --sgj-amber:#B18458; --sgj-amber-soft:#F0E7DC;
+  --sgj-bg:#F1F3F2; --sgj-bg-deep:#E5E9E7; --sgj-bg-card:#FBFCFB; --sgj-border:#D5DCD9; --sgj-border-card:#E6EBE9;
+  --sgj-text:#262B2A; --sgj-text-2:#525B58; --sgj-text-3:#7D8783; --sgj-text-4:#A4ADA9;
+  --sgj-r-lg:16px; --sgj-r-xl:20px;
+}
+html.dark{
+  --sgj-primary:#C27A6D; --sgj-primary-soft:#3D2D2A; --sgj-moss:#7F9B8D; --sgj-moss-soft:#293833;
+  --sgj-amber:#C69A67; --sgj-amber-soft:#3C3329;
+  --sgj-bg:#171B1A; --sgj-bg-deep:#1C2220; --sgj-bg-card:#222826; --sgj-border:#39423E; --sgj-border-card:#39423E;
+  --sgj-text:#EEF2F0; --sgj-text-2:#C8D0CC; --sgj-text-3:#96A09B; --sgj-text-4:#6E7974;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#E9EBEA;color:var(--sgj-text);font-family:var(--sgj-font-sans);font-size:14px;line-height:1.6}
+html.dark body{background:#0E1110}
+a{color:var(--sgj-primary)}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--sgj-primary);outline-offset:2px;border-radius:4px}
+
+/* ===== 评审工具条 ===== */
+.review{position:sticky;top:0;z-index:50;background:#FFF;border-bottom:1px solid #D8DEDB;font-size:13px}
+html.dark .review{background:#1B211F;border-color:#2C3531}
+.review-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.review b{font-weight:600;color:#262B2A}
+html.dark .review b{color:#EEF2F0}
+.screens{display:flex;gap:6px;flex-wrap:wrap}
+.screens a,.seg button{font:inherit;padding:4px 10px;border:1px solid #CBD4D0;background:#FFF;color:#525B58;border-radius:999px;cursor:pointer;text-decoration:none}
+html.dark .screens a,html.dark .seg button{background:#222826;color:#C8D0CC;border-color:#39423E}
+.screens a[aria-current=page]{background:#A85F52;border-color:#A85F52;color:#fff}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;border-left-width:0}
+.seg button:first-child{border-radius:999px 0 0 999px;border-left-width:1px}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed=true]{background:#5D6F66;border-color:#5D6F66;color:#fff}
+html.dark .seg button[aria-pressed=true]{background:#7F9B8D;border-color:#7F9B8D;color:#171B1A}
+
+/* ===== 设备框 ===== */
+.stage{max-width:1400px;margin:22px auto 60px;padding:0 16px}
+.device{position:relative;display:flex;flex-direction:column;background:var(--sgj-bg);border-radius:var(--sgj-r-xl);overflow:hidden;
+  box-shadow:0 10px 34px rgba(23,27,26,.10);border:1px solid var(--sgj-border);margin:0 auto}
+.device-body{flex:1;min-height:0;overflow:auto}
+body[data-vp=desktop] .device{max-width:1320px;height:min(88vh,920px)}
+body[data-vp=mobile] .device{max-width:390px;height:800px}
+body[data-vp=mobile] .only-desktop{display:none !important}
+body[data-vp=desktop] .only-mobile{display:none !important}
+
+/* ===== 前台外壳：页头 / 页脚 / 移动 tab（既有冷雾样式，本期不动）===== */
+.fh{position:sticky;top:0;z-index:5;background:var(--sgj-bg-card);border-bottom:1px solid var(--sgj-border-card)}
+.fh-in{max-width:1320px;margin:0 auto;padding:0 36px;height:72px;display:flex;align-items:center}
+.logo{display:flex;flex-direction:column;justify-content:center;line-height:1.15;margin-right:40px}
+.logo-text{font-family:var(--sgj-font-serif);font-size:26px;font-weight:700;letter-spacing:.04em}
+.logo-en{font-size:9px;letter-spacing:3.4px;color:var(--sgj-text-3);margin-top:2px}
+.nav{display:flex;align-items:center;gap:18px}
+.nav span{padding:8px 0;color:var(--sgj-text-2);font-size:14px}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--sgj-bg-deep);border:1px solid var(--sgj-border-card);color:var(--sgj-text-2);font-size:15px}
+.tabbar{display:none}
+.ff{padding:28px 20px 24px;text-align:center;background:var(--sgj-bg-deep)}
+.ff-line{color:var(--sgj-text-3);font-size:13px;letter-spacing:1.2px}
+.ff-sub{color:var(--sgj-text-4);font-size:11px;letter-spacing:1.4px;margin-top:10px}
+body[data-vp=mobile] .fh-in{padding:0 12px;height:60px}
+body[data-vp=mobile] .logo-text{font-size:20px}
+body[data-vp=mobile] .logo-en,body[data-vp=mobile] .nav{display:none}
+body[data-vp=mobile] .tabbar{display:flex;height:60px;flex:none;background:var(--sgj-bg-card);border-top:1px solid var(--sgj-border-card)}
+body[data-vp=mobile] .tabbar div{flex:1;display:flex;align-items:center;justify-content:center;color:var(--sgj-text-3);font-size:13px}
+body[data-vp=mobile] .tabbar div.on{color:var(--sgj-primary);font-weight:700}
+body[data-vp=mobile] .ff{padding:16px 14px 24px}
+
+/* ===== 标注 ===== */
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;
+  border-radius:999px;background:#B18458;color:#fff;font-size:10px;font-weight:700;vertical-align:middle;line-height:1;flex:none}
+.an::before{content:attr(data-n)}
+body.no-annotate .an{display:none}
+.legend{max-width:1400px;margin:0 auto;padding:0 16px 60px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.legend ol{margin:0;padding-left:22px;font-size:13px;color:#525B58}
+html.dark .legend ol{color:#C8D0CC}
+.legend li{margin:7px 0}
+.legend .new{color:#934C47;font-weight:600}
+.legend .keep{color:#5D6F66;font-weight:600}
+.legend .watch{color:#B18458;font-weight:600}
+html.dark .legend .new{color:#D67870}
+html.dark .legend .keep{color:#7F9B8D}
+html.dark .legend .watch{color:#C69A67}
+.legend code{font-family:var(--sgj-font-mono);font-size:12px;background:#E5E9E7;border-radius:4px;padding:1px 5px;color:#A85F52}
+html.dark .legend code{background:#1C2220;color:#C27A6D}
+.legend .scope{margin-top:14px;font-size:12px;color:#7D8783}
+
+/* ============================================================
+   手绘皮肤：令牌与形制来自 handdrawn.css；本屏新增「报头布局」「路线」「骨架」三处
+   ============================================================ */
+.hd-page{max-width:900px}
+.hd-sec{margin-top:30px}
+
+/* 报头：年份在左，说明句在右（把年份右边的空位交给真信息，而不是装饰） */
+.hd-hero{padding:8px 4px 0}
+.hd-eyebrow{font-size:12px;letter-spacing:5px;color:var(--hd-ink-faint)}
+/* 报头主行：年份与说明句共用一条基线（说明句是年份的题注），箭头按钮居中不参与基线对齐 */
+.hd-hero-main{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:2px}
+.hd-year{font-size:76px;line-height:1.05;letter-spacing:1px}
+.hd-round{width:40px;height:40px;flex:none;align-self:center;border:2px solid var(--hd-line);background:var(--hd-paper);cursor:pointer;
+  border-radius:50% 46% 52% 48%/48% 52% 46% 54%;font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;filter:url(#rough)}
+.hd-round[disabled]{opacity:.4;cursor:not-allowed}
+.hd-lead{font-size:21px;margin:0 0 0 16px}
+.hd-lead b{color:var(--hd-red);font-size:25px}
+.hd-caliber{font-size:13.5px;color:var(--hd-ink-soft);margin:10px 0 0}
+.hd-chips{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.hd-chips .cap{font-size:13px;color:var(--hd-ink-faint)}
+.hd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.hd-stat{background:var(--hd-paper);border-radius:12px 4px 13px 5px/5px 13px 4px 12px;padding:12px 14px 14px;box-shadow:2px 3px 0 var(--hd-line-soft)}
+.hdg{position:relative;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.hdg svg{position:absolute;inset:0;filter:url(#rough)}
+.hdg svg ellipse{fill:none;stroke:currentColor;stroke-width:1.9}
+.hd-stat .num{display:block;font-size:34px;margin-top:6px;line-height:1.15}
+.hd-stat .lbl{display:block;font-size:13.5px;color:var(--hd-ink-soft)}
+/* 类型色：hdk- 前缀，避免与正文注记 .hd-note 撞名
+   （撞过一次：笔记卡片被 .hd-note 的 margin 加了 16px 上边距，比另外三张矮一截） */
+.hdk-movie{color:var(--hd-red)} .hdk-book{color:var(--hd-moss)} .hdk-place{color:var(--hd-amber)} .hdk-note{color:var(--hd-ink-soft)}
+
+.hd-note{font-size:13.5px;color:var(--hd-ink-soft);margin:16px 0 0}
+
+/* 足迹（方案 B）：手绘示意底（手账点阵纸 + 指北针）裱进手绘边框。
+   瓦片不手绘化；点少时逐点标注、点多时按省聚合 —— 两种密度同一个底，
+   不再画「示意陆块」（早先那版变形虫既不传达地理、也不好看，是原型为了不联网的权宜）。 */
+.hd-map{position:relative;height:352px;margin-top:6px}
+
+/* 足迹点数变多时（本次新增）：
+   A —— 链上写不全所有地名时，链下按月补一份完整清单，一个不少 */
+/* B —— 手绘示意底（手账点阵纸 + 指北针）裱进手绘边框。
+   不画假陆块、也不铺地图瓦片：精确位置按需交给高德（点任一点），
+   所以这一层只负责观感与顺序，不承担地理精度 —— 点少点多都是同一个底。 */
+.hd-map-dyn{position:absolute;inset:0}
+.hd-frame{position:absolute;inset:0;background:var(--hd-paper);border-radius:12px 5px 14px 6px/6px 14px 5px 12px}
+.hd-frame::after{content:'';position:absolute;inset:0;border:2.6px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
+.hd-frame .dotgrid{position:absolute;inset:14px;border-radius:6px;opacity:.75;
+  background-image:radial-gradient(var(--hd-line-soft) 1.3px,transparent 1.4px);
+  background-size:22px 22px;background-position:6px 6px}
+/* 「点开看真实位置」的提示：本原型不建模跳转，只交代这一步存在 */
+.hd-frame .tap{position:absolute;left:22px;top:18px;font-size:13px;color:var(--hd-red);
+  background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
+.hd-frame .trail-b{position:absolute;inset:0;width:100%;height:100%;filter:url(#rough)}
+.hd-frame .fnote{position:absolute;left:22px;bottom:20px;font-size:13px;color:var(--hd-ink-faint);
+  background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
+/* 指北针：让裱框读起来像一页真地图，而不是一块空白 */
+.hd-compass{position:absolute;right:22px;top:18px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--hd-ink-soft);font-size:12px;line-height:1}
+.hd-compass svg{width:22px;height:28px;filter:url(#rough)}
+/* 没填坐标的地点：不上图，但在图里交代一句，不静默丢掉 */
+.hd-nocoord{position:absolute;right:22px;bottom:20px;max-width:268px;text-align:right;font-size:13px;color:var(--hd-ink-soft);
+  background:var(--hd-paper);padding:1px 9px;border-radius:9px 3px 9px 3px/3px 9px 3px 9px}
+.hd-cl{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--hd-red)}
+.hd-cl.up{flex-direction:column-reverse}   /* 标签换到上方（由路线方向决定，见 renderB） */
+.hd-cl.l .t{align-self:flex-start}        /* 贴左边的组：标签向右长，不出框 */
+.hd-cl.r .t{align-self:flex-end}          /* 贴右边的组：标签向左长，不出框 */
+.hd-cl .c{position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center}
+.hd-cl .c svg{position:absolute;inset:0;filter:url(#rough)}
+.hd-cl .c svg ellipse{fill:var(--hd-amber-soft);stroke:currentColor;stroke-width:2.2}
+.hd-cl .c b{position:relative;font-size:17px}
+.hd-cl .t{font-size:14px;color:var(--hd-ink);background:var(--hd-paper);padding:0 8px;
+  border-radius:9px 3px 9px 3px/3px 9px 3px 9px;white-space:nowrap;
+  box-shadow:0 0 0 5px var(--hd-paper)}   /* 纸色光晕：虚线经过标签时被干净地让开，不压字 */
+.hd-mapkey{display:none}
+.hd-mapkey .k{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;font-size:14px;line-height:1.85}
+.hd-mapkey .k b{font-weight:400;color:var(--hd-red)}
+.hd-mapkey .kh{font-size:13px;color:var(--hd-ink-faint);margin-bottom:4px}
+
+/* ===== 弹层（点详情 / 省地图）：手绘卡片，弹性展开 =====
+   原型里用顶部 seg 切换两种内容，不做真实点击流；真实实现里由点击图钉 / 省气泡触发 */
+.hd-layer{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:26px;
+  max-width:none;margin:0;   /* 覆盖 .plan-page 的纸页宽度与居中，弹层要盖满整个设备框 */
+  background:rgba(59,52,44,.3)}
+.hd-card{position:relative;width:100%;max-width:520px;max-height:92%;overflow:auto;background:var(--hd-paper);
+  border-radius:14px 5px 16px 6px/6px 16px 5px 14px;padding:18px 20px 20px;
+  box-shadow:5px 7px 0 var(--hd-line-soft);animation:hdspring .44s cubic-bezier(.2,1.45,.4,1) both}
+@keyframes hdspring{0%{transform:translateY(24px) scale(.955);opacity:0}62%{transform:translateY(-5px) scale(1.012)}100%{transform:none;opacity:1}}
+.hd-card::after{content:'';position:absolute;inset:0;border:2.4px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
+.hd-card .x{position:absolute;right:12px;top:10px;width:32px;height:32px;border:2px solid var(--hd-line);background:var(--hd-paper);
+  border-radius:50% 46% 52% 48%/48% 52% 46% 54%;cursor:pointer;font-size:16px;line-height:1;filter:url(#rough);z-index:2}
+/* 照片：贴进手账（胶带 + 手绘裱框 + 衬线占位字） */
+.hd-photo{position:relative;height:168px;margin:6px 0 14px;background:var(--hd-red-soft);
+  border-radius:8px 3px 9px 4px/4px 9px 3px 8px;display:flex;align-items:center;justify-content:center}
+.hd-photo::after{content:'';position:absolute;inset:0;border:2px solid var(--hd-line);border-radius:inherit;filter:url(#rough)}
+.hd-photo .g{font-size:40px;color:var(--hd-red);opacity:.55}
+.hd-photo .tf{position:absolute;left:50%;top:-11px;transform:translateX(-50%) rotate(-2deg);width:86px;height:22px;
+  background:var(--hd-tape);border-radius:2px}
+.hd-card h3{margin:0 0 4px;font-size:24px;font-weight:400;letter-spacing:1px}
+.hd-card .sub{font-size:14px;color:var(--hd-ink-soft);margin:0 0 12px}
+.hd-card .quote{margin:0 0 14px;font-size:16px;line-height:1.7;background:var(--hd-amber-soft);
+  border-radius:10px 4px 11px 5px/5px 11px 4px 10px;padding:10px 12px}
+.hd-card .rowm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.hd-card .acts{display:flex;gap:10px;flex-wrap:wrap}
+/* 省地图：手绘裱框里放高德瓦片（按需首开才加载），图上按真实坐标落图钉 */
+.hd-provmap{position:relative;height:250px;margin:8px 0 12px;background:var(--hd-paper-2);
+  border-radius:12px 5px 14px 6px/6px 14px 5px 12px}
+.hd-provmap::after{content:'';position:absolute;inset:0;border:2.4px solid var(--hd-line);border-radius:inherit;filter:url(#rough);pointer-events:none}
+.hd-provmap .dotgrid{position:absolute;inset:10px;border-radius:6px;opacity:.6;
+  background-image:radial-gradient(var(--hd-line-soft) 1.2px,transparent 1.3px);
+  background-size:20px 20px;background-position:5px 5px}
+.hd-provmap .hd-provempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--hd-ink-faint)}
+.hd-provmap .fnote{position:absolute;left:16px;bottom:14px;font-size:12.5px;color:var(--hd-ink-faint);background:var(--hd-paper);padding:0 8px;border-radius:8px 3px 8px 3px/3px 8px 3px 8px}
+.hd-provlist{margin-top:6px;border-top:2px dashed var(--hd-line-soft);padding-top:10px}
+.hd-provlist .k{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;font-size:14.5px;line-height:1.85}
+.hd-provlist .k b{font-weight:400;color:var(--hd-red)}
+
+/* 评分榜 / 标签 */
+.hd-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.hd-cols .sheet{margin-top:0}
+.hd-cols .paper{padding:6px 16px 10px}
+.hd-score{margin-left:auto;font-size:20px;color:var(--hd-amber);flex:none}
+/* 共享皮肤的缺口：handdrawn.css 只给影视的 glyph 圈设了 stroke，书籍 / 地点的圈因此不可见
+   （fill=none + 无 stroke），/plan 页里同理、只是没暴露。这里统一成类型色，0.0.7 应收敛回 handdrawn.css。 */
+.hd-page .row .glyph .ring ellipse{stroke:currentColor}
+.hd-tags{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;position:relative;z-index:1;padding:4px 0 8px}
+.hd-tag{display:grid;grid-template-columns:68px 1fr 26px;align-items:center;gap:10px}
+.hd-tag .tn{font-size:15px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-tag .tb{height:12px;background:var(--hd-red-soft);border:1.5px solid var(--hd-line-soft);
+  border-radius:8px 3px 9px 4px/4px 9px 3px 8px;filter:url(#rough)}
+.hd-tag .tc{font-size:14px;color:var(--hd-ink-soft);text-align:right}
+
+/* 空态：一张纸上的便条 + 两处可去的地方 */
+.hd-empty{text-align:center;padding:40px 10px 30px}
+.hd-empty svg{width:150px;height:96px;margin-bottom:4px}
+.hd-empty h3{margin:0 0 10px;font-size:22px;font-weight:400}
+.hd-empty p{margin:0 auto;font-size:15px;color:var(--hd-ink-soft);max-width:420px}
+.hd-empty .acts{display:flex;gap:14px;justify-content:center;margin-top:22px;flex-wrap:wrap}
+
+/* 加载中：手绘骨架（歪盒子轮廓 + 浅纸底） */
+.hdsk{background:var(--hd-paper-2);border:1.6px solid var(--hd-line-soft);
+  border-radius:10px 4px 12px 5px/5px 12px 4px 10px;filter:url(#rough);animation:hdsk 1.3s ease-in-out infinite;display:block}
+@keyframes hdsk{0%,100%{opacity:.5}50%{opacity:1}}
+.hdsk-line{height:14px}
+.hdsk-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 30px;align-items:center;margin-top:10px}
+.hdsk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.hdsk-stat{padding:12px 14px 14px}
+.hdsk-sheet{margin-top:30px}
+.hdsk-row{display:flex;align-items:center;gap:12px;padding:9px 0}
+
+/* ===== 方案切换 ===== */
+
+/* ===== 移动端：390px 设备框预览（窗口仍是桌面宽度），所以用 data-vp 作用域而非媒体查询。
+   产品里这些声明最终应以媒体查询形式并入共享皮肤。===== */
+body[data-vp=mobile] .hd-page{padding:2px 12px 24px}
+body[data-vp=mobile] .hd-year{font-size:54px}
+body[data-vp=mobile] .hd-lead{font-size:18px;margin-left:0;flex-basis:100%}
+body[data-vp=mobile] .hd-lead b{font-size:21px}
+body[data-vp=mobile] .hdsk-hero{grid-template-columns:1fr;gap:12px}
+body[data-vp=mobile] .hd-stats,body[data-vp=mobile] .hdsk-stats{grid-template-columns:repeat(2,1fr);gap:10px}
+body[data-vp=mobile] .hd-cols{grid-template-columns:1fr;gap:14px}
+body[data-vp=mobile] .hd-tags{grid-template-columns:1fr}
+body[data-vp=mobile] .hd-map{height:300px}
+body[data-vp=mobile] .hd-compass{display:none}
+body[data-vp=mobile] .hd-cl .t{display:none}
+body[data-vp=mobile] .hd-mapkey{display:block;margin-top:12px}
+body[data-vp=mobile] .hd-frame .fnote{font-size:12px;max-width:150px}
+body[data-vp=mobile] .hd-nocoord{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body data-vp="desktop">
+
+<!-- 手绘抖线滤镜：与设计图同名同参数（handdrawn.css 的 filter:url(#rough) 指向它） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+
+<div class="review">
+  <div class="review-in">
+    <b>0.0.4 设计图</b>
+    <nav class="screens"><a href="index.html">索引</a><a href="review-page.html" aria-current="page">回顾页</a><a href="review-entry.html">入口与边界</a></nav>
+    <span class="seg" role="group" aria-label="状态"><button data-state="default" aria-pressed="true">默认</button><button data-state="empty" aria-pressed="false">空态</button><button data-state="loading" aria-pressed="false">加载中</button></span>
+    <span class="seg" role="group" aria-label="足迹点数"><button data-vol="few" aria-pressed="true">点少 7</button><button data-vol="mid" aria-pressed="false">中 16</button><button data-vol="many" aria-pressed="false">多 30</button><button data-vol="spread" aria-pressed="false">散 15</button></span>
+    <span class="seg" role="group" aria-label="弹层"><button data-modal="none" aria-pressed="true">弹层关</button><button data-modal="point" aria-pressed="false">点详情</button><button data-modal="province" aria-pressed="false">省地图</button></span>
+    <span class="seg" role="group" aria-label="主题"><button id="themeBtn" aria-pressed="false">深色模式</button></span>
+    <span class="seg" role="group" aria-label="视口"><button data-vp="desktop" aria-pressed="true">桌面</button><button data-vp="mobile" aria-pressed="false">移动端</button></span>
+    <span class="seg" role="group" aria-label="标注"><button id="anBtn" aria-pressed="true">标注</button></span>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device">
+    <header class="fh">
+      <div class="fh-in">
+        <span class="logo"><span class="logo-text">拾光记</span><span class="logo-en">SHIGUANGJI</span></span>
+        <nav class="nav"><span>首页</span><span>影单</span><span>书单</span><span>足迹</span><span>笔记</span><span>心愿</span></nav>
+        <span class="theme-toggle">☾</span>
+      </div>
+    </header>
+
+    <div class="device-body">
+      <div class="plan-page hd-page page-hd">
+
+        <!-- ===== 报头 ===== -->
+        <section class="hd-hero" id="hdHero">
+          <div class="hd-eyebrow">YEAR IN REVIEW<span class="an" data-n="2"></span></div>
+          <div class="hd-hero-main">
+            <button class="hd-round" type="button" aria-label="上一年">‹</button>
+            <span class="hd-year" id="hdYear">2024</span>
+            <button class="hd-round" type="button" aria-label="下一年" disabled>›</button>
+            <p class="hd-lead" id="hdLead">这一年，你记录了 <b>87</b> 件值得记住的小事。</p>
+          </div>
+          <p class="hd-caliber">条目按完成日期归年 · 笔记按写下时间归年<span class="an" data-n="4"></span></p>
+          <div class="hd-chips" id="hdChips">
+            <span class="hd-chip doing">2024</span>
+            <span class="hd-chip">2023</span>
+            <span class="hd-chip">2022</span>
+            <span class="cap">有记录的年份<span class="an" data-n="3"></span></span>
+          </div>
+          <div class="hd-stats" id="hdStats">
+            <div class="hd-stat hdk-movie">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>影</span></span>
+              <span class="num" id="numMovie">36</span><span class="lbl" id="lblMovie">看过 · 电影 24 · 剧集 12</span>
+            </div>
+            <div class="hd-stat hdk-book">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>书</span></span>
+              <span class="num" id="numBook">8</span><span class="lbl">读过 · 书籍</span>
+            </div>
+            <div class="hd-stat hdk-place">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>地</span></span>
+              <span class="num" id="numPlace">7</span><span class="lbl">去过 · 地点</span>
+            </div>
+            <div class="hd-stat hdk-note">
+              <span class="hdg"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5"/></svg><span>文</span></span>
+              <span class="num" id="numNote">36</span><span class="lbl">写过 · 笔记</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== 加载中：手绘骨架（页头也换成骨架）===== -->
+        <section class="hd-hero" hidden id="hdHeroSk">
+          <span class="hdsk hdsk-line" style="width:118px;height:12px"></span>
+          <div class="hdsk-hero">
+            <span class="hdsk" style="width:224px;height:78px;border-radius:14px"></span>
+            <div>
+              <span class="hdsk hdsk-line" style="width:300px;height:20px"></span>
+              <span class="hdsk hdsk-line" style="width:200px;height:12px;margin-top:12px"></span>
+            </div>
+          </div>
+          <div class="hdsk-stats">
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:64px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:110px;height:11px;margin-top:8px"></span></div>
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:44px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:90px;height:11px;margin-top:8px"></span></div>
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:44px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:90px;height:11px;margin-top:8px"></span></div>
+            <div class="hdsk hdsk-stat"><span class="hdsk" style="width:34px;height:34px"></span><span class="hdsk hdsk-line" style="width:54px;height:30px;margin-top:10px"></span><span class="hdsk hdsk-line" style="width:100px;height:11px;margin-top:8px"></span></div>
+          </div>
+        </section>
+
+        <!-- ===== 主体：默认 ===== -->
+        <div id="hdMain">
+
+          <!-- 足迹：分档 + 自适应聚合粒度，见下方 JS 的注释 -->
+          <section class="hd-sec">
+            <div class="sheet">
+              <div class="paper">
+                <span class="tape"></span>
+                <div class="lines"><span class="frame"></span></div>
+                <div class="g-head">
+                  <h2 class="g-title">这一年走过的<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+                  <span class="g-count" id="mapBCount">7 个地方落在图上</span>
+                  <span class="an" data-n="5"></span>
+                </div>
+                <div class="hd-map" id="mapB">
+                  <!-- 内容由 JS 按「点数」渲染：都是真地图裱框，点少逐点标注、点多按省聚合 -->
+                  <div class="hd-map-dyn" id="mapBDyn"></div>
+                </div>
+                <!-- 窄屏图例：地图上只留编号，名字在这里（桌面端隐藏，因为图上直接写了名字） -->
+                <div class="hd-mapkey" id="mapBKey"></div>
+                <p class="hd-note" id="mapBNote">沙溪（11 月）<b>没填坐标</b>，所以不落在图上 —— 但它不会丢：图里交代一句，进分组还能看到它。这正是「手绘示意底 + 精确位置按需开高德」的代价，实现时要建模。</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 评分榜 -->
+          <section class="hd-sec">
+            <div class="g-head">
+              <h2 class="g-title">评分最高<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+              <span class="g-count">51 条里 32 条有评分</span>
+              <span class="an" data-n="9"></span>
+            </div>
+            <div class="hd-cols">
+              <div class="sheet alt">
+                <div class="paper">
+                  <span class="tape"></span>
+                  <div class="lines"><span class="frame"></span></div>
+                  <div class="g-head g-movie"><h2 class="g-title">影视<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2></div>
+                  <div class="rows g-movie">
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>剧</span></span><div class="main"><div class="t">漫长的季节</div><div class="m"><span>剧集 · 5 月看完</span></div></div><span class="hd-score">9.4</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">奥本海默</div><div class="m"><span>电影 · 3 月看过</span></div></div><span class="hd-score">9.2</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">沙丘 2</div><div class="m"><span>电影 · 9 月看过</span></div></div><span class="hd-score">8.8</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>剧</span></span><div class="main"><div class="t">三体</div><div class="m"><span>剧集 · 2 月看完</span></div></div><span class="hd-score">8.6</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>影</span></span><div class="main"><div class="t">宇宙探索编辑部</div><div class="m"><span>电影 · 11 月看过</span></div></div><span class="hd-score">8.5</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="sheet">
+                <div class="paper">
+                  <span class="tape"></span>
+                  <div class="lines"><span class="frame"></span></div>
+                  <div class="g-head g-book"><h2 class="g-title">书籍<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2><span class="an" data-n="12"></span></div>
+                  <div class="rows g-book">
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">红楼梦</div><div class="m"><span>文学 · 8 月读完</span></div></div><span class="hd-score">9.5</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">置身事内</div><div class="m"><span>社科 · 4 月读完</span></div></div><span class="hd-score">9.3</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">人类简史</div><div class="m"><span>历史 · 6 月读完</span></div></div><span class="hd-score">9.0</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">百年孤独</div><div class="m"><span>文学 · 1 月读完</span></div></div><span class="hd-score">8.9</span></div>
+                    <div class="row"><span class="glyph"><svg class="ring" viewBox="0 0 34 34"><ellipse cx="17" cy="17" rx="14.5" ry="13.5" fill="none"/></svg><span>书</span></span><div class="main"><div class="t">房思琪的初恋乐园</div><div class="m"><span>文学 · 12 月读完</span></div></div><span class="hd-score">8.7</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 标签 -->
+          <section class="hd-sec">
+            <div class="g-head">
+              <h2 class="g-title">都是些什么<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
+              <span class="g-count">Top 10 / 24 个标签</span>
+              <span class="an" data-n="10"></span>
+            </div>
+            <div class="sheet">
+              <div class="paper">
+                <span class="tape"></span>
+                <div class="lines"><span class="frame"></span></div>
+                <div class="hd-tags">
+                  <div class="hd-tag"><span class="tn">治愈</span><span class="tb" style="width:100%"></span><span class="tc">12</span></div>
+                  <div class="hd-tag"><span class="tn">悬疑</span><span class="tb" style="width:100%"></span><span class="tc">12</span></div>
+                  <div class="hd-tag"><span class="tn">日剧</span><span class="tb" style="width:75%"></span><span class="tc">9</span></div>
+                  <div class="hd-tag"><span class="tn">历史</span><span class="tb" style="width:58%"></span><span class="tc">7</span></div>
+                  <div class="hd-tag"><span class="tn">文学</span><span class="tb" style="width:50%"></span><span class="tc">6</span></div>
+                  <div class="hd-tag"><span class="tn">科幻</span><span class="tb" style="width:50%"></span><span class="tc">6</span></div>
+                  <div class="hd-tag"><span class="tn">纪录片</span><span class="tb" style="width:42%"></span><span class="tc">5</span></div>
+                  <div class="hd-tag"><span class="tn">长篇</span><span class="tb" style="width:42%"></span><span class="tc">5</span></div>
+                  <div class="hd-tag"><span class="tn">云南</span><span class="tb" style="width:25%"></span><span class="tc">3</span></div>
+                  <div class="hd-tag"><span class="tn">重看</span><span class="tb" style="width:25%"></span><span class="tc">3</span></div>
+                </div>
+                <p class="hd-note" style="margin-top:6px">其余 14 个标签各出现 1 次 · 笔记只贡献「写过」那个数，标签不并进来。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ===== 主体：空态 ===== -->
+        <div id="hdEmpty" hidden>
+          <div class="sheet">
+            <div class="paper">
+              <span class="tape"></span>
+              <div class="lines"><span class="frame"></span></div>
+              <div class="hd-empty">
+                <svg viewBox="0 0 150 96" fill="none" stroke="var(--hd-ink-soft)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M44 14 Q75 10 106 14 Q110 45 106 80 Q75 84 44 80 Q40 46 44 14 Z"/>
+                  <path d="M57 33 Q75 30 93 33"/><path d="M57 45 Q75 42 93 45"/><path d="M57 57 Q70 54 79 57"/>
+                  <path d="M116 26 Q128 18 137 24 Q135 34 125 33"/>
+                </svg>
+                <h3>2021 年还没有记录</h3>
+                <p>你是从 2022 年往前翻到这里的。去影单、书单或足迹添几笔，明年这个时候就有东西可看了；也可以往右翻回有记录的年份。</p>
+                <div class="acts">
+                  <button class="hdbtn go" type="button">去影单看看</button>
+                  <button class="hdbtn" type="button">去书单看看</button>
+                </div>
+                <p class="hd-note" style="margin-top:20px">换年份用上面的 ‹ ›，胶囊只列有记录的年份。<span class="an" data-n="11"></span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 主体：加载中 ===== -->
+        <div id="hdSk" hidden>
+          <div class="hdsk-sheet">
+            <span class="hdsk" style="width:150px;height:22px"></span>
+            <span class="hdsk" style="width:100%;height:200px;margin-top:16px;border-radius:14px"></span>
+          </div>
+          <div class="hdsk-sheet">
+            <span class="hdsk" style="width:120px;height:22px"></span>
+            <div class="hd-cols" style="margin-top:16px">
+              <div class="hdsk" style="padding:16px 18px;border-radius:14px">
+                <span class="hdsk" style="width:90px;height:15px"></span>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:70%"></span><span class="hdsk hdsk-line" style="width:40%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:60%"></span><span class="hdsk hdsk-line" style="width:34%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:66%"></span><span class="hdsk hdsk-line" style="width:38%;height:10px;margin-top:7px"></span></span></div>
+              </div>
+              <div class="hdsk" style="padding:16px 18px;border-radius:14px">
+                <span class="hdsk" style="width:76px;height:15px"></span>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:72%"></span><span class="hdsk hdsk-line" style="width:42%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:58%"></span><span class="hdsk hdsk-line" style="width:33%;height:10px;margin-top:7px"></span></span></div>
+                <div class="hdsk-row"><span class="hdsk" style="width:34px;height:34px;border-radius:9px"></span><span style="flex:1"><span class="hdsk hdsk-line" style="width:64%"></span><span class="hdsk hdsk-line" style="width:36%;height:10px;margin-top:7px"></span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer class="ff">
+      <div class="ff-line">拾光记 · 把日子慢慢写成照片</div>
+      <div class="ff-sub">SHIGUANGJI EVERYDAY MEMOIR</div>
+    </footer>
+    <nav class="tabbar"><div>首页</div><div>影单</div><div>足迹</div><div>笔记</div></nav>
+
+    <!-- 弹层：点详情 / 省地图。内容由 JS 渲染，弹性展开。
+         注意它挂在 .device 下而不是 .plan-page 里，所以必须自己带上 plan-page 这个令牌作用域，
+         否则 --hd-* 全是未定义、卡片会没有纸底与边框（踩过）。 -->
+    <div class="hd-layer plan-page" id="hdLayer" hidden></div>
+  </div>
+</main>
+
+<section class="legend">
+
+  <h2>本屏标注</h2>
+  <ol>
+    <li><span class="keep">已拍板</span>：<b>回顾模块直接做成手绘</b>（0.0.7 的皮肤先在这一页灰度）。这不是另起一套语言：本屏 <code>&lt;link&gt;</code> 引的就是产品在用的 <code>shiguangji-web/src/views/front/plan/handdrawn.css</code>（设计图与产品同源，仓库里有测试守着这条约束），字体是自托管霞鹜文楷分片；令牌、纸张、胶带、抖线滤镜、类型配色全部照用。页头 / 页脚 / 移动 tab 仍是冷雾——这与今天的 <code>/plan</code> 一模一样（手绘内容装在冷雾外壳里），也说明本页的灰度是干净的一步。<b>本项讲整页，不另挂气泡。</b></li>
+    <li><span class="new">新增</span>：<b>报头：年份在左、说明句在右，两者共用一条基线</b>。年份 76px 是页面最大的一个字，说明句是它的题注；四个统计卡（影 / 书 / 地 / 文）拉成整行，卡片等高等宽。年份与说明句<b>按基线对齐而不是按几何中心</b>——数字几乎没有下伸部，几何居中会把说明句吊在年份的腰上，看着就是没对齐。统计卡的类型色用 <code>hdk-</code> 前缀（曾与正文注记 <code>.hd-note</code> 撞名，见本屏第 6 条以外的实现注意）。</li>
+    <li><span class="new">新增</span>：<b>年份是可翻的，不是筛出来的</b>。<code>‹ ›</code> 步进任意年份（含没有记录的年份，翻到那里就是空态）；胶囊只列<b>有记录的年份</b>，从数据推导而不是写死 <code>2020~2030</code>。</li>
+    <li><span class="new">新增</span>：<b>归因口径写在页面上</b>（「条目按完成日期归年 · 笔记按写下时间归年」）。这不是内部实现细节：2023 年加进「想看」、2024 年才看完的片子属于 2024；不写清楚，用户看到数字会以为算错了。</li>
+    <li><span class="keep">已拍板</span>：<b>足迹只做 B（地图），A（横向串联）撤掉</b>；B 分两档密度，聚合的粒度<b>自适应</b>。<b>点数 ≤ 10</b>（手机 ≤ 5）逐点画、按完成日期的先后连成虚线，<b>更多则聚合</b>——阈值随屏幕变不是洁癖：390px 里放 10 个图钉必然互相压。<b>聚合从「省」开始试，压不到 12 个泡就降一级到「大区」</b>（境外地点在省一级按国家成泡，到大区并成「境外」）；两级必然够用（大区一共 8 个），不需要第三级。<b>为什么必须自适应</b>：现有测试数据 15 个地点横跨 13 个省级行政区 + 2 个国家，按省是 15 个泡、超过上限，等于没聚合 —— 顶部「散 15」这一档就是它，会自动降到大区 8 个泡并在图下写明用了哪一级。虚线是<b>时间顺序，不是行程轨迹</b>，所以页面明写「不是路线图」。</li>
+    <li><span class="new">新增</span>：<b>逐点档怎么不叠</b>（用「点少 7 / 中 16」试）：按真实经纬度<b>等比</b>落位（x=经度 / y=-纬度，不做拉伸，境外与南半球也放得进框）、自动缩放到这一年的范围、<b>按屏幕距离并簇</b>（5%，约桌面 40px / 手机 20px，比 46px 的圈小，所以圈不叠）、标签上下换边、窄屏把名字移出地图进下方图例。聚合档的气泡位置是<b>示意</b>的（真实现里由高德定位），逐点档的位置是<b>真坐标</b>的 —— 这一点页面用图下那句「手绘示意 · 非比例」区分。</li>
+    <li><span class="keep">已拍板</span>：<b>B 的底是「手绘示意 + 按需开高德」，把手绘页从地图精度里解放出来。</b>原来那个假陆块（变形虫）之所以难看，是因为它<b>既是手绘又假装准确</b>：既画不出真实形状，又不给真坐标。现在责任分家——<b>示意底只管观感与顺序</b>（手账点阵纸 + 指北针 + 点 + 虚线，页面明写「手绘示意 · 非比例地图」），<b>精确位置在点开时才交给高德</b>。这样回顾页<b>不依赖第三方瓦片</b>（0.0.7「整页手绘」不破口子）、<b>首屏不加载高德 JS</b>（只在真的想看某个点时才付这个代价）。<b>连线压字</b>也一并修了：标签加纸色光晕（<code>box-shadow: 0 0 0 5px var(--hd-paper)</code>），虚线经过标签时被干净地让开。</li>
+    <li><span class="watch">待定</span>：<b>「点开」的形态与容器</b>。内容已定两套（用顶部「弹层关 / 点详情 / 省地图」看）：<b>点详情</b>是一张手绘卡片——胶带照片位 + 地名 + 日期与评分 + 短评 + 标签 + 「在地图上定位 / 看这条记录」，<b>弹性展开</b>（<code>@keyframes hdspring</code>）；<b>组地图</b>是手绘裱框里放高德瓦片、这一组去过的地方按真实坐标落图钉（近点并簇），点图钉再下钻到点详情 —— 这条「组 → 图钉 → 详情」的动线两种档位共用，组可以是省、大区或境外。<b>容器我倾向「页内弹层 + 首次打开才懒加载高德」</b>：体验连贯、首屏不受影响，代价是要引入高德 JS API。<b>另一条路是跳足迹页并定位</b>（如 <code>/travel?focus={id}</code>）：零新增依赖，但离开回顾页、且要 <code>/travel</code> 支持参数。这条请拍板。</li>
+    <li><span class="new">新增</span>：<b>评分榜分影视 / 书籍两栏</b>。一集剧和一本 400 页的书放同一张榜没有可比性，所以量纲分开；地点不设榜。<b>只有打过分的条目参与</b>，参与条数写在栏头（51 条里 32 条有评分）——不交代的话，用户会问「我看过的怎么没上」。同分时的次级排序与 N 的取值留待详细设计。</li>
+    <li><span class="new">新增</span>：<b>标签按出现次数排序，长尾收成一行</b>。手绘条形按最大计数归一，数字右对齐。Top 10 之外收成「其余 14 个标签各出现 1 次」——不折叠的话，51 条记录的标签会把这一屏变成一片噪音。标签只统计条目，笔记只贡献「写过」那个数。</li>
+    <li><span class="new">新增</span>：<b>空态与加载中都是手绘的</b>。空态：页头保留、四个数归零（与首页 hero「页头恒在、只换主体」一致，避免整页跳变），主体是一张纸上的便条加两处去处；并说明「胶囊只列有记录的年份」，否则用户会以为胶囊坏了。加载中：<b>手绘骨架</b>（歪盒子轮廓 + 浅纸底）而不是转圈或真站的灰色骨架，加载完成不跳版。</li>
+    <li><span class="watch">一句实话</span>：<b>地图这一块，原型即终稿；第三方依赖只留在「点开」那一步。</b>示意底是纯 CSS/SVG（点阵纸、手绘圈、虚线），不联网、不要瓦片，画成什么样实现就是什么样；高德只在用户主动点开时才出场（按上面的容器方案）。代价是坐标成为硬依赖，而且<b>没填坐标的地点必须交代清楚</b>——本屏的做法是不落图、但在图里写一句、分组清单里也留着它（沙溪就是这么处理的）。本屏只给部分地点填了坐标，<b>没填的那些点进分组会看到「只列名字」的状态</b>，那本身也是要建模的一态。</li>
+    <li><span class="watch">一句实话</span>：<b>地图这一块，原型即终稿；第三方依赖只留在「点开」那一步。</b>示意底是纯 CSS/SVG（点阵纸、手绘圈、虚线），不联网、不要瓦片，画成什么样实现就是什么样；高德只在用户主动点开时才出场（按上面的容器方案）。代价是坐标成为硬依赖，而且「没填坐标的地点」必须在图上交代清楚——本屏给的做法是不落图、但在框里写一句（沙溪就是这么处理的）。</li>
+  </ol>
+  <p class="scope"><b>未建模</b>：真实接口与年份列表的下发（<code>?year=</code> 校验、非法年份处理）、<b>高德那四件事（瓦片 / 缩放 / 标签避让 / 聚合）—— 都由它负责，本屏只画位置示意</b>、Top 榜与标签的点击跳转、导出成长图 / 海报（§4 非目标）、跨年对比与连续记录天数（D-13 不做）、自定义时间段（D-12 不做）、<b>弹层的真实跳转与高德 SDK 的懒加载</b>（本屏用顶部 seg 直接切出两种内容）。<br><b>既有不改</b>：页头导航仍是 6 项（回顾不占导航位，从首页 hero 进入，见 <a href="review-entry.html">入口与边界屏</a>）、移动 tab 仍是四项、页脚与主题切换不动。<br><b>移动端差异</b>：报头改单列（年份在上、说明句在下，说明句用 <code>flex-basis:100%</code> 强制换行）、年份降到 54px、统计卡两列等宽、<b>逐点阈值从 10 降到 5</b>、图上只留编号、名字进图下清单、评分两栏改单列、标签改单列。<br><b>待拍板 / 回写的</b>：①<b>「点开」的容器</b>——页内弹层（首次打开懒加载高德）还是跳足迹页并定位（<code>/travel?focus=</code>，零新增依赖但要加参数）。②需求 FR-004-2 要从「复用 <code>TravelMap</code> 与图钉形态」改写成 B 的口径：<b>逐点 / 聚合两档、阈值 10 与 5、聚合粒度自适应（省 → 大区，上限 12 个泡）、境外按国家成泡</b>；§5 验收标准与 §7 风险（高德依赖、坐标缺失）一并跟着改。③<b>数据要求</b>：逐点档要有经纬度，缺坐标的地点必须有交代（本屏是「不落图 + 图里写一句 + 分组清单里留着」），这条要写进验收。④弹层 / 图例 / 骨架这几个新组件应沉淀进共享皮肤，而不是留在本页。</p>
+
+</section>
+
+<script>
+/* 静态设计稿：三种状态与两套足迹方案都是本文件里的字面量 */
+function show(id,on){ const el=document.getElementById(id); if(el) el.hidden = !on; }
+function setText(id,t){ const el=document.getElementById(id); if(el) el.textContent = t; }
+/* id 与元素都接受：早先只接受 id，传元素时 getElementById 返回 null 就静默什么都不写，
+   表现是「不报错但页面空着」，查起来很费劲。顺手把这种情况堵掉。 */
+function setHTML(target,html){ const el = (typeof target === 'string') ? document.getElementById(target) : target;
+  if(!el || !el.replaceChildren) return;
+  const r = document.createRange(); r.selectNode(el);
+  el.replaceChildren(r.createContextualFragment(html || '')); }
+
+const DATA = {
+  default:{ year:'2024', lead:'这一年，你记录了 <b>87</b> 件值得记住的小事。',
+            movie:'36', movieLbl:'看过 · 电影 24 · 剧集 12', book:'8', place:'7', note:'36' },
+  empty:  { year:'2021', lead:'这一年，你还没有开始记录。',
+            movie:'0', movieLbl:'看过 · 电影 0 · 剧集 0', book:'0', place:'0', note:'0' }
+};
+let state='default';
+function render(){
+  const loading = state==='loading';
+  const d = DATA[state] || DATA.default;
+  show('hdHero', !loading);
+  show('hdHeroSk', loading);
+  show('hdMain', state==='default');
+  show('hdEmpty', state==='empty');
+  show('hdSk', loading);
+  if(!loading){
+    setText('hdYear', d.year);
+    setHTML('hdLead', d.lead);
+    setText('numMovie', d.movie); setText('lblMovie', d.movieLbl);
+    setText('numBook', d.book); setText('numPlace', d.place); setText('numNote', d.note);
+    /* 胶囊：空态下没有「当前年」 */
+    const chips=document.querySelectorAll('#hdChips .hd-chip');
+    chips.forEach(c=>c.classList.toggle('doing', d.year==='2024' && c.textContent.trim()==='2024'));
+    document.querySelectorAll('.hd-round').forEach(a=>{
+      a.disabled = (d.year==='2024' && a.getAttribute('aria-label')==='下一年');
+    });
+  }
+}
+/* ===== 足迹（方案 B）：分档 + 自适应聚合粒度 =====
+   1) 点数 ≤ 10（手机 ≤ 5）→ 逐点画，按完成日期的先后连成虚线
+   2) 更多 → 聚合，粒度自适应：**省 → 大区**。境外地点在省一级按国家成泡，到大区一级并成「境外」。
+      为什么要自适应：分散型数据按省会压不动 —— 现有测试数据 15 个地点横跨 13 个省级行政区
+      + 2 个国家，按省是 15 个泡、比阈值还多，等于没聚合；降到大区是 8 个。
+      （大区一共 8 个，所以两级必然够用，不需要第三级。）
+   3) 位置：逐点档按真实经纬度等比铺进框里；聚合档用示意位置（真实现里由高德定位）
+   ll = [纬度, 经度]；没填坐标的不上图，但在图里交代一句。 */
+const REGION = { 北京:'华北', 天津:'华北', 河北:'华北', 山西:'华北', 内蒙古:'华北',
+                 辽宁:'东北', 吉林:'东北', 黑龙江:'东北',
+                 上海:'华东', 江苏:'华东', 浙江:'华东', 安徽:'华东', 福建:'华东',
+                 江西:'华东', 山东:'华东', 台湾:'华东',
+                 河南:'华中', 湖北:'华中', 湖南:'华中',
+                 广东:'华南', 广西:'华南', 海南:'华南', 香港:'华南', 澳门:'华南',
+                 重庆:'西南', 四川:'西南', 贵州:'西南', 云南:'西南', 西藏:'西南',
+                 陕西:'西北', 甘肃:'西北', 青海:'西北', 宁夏:'西北', 新疆:'西北' };
+/* 中国地点：pv = 省；境外地点：pv 存国家名、ct 存国家名 */
+const P  = (n, pv, ll, nc) => ({ n:n, pv:pv, ll:ll||null, nc:!!nc, ct:'中国' });
+const OV = (n, ct, ll)      => ({ n:n, pv:ct, ll:ll||null, nc:false, ct:ct });
+const TRAVEL = {
+  few: { months: [
+    { m:'3 月',  ps:[P('平潭','福建',[25.50,119.79])] },
+    { m:'4 月',  ps:[P('泉州 · 西街','福建',[24.87,118.58])] },
+    { m:'5 月',  ps:[P('潮州','广东',[23.66,116.62])] },
+    { m:'7 月',  ps:[P('景德镇','江西',[29.27,117.18])] },
+    { m:'8 月',  ps:[P('婺源','江西',[29.25,117.86])] },
+    { m:'10 月', ps:[P('大理 · 洱海','云南',[25.61,100.27])] },
+    { m:'11 月', ps:[P('沙溪','云南',null,1)] }
+  ]},
+  mid: { months: [
+    { m:'1 月',  ps:[P('潮州','广东'), P('汕头','广东')] },
+    { m:'3 月',  ps:[P('平潭 · 北港','福建'), P('泉州 · 西街','福建')] },
+    { m:'5 月',  ps:[P('婺源 · 篁岭','江西'), P('景德镇','江西')] },
+    { m:'7 月',  ps:[P('大理 · 洱海','云南'), P('沙溪','云南',null,1), P('丽江','云南')] },
+    { m:'8 月',  ps:[P('香格里拉','云南'), P('梅里雪山','云南')] },
+    { m:'10 月', ps:[P('宏村','安徽'), P('塔川','安徽'), P('黄山','安徽')] },
+    { m:'12 月', ps:[P('福州 · 三坊七巷','福建'), P('平潭 · 东庠岛','福建')] }
+  ]},
+  many: { months: [
+    { m:'1 月',  ps:[P('潮州','广东'), P('汕头','广东'), P('南澳岛','广东')] },
+    { m:'2 月',  ps:[P('泉州 · 西街','福建'), P('平潭 · 北港','福建')] },
+    { m:'3 月',  ps:[P('婺源 · 篁岭','江西'), P('景德镇','江西'), P('宏村','安徽')] },
+    { m:'4 月',  ps:[P('黄山','安徽'), P('塔川','安徽'), P('西递','安徽')] },
+    { m:'5 月',  ps:[P('大理 · 洱海','云南',[25.61,100.27]), P('沙溪','云南',null,1)] },
+    { m:'6 月',  ps:[P('丽江','云南',[26.87,100.23]), P('束河','云南',[26.91,100.19])] },
+    { m:'7 月',  ps:[P('香格里拉','云南',[27.83,99.70]), P('梅里雪山','云南',[28.44,98.68]), P('雨崩','云南',[28.40,98.78])] },
+    { m:'8 月',  ps:[P('泸沽湖','云南',[27.70,100.78]), P('稻城亚丁','四川')] },
+    { m:'9 月',  ps:[P('成都','四川'), P('都江堰','四川'), P('青城山','四川')] },
+    { m:'10 月', ps:[P('平潭 · 东庠岛','福建'), P('福州 · 三坊七巷','福建')] },
+    { m:'11 月', ps:[P('泉州 · 洛阳桥','福建'), P('崇武古城','福建'), P('厦门 · 鼓浪屿','福建')] },
+    { m:'12 月', ps:[P('潮州 · 牌坊街','广东'), P('汕头 · 小公园','广东')] }
+  ]},
+  /* 分散型：15 个地点横跨 13 个省级行政区 + 2 个国家（按现有测试数据的形态造），
+     按省是 15 个泡 > 12，于是自动降到大区（8 个）——这一档就是给那条规则用的 */
+  spread: { months: [
+    { m:'1 月',  ps:[P('故宫','北京',[39.92,116.40])] },
+    { m:'2 月',  ps:[P('张家界','湖南',[29.12,110.48])] },
+    { m:'3 月',  ps:[P('九寨沟','四川',[33.26,103.92])] },
+    { m:'4 月',  ps:[P('洪崖洞','重庆',[29.56,106.58])] },
+    { m:'5 月',  ps:[P('西湖','浙江',[30.25,120.15])] },
+    { m:'6 月',  ps:[P('兵马俑','陕西',[34.38,109.28])] },
+    { m:'7 月',  ps:[P('苏州园林','江苏',[31.32,120.62]), P('迪士尼','上海',[31.14,121.67])] },
+    { m:'8 月',  ps:[P('茶卡盐湖','青海',[36.70,99.09])] },
+    { m:'9 月',  ps:[P('布达拉宫','西藏',[29.66,91.12])] },
+    { m:'10 月', ps:[P('龙门石窟','河南',[34.56,112.47]), P('桂林','广西',[25.27,110.29])] },
+    { m:'11 月', ps:[OV('富士山','日本',[35.36,138.73])] },
+    { m:'12 月', ps:[OV('悉尼歌剧院','澳大利亚',[-33.86,151.21]), P('雪乡','黑龙江',[44.33,128.92])] }
+  ]}
+};
+/* 聚合档的示意位置（真实现里由高德定位）。省这一级只用得到下面这 6 个省 ——
+   「散」档按省会超过上限，走的是大区那一级。 */
+const PROV_POS = { '福建':[76,52], '云南':[22,56], '广东':[68,74], '四川':[36,46], '安徽':[66,32], '江西':[58,28] };
+const REGION_POS = { '华北':[62,20], '东北':[90,15], '华东':[84,46], '华中':[58,56],
+                     '华南':[72,78], '西南':[26,66], '西北':[40,28], '境外':[93,82] };
+const AGG_LEVELS = [
+  { name:'省',   pos:PROV_POS,   key:p=> p.ct === '中国' ? p.pv : p.ct },
+  { name:'大区', pos:REGION_POS, key:p=> p.ct === '中国' ? (REGION[p.pv] || p.pv) : '境外' }
+];
+const AGG_MAX = 12;   /* 气泡上限：超过就降一级粒度 */
+/* 点详情弹层的素材（照片是占位；评分 / 标签 / 短评照数据模型的字段来） */
+const DETAIL = {
+  '平潭':        { r:'8.6', t:'海岛,骑行', c:'北港村的石头厝住了一晚，风大得把帽子吹跑。' },
+  '泉州 · 西街': { r:'9.0', t:'人文,美食', c:'开元寺的东西塔下坐了很久，面线糊连吃了两天。' },
+  '潮州':        { r:'8.8', t:'美食,古城', c:'牌坊街走到广济桥，晚上的灯光比白天好看。' },
+  '景德镇':      { r:'9.1', t:'人文,手作', c:'在陶溪川捏了个歪杯子，烧出来居然没裂。' },
+  '婺源':        { r:'8.4', t:'自然,古村', c:'篁岭的晒秋是摆出来的，但还是好看。' },
+  '大理 · 洱海': { r:'9.3', t:'自然,骑行', c:'环海西路骑了一整天，日落时正好到才村。' },
+  '沙溪':        { r:'9.2', t:'古村,安静', c:'四方街的石板路，住了三晚不想走。' },
+  '丽江':        { r:'7.8', t:'古城,热闹', c:'人多，但清晨的巷子还是安静的。' },
+  '束河':        { r:'8.2', t:'古村,慢',   c:'比丽江安静，坐在溪边喝了一下午茶。' },
+  '香格里拉':    { r:'8.9', t:'高原,寺庙', c:'松赞林寺的台阶爬得喘，阳光很烈。' },
+  '梅里雪山':    { r:'9.4', t:'雪山,日出', c:'等了三天才看到日照金山，值。' },
+  '雨崩':        { r:'9.0', t:'徒步,雪山', c:'进村的最后一段全靠腿，腿废了但值得。' },
+  '泸沽湖':      { r:'8.7', t:'湖泊,慢',   c:'猪槽船上听船夫唱歌，水清得吓人。' },
+  /* 「散 15」那一档（复刻现有测试数据的分散形态） */
+  '故宫':        { r:'9.0', t:'人文,古建', c:'赶在开门第一波进去，中轴线上几乎没人。' },
+  '张家界':      { r:'8.8', t:'自然,山',   c:'雾散的那一刻，石柱一根根冒出来。' },
+  '九寨沟':      { r:'9.2', t:'自然,水',   c:'五花海的颜色不像真的，照片都拍不出。' },
+  '洪崖洞':      { r:'8.0', t:'城市,夜景', c:'人多到走不动，但灯亮起来那一下值了。' },
+  '西湖':        { r:'8.5', t:'自然,城市', c:'绕湖走了一圈，断桥比想象中朴素。' },
+  '兵马俑':      { r:'9.1', t:'人文,历史', c:'一号坑站了很久，每张脸都不一样。' },
+  '苏州园林':    { r:'8.9', t:'人文,园林', c:'拙政园里转了半天，窗子都是取景框。' },
+  '迪士尼':      { r:'8.6', t:'乐园,亲子', c:'排了两小时队，烟火秀确实好看。' },
+  '茶卡盐湖':    { r:'8.3', t:'自然,盐湖', c:'水面像镜子，风一吹就碎了。' },
+  '布达拉宫':    { r:'9.4', t:'人文,高原', c:'台阶爬一段歇一段，回头看拉萨城。' },
+  '龙门石窟':    { r:'8.7', t:'人文,石窟', c:'伊河边看了半天，佛龛密密麻麻。' },
+  '桂林':        { r:'8.9', t:'自然,山水', c:'竹筏漂在江上，山从水里长出来。' },
+  '富士山':      { r:'9.0', t:'自然,山',   c:'云散开的十分钟，山顶露了出来。' },
+  '悉尼歌剧院':  { r:'8.8', t:'城市,建筑', c:'绕着海湾走了一圈，壳比照片上更白。' },
+  '雪乡':        { r:'8.1', t:'自然,雪',   c:'屋顶的雪压得像蘑菇，冷到手机关机。' }
+};
+
+function travelStats(key){
+  const months = TRAVEL[key].months;
+  const total = months.reduce((n,g)=> n + g.ps.length, 0);
+  const places = [];
+  months.forEach(g=>g.ps.forEach(p=>places.push(p)));
+  return { months:months, total:total, places:places };
+}
+
+/* 自适应聚合：从省开始试，哪一级能把气泡压到 ≤ AGG_MAX 就用哪一级。
+   最后一级必然成立（大区一共 8 个），所以循环一定返回。 */
+function aggregate(places){
+  for(const lv of AGG_LEVELS){
+    const m = {};
+    places.forEach(p=>{ const k = lv.key(p); (m[k] = m[k] || []).push(p); });
+    const keys = Object.keys(m);
+    if(keys.length <= AGG_MAX) return { level:lv.name, pos:lv.pos, groups:keys.map(k=>({ k:k, ps:m[k] })) };
+  }
+  /* 兜底（实际到不了）：用最粗一级 */
+  const lv = AGG_LEVELS[AGG_LEVELS.length-1], m = {};
+  places.forEach(p=>{ const k = lv.key(p); (m[k] = m[k] || []).push(p); });
+  return { level:lv.name, pos:lv.pos, groups:Object.keys(m).map(k=>({ k:k, ps:m[k] })) };
+}
+
+/* 按屏幕距离并簇：真地图在某个缩放下也这么干（丽江与束河相距 5 公里、梅里与雨崩 8 公里，
+   不并就必然重叠）。gapX / gapY 的单位是百分比，因为「屏幕距离」在两个轴上不是同一把尺。 */
+function clusterBy(pts, gapX, gapY){
+  const cls = [];
+  pts.forEach(p=>{
+    const hit = cls.find(c=> Math.abs(c.x-p.x) < gapX && Math.abs(c.y-p.y) < gapY);
+    if(hit){ hit.items.push(p); hit.x = (hit.x*(hit.items.length-1) + p.x)/hit.items.length; hit.y = (hit.y*(hit.items.length-1) + p.y)/hit.items.length; }
+    else cls.push({ x:p.x, y:p.y, items:[p] });
+  });
+  return cls;
+}
+
+function renderB(key){
+  /* 阈值随屏幕变：桌面 10 个点还读得过来；390px 手机里 10 个必然互相压，降到 5 */
+  const limit = document.body.dataset.vp === 'mobile' ? 5 : 10;
+  const d = travelStats(key), usePins = d.total <= limit;
+  const frame = '<div class="dotgrid"></div>'
+    + '<span class="tap">点任一点 → 高德看真实位置<span class="an" data-n="7"></span></span>'
+    + '<span class="hd-compass"><svg viewBox="0 0 22 28" aria-hidden="true">'
+    + '<path d="M11 26 L11 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+    + '<path d="M5 15 L11 4 L17 15" fill="none" stroke="var(--hd-red)" stroke-width="2" stroke-linejoin="round"/></svg>北</span>';
+  if(usePins){
+    /* 逐点标注：按真实经纬度粗略投影到框里（这一带是东南—西南，所以取 lat 20~33 / lng 96~124 的视窗） */
+    const projX = lng => 8 + (lng - 96) / 28 * 84;
+    const projY = lat => 10 + (33 - lat) / 13 * 78;
+    const seq = [];
+    d.months.forEach(g=>g.ps.forEach(p=>{ if(p.ll) seq.push({ x:projX(p.ll[1]), y:projY(p.ll[0]), n:p.n, m:g.m }); }));
+    /* 近的点并簇 —— 5% 在 816 宽的框上约 40px、在 390 宽的手机上约 20px，
+       都比 46px 的圈小，于是不管桌面还是手机，圈都不会叠 */
+    const cls = clusterBy(seq, 5, 5);
+    /* 缩放到这一年的范围并保持比例（真地图的自动缩放也是这么做的），
+       否则固定视窗会把点全挤在一角、另一角空着 */
+    if(cls.length > 1){
+      const xs = cls.map(c=>c.x), ys = cls.map(c=>c.y);
+      const x0 = Math.min.apply(null,xs), x1 = Math.max.apply(null,xs);
+      const y0 = Math.min.apply(null,ys), y1 = Math.max.apply(null,ys);
+      const k = Math.min(72/Math.max(x1-x0,.5), 72/Math.max(y1-y0,.5));
+      const cx = (x0+x1)/2, cy = (y0+y1)/2;
+      cls.forEach(c=>{ c.x = 50 + (c.x-cx)*k; c.y = 50 + (c.y-cy)*k; });
+    }
+    /* 虚线按第一次出现的先后串起来，但**每段在圈边收住**：
+       端点连圆心的话，线会从圈里穿过去（圈的填充是半透明浅色，虚线就透出来，很难看）。
+       坐标系按框的实际像素取（viewBox = 元素尺寸），于是 1 单位 = 1px ——
+       收边距离和线宽都准确，也不会被 preserveAspectRatio=none 拉成粗细不均。 */
+    const fr = document.getElementById('mapB');
+    const fw = fr.clientWidth || 816, fh = fr.clientHeight || 352, R = 27;   /* 圈半径 23 + 一点空隙 */
+    const segs = [];
+    for(let i=1;i<cls.length;i++){
+      const a = { x:cls[i-1].x/100*fw, y:cls[i-1].y/100*fh };
+      const b = { x:cls[i].x/100*fw,   y:cls[i].y/100*fh };
+      const dx = b.x-a.x, dy = b.y-a.y, len = Math.sqrt(dx*dx+dy*dy);
+      if(len <= R*2) continue;                       /* 两个圈几乎相切，这一段就不画 */
+      const ux = dx/len, uy = dy/len;
+      segs.push('M' + (a.x+ux*R).toFixed(1) + ' ' + (a.y+uy*R).toFixed(1)
+              + ' L' + (b.x-ux*R).toFixed(1) + ' ' + (b.y-uy*R).toFixed(1));
+    }
+    const path = segs.join(' ');
+    /* 标签放哪一侧：由「路线往哪边走」决定，不能按列表奇偶交替 ——
+       奇偶与路线无关，实测四组标签会全部压在连线上，而标签有实心纸底，
+       连线从底下穿过就被切断，看起来像断了一截（上一版正是这个问题）。
+       规则：相邻点的平均高度在下方 → 标签放上面，反之亦然；贴左右边的组把标签往内收。 */
+    cls.forEach((c,i)=>{
+      const nb = [cls[i-1], cls[i+1]].filter(Boolean);
+      c.up = nb.length ? (nb.reduce((s,n)=>s+n.y, 0)/nb.length > c.y) : false;
+      c.edge = c.x < 26 ? ' l' : (c.x > 74 ? ' r' : '');
+    });
+    const missing = d.months.reduce((a,g)=>a + g.ps.filter(p=>p.nc).map(p=>p.n + '（' + g.m + '）').join('、'), '');
+    document.getElementById('mapBCount').textContent = d.total + ' 个地方 · ' + cls.length + ' 个点落在图上';
+    setHTML('mapBDyn', '<div class="hd-frame">' + frame
+      + (path ? '<svg class="trail-b" viewBox="0 0 ' + fw + ' ' + fh + '" preserveAspectRatio="none" aria-hidden="true">'
+              + '<path d="' + path + '" fill="none" stroke="var(--hd-line)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="9 8"/></svg>' : '')
+      + cls.map((c,i)=>{
+          const names = c.items.map(it=>it.n).join(' · ');
+          return '<span class="hd-cl' + (c.up ? ' up' : '') + c.edge + '" data-place="' + c.items[0].n + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
+               + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + (i+1) + '</b></span>'
+               + '<span class="t">' + names + '</span></span>';
+        }).join('')
+      + '<span class="fnote">手绘示意 · 非比例地图<span class="an" data-n="6"></span></span>'
+      + (missing ? '<span class="hd-nocoord">' + missing + ' 没填坐标，没落在图上</span>' : '')
+      + '</div>');
+    setHTML('mapBKey', '<div class="kh">图例 · 按去过的先后</div>'
+      + cls.map((c,i)=>'<div class="k"><b>' + (i+1) + '</b><span>'
+          + c.items.map(it=>it.n + ' · ' + it.m.replace(' ', '')).join(' / ') + '</span></div>').join('')
+      + (missing ? '<div class="k"><b>—</b><span>' + missing + ' 没填坐标，没落在图上</span></div>' : ''));
+    document.getElementById('mapBNote').innerHTML = '底是<b>手绘示意</b>（不铺地图瓦片、不按比例），只负责「这一年去过哪一片、按什么顺序」；想看某个点的<b>精确位置就点它</b>，那时才开高德——真实地图只在需要时付代价，回顾页本身保持纯手绘。图上按真实经纬度粗落位，靠得近的并成一个（真地图也这样）；没填坐标的不上图，但在框里交代一句。';
+  } else {
+    /* 聚合档：粒度自适应（省 → 大区），位置用该级的示意表。点气泡进那个组的图 */
+    const agg = aggregate(d.places);
+    document.getElementById('mapBCount').textContent = d.total + ' 个地方 · 按' + agg.level + ' ' + agg.groups.length + ' 个';
+    setHTML('mapBDyn', '<div class="hd-frame">' + frame
+      + agg.groups.map(g=>{
+          const pos = agg.pos[g.k] || [50,50];
+          return '<span class="hd-cl' + (agg.pos[g.k] ? '' : ' up') + '" data-group="' + g.k + '" data-level="' + agg.level + '"'
+               + ' style="left:' + pos[0] + '%;top:' + pos[1] + '%">'
+               + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + g.ps.length + '</b></span>'
+               + '<span class="t">' + g.k + '</span></span>';
+        }).join('')
+      + '<span class="fnote">手绘示意 · 非比例 · 按' + agg.level + '计数<span class="an" data-n="6"></span></span></div>');
+    setHTML('mapBKey', '<div class="kh">图例 · 每个' + agg.level + '的地点数</div>'
+      + agg.groups.map(g=>'<div class="k"><b>' + g.ps.length + '</b><span>' + g.k + '</span></div>').join(''));
+    const degraded = agg.level !== '省';
+    document.getElementById('mapBNote').innerHTML = '点数一多就不再逐点画，改成<b>聚合计数</b>——手绘示意底只回答「去过哪几片、各几个」，点一个气泡进去看那一组的图与地点。'
+      + (degraded
+          ? '这一年用的是<b>按' + agg.level + '</b>：<b>按省压不住</b>（15 个地点横跨 13 个省级行政区 + 2 个国家，按省是 15 个泡，比 12 个的上限还多），于是自动降一级粒度。这就是分散型数据的真实样子。'
+          : '这一年出行集中，<b>按省</b>就压到了上限以内；换成分散型数据（「散 15」那一档）会自动降到按大区。');
+  }
+}
+
+let vol = 'few';
+function renderTravel(){ renderB(vol); }
+
+/* ===== 弹层：点详情 / 省地图 =====
+   「弹簧」= 弹性展开的动画（.hd-card 的 hdspring）。原型里可用顶部 seg 直接看两种内容，
+   真实实现里由「点图钉」触发点详情、「点省气泡」触发省地图，省地图里再点图钉继续下钻。 */
+let modal = 'none', modalPlace = '大理 · 洱海', modalGroup = { level:'省', key:'云南' };
+function monthOfPlace(n){
+  for(const k in TRAVEL){ for(const g of TRAVEL[k].months){ for(const p of g.ps){ if(p.n === n) return g.m; } } }
+  return '';
+}
+/* 把一组经纬度等比铺进一个框（真地图的自动缩放同理）；没坐标的返回空，交给清单交代。
+   投影就是 x=经度 / y=-纬度：不做任何拉伸，等比缩放交给下面的 fit ——
+   这样境外地点（悉尼在南半球）也不会跑出框，之前按「东南—西南视窗」写死的公式做不到。 */
+function fitPins(items){
+  const idx = items.map((p,i)=>i).filter(i=> items[i].ll);
+  if(!idx.length) return [];
+  const X = idx.map(i=> items[i].ll[1]), Y = idx.map(i=> -items[i].ll[0]);
+  const x0 = Math.min.apply(null,X), x1 = Math.max.apply(null,X);
+  const y0 = Math.min.apply(null,Y), y1 = Math.max.apply(null,Y);
+  const k = Math.min(72/Math.max(x1-x0,.5), 72/Math.max(y1-y0,.5));
+  const cx = (x0+x1)/2, cy = (y0+y1)/2;
+  return idx.map(i=>({ i:i, n:items[i].n, x:50 + (X[idx.indexOf(i)]-cx)*k, y:50 + (Y[idx.indexOf(i)]-cy)*k }));
+}
+function renderLayer(){
+  const layer = document.getElementById('hdLayer');
+  if(modal === 'none'){ layer.hidden = true; setHTML('hdLayer',''); return; }
+  layer.hidden = false;
+  if(modal === 'point'){
+    const dt = DETAIL[modalPlace] || { r:'—', t:'', c:'' };
+    const chips = dt.t ? dt.t.split(',').map(t=>'<span class="hd-chip">' + t + '</span>').join('') : '';
+    const prov = (function(){ for(const g of TRAVEL[vol].months){ for(const p of g.ps){ if(p.n===modalPlace) return p.pv; } } return ''; })();
+    setHTML('hdLayer', '<div class="hd-card">'
+      + '<button class="x" type="button" aria-label="关闭">×</button>'
+      + '<div class="hd-photo"><span class="tf"></span><span class="g">' + modalPlace.slice(0,1) + '</span></div>'
+      + '<h3>' + modalPlace + '</h3>'
+      + '<p class="sub">2024 年 ' + monthOfPlace(modalPlace) + (prov ? ' · ' + prov : '') + ' · ★ ' + dt.r + '<span class="an" data-n="8"></span></p>'
+      + (dt.c ? '<p class="quote">' + dt.c + '</p>' : '')
+      + (chips ? '<div class="rowm">' + chips + '</div>' : '')
+      + '<div class="acts"><button class="hdbtn go" type="button">在地图上定位 →</button><button class="hdbtn" type="button">看这条记录 →</button></div>'
+      + '</div>');
+  } else {
+    /* 组地图：手绘裱框里放高德瓦片（首次打开才加载），图钉按真实坐标落位。
+       小图放不下标签，所以图上只留编号、名字进下方清单；靠得近的点并簇（丽江/束河、梅里/雨崩）。
+       组可以是省，也可以是大区 / 境外（聚合降级后的气泡）—— 取数口径都用同一把 key。 */
+    const lv = AGG_LEVELS.filter(l=>l.name === modalGroup.level)[0] || AGG_LEVELS[0];
+    const items = [];
+    TRAVEL[vol].months.forEach(g=>g.ps.forEach(p=>{ if(lv.key(p) === modalGroup.key) items.push(p); }));
+    /* 这张图约 480×250，46px 的圈对应 x 9% / y 16% */
+    const cls = clusterBy(fitPins(items), 9, 16);
+    const miss = items.filter(p=>!p.ll);
+    setHTML('hdLayer', '<div class="hd-card">'
+      + '<button class="x" type="button" aria-label="关闭">×</button>'
+      + '<h3>' + modalGroup.key + ' · ' + items.length + ' 个地方</h3>'
+      + '<p class="sub">2024 年 · 按' + modalGroup.level + ' · 点图钉看这条记录<span class="an" data-n="8"></span></p>'
+      + '<div class="hd-provmap"><div class="dotgrid"></div>'
+      + (cls.length
+          ? cls.map((c,i)=>'<span class="hd-cl" data-place="' + c.items[0].n + '" style="left:' + c.x.toFixed(1) + '%;top:' + c.y.toFixed(1) + '%">'
+              + '<span class="c"><svg viewBox="0 0 46 46"><ellipse cx="23" cy="23" rx="21" ry="20"/></svg><b>' + (i+1) + '</b></span></span>').join('')
+          : '<span class="hd-provempty">这一组的地点都没填坐标，只列名字</span>')
+      + '<span class="fnote">高德瓦片 · 手绘裱框 · 首次打开才加载</span></div>'
+      + '<div class="hd-provlist">'
+      + cls.map((c,i)=>'<div class="k"><b>' + (i+1) + '</b><span>'
+          + c.items.map(it=>it.n).join(' · ') + ' · ' + c.items.map(it=>monthOfPlace(it.n)).filter((v,j,a)=>a.indexOf(v)===j).join(' · ')
+          + '</span></div>').join('')
+      + miss.map(p=>'<div class="k"><b>—</b><span>' + p.n + ' · ' + monthOfPlace(p.n) + '（没填坐标，没落图）</span></div>').join('')
+      + '</div></div>');
+  }
+}
+function syncModalSeg(){
+  document.querySelectorAll('.review [data-modal]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.modal === modal)));
+}
+document.querySelectorAll('.review [data-modal]').forEach(b=>b.addEventListener('click',()=>{
+  modal = b.dataset.modal; syncModalSeg(); renderLayer();
+}));
+/* 气泡两种：聚合档带 data-group（点进去看那一组的图），逐点档带 data-place（直接看这个点）。
+   组地图里的图钉带 data-place，点了就下钻到点详情 —— 这就是「省/大区 → 图钉 → 详情」那条动线。 */
+function openFrom(el){
+  if(!el) return false;
+  if(el.dataset.group){ modal = 'group'; modalGroup = { level:el.dataset.level, key:el.dataset.group }; }
+  else { modal = 'point'; modalPlace = el.dataset.place; }
+  syncModalSeg(); renderLayer(); return true;
+}
+document.getElementById('mapBDyn').addEventListener('click', e=>{
+  openFrom(e.target.closest('.hd-cl[data-group], .hd-cl[data-place]'));
+});
+document.getElementById('hdLayer').addEventListener('click', e=>{
+  if(e.target.closest('.x')){ modal = 'none'; syncModalSeg(); renderLayer(); return; }
+  openFrom(e.target.closest('.hd-cl[data-group], .hd-cl[data-place]'));
+});
+
+document.querySelectorAll('.review [data-state]').forEach(b=>b.addEventListener('click',()=>{
+  state=b.dataset.state;
+  document.querySelectorAll('.review [data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();
+  const dv=document.querySelector('.device-body'); if(dv&&dv.scrollTop>0) dv.scrollTo({top:0,behavior:'auto'});
+}));
+document.querySelectorAll('.review [data-vol]').forEach(b=>b.addEventListener('click',()=>{
+  vol=b.dataset.vol;
+  document.querySelectorAll('.review [data-vol]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  renderTravel(); renderLayer();   /* 省地图的清单跟着当前量级走 */
+}));
+document.querySelectorAll('.review [data-vp]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.vp=b.dataset.vp;
+  document.querySelectorAll('.review [data-vp]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  renderTravel();   /* 阈值随屏幕变（桌面 10 / 手机 5），切视口要重算 */
+}));
+document.getElementById('themeBtn').addEventListener('click',e=>{
+  const dark=document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('light',!dark);
+  e.currentTarget.setAttribute('aria-pressed',String(dark));
+  e.currentTarget.textContent = dark?'浅色模式':'深色模式';
+});
+document.getElementById('anBtn').addEventListener('click',e=>{
+  const off=document.body.classList.toggle('no-annotate');
+  e.currentTarget.setAttribute('aria-pressed',String(!off));
+});
+render();
+renderTravel();
+renderLayer();
+</script>
+</body>
+</html>

@@ -9,6 +9,16 @@
         <nav class="front-nav">
           <router-link v-for="l in navLinks" :key="l.to" :to="l.to" class="nav-link">{{ l.label }}</router-link>
         </nav>
+        <!-- 全站搜索入口（0.0.5 FR-005-5）：桌面与移动都在头部，导航项与移动 tab 数量不动 -->
+        <button
+          class="theme-toggle"
+          type="button"
+          title="全站搜索"
+          aria-label="全站搜索"
+          @click="router.push('/search')"
+        >
+          <svg-icon icon-class="search" />
+        </button>
         <button
           class="theme-toggle"
           type="button"
@@ -55,6 +65,7 @@ import { animateThemeToggle } from '@/utils/theme'
 /** 是否登录（访客页脚仅显示登录入口） */
 const isLogin = computed(() => !!getToken())
 const settingsStore = useSettingsStore()
+const router = useRouter()
 
 const isDark = computed(() => settingsStore.isDark)
 

@@ -112,6 +112,20 @@ export const constantRoutes = [
     ]
   },
   {
+    // 年度回顾页（0.0.4）：私人内容，不进 publicRoutes 白名单，匿名被守卫弹登录
+    path: '/review',
+    component: FrontLayout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/front/review/index.vue'),
+        name: 'FrontReview',
+        meta: { title: '回顾' }
+      }
+    ]
+  },
+  {
     // 心愿页（0.0.3；路由沿用 /plan）：未完成 WANT/DOING 的全类型汇总，按计划日期分组
     path: '/plan',
     component: FrontLayout,
@@ -154,6 +168,20 @@ export const constantRoutes = [
         component: () => import('@/views/front/note/draft.vue'),
         name: 'FrontNoteDraft',
         meta: { title: '草稿箱', noCache: true }
+      }
+    ]
+  },
+  {
+    // 全站检索（0.0.5）：匿名可用的聚合页，数据可见性与前台目录同一套口径
+    path: '/search',
+    component: FrontLayout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/front/search/index.vue'),
+        name: 'FrontSearch',
+        meta: { title: '搜索' }
       }
     ]
   },

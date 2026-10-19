@@ -1,6 +1,9 @@
 package com.shiguangji.business.mapper;
 
+import java.util.Collection;
 import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
 
 import com.shiguangji.business.domain.SgjNote;
 
@@ -98,4 +101,34 @@ public interface SgjNoteMapper
      * @return 结果
      */
     public int purgeSgjNoteByIds(Long[] noteIds);
+
+    /**
+     * 按标题集合取互链解析候选（0.0.5 FR-005-1）。
+     *
+     * <p>只做候选：库排序规则不区分大小写，标题的逐字判定（含大小写）在
+     * SgjNoteLinkUtils.resolveLinks 收口。titles 为空集合时返回空（1=0 兜底）。</p>
+     *
+     * @param titles 目标标题集合（已去重）
+     * @param createBy 可见范围（null＝不限，博主/管理员）
+     * @param publicOnly 仅公开笔记（匿名访客）
+     * @return 候选笔记（noteId/title/isPublic/createBy/updateTime/createTime）
+     */
+    public List<SgjNote> selectNoteRefsByTitles(@Param("titles") Collection<String> titles,
+            @Param("createBy") String createBy, @Param("publicOnly") boolean publicOnly);
+
+    /**
+     * 反链来源候选（0.0.5 FR-005-2）：正文包含目标标题的笔记。
+     *
+     * <p>LIKE 只做候选（通配符已由 SgjNoteLinkUtils.escapeLike 转义）；
+     * 代码块里的假引用由 SgjNoteLinkUtils.buildBacklinks 精确校验剔除。</p>
+     *
+     * @param likeTitle 已转义的目标标题（LIKE 模式片段）
+     * @param excludeNoteId 排除的笔记ID（本篇自身）
+     * @param createBy 可见范围（null＝不限）
+     * @param publicOnly 仅公开笔记（匿名访客）
+     * @return 候选笔记（含 content），按更新时间倒序
+     */
+    public List<SgjNote> selectBacklinkCandidates(@Param("likeTitle") String likeTitle,
+            @Param("excludeNoteId") Long excludeNoteId, @Param("createBy") String createBy,
+            @Param("publicOnly") boolean publicOnly);
 }
