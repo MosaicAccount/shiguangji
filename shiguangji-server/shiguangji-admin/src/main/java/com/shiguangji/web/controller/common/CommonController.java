@@ -175,7 +175,7 @@ public class CommonController
     }
 
     /**
-     * 转存外链图片（0.0.6 FR-006-1，issue #68）：服务端抓取 → 落 upload 分类（uuid 命名）→ 回站内路径
+     * 转存外链图片（FR-006-1，issue #68）：服务端抓取 → 落 upload 分类（uuid 命名）→ 回站内路径
      *
      * <p>需登录；IP 维度限流 30 次/分钟（@RateLimiter，Redis 固定窗口）。抓取 / 校验失败不是系统错误，
      * 走业务码 500 + 可读 msg，前端逐条展示（结论 69）。台账的 fileName 记外链原始地址，便于溯源。</p>

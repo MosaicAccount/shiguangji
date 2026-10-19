@@ -25,7 +25,7 @@ export function uploadNoteImage(file: File): Promise<NoteImageUploadResult> {
   })
 }
 
-/** 外链图片转存的响应（0.0.6 FR-006-1）：path 是站内相对路径，改写正文用它 */
+/** 外链图片转存的响应（FR-006-1）：path 是站内相对路径，改写正文用它 */
 export interface FetchImageResult extends AjaxResult {
   path?: string
 }

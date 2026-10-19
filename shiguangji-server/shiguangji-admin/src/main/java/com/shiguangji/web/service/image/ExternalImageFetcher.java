@@ -3,7 +3,7 @@ package com.shiguangji.web.service.image;
 import com.shiguangji.common.exception.ServiceException;
 
 /**
- * 外链图片抓取器（0.0.6 FR-006-5，issue #68）
+ * 外链图片抓取器（FR-006-5，issue #68）
  *
  * <p>传输安全契约的全部所在：服务器替用户访问任意网址（SSRF 面），实现必须满足——</p>
  * <ol>

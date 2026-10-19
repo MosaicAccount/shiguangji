@@ -1,6 +1,6 @@
-# 外链图片转存 —— 测试用例（0.0.6，issue #68）
+# 外链图片转存 —— 测试用例（issue #68）
 
-> 配套文档：[需求](../requirements/0.0.6-external-images.md) · [架构](external-images-architecture.md) · [详细设计](external-images-design.md)
+> 配套文档：[需求](external-images-requirements.md) · [架构](external-images-architecture.md) · [详细设计](external-images-design.md)
 > 编号接 `note-images-testcases.md`（止于 T-48）。
 
 ## 1. 自动化用例（agent 维护）

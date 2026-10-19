@@ -50,7 +50,7 @@ import com.shiguangji.system.service.ISysUserService;
 import com.shiguangji.web.service.image.ExternalImageFetcher;
 
 /**
- * 外链图片转存端点冒烟测试（0.0.6，issue #68，测试用例 T-49 ~ T-53、T-55）。
+ * 外链图片转存端点冒烟测试（issue #68，测试用例 T-49 ~ T-53、T-55）。
  *
  * <p>抓取器用桩替换（真实现的 SSRF 矩阵见设计 §4，落地时由
  * {@code ExternalImageFetcherTest} 覆盖）；本类钉的是端点契约：

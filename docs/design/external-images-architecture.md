@@ -1,6 +1,6 @@
-# 外链图片转存 —— 架构（0.0.6，issue #68）
+# 外链图片转存 —— 架构（issue #68）
 
-> 配套文档：[需求](../requirements/0.0.6-external-images.md) · [详细设计](external-images-design.md) · [测试用例](external-images-testcases.md)
+> 配套文档：[需求](external-images-requirements.md) · [详细设计](external-images-design.md) · [测试用例](external-images-testcases.md)
 
 ## 1. 架构位置
 

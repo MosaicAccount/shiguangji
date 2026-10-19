@@ -13,7 +13,7 @@ import com.shiguangji.file.storage.ByteArrayMultipartFile;
 import com.shiguangji.file.storage.FileStorageService;
 
 /**
- * 外链图片转存服务（0.0.6 FR-006-1，issue #68）
+ * 外链图片转存服务（FR-006-1，issue #68）
  *
  * <p>职责边界（设计 D-34）：传输安全（协议 / IP 段 / 重定向 / 超时 / 体积）全部在
  * {@link ExternalImageFetcher} 实现内；本服务做落盘前最后一道内容校验
