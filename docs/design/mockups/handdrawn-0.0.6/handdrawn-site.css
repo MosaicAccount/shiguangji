@@ -39,6 +39,7 @@
   --hd-rose: #B08A7E;
   --hd-tape: rgba(150, 80, 63, .18);
   --hd-tape-2: rgba(156, 107, 63, .20);
+  --hd-tape-strong: rgba(150, 80, 63, .38);
   --hd-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0.055'/></feComponentTransfer></filter><rect width='140' height='140' filter='url(%23g)'/></svg>");
   --hd-shadow: 2px 3px 0 rgba(70, 58, 46, .13);
   --hd-shadow-lift: 4px 6px 0 rgba(70, 58, 46, .13);
@@ -91,6 +92,7 @@ html.dark .hd-app {
   --hd-rose: #CDA79B;
   --hd-tape: rgba(201, 149, 133, .14);
   --hd-tape-2: rgba(201, 172, 128, .14);
+  --hd-tape-strong: rgba(201, 149, 133, .30);
   --hd-shadow: 2px 3px 0 rgba(0, 0, 0, .34);
   --hd-shadow-lift: 4px 6px 0 rgba(0, 0, 0, .3);
   --hd-dot: rgba(236, 235, 232, .04);
@@ -332,90 +334,110 @@ html.dark .hd-app .hd-btn.go:hover { background: var(--hd-red); border-color: va
 }
 .hd-app .hd-photo.note .ph-glyph { color: var(--hd-ink-soft); text-shadow: none }
 
-/* ===== 默认封面（C · 手账拼贴）：纸卡 + 胶带照片 + 手写标题 ===== */
+/* ===== 默认封面 =====
+ * A · 影像封面：模块网格（影单 / 书单 / 足迹）用，一张照片 + 标题压暗角
+ * C · 手账拼贴：首页时间线 / 回顾这类小图用（.sm），纸卡上贴一张胶带照片
+ */
 .hd-app .hd-fallback {
   position: absolute; inset: 0; display: flex; flex-direction: column;
-  padding: 10px 11px 12px; overflow: hidden;
-  color: var(--hd-ink);
-  background-color: var(--hd-paper-2);
-  background-image: var(--hd-grain);
+  padding: 12px 13px 14px; overflow: hidden; color: #FFF8ED;
+  background-color: var(--fc-tint, #2A211B);
+  background-image: linear-gradient(180deg, rgba(50, 34, 24, .06) 26%, rgba(22, 17, 13, .72) 100%), var(--fc-img, none);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-blend-mode: normal, normal;
 }
 .hd-app .hd-fallback .fc-band {
-  position: absolute; top: 10px; left: 11px; z-index: 3;
-  font-size: 12.5px; letter-spacing: 2px; padding: 0 6px;
-  color: var(--hd-ink-soft);
-  border: 1.5px solid var(--hd-line-soft);
-  border-radius: 7px 3px 6px 3px / 3px 6px 3px 7px;
-  background: var(--hd-paper-2);
+  align-self: flex-start; font-size: 13px; letter-spacing: 2px; padding: 0 7px;
+  border: 1px solid rgba(255, 248, 237, .62);
+  border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px;
+  background: rgba(26, 20, 16, .22);
 }
-.hd-app .hd-fallback .fc-motif {
-  order: 1; position: relative; display: block; flex: none;
-  height: 58%; margin-top: 24px;
-  background-color: var(--hd-paper-3);
-  background-image: var(--fc-img, none);
-  background-size: cover; background-position: center;
-  border: 1.8px solid var(--hd-line);
-  border-radius: 2px 1px 3px 1px;
-  transform: rotate(-1.8deg);
-  box-shadow: 2px 3px 0 rgba(70, 58, 46, .14);
-  filter: saturate(.82) contrast(1.02);
-}
-.hd-app .hd-fallback .fc-motif::before {
-  content: ""; position: absolute; top: -8px; left: 50%; width: 54px; height: 15px;
-  transform: translateX(-50%) rotate(-2deg); background: var(--hd-tape);
-  clip-path: polygon(0 4%, 5% 0, 95% 2%, 100% 6%, 98% 96%, 93% 100%, 4% 98%, 0 94%);
-}
-.hd-app .hd-fallback .fc-body {
-  order: 2; margin-top: auto; padding-top: 9px; min-width: 0; position: relative; z-index: 2;
-}
+.hd-app .hd-fallback .fc-body { margin-top: auto; position: relative; z-index: 2; min-width: 0 }
 .hd-app .hd-fallback .fc-title {
-  font-size: 19px; line-height: 1.36; color: var(--hd-ink); text-shadow: none;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 22px; line-height: 1.32; letter-spacing: .5px;
+  text-shadow: 0 1px 8px rgba(20, 14, 10, .62);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 .hd-app .hd-fallback .fc-meta {
-  margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--hd-ink-soft);
-  text-shadow: none; opacity: 1;
-  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  margin-top: 5px; font-size: 13px; line-height: 1.5; opacity: .95;
+  text-shadow: 0 1px 6px rgba(20, 14, 10, .55);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.hd-app .hd-fallback::before { display: none }
+.hd-app .hd-fallback::before {
+  content: ""; position: absolute; inset: 6px; pointer-events: none;
+  border: 1px solid rgba(255, 248, 237, .34);
+  border-radius: 3px 1px 4px 2px / 2px 4px 1px 3px;
+}
 .hd-app .hd-fallback::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background-image: var(--hd-grain); opacity: .4; mix-blend-mode: multiply;
 }
+.hd-app .hd-fallback .fc-motif { display: none }
 
-/* 每类内容贴什么照片 */
+/* A 的底图：每类内容贴什么照片 */
 .hd-app .hd-fallback.movie { --fc-img: url("assets/covers/place-lake.jpg") }
 .hd-app .hd-fallback.tv { --fc-img: url("assets/covers/tv-city.jpg") }
 .hd-app .hd-fallback.book { --fc-img: url("assets/covers/place-garden.jpg") }
 .hd-app .hd-fallback.place { --fc-img: url("assets/covers/place-lake.jpg") }
 
-/* 笔记没有照片：保留纸页 */
+/* 笔记没有照片：纸页 */
 .hd-app .hd-fallback.note {
-  background-color: var(--hd-paper-2);
+  color: var(--hd-ink); background-color: var(--hd-paper-2);
   background-image: repeating-linear-gradient(0deg, transparent 0 24px, var(--hd-line-soft) 24px 25px), var(--hd-grain);
 }
-.hd-app .hd-fallback.note .fc-motif { display: none }
-.hd-app .hd-fallback.note .fc-body { margin-top: 18px }
+.hd-app .hd-fallback.note .fc-band { border-color: var(--hd-line-soft); background: transparent; color: var(--hd-ink-soft) }
+.hd-app .hd-fallback.note .fc-title { text-shadow: none }
+.hd-app .hd-fallback.note .fc-meta { text-shadow: none; opacity: 1; color: var(--hd-ink-soft) }
 
-/* 同一网格换照片，避免复制粘贴 */
+/* 同一网格换照片 / 换裁切，避免复制粘贴 */
 .hd-app .hd-grid > .hd-card:nth-child(3n+2) .hd-fallback.movie { --fc-img: url("assets/covers/movie-garden.jpg") }
 .hd-app .hd-grid > .hd-card:nth-child(3n) .hd-fallback.movie { --fc-img: url("assets/covers/place-garden.jpg") }
-.hd-app .hd-grid > .hd-card:nth-child(2n) .hd-fallback.tv .fc-motif { background-position: 42% 58% }
+.hd-app .hd-grid > .hd-card:nth-child(2n) .hd-fallback.tv { background-position: center, 42% 58% }
 .hd-app .hd-grid > .hd-card:nth-child(2n) .hd-fallback.book { --fc-img: url("assets/covers/movie-garden.jpg") }
 .hd-app .hd-grid > .hd-card:nth-child(3n) .hd-fallback.book { --fc-img: url("assets/covers/place-lake.jpg") }
 .hd-app .hd-grid > .hd-card:nth-child(2n) .hd-fallback.place { --fc-img: url("assets/covers/place-garden.jpg") }
-.hd-app .hd-grid > .hd-card > .hd-tape { display: none }
 
-/* 尺寸：小图只留贴着的照片 */
-.hd-app .hd-fallback.sm { padding: 8px }
+/* ===== C · 小尺寸（首页时间线 / 回顾）===== */
+.hd-app .hd-fallback.sm {
+  padding: 9px 10px; color: var(--hd-ink);
+  background-color: var(--hd-paper-2); background-image: var(--hd-grain);
+  background-blend-mode: normal;
+}
 .hd-app .hd-fallback.sm .fc-band, .hd-app .hd-fallback.sm .fc-body { display: none }
-.hd-app .hd-fallback.sm .fc-motif { height: 100%; margin-top: 0; transform: rotate(-1.2deg) }
-.hd-app .hd-fallback.sm .fc-motif::before { top: -6px; width: 44px; height: 12px }
+.hd-app .hd-fallback.sm::before { display: none }
+.hd-app .hd-fallback.sm .fc-motif {
+  display: block; position: relative; order: 1; height: 100%; margin: 0;
+  background-color: var(--hd-paper-3);
+  background-image: var(--fc-img, none);
+  background-size: cover; background-position: center;
+  border: 1.5px solid var(--hd-line);
+  border-radius: 2px 1px 3px 1px;
+  transform: rotate(-2.2deg);
+  box-shadow: 1px 2px 0 rgba(70, 58, 46, .16);
+  filter: saturate(.82) contrast(1.02);
+}
+.hd-app .hd-fallback.sm .fc-motif::before {
+  content: ""; position: absolute; top: -7px; left: 50%; width: 48px; height: 14px;
+  transform: translateX(-50%) rotate(-2deg); background: var(--hd-tape-strong);
+  clip-path: polygon(0 4%, 5% 0, 95% 2%, 100% 6%, 98% 96%, 93% 100%, 4% 98%, 0 94%);
+}
+.hd-app .hd-fallback.sm.note {
+  background-image: repeating-linear-gradient(0deg, transparent 0 18px, var(--hd-line-soft) 18px 19px), var(--hd-grain);
+}
 .hd-app .hd-fallback.sm.note .fc-motif { display: none }
+
+/* ===== 极小尺寸（搜索 / 关联条目）：只留画面 ===== */
 .hd-app .hd-fallback.xs { padding: 0 }
 .hd-app .hd-fallback.xs .fc-band, .hd-app .hd-fallback.xs .fc-body { display: none }
-.hd-app .hd-fallback.xs .fc-motif { height: 100%; margin: 0; border: 0; border-radius: 0; transform: none; box-shadow: none }
-.hd-app .hd-fallback.xs .fc-motif::before { display: none }
+.hd-app .hd-fallback.xs .fc-motif {
+  display: block; position: absolute; inset: 0;
+  background-image: var(--fc-img, none); background-size: cover; background-position: center;
+  border: 0; border-radius: 0; transform: none; box-shadow: none;
+  filter: saturate(.8) contrast(1.02);
+}
+.hd-app .hd-fallback.xs.note { background-image: repeating-linear-gradient(0deg, transparent 0 7px, var(--hd-line-soft) 7px 8px), var(--hd-grain) }
+.hd-app .hd-fallback.xs.note .fc-motif { display: none }
 
 /* ===== 版面小结条：一行说明「这段时间攒下了什么」 ===== */
 .hd-app .hd-summary {

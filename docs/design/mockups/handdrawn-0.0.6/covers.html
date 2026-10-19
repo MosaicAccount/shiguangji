@@ -106,7 +106,7 @@
     <span class="hd-tape"></span>
     <div class="eyebrow" style="font-size:13px;letter-spacing:4px;color:var(--hd-red)">默认封面 · 三个方向</div>
     <h1>没有封面的那一格，应该长什么样</h1>
-    <p>上传封面是少数、缺封面是常态。这里保留三个方向的样张作对照；<b style="font-weight:400;color:var(--hd-ink)">已选 C（手账拼贴）</b>，全站页面都按这个方向铺开。三个方向都只用暖忆色板与公有领域素材，不额外引风格。</p>
+    <p>上传封面是少数、缺封面是常态。这里保留三个方向的样张作对照；<b style="font-weight:400;color:var(--hd-ink)">已定 A + C 混用</b>：模块网格（影单 / 书单 / 足迹）用 A，首页时间线 / 回顾这类小图用 C。三个方向都只用暖忆色板与公有领域素材，不额外引风格。</p>
     <div class="palette">
       <span><i style="background:#F5F2EC"></i>页面底 #F5F2EC</span>
       <span><i style="background:#FFFDF9"></i>纸 #FFFDF9</span>
@@ -120,13 +120,14 @@
   <section class="dir">
     <div class="dir-head">
       <h2>A · 影像封面</h2>
+      <span class="badge">模块网格用</span>
       <span class="sub">一张旧照片 / 一段布纹，标题压在底部暗角上</span>
     </div>
     <p class="dir-note">最像「电影海报 / 旅行照片」，扫一眼就知道这是影像内容。片子与照片内容无关，只承担气氛；好处是整屏有画面、不像占位，坏处是每张都要挑图，且图片风格会左右整站气质。</p>
     <div class="grid3">
-      <div class="cv-wrap"><div class="cv"><div class="cv-photo"><img src="assets/covers/place-lake.jpg" alt=""><div class="ov"><div class="t">沙丘 2</div><div class="m">丹尼斯·维伦纽瓦 · 2024</div></div></div></div><span class="cap">影单</span></div>
-      <div class="cv-wrap"><div class="cv"><div class="cv-photo"><img src="assets/covers/place-garden.jpg" alt=""><div class="ov"><div class="t">失明症漫记</div><div class="m">若泽·萨拉马戈</div></div></div></div><span class="cap">书单</span></div>
-      <div class="cv-wrap"><div class="cv"><div class="cv-photo"><img src="assets/covers/place-lake.jpg" alt=""><div class="ov"><div class="t">洱海 · 才村码头</div><div class="m">大理 · 中国</div></div></div></div><span class="cap">足迹</span></div>
+      <div class="cv-wrap"><div class="cv"><span class="hd-fallback movie"><span class="fc-band">电影</span><span class="fc-body"><span class="fc-title">沙丘 2</span><span class="fc-meta">丹尼斯·维伦纽瓦 · 2024</span></span><span class="fc-motif"></span></span></div><span class="cap">影单</span></div>
+      <div class="cv-wrap"><div class="cv"><span class="hd-fallback book"><span class="fc-band">书籍</span><span class="fc-body"><span class="fc-title">失明症漫记</span><span class="fc-meta">若泽·萨拉马戈</span></span><span class="fc-motif"></span></span></div><span class="cap">书单</span></div>
+      <div class="cv-wrap"><div class="cv"><span class="hd-fallback place"><span class="fc-band">地点</span><span class="fc-body"><span class="fc-title">洱海 · 才村码头</span><span class="fc-meta">大理 · 中国</span></span><span class="fc-motif"></span></span></div><span class="cap">足迹</span></div>
     </div>
   </section>
 
@@ -146,7 +147,7 @@
   <section class="dir">
     <div class="dir-head">
       <h2>C · 手账拼贴</h2>
-      <span class="badge">已选定</span>
+      <span class="badge">小图用</span>
       <span class="sub">纸卡上贴一张小照片，手写标题 + 胶带 + 印章</span>
     </div>
     <p class="dir-note">最贴「一个人的手账」：照片是贴上去的，标题写在下面，像真的把票根和照片收进本子。情绪最对，但信息密度低、每张卡都更「手作」，大批量列表会显得碎。</p>
@@ -169,7 +170,7 @@
         <tr><td>风险</td><td>图片风格决定整站气质</td><td>容易显得太素</td><td>列表里会碎</td></tr>
       </tbody>
     </table>
-    <p style="margin-top:14px;font-size:14px;color:var(--hd-ink-soft);line-height:1.8;max-width:640px">当前采用 <b style="font-weight:400;color:var(--hd-ink)">C（手账拼贴）</b>：纸卡上贴一张小照片，标题写在下面；小尺寸只留照片，不塞字。A / B 的样张保留作对照，切换只需改 <code>hd-fallback</code> 的样式，不动页面结构。</p>
+    <p style="margin-top:14px;font-size:14px;color:var(--hd-ink-soft);line-height:1.8;max-width:640px">当前采用 <b style="font-weight:400;color:var(--hd-ink)">A + C</b>：模块网格用 A（照片 + 标题），首页时间线 / 回顾小图用 C（纸卡贴照片、不放字）。B 的样张保留作对照；两类封面共用 <code>hd-fallback</code>，只是尺寸与容器不同，不动页面结构。</p>
   </section>
 </main>
 

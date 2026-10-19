@@ -222,8 +222,8 @@
       </a>
       <a class="page-card hd-paper" href="covers.html">
         <div class="thumb"><div class="mini"></div></div>
-        <div class="t">封面选型 <span class="risk low">已定 C</span></div>
-        <div class="d">影像 / 字体 / 拼贴三个方向并排；已选定 C 手账拼贴，页面已按此铺开。</div>
+        <div class="t">封面选型 <span class="risk low">已定 A+C</span></div>
+        <div class="d">影像 / 字体 / 拼贴三个方向并排；已定 A 模块网格 + C 小图，页面已按此铺开。</div>
         <div class="tags"><span class="hd-tag plain">默认封面</span><span class="hd-tag plain">三方向</span></div>
       </a>
     </div>
@@ -282,7 +282,7 @@
       <div class="iter-item hd-paper">
         <span class="hd-tape left"></span>
         <h3>默认封面</h3>
-        <p>没有上传图时不再用色块：纸卡上贴一张小照片，标题写在下面（C 手账拼贴，已选定）。小尺寸只留照片，不塞字。<a href="covers.html" style="color:var(--hd-red)">三个封面方向对照 →</a></p>
+        <p>没有上传图时不再用色块：模块网格用 A 影像封面（照片 + 标题压暗角），首页时间线 / 回顾小图用 C 手账拼贴（纸卡贴照片、不放字）。<a href="covers.html" style="color:var(--hd-red)">三个封面方向对照 →</a></p>
         <div class="demo-fbs">
           <span class="demo-fb"><span class="hd-fallback movie"><span class="fc-body"><span class="fc-title">沙丘 2</span></span><span class="fc-motif"></span></span></span>
           <span class="demo-fb"><span class="hd-fallback book"><span class="fc-body"><span class="fc-title">失明症漫记</span></span><span class="fc-motif"></span></span></span>
@@ -325,7 +325,7 @@
         <tr><td>FR-007-4 字体全站加载</td><td>沿用自托管霞鹜文楷分片；本组图直接引产品字体 CSS。实现时并入全局，并按脚本重跑核心片、给出体积与首屏量化结论（D-44）。</td></tr>
         <tr><td>FR-007-5 暗色与移动端</td><td>每页都有暗色令牌与 960 / 720 断点；移动底部 tab 仍是首页 / 影单 / 足迹 / 笔记四项。</td></tr>
         <tr><td>FR-007-6 笔记长文排版</td><td>D-46 建议：正文 16.5px / 2.0、标题 24px + 手绘下划线、代码块方格纸、表格抖线、引用红侧笔、图片贴胶带；见笔记详情。</td></tr>
-        <tr><td>默认封面（已选定 C）</td><td>没有上传图时用品类专属的 <code>hd-fallback</code>：纸卡 + 胶带照片 + 手写标题（影单 / 书单 / 足迹），笔记保留纸页。三个方向对照见 <a href="covers.html">默认封面三方向</a>。</td></tr>
+        <tr><td>默认封面（已定 A + C）</td><td>模块网格用 A：一张照片 + 标题压暗角（影单 / 书单 / 足迹）；首页时间线 / 回顾小图用 C：纸卡 + 胶带照片、不放字。两者共用 <code>hd-fallback</code>，三种方向对照见 <a href="covers.html">默认封面三方向</a>。</td></tr>
         <tr><td>页面小结（本轮新增）</td><td>影单 / 书单 / 足迹 / 笔记统一用 <code>hd-summary</code>：一行说明累计数量与最近一次，和足迹原有的「去过 12 城 / 留下 214 张照片」同一形制。</td></tr>
         <tr><td>足迹结构（本轮调整）</td><td>取消卡片 / 地图双模式：地图看方位、时间线看年份、卡片看细节，同页完成。</td></tr>
         <tr><td>FR-007-7 后台管理端</td><td>D-41 建议维持「不纳入」：后台访客不可见、受众不同，不一致不构成体验割裂。</td></tr>

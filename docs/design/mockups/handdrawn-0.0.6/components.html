@@ -48,8 +48,9 @@
 .page-components .fb-demo .fb .hd-fallback .fc-title { font-size: 14px; -webkit-line-clamp: 2 }
 .page-components .fb-demo .fb .hd-fallback .fc-meta { display: none }
 .page-components .fb-demo .fb .hd-fallback .fc-band { display: none }
-.page-components .fb-demo .fb .hd-fallback .fc-motif { top: 14%; opacity: .5 }
+.page-components .fb-demo .fb .hd-fallback .fc-motif { display: block }
 .page-components .sum-demo { margin-top: 6px }
+.page-components .fb-demo .fb.small { width: 72px; height: 96px }
 @media (max-width: 900px) {
   .page-components .spec-grid { grid-template-columns: minmax(0, 1fr); gap: 22px }
   .page-components .field-row { grid-template-columns: minmax(0, 1fr); gap: 4px }
@@ -303,8 +304,14 @@
           <span class="fb"><span class="hd-fallback place"><span class="fc-band">地点</span><span class="fc-body"><span class="fc-title">洱海 · 才村码头</span><span class="fc-meta">大理 · 中国</span></span><span class="fc-motif"></span></span></span>
           <span class="fb"><span class="hd-fallback note"><span class="fc-band">笔记</span><span class="fc-body"><span class="fc-title">为什么我还在用纸质票根</span><span class="fc-meta">2026-10-05</span></span><span class="fc-motif"></span></span></span>
         </div>
+        <div class="fb-demo" style="margin-top:22px">
+          <span class="fb small"><span class="hd-fallback movie sm"><span class="fc-body"><span class="fc-title">沙丘 2</span></span><span class="fc-motif"></span></span></span>
+          <span class="fb small"><span class="hd-fallback book sm"><span class="fc-body"><span class="fc-title">失明症漫记</span></span><span class="fc-motif"></span></span></span>
+          <span class="fb small"><span class="hd-fallback place sm"><span class="fc-body"><span class="fc-title">洱海</span></span><span class="fc-motif"></span></span></span>
+          <span class="fb small"><span class="hd-fallback note sm"><span class="fc-body"><span class="fc-title">纸质票根</span></span><span class="fc-motif"></span></span></span>
+        </div>
       </div>
-      <p class="note">没有上传图时不再用色块：<b>影单 / 足迹是旧照片、书单是布面书封、笔记是纸页</b>。标题直接当封面主角；影像方向是当前默认，字体 / 拼贴两个备选见 <a href="covers.html">封面三方向</a>。</p>
+      <p class="note">没有上传图时不再用色块。模块网格用 <b>A 影像封面</b>（一张照片 + 标题压暗角）；首页时间线 / 回顾这类小图用 <b>C 手账拼贴</b>（纸卡上贴胶带照片，不放字）。两个方向都在 <a href="covers.html">封面三方向</a> 里有对照。</p>
     </section>
 
     <section class="spec hd-paper wide">
