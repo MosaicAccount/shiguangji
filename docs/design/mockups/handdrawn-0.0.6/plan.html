@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>心愿 · 手绘手账设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 心愿页：860 单列 → 1120 宽两栏（左清单 760 + 右侧栏 300，gap 44） =====
+   1120 的壳两侧各留 8px，内容正好 1104 = 760 + 300 + 44；≤960 侧栏落到清单下方，≤720 单列 */
+.page-plan { --hd-gutter: 8px }
+.page-plan .plan-layout {
+  display: grid; grid-template-columns: minmax(0, 760px) 300px;
+  gap: 44px; margin-top: 24px; align-items: start; justify-content: center;
+}
+.page-plan .plan-main { min-width: 0 }
+.page-plan .groups { display: flex; flex-direction: column; gap: 22px }
+
+/* 四组纸片清单 */
+.page-plan .sheet { padding: 18px 24px 12px }
+.page-plan .sheet > .hd-tape { top: -9px; width: 84px }
+.page-plan .g-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 0 2px 6px }
+.page-plan .g-title { font-size: 23px; letter-spacing: 1px; display: inline-flex; flex-direction: column; align-items: stretch }
+.page-plan .g-title svg { width: 100%; height: 8px; margin-top: 1px; color: var(--hd-line) }
+.page-plan .g-count {
+  font-size: 13.5px; color: var(--hd-ink-soft); padding: 0 8px;
+  border: 1.5px solid var(--hd-line-soft); border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-plan .g-hint { margin-left: auto; font-size: 13px; color: var(--hd-ink-faint); text-align: right }
+
+.page-plan .row {
+  display: grid; grid-template-columns: 30px 30px minmax(0, 1fr) auto;
+  gap: 12px; align-items: center; padding: 10px 2px;
+}
+.page-plan .row + .row { border-top: 1.5px dashed var(--hd-line-soft) }
+.page-plan .row:hover { background: var(--hd-paper-2); border-radius: var(--hd-radius-sm) }
+
+/* 勾选圈：空=在想，涂鸦=在做；点它执行该行主操作 */
+.page-plan .ck {
+  width: 30px; height: 30px; padding: 0; border: 0; background: none;
+  display: grid; place-items: center; color: var(--hd-ink-soft); border-radius: 50%;
+}
+.page-plan .ck svg { width: 27px; height: 27px }
+.page-plan .ck .box { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round }
+.page-plan .ck .ink { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; opacity: 0 }
+.page-plan .ck .ghost { fill: none; stroke: var(--hd-red); stroke-width: 2.4; stroke-linecap: round; opacity: 0 }
+.page-plan .ck.doing { color: var(--hd-red) }
+.page-plan .ck.doing .ink { opacity: 1 }
+.page-plan .ck:hover .ghost { opacity: .5 }
+
+.page-plan .row .hd-glyph-round { width: 30px; height: 30px; font-size: 14px }
+
+.page-plan .main { min-width: 0 }
+.page-plan .t { font-size: 17px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-plan .m { margin-top: 2px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 13px; color: var(--hd-ink-soft) }
+.page-plan .m .hd-st { font-size: 13px }
+.page-plan .when { color: var(--hd-ink-faint) }
+.page-plan .when.late { color: var(--hd-red) }
+
+.page-plan .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end }
+.page-plan .acts .hd-btn { padding: 2px 10px; font-size: 13px; gap: 4px }
+.page-plan .acts .hd-btn svg { width: 13px; height: 13px }
+
+.page-plan .list-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 18px; padding: 0 4px; font-size: 14px; color: var(--hd-ink-soft);
+}
+.page-plan .list-foot .end { font-size: 13px; color: var(--hd-ink-faint) }
+
+/* 右侧栏：宽屏贴顶，≤960 落到清单下方 */
+.page-plan .side { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 26px; min-width: 0 }
+.page-plan .side .hd-paper { padding: 14px 18px 15px }
+.page-plan .side-title { display: flex; align-items: baseline; gap: 8px; font-size: 18px; letter-spacing: 1px; margin: 14px 2px 8px }
+.page-plan .side-sub { font-size: 13px; letter-spacing: 2px; color: var(--hd-ink-faint) }
+.page-plan .side .hd-summary { margin-top: 0; padding: 8px 12px; gap: 6px 14px; font-size: 13.5px }
+.page-plan .side .hd-summary .item b { font-size: 19px }
+
+/* 按类型分布：手绘横条 */
+.page-plan .dist { display: grid; gap: 10px }
+.page-plan .dist-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 26px; align-items: center; gap: 10px; font-size: 13.5px }
+.page-plan .dist-row .hd-glyph-round { width: 30px; height: 30px; font-size: 14px }
+.page-plan .bar { height: 12px; border: 1.6px solid var(--hd-line-soft); border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px; background: var(--hd-paper-2); overflow: hidden }
+.page-plan .fill { display: block; height: 100%; border-radius: 6px 2px 5px 2px; filter: url(#rough) }
+.page-plan .fill.movie { background: var(--hd-brick) }
+.page-plan .fill.book { background: var(--hd-olive) }
+.page-plan .fill.place { background: var(--hd-ochre) }
+.page-plan .dist-num { font-size: 17px; color: var(--hd-ink); text-align: right; font-weight: 400 }
+
+/* 下一个日子：日期戳 + 小卡片 */
+.page-plan .next { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; align-items: center }
+.page-plan .next-date {
+  padding: 6px 4px 5px; text-align: center; background: var(--hd-paper);
+  border: 2px solid var(--hd-red); color: var(--hd-red);
+  border-radius: 6px 2px 7px 3px / 3px 7px 2px 6px; transform: rotate(-3deg);
+}
+.page-plan .next-date b { display: block; font-size: 27px; line-height: 1.15; letter-spacing: 1px; font-weight: 400 }
+.page-plan .next-date span { display: block; font-size: 13px; line-height: 1.5; white-space: nowrap }
+.page-plan .next-item { display: flex; align-items: center; gap: 10px; min-width: 0 }
+.page-plan .next-cover { flex: none; width: 44px; height: 58px; aspect-ratio: auto }
+.page-plan .next-txt { min-width: 0 }
+.page-plan .next-title { font-size: 15px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-plan .next-meta { margin-top: 2px; font-size: 13px; color: var(--hd-ink-soft) }
+
+/* 手写批注 + 印章 */
+.page-plan .note-card {
+  position: relative; background-color: var(--hd-paper-3); background-image: var(--hd-grain);
+  padding: 16px 18px 18px; border-radius: 4px; box-shadow: var(--hd-shadow);
+  transform: rotate(-.6deg);
+}
+.page-plan .note-card > .hd-tape { top: -10px; width: 66px }
+.page-plan .note-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px }
+.page-plan .note-kicker { font-size: 13px; color: var(--hd-ink-faint); letter-spacing: 1px; padding-top: 3px }
+.page-plan .note-card .hd-stamp { font-size: 13px; letter-spacing: 1px; flex: none }
+.page-plan .note-text { margin-top: 10px; font-size: 14.5px; line-height: 1.85; color: var(--hd-ink-soft) }
+
+/* 移动端 */
+@media (max-width: 960px) {
+  .page-plan { --hd-gutter: 18px }
+  .page-plan .plan-layout { grid-template-columns: minmax(0, 1fr); gap: 26px }
+  .page-plan .side { position: static; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start }
+}
+@media (max-width: 720px) {
+  .page-plan .hd-banner .hd-tape.left { left: 24%; width: 76px }
+  .page-plan .hd-banner .hd-tape.right { left: 76% }
+  .page-plan .hd-banner h1 { font-size: 31px }
+  .page-plan .sheet { padding: 16px 16px 10px }
+  .page-plan .g-title { font-size: 20px }
+  .page-plan .g-hint { margin-left: 0; flex-basis: 100%; text-align: left }
+  .page-plan .row { grid-template-columns: 28px 28px minmax(0, 1fr); row-gap: 8px; padding: 10px 0 }
+  .page-plan .row .hd-glyph-round { width: 28px; height: 28px; font-size: 13px }
+  .page-plan .ck { width: 28px; height: 28px }
+  .page-plan .ck svg { width: 25px; height: 25px }
+  .page-plan .acts { grid-column: 1 / -1; justify-content: flex-start; padding-left: 2px }
+  .page-plan .t { font-size: 16px }
+  .page-plan .side { grid-template-columns: minmax(0, 1fr) }
+  .page-plan .list-foot { flex-direction: column; align-items: flex-start; gap: 4px }
+}
+</style>
+</head>
+<body class="hd-app page-plan" data-page="plan">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html" data-nav="home">首页</a>
+      <a href="movie.html" data-nav="movie">影单</a>
+      <a href="book.html" data-nav="book">书单</a>
+      <a href="travel.html" data-nav="travel">足迹</a>
+      <a href="notes.html" data-nav="note">笔记</a>
+      <a href="plan.html" data-nav="plan" aria-current="page">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="hd-banner">
+    <span class="hd-tape left"></span>
+    <span class="hd-tape right amber"></span>
+    <div>
+      <div class="eyebrow">心愿单</div>
+      <h1>心愿<span class="hd-dot"> · </span>想到就排上</h1>
+      <p class="desc">影单 / 书单 / 足迹里还没做完的心愿，按你定的日子排在一起：定了日子的在前，没定日子的在最后一组。</p>
+    </div>
+    <div class="acts">
+      <div class="hd-chips" role="group" aria-label="按状态筛选">
+        <button class="hd-chip on" type="button" aria-pressed="true">共 16 项</button>
+        <button class="hd-chip" type="button" aria-pressed="false">在做 3</button>
+        <button class="hd-chip" type="button" aria-pressed="false">在想 13</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="plan-layout">
+
+    <div class="plan-main">
+      <h2 class="hd-sr">心愿清单</h2>
+
+      <div class="groups">
+
+        <section class="hd-paper sheet" aria-labelledby="g-overdue">
+          <span class="hd-tape"></span>
+          <div class="g-head">
+            <h2 class="g-title" id="g-overdue">已过期
+              <svg viewBox="0 0 100 9" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </h2>
+            <span class="g-count">2 项</span>
+            <span class="g-hint">计划日期已经过了 —— 开始做，或者改个日子</span>
+          </div>
+
+          <div class="row">
+            <button class="ck doing" type="button" aria-label="标记看过：" title="点我：标记看过">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round tv" aria-hidden="true">剧</span>
+            <div class="main">
+              <div class="t">黑镜 第七季</div>
+              <div class="m"><span class="hd-st doing">在看</span><span>剧集</span><span class="when late">过期 2 天</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记看过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+              <button class="hd-btn sm sub" type="button">退回心愿</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="开始看：沙丘 2" title="点我：开始看">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round movie" aria-hidden="true">影</span>
+            <div class="main">
+              <div class="t">沙丘 2</div>
+              <div class="m"><span class="hd-st want">想看</span><span>电影</span><span class="when late">过期 5 天</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm" type="button">开始看 →</button>
+              <button class="hd-btn sm go" type="button">标记看过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="hd-paper sheet" aria-labelledby="g-week">
+          <span class="hd-tape"></span>
+          <div class="g-head">
+            <h2 class="g-title" id="g-week">这周
+              <svg viewBox="0 0 100 9" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </h2>
+            <span class="g-count">2 项</span>
+            <span class="g-hint">打算这周完成的（10月19日 – 10月25日）</span>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="开始看：三体 第二季" title="点我：开始看">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round tv" aria-hidden="true">剧</span>
+            <div class="main">
+              <div class="t">三体 第二季</div>
+              <div class="m"><span class="hd-st want">想看</span><span>剧集</span><span class="when">周六</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm" type="button">开始看 →</button>
+              <button class="hd-btn sm go" type="button">标记看过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="标记去过：洱海 · 才村码头" title="点我：标记去过">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round place" aria-hidden="true">地</span>
+            <div class="main">
+              <div class="t">洱海 · 才村码头</div>
+              <div class="m"><span class="hd-st want">想去</span><span>地点 · 大理</span><span class="when">周日</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记去过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="hd-paper sheet" aria-labelledby="g-later">
+          <span class="hd-tape"></span>
+          <div class="g-head">
+            <h2 class="g-title" id="g-later">下周及以后
+              <svg viewBox="0 0 100 9" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </h2>
+            <span class="g-count">4 项</span>
+            <span class="g-hint">日子还远，先放着</span>
+          </div>
+
+          <div class="row">
+            <button class="ck doing" type="button" aria-label="标记已读：失明症漫记" title="点我：标记已读">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round book" aria-hidden="true">书</span>
+            <div class="main">
+              <div class="t">失明症漫记</div>
+              <div class="m"><span class="hd-st doing">在读</span><span>书籍</span><span class="when">10月27日</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记已读</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+              <button class="hd-btn sm sub" type="button">退回心愿</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="开始看：奥本海默" title="点我：开始看">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round movie" aria-hidden="true">影</span>
+            <div class="main">
+              <div class="t">奥本海默</div>
+              <div class="m"><span class="hd-st want">想看</span><span>电影</span><span class="when">11月2日</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm" type="button">开始看 →</button>
+              <button class="hd-btn sm go" type="button">标记看过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="标记去过：京都 · 鸭川" title="点我：标记去过">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round place" aria-hidden="true">地</span>
+            <div class="main">
+              <div class="t">京都 · 鸭川</div>
+              <div class="m"><span class="hd-st want">想去</span><span>地点 · 京都</span><span class="when">11月15日</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记去过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="开始看：布达佩斯大饭店" title="点我：开始看">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round movie" aria-hidden="true">影</span>
+            <div class="main">
+              <div class="t">布达佩斯大饭店</div>
+              <div class="m"><span class="hd-st want">想看</span><span>电影</span><span class="when">12月24日</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm" type="button">开始看 →</button>
+              <button class="hd-btn sm go" type="button">标记看过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>改日期</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="hd-paper sheet" aria-labelledby="g-none">
+          <span class="hd-tape"></span>
+          <div class="g-head">
+            <h2 class="g-title" id="g-none">还没定日子
+              <svg viewBox="0 0 100 9" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </h2>
+            <span class="g-count">8 项</span>
+            <span class="g-hint">点「定个日子」把它排上</span>
+          </div>
+
+          <div class="row">
+            <button class="ck doing" type="button" aria-label="标记已读：克拉拉与太阳" title="点我：标记已读">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round book" aria-hidden="true">书</span>
+            <div class="main">
+              <div class="t">克拉拉与太阳</div>
+              <div class="m"><span class="hd-st doing">在读</span><span>书籍</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记已读</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+              <button class="hd-btn sm sub" type="button">退回心愿</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="开始看：花样年华" title="点我：开始看">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round movie" aria-hidden="true">影</span>
+            <div class="main">
+              <div class="t">花样年华</div>
+              <div class="m"><span class="hd-st want">想看</span><span>电影</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm" type="button">开始看 →</button>
+              <button class="hd-btn sm go" type="button">标记看过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="开始读：悉达多" title="点我：开始读">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round book" aria-hidden="true">书</span>
+            <div class="main">
+              <div class="t">悉达多</div>
+              <div class="m"><span class="hd-st want">想读</span><span>书籍</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm" type="button">开始读 →</button>
+              <button class="hd-btn sm go" type="button">标记已读</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="开始读：人类简史" title="点我：开始读">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round book" aria-hidden="true">书</span>
+            <div class="main">
+              <div class="t">人类简史</div>
+              <div class="m"><span class="hd-st want">想读</span><span>书籍</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm" type="button">开始读 →</button>
+              <button class="hd-btn sm go" type="button">标记已读</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="标记去过：泉州 · 开元寺" title="点我：标记去过">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round place" aria-hidden="true">地</span>
+            <div class="main">
+              <div class="t">泉州 · 开元寺</div>
+              <div class="m"><span class="hd-st want">想去</span><span>地点 · 泉州</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记去过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="标记去过：阿那亚 · 孤独图书馆" title="点我：标记去过">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round place" aria-hidden="true">地</span>
+            <div class="main">
+              <div class="t">阿那亚 · 孤独图书馆</div>
+              <div class="m"><span class="hd-st want">想去</span><span>地点 · 秦皇岛</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记去过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="标记去过：杭州 · 九溪" title="点我：标记去过">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round place" aria-hidden="true">地</span>
+            <div class="main">
+              <div class="t">杭州 · 九溪</div>
+              <div class="m"><span class="hd-st want">想去</span><span>地点 · 杭州</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记去过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="ck" type="button" aria-label="标记去过：大理 · 喜洲古镇" title="点我：标记去过">
+              <svg viewBox="0 0 26 26" aria-hidden="true">
+                <path class="box" d="M4 6 Q14 3 22 5 Q24 12 22 21 Q12 24 5 21 Q2 13 4 6 Z"/>
+                <path class="ink" d="M8 17 Q11 9 15 13 Q17 9 20 8 M9 12 L12 11"/>
+                <path class="ghost" d="M7 13 Q11 19 20 7"/>
+              </svg>
+            </button>
+            <span class="hd-glyph-round place" aria-hidden="true">地</span>
+            <div class="main">
+              <div class="t">大理 · 喜洲古镇</div>
+              <div class="m"><span class="hd-st want">想去</span><span>地点 · 大理</span></div>
+            </div>
+            <div class="acts">
+              <button class="hd-btn sm go" type="button">标记去过</button>
+              <button class="hd-btn sm sub" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10.5 H20.5 M8 3.5 V7 M16 3.5 V7"/></svg>定个日子</button>
+            </div>
+          </div>
+
+        </section>
+
+      </div>
+
+      <div class="list-foot">
+        <span>已展示 16 / 共 16 项</span>
+        <span class="end">—— 已到底部 ——</span>
+      </div>
+    </div>
+
+    <aside class="side" aria-label="心愿小结">
+
+      <section class="side-block" aria-labelledby="side-summary">
+        <h3 class="side-title" id="side-summary">本月小结 <span class="side-sub">10 月</span></h3>
+        <div class="hd-summary">
+          <span class="item">完成 <b>3</b></span>
+          <span class="item">新加 <b>5</b></span>
+          <span class="item">过期 <b>2</b></span>
+        </div>
+      </section>
+
+      <section class="side-block" aria-labelledby="side-dist">
+        <h3 class="side-title" id="side-dist">按类型分布 <span class="side-sub">16 项</span></h3>
+        <div class="hd-paper">
+          <span class="hd-tape right"></span>
+          <div class="dist">
+            <div class="dist-row">
+              <span class="hd-glyph-round movie" aria-hidden="true">影</span>
+              <span class="bar"><i class="fill movie" style="width:100%"></i></span>
+              <b class="dist-num">6</b>
+            </div>
+            <div class="dist-row">
+              <span class="hd-glyph-round book" aria-hidden="true">书</span>
+              <span class="bar"><i class="fill book" style="width:66%"></i></span>
+              <b class="dist-num">4</b>
+            </div>
+            <div class="dist-row">
+              <span class="hd-glyph-round place" aria-hidden="true">地</span>
+              <span class="bar"><i class="fill place" style="width:100%"></i></span>
+              <b class="dist-num">6</b>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="side-block" aria-labelledby="side-next">
+        <h3 class="side-title" id="side-next">下一个日子 <span class="side-sub">NEXT</span></h3>
+        <div class="hd-paper">
+          <span class="hd-tape left"></span>
+          <div class="next">
+            <span class="next-date"><b>24</b><span>10 月 · 周六</span></span>
+            <div class="next-item">
+              <span class="hd-cover next-cover"><span class="hd-fallback tv xs"><span class="fc-motif"></span></span></span>
+              <div class="next-txt">
+                <div class="next-title">三体 第二季</div>
+                <div class="next-meta">剧集 · 还有 5 天</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="side-block" aria-labelledby="side-note">
+        <h3 class="side-title" id="side-note">写给自己 <span class="side-sub">10.19</span></h3>
+        <div class="note-card hd-rough">
+          <span class="hd-tape"></span>
+          <div class="note-top">
+            <span class="note-kicker">10 月 19 日 · 随手写</span>
+            <span class="hd-stamp">本周先做三件</span>
+          </div>
+          <p class="note-text">这周别贪多：黑镜先收个尾，三体留到周六；剩下的日子，留给没读完的书。</p>
+        </div>
+      </section>
+
+    </aside>
+  </div>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<nav class="hd-tabbar" aria-label="移动端导航">
+  <a href="home.html" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11 Q4 6 12 5 Q20 6 20 11 L20 20 L4 20 Z"/><path d="M9 20 L9 14 L15 14 L15 20"/></svg><span>首页</span></a>
+  <a href="movie.html" data-nav="movie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10 L21 10 M8 6 L8 19 M16 6 L16 19"/></svg><span>影单</span></a>
+  <a href="travel.html" data-nav="travel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21 Q12 14 8 10 Q4 6 12 4 Q20 6 16 10 Q12 14 12 21 Z"/><circle cx="12" cy="9" r="2"/></svg><span>足迹</span></a>
+  <a href="notes.html" data-nav="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3 L18 3 L18 21 L6 21 Z"/><path d="M9 8 L15 8 M9 12 L15 12 M9 16 L13 16"/></svg><span>笔记</span></a>
+</nav>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>
