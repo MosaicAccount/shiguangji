@@ -27,7 +27,7 @@
   display: inline-flex; align-items: center; gap: 8px;
   box-shadow: 3px 4px 0 var(--hd-line-soft);
 }
-.page-home .hero-cta:hover { background: var(--hd-red); border-color: var(--hd-red); color: #FFFDF6; transform: translateY(-1px) rotate(-.5deg) }
+.page-home .hero-cta:hover { background: var(--hd-red); border-color: var(--hd-red); color: var(--hd-paper); transform: translateY(-1px) rotate(-.5deg) }
 .page-home .entry-card {
   display: inline-flex; align-items: center; gap: 12px; text-decoration: none;
   border: 2px solid var(--hd-line); background: var(--hd-paper); padding: 7px 16px;
@@ -118,11 +118,6 @@
   background: var(--hd-paper-3);
   display: grid; place-items: center;
 }
-.page-home .tl-cover .ph { position: absolute; inset: 0 }
-.page-home .tl-cover .ph.movie { background: radial-gradient(circle at 30% 20%, #C98F82 0%, #8E5A4E 45%, #3B342C 100%) }
-.page-home .tl-cover .ph.book { background: radial-gradient(circle at 70% 30%, #C9A472 0%, #7E6A4E 50%, #3B342C 100%) }
-.page-home .tl-cover .ph.place { background: radial-gradient(circle at 50% 75%, #93A99B 0%, #5D6F66 55%, #2F3A34 100%) }
-.page-home .tl-cover .glyph { position: relative; font-size: 24px; color: #FFFDF6; text-shadow: 0 1px 2px rgba(0, 0, 0, .35) }
 .page-home .tl-cover .tape { position: absolute; top: -7px; left: 50%; width: 46px; height: 15px; transform: translateX(-50%) rotate(-3deg); background: rgba(255, 253, 246, .55) }
 .page-home .tl-body { min-width: 0; flex: 1 }
 .page-home .tl-title { font-size: 19px; line-height: 1.45; display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
@@ -160,6 +155,7 @@
 .page-home .note-meta { margin-top: 2px; font-size: 13px; color: var(--hd-ink-soft) }
 
 @media (max-width: 960px) {
+  .page-home .hero-note { display: none }
   .page-home .content { grid-template-columns: minmax(0, 1fr); gap: 30px }
   .page-home .aside { display: grid; grid-template-columns: 1fr 1fr; gap: 20px }
   .page-home .hero-title { font-size: 38px }
@@ -269,7 +265,7 @@
           <div class="tl-rail">
             <a class="tl-item" href="movie.html">
               <div class="tl-card hd-rough">
-                <span class="tl-cover"><span class="ph movie"></span><span class="glyph">影</span><span class="tape"></span></span>
+                <span class="tl-cover"><span class="hd-fallback movie sm"><span class="fc-body"><span class="fc-title">沙丘 2</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
                 <div class="tl-body">
                   <div class="tl-title">沙丘 2 <span class="hd-st done">看过</span></div>
                   <div class="tl-meta"><span>电影</span><span>·</span><span>丹尼斯·维伦纽瓦</span><span class="tl-stars">★★★★★</span></div>
@@ -279,7 +275,7 @@
             </a>
             <a class="tl-item" href="book.html">
               <div class="tl-card hd-rough">
-                <span class="tl-cover"><span class="ph book"></span><span class="glyph">书</span><span class="tape"></span></span>
+                <span class="tl-cover"><span class="hd-fallback book sm"><span class="fc-body"><span class="fc-title">克拉拉与太阳</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
                 <div class="tl-body">
                   <div class="tl-title">克拉拉与太阳 <span class="hd-st done">读过</span></div>
                   <div class="tl-meta"><span>书籍</span><span>·</span><span>石黑一雄</span><span class="tl-stars">★★★★</span></div>
@@ -295,7 +291,7 @@
           <div class="tl-rail">
             <a class="tl-item" href="travel.html">
               <div class="tl-card hd-rough">
-                <span class="tl-cover"><span class="ph place"></span><span class="glyph">地</span><span class="tape"></span></span>
+                <span class="tl-cover"><span class="hd-fallback place sm"><span class="fc-body"><span class="fc-title">洱海 · 才村码头</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
                 <div class="tl-body">
                   <div class="tl-title">洱海 · 才村码头 <span class="hd-st done">去过</span></div>
                   <div class="tl-meta"><span>地点</span><span>·</span><span>大理 · 云南</span><span>·</span><span class="hd-tag plain">湖</span><span class="hd-tag plain">日落</span></div>
@@ -311,7 +307,7 @@
           <div class="tl-rail">
             <a class="tl-item" href="movie.html">
               <div class="tl-card hd-rough">
-                <span class="tl-cover"><span class="ph movie"></span><span class="glyph">剧</span><span class="tape"></span></span>
+                <span class="tl-cover"><span class="hd-fallback tv sm"><span class="fc-body"><span class="fc-title">黑镜 · 第七季</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
                 <div class="tl-body">
                   <div class="tl-title">黑镜 · 第七季 <span class="hd-st done">看过</span></div>
                   <div class="tl-meta"><span>剧集</span><span>·</span><span>Netflix</span><span class="tl-stars">★★★★</span></div>
@@ -321,7 +317,7 @@
             </a>
             <a class="tl-item" href="notes.html">
               <div class="tl-card hd-rough">
-                <span class="tl-cover" style="background:var(--hd-paper-2)"><span class="glyph" style="color:var(--hd-moss)">文</span><span class="tape"></span></span>
+                <span class="tl-cover"><span class="hd-fallback note sm"><span class="fc-body"><span class="fc-title">纸质票根</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
                 <div class="tl-body">
                   <div class="tl-title">写笔记：为什么我还在用纸质票根</div>
                   <div class="tl-meta"><span>笔记</span><span>·</span><span>关联条目：沙丘 2</span></div>
@@ -334,7 +330,7 @@
 
         <div class="tl-more">
           <button class="hd-btn" type="button">展开更多时光 ↓</button>
-          <span class="hd-tiny hd-faint">已展示 5 / 共 128 条</span>
+          <span class="hd-tiny hd-muted">已展示 5 / 共 128 条</span>
         </div>
       </div>
     </section>

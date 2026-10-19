@@ -60,7 +60,7 @@
 .page-index .mat { padding: 18px; min-height: 128px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; font-size: 13px; color: var(--hd-ink-soft); position: relative }
 .page-index .mat .demo-tape { width: 76px; height: 22px; background: var(--hd-tape); clip-path: polygon(0 4%,5% 0,95% 2%,100% 6%,98% 96%,93% 100%,4% 98%,0 94%); transform: rotate(-3deg) }
 .page-index .mat .demo-stamp { border: 2px solid var(--hd-red); color: var(--hd-red); padding: 1px 8px; letter-spacing: 2px; transform: rotate(-4deg); border-radius: 6px 2px 7px 3px / 3px 7px 2px 6px; font-size: 13px }
-.page-index .mat .demo-cover { width: 58px; height: 78px; border: 2px solid var(--hd-line); border-radius: 4px 2px 5px 2px; background: radial-gradient(circle at 30% 20%, #C98F82 0%, #8E5A4E 46%, #3B342C 100%); position: relative; box-shadow: var(--hd-shadow) }
+.page-index .mat .demo-cover { width: 58px; height: 78px; border: 2px solid var(--hd-line); border-radius: 4px 2px 5px 2px; background: linear-gradient(155deg, #A75B47, #84402F); position: relative; box-shadow: var(--hd-shadow) }
 .page-index .mat .demo-cover::before { content: ""; position: absolute; top: -7px; left: 50%; width: 40px; height: 14px; transform: translateX(-50%) rotate(-2deg); background: rgba(255,253,246,.55) }
 .page-index .mat .demo-frame { width: 74px; height: 46px; border: 2.2px solid var(--hd-line); border-radius: 9px 3px 10px 4px / 4px 10px 3px 9px; filter: url(#rough) }
 
@@ -77,6 +77,25 @@
 .page-index .notes-list li { margin: 4px 0 }
 .page-index .notes-list code { font-family: ui-monospace, Menlo, monospace; font-size: .88em; background: var(--hd-paper-2); padding: 1px 4px; border-radius: 4px }
 
+
+.page-index .iter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 22px }
+.page-index .iter-item { padding: 18px 20px 20px }
+.page-index .iter-item h3 { font-size: 17px; margin-bottom: 4px }
+.page-index .iter-item p { font-size: 13.5px; color: var(--hd-ink-soft); line-height: 1.75 }
+.page-index .demo-fbs { display: flex; gap: 10px; margin: 12px 0 6px }
+.page-index .demo-fb { position: relative; width: 84px; height: 114px; overflow: hidden; border: 1.8px solid var(--hd-line); border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px; box-shadow: var(--hd-shadow) }
+.page-index .demo-fb .hd-fallback { padding: 8px 9px }
+.page-index .demo-fb .hd-fallback .fc-band { display: none }
+.page-index .demo-fb .hd-fallback .fc-title { font-size: 13px; -webkit-line-clamp: 2 }
+.page-index .demo-fb .hd-fallback .fc-meta { display: none }
+.page-index .demo-fb .hd-fallback .fc-motif { top: 12%; opacity: .45 }
+.page-index .demo-sum { margin-top: 14px }
+.page-index .demo-sum .hd-summary { margin-top: 0; padding: 7px 12px; font-size: 13px; gap: 4px 10px }
+.page-index .demo-sum .hd-summary .item b { font-size: 17px }
+.page-index .demo-sum .hd-summary .recent { width: 100%; margin-left: 0; padding-top: 4px; border-top: 1px dashed var(--hd-line-soft) }
+@media (max-width: 1000px) {
+  .page-index .iter-grid { grid-template-columns: 1fr }
+}
 @media (max-width: 1000px) {
   .page-index .pages { grid-template-columns: repeat(2, minmax(0,1fr)) }
   .page-index .word-grid { grid-template-columns: 1fr }
@@ -118,7 +137,7 @@
     <span class="hd-tape"></span>
     <div class="eyebrow">0.0.6 · 设计图</div>
     <h1>手绘 · 一个人的手账</h1>
-    <p class="lead">前台视觉从「冷雾胶片」整体切换为手绘手账风格。不是把样式刷匀，而是换一套设计语言：纸是静的，贴纸是全的；线是抖的，字是清楚的。本组图覆盖首页 / 影单 / 书单 / 足迹 / 笔记（列表 · 详情 · 编辑）/ 搜索 / 登录注册，以及共享组件的形制层。</p>
+    <p class="lead">前台视觉从「冷雾胶片」整体切换为手绘手账风格，色彩同时换成一套「暖忆」色板：米纸、暖白、墨褐、陶红、赭石、橄榄——回忆是暖的，页面也该是暖的。不是把样式刷匀，而是换一套设计语言：纸是静的，贴纸是全的；线是抖的，字是清楚的。本组图覆盖首页 / 影单 / 书单 / 足迹 / 笔记（列表 · 详情 · 编辑）/ 搜索 / 登录注册，以及共享组件的形制层。</p>
     <div class="meta">
       <span class="chip">设计评审中 · 尚未进入编码</span>
       <span>2026-10-19</span>
@@ -131,15 +150,15 @@
     <h2><span class="no">01</span>方向</h2>
     <p class="sub">拾光记本来就是一本「一个人的手账」。手绘不是装饰，是内容本来的样子：照片贴进去、胶带粘住、字写在格子里、完成盖个章。页面只做三件事——把内容摆成纸，把状态写成字，把动作留在手边。</p>
     <div class="word-grid">
-      <div class="word hd-paper"><div class="k">纸</div><p>内容长在纸上，不是浮在卡片上。整页是点阵手账纸，内容区是摊开的一页；阴影只有一层纸厚，不做玻璃拟态。</p></div>
+      <div class="word hd-paper"><div class="k">暖</div><p>页面底是奶油米，纸是暖白，阴影带一点咖啡色；陶红、赭石、橄榄都退掉饱和度，像旧相册与旧书封。暗色不是反相，是夜里点灯：暖炭底 + 纸色字。</p></div>
       <div class="word hd-paper"><div class="k">手写</div><p>全站霞鹜文楷；线是抖的（SVG 位移滤镜只上边框与分隔线），字是清楚的（文字层不套滤镜）。状态与日期用批注的口气写。</p></div>
-      <div class="word hd-paper"><div class="k">克制</div><p>每屏一个主角；红色只给主动作与当前状态，苔绿给「完成 / 书」，琥珀给「地点 / 评分」。其余保持墨色与纸色。</p></div>
+      <div class="word hd-paper"><div class="k">克制</div><p>每屏一个主角；红色只给主动作与当前状态，橄榄给「完成 / 书」，赭石给「地点 / 评分」。其余保持墨色与纸色，不用第二套装饰语言。</p></div>
     </div>
   </section>
 
   <section class="sec">
     <h2><span class="no">02</span>页面索引</h2>
-    <p class="sub">十张图，逐页对应现有路由与真实字段。点击进入设计图；★ 为高风险页（手绘最容易闯不过的两关）。</p>
+    <p class="sub">十张图，逐页对应现有路由与真实字段。点击进入设计图；★ 为高风险页（手绘最容易闯不过的两关）。本轮按反馈迭代了四件事：暖忆色板、默认封面、页面小结条、足迹取消双模式。</p>
     <div class="pages">
       <a class="page-card hd-paper" href="home.html">
         <div class="thumb"><div class="mini"></div></div>
@@ -206,14 +225,14 @@
 
   <section class="sec">
     <h2><span class="no">03</span>设计语言</h2>
-    <p class="sub">色彩层沿用站点 <code>--sgj-*</code> 的同一批 hex；形制层新增 <code>--hd-*</code>。下面每个 hex 都按 WCAG AA 校准过正文对比度。</p>
+    <p class="sub">暖忆色板：冷灰全部退场。米纸打底、暖白做纸、墨褐写字；陶红只给主动作与当前状态，赭石给地点与评分，橄榄给完成与书籍，旧玫瑰只做装饰。明暗两套都按 WCAG AA 校准正文对比度。当前设计图里所有页面共用这一套令牌。</p>
     <div class="swatches">
-      <div class="swatch"><div class="c" style="background:#F1F3F2"></div><b>页面底</b>#F1F3F2</div>
-      <div class="swatch"><div class="c" style="background:#FFFEF8"></div><b>纸</b>#FFFEF8</div>
-      <div class="swatch"><div class="c" style="background:#3B342C"></div><b>墨</b>#3B342C</div>
-      <div class="swatch"><div class="c" style="background:#9B5347"></div><b>陶红 · 主动作</b>#9B5347</div>
-      <div class="swatch"><div class="c" style="background:#4F6159"></div><b>苔绿 · 完成</b>#4F6159</div>
-      <div class="swatch"><div class="c" style="background:#8A5A2F"></div><b>琥珀 · 地点/评分</b>#8A5A2F</div>
+      <div class="swatch"><div class="c" style="background:#F4EBDD"></div><b>页面底 · 米纸</b>#F4EBDD</div>
+      <div class="swatch"><div class="c" style="background:#FFFAF1"></div><b>纸 · 暖白</b>#FFFAF1</div>
+      <div class="swatch"><div class="c" style="background:#3B2F26"></div><b>墨褐</b>#3B2F26</div>
+      <div class="swatch"><div class="c" style="background:#9C523F"></div><b>陶红 · 主动作</b>#9C523F</div>
+      <div class="swatch"><div class="c" style="background:#8C5A26"></div><b>赭石 · 地点/评分</b>#8C5A26</div>
+      <div class="swatch"><div class="c" style="background:#5F6B4A"></div><b>橄榄 · 完成</b>#5F6B4A</div>
     </div>
 
     <div class="type-spec hd-paper">
@@ -224,6 +243,22 @@
       <div class="row"><span class="k">小字</span><span class="hd-small">meta · 标签 · 辅助说明，最小 13px，不使用更小字号。</span></div>
     </div>
 
+    <h3 style="margin-top:30px;font-size:17px">全局令牌映射（前台与后台共用一套暖忆色）</h3>
+    <p class="sub" style="max-width:600px">后台管理端本版不换装（D-41），但颜色是项目级的：后续后台换肤只做 Element Plus 变量映射，不再定第二套色板。</p>
+    <table class="map-table">
+      <thead><tr><th>语义</th><th>站点令牌</th><th>手绘形制</th><th>亮色 / 暗色</th></tr></thead>
+      <tbody>
+        <tr><td>页面底</td><td><code>--sgj-bg</code></td><td><code>--hd-page</code></td><td>#F4EBDD / #221D18</td></tr>
+        <tr><td>卡片 / 纸</td><td><code>--sgj-bg-card</code></td><td><code>--hd-paper</code></td><td>#FFFAF1 / #2B251E</td></tr>
+        <tr><td>正文</td><td><code>--sgj-text</code></td><td><code>--hd-ink</code></td><td>#3B2F26 / #F1E7D7</td></tr>
+        <tr><td>主色 · 主动作</td><td><code>--sgj-primary</code></td><td><code>--hd-brick</code></td><td>#9C523F / #D69B86</td></tr>
+        <tr><td>完成 · 书籍</td><td><code>--sgj-moss</code></td><td><code>--hd-olive</code></td><td>#55613F / #A9B08A</td></tr>
+        <tr><td>地点 · 评分</td><td><code>--sgj-amber</code></td><td><code>--hd-ochre</code></td><td>#B07A3C（文本 #8C5A26）/ #D8AC70</td></tr>
+        <tr><td>边框 / 分隔</td><td><code>--sgj-border</code></td><td><code>--hd-line</code></td><td>#DCCDB8 / rgba(241,231,215,.55)</td></tr>
+        <tr><td>后台 EP</td><td><code>--el-color-primary</code> 等</td><td>同一批 hex</td><td>映射到上面的值，不另起色板</td></tr>
+      </tbody>
+    </table>
+
     <div class="materials">
       <div class="mat hd-paper"><span class="demo-cover"></span>封面：贴进来的照片</div>
       <div class="mat hd-paper"><span class="demo-tape"></span>胶带：连接纸片与页面</div>
@@ -232,8 +267,48 @@
     </div>
   </section>
 
+
   <section class="sec">
-    <h2><span class="no">04</span>需求落点与待拍板决策</h2>
+    <h2><span class="no">04</span>本轮迭代：暖色、默认封面、小结条、足迹去双模式</h2>
+    <p class="sub">这三处是这一轮根据反馈改的，改动都收在共享令牌与共享组件里，页面只拼装。</p>
+    <div class="iter-grid">
+
+      <div class="iter-item hd-paper">
+        <span class="hd-tape left"></span>
+        <h3>默认封面</h3>
+        <p>没有上传图时不再用色块：影单是旧票根、书单是布面书封、地点是老照片、笔记是纸页。标题就是内容，类型写在左上角的小签上。</p>
+        <div class="demo-fbs">
+          <span class="demo-fb"><span class="hd-fallback movie"><span class="fc-body"><span class="fc-title">沙丘 2</span></span><span class="fc-motif"></span></span></span>
+          <span class="demo-fb"><span class="hd-fallback book"><span class="fc-body"><span class="fc-title">失明症漫记</span></span><span class="fc-motif"></span></span></span>
+          <span class="demo-fb"><span class="hd-fallback place"><span class="fc-body"><span class="fc-title">洱海</span></span><span class="fc-motif"></span></span></span>
+        </div>
+      </div>
+
+      <div class="iter-item hd-paper">
+        <span class="hd-tape right"></span>
+        <h3>页面小结条</h3>
+        <p>影单 / 书单 / 足迹 / 笔记都在页头放同一行小结：这段时间攒下了什么、最近一次是什么。像手账页脚的一行铅笔字。</p>
+        <div class="demo-sum">
+          <div class="hd-summary">
+            <span class="item">看过 <b>87</b> 部</span><span class="sep">·</span>
+            <span class="item">剧集 <b>32</b> 部</span><span class="sep">·</span>
+            <span class="item">在看 <b>1</b> 部</span>
+            <span class="recent">最近 <b>沙丘 2</b></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="iter-item hd-paper">
+        <h3>足迹：取消双模式</h3>
+        <p>不再让用户在「卡片 / 地图」之间来回切：一页里地图看方位、时间线看年份、卡片看细节。点地图上的点可以定位到下面那张卡。</p>
+        <p style="margin-top:8px">浏览与编辑都留在同一屏，少一次模式切换，也少一次「我刚才是哪个视图」。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">05</span>需求落点与待拍板决策</h2>
     <p class="sub">需求文档只写了「做什么」，这里给「怎么落」；D-41 ~ D-46 是本轮设计评审要确认的口径。</p>
     <table class="map-table">
       <thead><tr><th>需求 / 决策</th><th>本组图的落法</th></tr></thead>
@@ -244,6 +319,9 @@
         <tr><td>FR-007-4 字体全站加载</td><td>沿用自托管霞鹜文楷分片；本组图直接引产品字体 CSS。实现时并入全局，并按脚本重跑核心片、给出体积与首屏量化结论（D-44）。</td></tr>
         <tr><td>FR-007-5 暗色与移动端</td><td>每页都有暗色令牌与 960 / 720 断点；移动底部 tab 仍是首页 / 影单 / 足迹 / 笔记四项。</td></tr>
         <tr><td>FR-007-6 笔记长文排版</td><td>D-46 建议：正文 16.5px / 2.0、标题 24px + 手绘下划线、代码块方格纸、表格抖线、引用红侧笔、图片贴胶带；见笔记详情。</td></tr>
+        <tr><td>默认封面（本轮新增）</td><td>没有上传图时用品类专属的 <code>hd-fallback</code>：影单票根 / 书单布封 / 地点老照片 / 笔记纸页；标题就是封面主角，不再出现渐变+大字占位。</td></tr>
+        <tr><td>页面小结（本轮新增）</td><td>影单 / 书单 / 足迹 / 笔记统一用 <code>hd-summary</code>：一行说明累计数量与最近一次，和足迹原有的「去过 12 城 / 留下 214 张照片」同一形制。</td></tr>
+        <tr><td>足迹结构（本轮调整）</td><td>取消卡片 / 地图双模式：地图看方位、时间线看年份、卡片看细节，同页完成。</td></tr>
         <tr><td>FR-007-7 后台管理端</td><td>D-41 建议维持「不纳入」：后台访客不可见、受众不同，不一致不构成体验割裂。</td></tr>
         <tr><td>D-42 灰度策略</td><td>沿用需求 §7：影单网格与笔记详情两页高风险先行，评审通过后再逐页铺开；每页停下都是完整可发布状态。</td></tr>
         <tr><td>D-45 足迹地图</td><td>瓦片不手绘；用胶带 + 抖线把「真地图」裱进手账，配手绘图钉与时间线。</td></tr>
@@ -252,16 +330,18 @@
   </section>
 
   <section class="sec">
-    <h2><span class="no">05</span>评审要点</h2>
+    <h2><span class="no">06</span>评审要点</h2>
     <div class="notes-list hd-paper">
       <h3>先看两页</h3>
       <ul>
         <li><b>影单 / 书单</b>：手绘在「密度页」能不能扫读——封面、标题、评分、短评、动作是否还分得清；移动端双列是否还看得清。</li>
         <li><b>笔记详情</b>：手绘在「长文」能不能读——行高、标题层级、引用与代码块、目录与反链是否安静；图片与票根是否像「贴进去的」而不是「放进去的」。</li>
       </ul>
-      <h3>再看三件事</h3>
+      <h3>再看四件事</h3>
       <ul>
-        <li><b>暗色</b>：夜间是黑板 + 粉笔，不是反相；每页都有暗色图。</li>
+        <li><b>暖色板</b>：米纸 / 墨褐 / 陶红 / 赭石 / 橄榄是否够「回忆的温馨」，又不至于甜腻或发黄。</li>
+        <li><b>默认封面</b>：没有图时，票根 / 布封 / 老照片 / 纸页是否还像一件「作品」，而不是占位块。</li>
+        <li><b>暗色</b>：夜间是暖炭 + 纸色，不是反相；每页都有暗色图。</li>
         <li><b>移动端</b>：390px 宽不横向溢出；底部 tab 四项不变。</li>
         <li><b>可读性</b>：正文对比度 ≥ 4.5:1（大字号 ≥ 3:1），最小字号 13px；截图工具的 lint 已按此处理。</li>
       </ul>
@@ -276,7 +356,7 @@
   </section>
 
   <section class="sec">
-    <h2><span class="no">06</span>默认做法提示的处理</h2>
+    <h2><span class="no">07</span>默认做法提示的处理</h2>
     <div class="notes-list hd-paper">
       <ul>
         <li><b>标题上方眉标 / 英文大写小字</b>：保留。手账扉页的日期眉标、票根上的印刷字是形制的一部分，不是「AI 味」标签；全部为装饰性小字，不承载关键信息。</li>
@@ -288,7 +368,7 @@
   </section>
 
   <section class="sec">
-    <h2><span class="no">07</span>下一步</h2>
+    <h2><span class="no">08</span>下一步</h2>
     <div class="notes-list hd-paper">
       <p>本组图用于「设计图先行」评审。方向确认后按顺序补：</p>
       <ul>

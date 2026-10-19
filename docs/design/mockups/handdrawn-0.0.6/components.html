@@ -14,7 +14,7 @@
 .page-components .spec h2 { font-size: 19px; letter-spacing: .5px; display: flex; align-items: baseline; gap: 10px; margin-top: 6px }
 .page-components .spec h2 .no { font-size: 13px; color: var(--hd-red); letter-spacing: 2px }
 .page-components .spec .stage { margin-top: 14px; padding: 20px; background: var(--hd-page); border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px; border: 1.5px dashed var(--hd-line-soft) }
-.page-components .spec .note { margin-top: 12px; font-size: 13px; color: var(--hd-ink-soft); line-height: 1.7 }
+.page-components .spec .note { margin-top: 12px; font-size: 13px; color: var(--hd-ink-soft); line-height: 1.7; max-width: 560px }
 .page-components .spec .note b { font-weight: 400; color: var(--hd-ink) }
 .page-components .stack { display: flex; flex-wrap: wrap; gap: 12px; align-items: center }
 
@@ -41,6 +41,15 @@
 .page-components .map-table th { border-color: var(--hd-line); color: var(--hd-ink-soft); font-weight: 400 }
 .page-components .map-table td code { font-family: ui-monospace, Menlo, monospace; font-size: .88em; background: var(--hd-paper-2); padding: 1px 4px; border-radius: 4px }
 
+
+.page-components .fb-demo { display: flex; gap: 16px; flex-wrap: wrap }
+.page-components .fb-demo .fb { position: relative; width: 104px; height: 140px; overflow: hidden; border: 1.8px solid var(--hd-line); border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px; box-shadow: var(--hd-shadow) }
+.page-components .fb-demo .fb .hd-fallback { padding: 9px 10px }
+.page-components .fb-demo .fb .hd-fallback .fc-title { font-size: 14px; -webkit-line-clamp: 2 }
+.page-components .fb-demo .fb .hd-fallback .fc-meta { display: none }
+.page-components .fb-demo .fb .hd-fallback .fc-band { display: none }
+.page-components .fb-demo .fb .hd-fallback .fc-motif { top: 14%; opacity: .5 }
+.page-components .sum-demo { margin-top: 6px }
 @media (max-width: 900px) {
   .page-components .spec-grid { grid-template-columns: minmax(0, 1fr); gap: 22px }
   .page-components .field-row { grid-template-columns: minmax(0, 1fr); gap: 4px }
@@ -83,7 +92,7 @@
   <div class="hd-page-head">
     <div class="eyebrow">设计语言 · 形制层</div>
     <h1>共享组件</h1>
-    <p class="desc">Element Plus 的形制逐件换成手绘语言：表单控件换肤，弹窗 / 抽屉 / 日期 / 消息自绘（D-43）。所有组件都只拼装 <code>--hd-*</code> 令牌，页面不各画一遍（FR-007-1）。</p>
+    <p class="desc">Element Plus 的形制逐件换成手绘语言：表单控件换肤，弹窗 / 抽屉 / 日期 / 消息自绘（D-43）。默认封面与页面小结条也在这里定形。所有组件都只拼装 <code>--hd-*</code> 令牌，页面不各画一遍（FR-007-1）。</p>
   </div>
 
   <div class="spec-grid">
@@ -121,7 +130,7 @@
           <span class="hd-badge">3</span>
         </div>
       </div>
-      <p class="note">状态是<b>手写的胶囊</b>，完成态用苔绿；印章只给「归档 / 完成」这类一次性判定，不参与筛选。</p>
+      <p class="note">状态是<b>手写的胶囊</b>，完成态用橄榄；印章只给「归档 / 完成」这类一次性判定，不参与筛选。</p>
     </section>
 
     <section class="spec hd-paper wide">
@@ -251,7 +260,7 @@
           <span class="hd-toast ok">已标记看过</span>
           <span class="hd-toast err">同步失败，草稿仍在本机</span>
         </div>
-        <p class="note" style="margin-top:16px">提示条是<b>横着贴的一小片纸</b>：成功用苔绿、失败用陶红，2.5 秒自动收走；文案说清「发生了什么、接下来怎么办」，不只写「成功 / 失败」。</p>
+        <p class="note" style="margin-top:16px">提示条是<b>横着贴的一小片纸</b>：成功用橄榄、失败用陶红，2.5 秒自动收走；文案说清「发生了什么、接下来怎么办」，不只写「成功 / 失败」。</p>
       </div>
     </section>
 
@@ -285,7 +294,41 @@
     </section>
 
     <section class="spec hd-paper wide">
-      <h2><span class="no">10</span>Element Plus 映射（D-43）</h2>
+      <h2><span class="no">10</span>默认封面（无图时）</h2>
+      <div class="stage">
+        <div class="fb-demo">
+          <span class="fb"><span class="hd-fallback movie"><span class="fc-band">电影</span><span class="fc-body"><span class="fc-title">沙丘 2</span><span class="fc-meta">丹尼斯·维伦纽瓦 · 2024</span></span><span class="fc-motif"></span></span></span>
+          <span class="fb"><span class="hd-fallback tv"><span class="fc-band">电视剧</span><span class="fc-body"><span class="fc-title">黑镜 第七季</span><span class="fc-meta">2025 开播 · 7 季</span></span><span class="fc-motif"></span></span></span>
+          <span class="fb"><span class="hd-fallback book"><span class="fc-band">书籍</span><span class="fc-body"><span class="fc-title">失明症漫记</span><span class="fc-meta">若泽·萨拉马戈</span></span><span class="fc-motif"></span></span></span>
+          <span class="fb"><span class="hd-fallback place"><span class="fc-band">地点</span><span class="fc-body"><span class="fc-title">洱海 · 才村码头</span><span class="fc-meta">大理 · 中国</span></span><span class="fc-motif"></span></span></span>
+          <span class="fb"><span class="hd-fallback note"><span class="fc-band">笔记</span><span class="fc-body"><span class="fc-title">为什么我还在用纸质票根</span><span class="fc-meta">2026-10-05</span></span><span class="fc-motif"></span></span></span>
+        </div>
+      </div>
+      <p class="note">没有上传图时不再用色块：<b>影单是旧票根、剧集是旧屏幕、书单是布面书封、地点是老照片、笔记是纸页</b>。标题直接当封面主角，类型在左上角的小签上；色板随品类换，但仍只用暖忆里的陶红 / 赭石 / 橄榄。</p>
+    </section>
+
+    <section class="spec hd-paper wide">
+      <h2><span class="no">11</span>页面小结条</h2>
+      <div class="stage">
+        <div class="sum-demo">
+          <div class="hd-summary">
+            <span class="item">看过 <b>87</b> 部</span><span class="sep">·</span>
+            <span class="item">剧集 <b>32</b> 部</span><span class="sep">·</span>
+            <span class="item">在看 <b>1</b> 部</span>
+            <span class="recent">最近 <b>沙丘 2</b></span>
+          </div>
+          <div class="hd-summary" style="margin-top:12px">
+            <span class="item">去过 <b>12</b> 城</span><span class="sep">·</span>
+            <span class="item">留下 <b>214</b> 张照片</span>
+            <span class="recent">最近 <b>大理</b></span>
+          </div>
+        </div>
+      </div>
+      <p class="note">影单 / 书单 / 足迹 / 笔记页头同一行小结：<b>累计数量 + 最近一次</b>。数字比正文大一号，标签保持轻；移动端「最近」换行并加虚线分隔。</p>
+    </section>
+
+    <section class="spec hd-paper wide">
+      <h2><span class="no">12</span>Element Plus 映射（D-43）</h2>
       <table class="map-table">
         <thead><tr><th style="width:34%">Element Plus</th><th style="width:16%">做法</th><th>在手绘语言里</th></tr></thead>
         <tbody>
