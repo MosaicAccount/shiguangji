@@ -388,7 +388,7 @@ onMounted(() => load())
 .hd-cols .paper { padding: 6px 16px 10px }
 .hd-score { margin-left: auto; font-size: 20px; color: var(--hd-amber); flex: none }
 /* 共享皮肤缺口：handdrawn.css 只给影视的 glyph 圈设了 stroke，书籍/地点的圈因此不可见；
-   这里统一成类型色，0.0.7 应收敛回 handdrawn.css */
+   这里统一成类型色，0.0.6 应收敛回 handdrawn.css */
 .hd-page .row .glyph .ring ellipse { stroke: currentColor }
 .hd-tags { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 26px; position: relative; z-index: 1; padding: 4px 0 8px }
 .hd-tag { display: grid; grid-template-columns: 68px 1fr 26px; align-items: center; gap: 10px }

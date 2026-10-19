@@ -22,7 +22,7 @@
 
 当前版本 **v0.0.3「计划」**：把「想 → 做 → 记」补上中间两节——在看 / 在读中间态、计划日期，以及把未完成心愿按日子排在一张清单上的 `/plan` 页面；完成入口统一为可选日期的弹窗。
 
-后续版本（0.0.6 外链图片转存、0.0.7 手绘）与待评估方向见 [docs/requirements/README.md](docs/requirements/README.md) 的版本总览，需求文档是唯一事实来源。
+后续版本（0.0.6 手绘）与待评估方向见 [docs/requirements/README.md](docs/requirements/README.md) 的版本总览，需求文档是唯一事实来源。
 
 ## 快速开始
 

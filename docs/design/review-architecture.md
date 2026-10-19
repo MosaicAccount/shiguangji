@@ -72,7 +72,7 @@ SgjReviewMapper（新）+ SgjReviewMapper.xml
 | --- | --- |
 | `AppScopeHelper` | 可见范围唯一入口，不另写过滤 |
 | `utils/map.ts#loadAMap()` | 高德 SDK 进程内单例懒加载，组地图首次打开才调用 |
-| `views/front/plan/handdrawn.css` | 0.0.7 手绘皮肤单源（D-47），回顾页 `<style>` 不重复定义令牌 |
+| `views/front/plan/handdrawn.css` | 0.0.6 手绘皮肤单源（D-47），回顾页 `<style>` 不重复定义令牌 |
 | `utils/publicRoutes.ts` | `/review` **不加**进白名单（私人内容，同 `/plan`） |
 | 首页 `hero-map-entry` 形制 | 回顾入口卡直接复用该结构与样式类 |
 

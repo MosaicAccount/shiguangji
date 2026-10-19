@@ -208,7 +208,7 @@ const AGG_MAX = 8
 
 - 回顾页 `<style>` 顶部 `@import '../plan/handdrawn.css'`（构建期内联，与 `/plan` 单源）；
 - 新增页面级样式集中在 `review/index.vue` 与两个子组件的 scoped style，令牌一律用 `--hd-*`，不得出现硬编码色值；
-- **共享皮肤缺口回写**：`handdrawn.css` 只给 `.g-movie .ring ellipse` 写了圈色，`.g-book` / `.g-place` 缺失（`/plan` 同样受影响）。本期在回顾页以 `.hd-page .row .glyph .ring ellipse{stroke:currentColor}` 兜底，并在 0.0.7 立一项把该规则并回 `handdrawn.css`（不在本期改共享文件，避免波及 `/plan`）；
+- **共享皮肤缺口回写**：`handdrawn.css` 只给 `.g-movie .ring ellipse` 写了圈色，`.g-book` / `.g-place` 缺失（`/plan` 同样受影响）。本期在回顾页以 `.hd-page .row .glyph .ring ellipse{stroke:currentColor}` 兜底，并在 0.0.6 立一项把该规则并回 `handdrawn.css`（不在本期改共享文件，避免波及 `/plan`）；
 - 移动端：报头单列（年份在上、说明句 `flex-basis:100%` 换行）、年份 54px、统计卡 `repeat(2,1fr)`、足迹逐点阈值降 5、评分榜 / 标签单列。
 
 ## 7. 不做的事（对齐需求 §4）
