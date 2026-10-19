@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>笔记详情 · 手绘手账设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 笔记详情：长文阅读是手绘最难过的一关，这里把排版单独设计 ===== */
+.page-detail .article {
+  display: grid; grid-template-columns: minmax(0, 780px) 214px;
+  gap: 54px; justify-content: center; align-items: start; margin-top: 8px;
+}
+.page-detail .article-sheet {
+  background-color: var(--hd-paper); background-image: var(--hd-grain);
+  padding: 34px 52px 44px; border-radius: 4px; box-shadow: var(--hd-shadow-lift);
+  position: relative;
+}
+.page-detail .article-sheet::after {
+  content: ""; position: absolute; inset: -2px; pointer-events: none;
+  border: 2.3px solid var(--hd-line); border-radius: inherit; filter: url(#rough);
+}
+.page-detail .article-sheet > .hd-tape { top: -12px; width: 112px }
+
+/* 顶部：返回 + 工具 + 标签 + 标题 + 元信息 */
+.page-detail .art-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-detail .art-top .back { display: inline-flex; align-items: center; gap: 6px; font-size: 14.5px; color: var(--hd-ink-soft); text-decoration: none }
+.page-detail .art-top .back:hover { color: var(--hd-red) }
+.page-detail .art-top .tools { margin-left: auto; display: flex; gap: 4px }
+.page-detail .tool-btn {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border: 1.8px solid transparent; background: none; border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+  color: var(--hd-ink-soft);
+}
+.page-detail .tool-btn:hover { border-color: var(--hd-line-soft); color: var(--hd-red) }
+.page-detail .tool-btn svg { width: 18px; height: 18px }
+.page-detail .art-tags { margin-top: 22px; display: flex; gap: 8px; flex-wrap: wrap }
+.page-detail .art-title { margin-top: 12px; font-size: 40px; line-height: 1.32; letter-spacing: 1.5px }
+.page-detail .art-meta { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 14px; color: var(--hd-ink-soft) }
+.page-detail .art-meta .item-link { color: var(--hd-red); text-decoration: none; border-bottom: 1.5px dashed var(--hd-red-soft) }
+.page-detail .art-meta .item-link:hover { border-bottom-style: solid }
+.page-detail .art-rule { margin: 22px 0 6px; border: 0; border-top: 2px dashed var(--hd-line-soft) }
+
+/* 搜索承接条 */
+.page-detail .find-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 20px; padding: 6px 12px; font-size: 13.5px; color: var(--hd-ink-soft);
+  background: var(--hd-amber-soft); border: 1.5px dashed var(--hd-line-soft);
+  border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px;
+}
+.page-detail .find-bar b { font-weight: 400; color: var(--hd-amber-ink) }
+.page-detail .find-bar .acts { margin-left: auto; display: flex; gap: 8px }
+.page-detail .find-bar button { border: 0; background: none; font-size: 13.5px; color: var(--hd-red); padding: 2px 4px }
+
+/* 正文：正文纸面 = 行距更松、层级靠字号与手绘下划线 */
+.page-detail .hd-prose { font-size: 16.5px; line-height: 2.02; margin-top: 18px }
+.page-detail .hd-prose h2 { font-size: 24px; margin-top: 1.9em; position: relative; padding-bottom: 8px }
+.page-detail .hd-prose h2::after {
+  content: ""; position: absolute; left: -2px; bottom: 0; width: 118px; height: 8px;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="118" height="8" viewBox="0 0 118 8"><path d="M2 5 Q16 1 30 4 T58 4 T88 3 T116 5" stroke="%239B5347" stroke-width="2" fill="none" stroke-linecap="round" opacity=".75"/></svg>') no-repeat left/100% 100%;
+}
+.page-detail .hd-prose h3 { font-size: 19.5px; margin-top: 1.6em; color: var(--hd-ink) }
+.page-detail .hd-prose p { margin-top: .95em }
+.page-detail .hd-prose .first::first-letter { font-size: 1.5em; line-height: 1; color: var(--hd-red) }
+.page-detail .wikilink { color: var(--hd-red); text-decoration: underline; text-decoration-style: wavy; text-decoration-thickness: 1.4px; text-underline-offset: 4px; cursor: help }
+.page-detail .wikilink::after { content: " ↗"; font-size: .8em; text-decoration: none }
+.page-detail .hd-prose ul { margin-top: .8em }
+.page-detail .hd-prose li::marker { color: var(--hd-red) }
+
+/* 票根图：手账里贴的东西，替产品里的上传照片 */
+.page-detail .figure { margin: 2em 0 1.4em; display: flex; flex-direction: column; align-items: center }
+.page-detail .ticket {
+  position: relative; width: min(430px, 100%); padding: 20px 26px 18px;
+  background-color: var(--hd-paper-2); background-image: var(--hd-grain);
+  border: 1.8px dashed var(--hd-line-soft); border-radius: 3px;
+  transform: rotate(-1.6deg); box-shadow: var(--hd-shadow);
+  display: flex; align-items: center; gap: 20px;
+}
+.page-detail .ticket::before, .page-detail .ticket::after {
+  content: ""; position: absolute; top: -9px; width: 64px; height: 18px; background: var(--hd-tape);
+  clip-path: polygon(0 4%, 5% 0, 95% 2%, 100% 6%, 98% 96%, 93% 100%, 4% 98%, 0 94%);
+}
+.page-detail .ticket::before { left: 16px; transform: rotate(-3deg) }
+.page-detail .ticket::after { right: 16px; transform: rotate(2.5deg) }
+.page-detail .ticket .stub { flex: none; width: 1px; align-self: stretch; border-left: 2px dashed var(--hd-line-soft); position: relative }
+.page-detail .ticket .no { font-size: 12px; letter-spacing: 2px; color: var(--hd-ink-faint) }
+.page-detail .ticket .name { font-size: 21px; letter-spacing: 1px; margin-top: 2px; white-space: nowrap }
+.page-detail .ticket .sub { font-size: 13px; color: var(--hd-ink-soft); margin-top: 4px; letter-spacing: 1px }
+.page-detail .ticket .code { text-align: right; flex: none }
+.page-detail .ticket .code .row { font-size: 12.5px; color: var(--hd-ink-soft); letter-spacing: 1px }
+.page-detail .ticket .code .seat { font-size: 20px; letter-spacing: 2px; margin-top: 2px }
+.page-detail .figure figcaption { margin-top: 12px; font-size: 13.5px; color: var(--hd-ink-soft); display: flex; align-items: center; gap: 8px }
+.page-detail .figure figcaption::before { content: ""; width: 26px; border-top: 1.5px dashed var(--hd-line-soft) }
+
+.page-detail .end-mark { margin: 46px 0 8px; text-align: center; font-size: 14px; letter-spacing: 6px; color: var(--hd-ink-faint) }
+.page-detail .end-mark span { display: inline-block; padding: 0 12px; border-top: 1.5px dashed var(--hd-line-soft); border-bottom: 1.5px dashed var(--hd-line-soft) }
+
+/* 反链 */
+.page-detail .backlinks { margin-top: 34px; padding-top: 20px; border-top: 2px dashed var(--hd-line-soft) }
+.page-detail .backlinks h2 { font-size: 17px; letter-spacing: 1px; display: flex; align-items: baseline; gap: 10px }
+.page-detail .backlinks h2 .count { font-size: 13px; color: var(--hd-ink-soft); letter-spacing: 0 }
+.page-detail .bl-item { display: block; text-decoration: none; color: var(--hd-ink); padding: 11px 0; border-bottom: 1.5px dashed var(--hd-line-soft) }
+.page-detail .bl-item:last-of-type { border-bottom: 0 }
+.page-detail .bl-item:hover .bl-title { color: var(--hd-red) }
+.page-detail .bl-title { font-size: 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.page-detail .bl-title time { font-size: 13px; color: var(--hd-ink-faint); font-variant-numeric: tabular-nums }
+.page-detail .bl-excerpt { margin-top: 3px; font-size: 13.5px; color: var(--hd-ink-soft); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden }
+
+/* 右侧目录 */
+.page-detail .toc-col { position: sticky; top: 96px }
+.page-detail .toc-col .hd-toc { position: static }
+.page-detail .toc-col .toc-hint { margin-top: 18px; font-size: 13px; color: var(--hd-ink-soft); line-height: 1.7 }
+.page-detail .toc-back { display: inline-block; margin-top: 10px; font-size: 13px; color: var(--hd-ink-soft); text-decoration: none }
+.page-detail .toc-back:hover { color: var(--hd-red) }
+.page-detail .inline-toc { display: none }
+
+@media (max-width: 1100px) {
+  .page-detail .article { grid-template-columns: minmax(0, 1fr); gap: 0; max-width: 820px; margin-left: auto; margin-right: auto }
+  .page-detail .toc-col { display: none }
+  .page-detail .inline-toc { display: block; margin: 20px 0 4px; font-size: 14px }
+  .page-detail .inline-toc summary { cursor: pointer; color: var(--hd-ink-soft); font-size: 14px }
+  .page-detail .inline-toc ol { margin: 10px 0 0; padding-left: 1.3em; color: var(--hd-ink-soft) }
+  .page-detail .inline-toc li { margin: 4px 0 }
+}
+@media (max-width: 720px) {
+  .page-detail .article-sheet { padding: 24px 20px 34px }
+  .page-detail .art-title { font-size: 29px }
+  .page-detail .hd-prose { font-size: 16px; line-height: 1.95 }
+  .page-detail .hd-prose h2 { font-size: 21px }
+  .page-detail .ticket { flex-wrap: wrap; gap: 12px; padding: 16px 18px }
+  .page-detail .ticket .code { text-align: left }
+  .page-detail .ticket .name { font-size: 17px; white-space: normal }
+  .page-detail .find-bar .acts { margin-left: 0 }
+}
+</style>
+</head>
+<body class="hd-app page-detail" data-page="note">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html" data-nav="home">首页</a>
+      <a href="movie.html" data-nav="movie">影单</a>
+      <a href="book.html" data-nav="book">书单</a>
+      <a href="travel.html" data-nav="travel">足迹</a>
+      <a href="notes.html" data-nav="note">笔记</a>
+      <a href="plan.html" data-nav="plan">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+  <div class="article">
+    <article class="article-sheet">
+      <span class="hd-tape"></span>
+
+      <div class="art-top">
+        <a class="back" href="notes.html">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 5 L6 12 L14 19"/></svg>
+          全部笔记
+        </a>
+        <div class="tools">
+          <button class="tool-btn" type="button" aria-label="导出 Markdown">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4 L12 15 M7 11 L12 16 L17 11 M5 20 L19 20"/></svg>
+          </button>
+          <button class="tool-btn" type="button" aria-label="编辑笔记">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20 L5 15 L16 4 L20 8 L9 19 Z"/><path d="M14 6 L18 10"/></svg>
+          </button>
+          <button class="tool-btn" type="button" aria-label="删除笔记">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7 L19 7 M9 7 L9 4 L15 4 L15 7 M7 7 L8 20 L16 20 L17 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="art-tags">
+        <span class="hd-tag">电影</span>
+        <span class="hd-tag">随感</span>
+        <span class="hd-tag plain">公开</span>
+      </div>
+
+      <h1 class="art-title">为什么我还在用纸质票根</h1>
+
+      <div class="art-meta">
+        <span>关联条目 <a class="item-link" href="movie.html">沙丘 2</a></span>
+        <span>·</span>
+        <span>写于 2026-10-05</span>
+        <span>·</span>
+        <span>更新于 2026-10-06</span>
+      </div>
+
+      <hr class="art-rule">
+
+      <details class="inline-toc">
+        <summary>目录 · 3 个标题</summary>
+        <ol>
+          <li><a href="#s1">票根会皱，也会掉出来</a></li>
+          <li><a href="#s2">我留下了什么</a></li>
+          <li><a href="#s3">一个小习惯</a></li>
+        </ol>
+      </details>
+
+      <div class="find-bar">
+        <span>从搜索「<b>票根</b>」进入</span>
+        <span>·</span>
+        <span>第 <b>1</b> / 3 处</span>
+        <div class="acts">
+          <button type="button">‹ 上一处</button>
+          <button type="button">下一处 ›</button>
+          <button type="button">关闭高亮</button>
+        </div>
+      </div>
+
+      <div class="hd-prose">
+        <p class="first">散场的时候，检票员把票根撕下一角递还给我。那张纸不厚，边缘已经起毛，却在口袋里一直留到今天。每次翻到它，我都能想起那天影院的空调、邻座拆糖纸的声音，以及沙虫第一次从沙丘里立起来时，低频从座位底下长出来的感觉。</p>
+
+        <h2 id="s1">票根会皱，也会掉出来</h2>
+        <p>数字票根不会皱、不会褪色，但也不会在某个下午从书里掉出来。我并不是反对电子票——它更快、更准、更不会丢。只是「不会丢」和「值得留下」是两件事。</p>
+
+        <blockquote>数字票根不会皱、不会褪色，但也不会在某个下午从书里掉出来。</blockquote>
+
+        <div class="figure">
+          <div class="ticket" role="img" aria-label="《沙丘 2》纸质票根">
+            <div>
+              <div class="no">NO. 2026 0309</div>
+              <div class="name">沙丘 2 · DUNE PART TWO</div>
+              <div class="sub">2026.03.09 19:40 · 7 号厅 · IMAX</div>
+            </div>
+            <div class="stub" aria-hidden="true"></div>
+            <div class="code">
+              <div class="row">ROW SEAT</div>
+              <div class="seat">07 · 12</div>
+              <div class="row">ADMIT ONE</div>
+            </div>
+          </div>
+          <figcaption>票根夹在场刊里，边缘已经起毛。</figcaption>
+        </div>
+
+        <h2 id="s2">我留下了什么</h2>
+        <p>一张票根能留下的东西比想象中多：</p>
+        <ul>
+          <li><strong>那天</strong>——日期、场次、影厅，连晚饭吃了什么都跟着回来；</li>
+          <li><strong>那排座位</strong>——7 排 12 座，后来才发现是看 IMAX 最好的位置之一；</li>
+          <li><strong>那个人</strong>——票根的背面有一行字，是同行的人写的。</li>
+        </ul>
+        <p>这些东西不会出现在任何一条观看记录里。记录告诉我「看过」，票根告诉我「怎么看的」。我把它们一起写进这篇笔记，再链到 <a class="wikilink">克拉拉与太阳</a>——那本书里也有一张被我夹在书页里的票根。</p>
+
+        <h3 id="s3">一个小习惯</h3>
+        <p>现在每看完一部电影，我会把票根拍照、贴进手账，然后在正文里留一句当天最想记住的细节。不为了完整，只为了下次翻到的时候，能重新听见那个下午。</p>
+      </div>
+
+      <div class="end-mark"><span>· 完 ·</span></div>
+
+      <section class="backlinks">
+        <h2>谁在正文里链接到这篇 <span class="count">被引用 2 篇</span></h2>
+        <a class="bl-item" href="note-detail.html">
+          <div class="bl-title">重读《克拉拉与太阳》的三个问题 <time>2026-10-08</time></div>
+          <div class="bl-excerpt">票根那篇里提到的「怎么看的」，其实和我重读这本书的动机是同一个问题……</div>
+        </a>
+        <a class="bl-item" href="note-detail.html">
+          <div class="bl-title">旅行照片整理术 <time>2026-09-30</time></div>
+          <div class="bl-excerpt">整理照片时翻到一张票根的照片，忽然觉得纸片和照片是同一类东西……</div>
+        </a>
+      </section>
+    </article>
+
+    <aside class="toc-col">
+      <nav class="hd-toc" aria-label="文章目录">
+        <div class="toc-title">目录 · 3 个标题</div>
+        <a class="on" href="#s1">票根会皱，也会掉出来</a>
+        <a href="#s2">我留下了什么</a>
+        <a class="lv3" href="#s3">一个小习惯</a>
+        <a class="toc-back" href="#top">回到顶部 ↑</a>
+      </nav>
+      <p class="toc-hint">滚动时目录跟随；当前小节以红线标出。移动端收进文首的可折叠目录。</p>
+    </aside>
+  </div>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<nav class="hd-tabbar" aria-label="移动端导航">
+  <a href="home.html" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11 Q4 6 12 5 Q20 6 20 11 L20 20 L4 20 Z"/><path d="M9 20 L9 14 L15 14 L15 20"/></svg><span>首页</span></a>
+  <a href="movie.html" data-nav="movie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10 L21 10 M8 6 L8 19 M16 6 L16 19"/></svg><span>影单</span></a>
+  <a href="travel.html" data-nav="travel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21 Q12 14 8 10 Q4 6 12 4 Q20 6 16 10 Q12 14 12 21 Z"/><circle cx="12" cy="9" r="2"/></svg><span>足迹</span></a>
+  <a href="notes.html" data-nav="note" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3 L18 3 L18 21 L6 21 Z"/><path d="M9 8 L15 8 M9 12 L15 12 M9 16 L13 16"/></svg><span>笔记</span></a>
+</nav>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>

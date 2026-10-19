@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>笔记 · 手绘手账设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 笔记列表 ===== */
+.page-notes mark {
+  color: inherit; padding: 0 1px;
+  background: linear-gradient(transparent 62%, var(--hd-amber-soft) 62%, var(--hd-amber-soft) 92%, transparent 92%);
+}
+.page-notes .hd-banner { margin-top: 4px }
+.page-notes .hd-banner .hd-tape { top: -11px; left: 44px; width: 96px; transform: rotate(-3deg) }
+.page-notes .hd-banner .acts .hd-btn svg { width: 17px; height: 17px }
+
+/* 草稿条：整宽暖色便签，与 banner 拉开一层 */
+.page-notes .draft-strip {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  margin-top: 30px; padding: 11px 18px;
+  background-color: var(--hd-paper-3); background-image: var(--hd-grain);
+  border-radius: 3px; box-shadow: var(--hd-shadow);
+  color: var(--hd-ink); text-decoration: none; transform: rotate(-.35deg);
+}
+.page-notes .draft-strip .hd-tape {
+  top: -9px; left: 34px; width: 70px; height: 20px; transform: rotate(-2.5deg);
+}
+.page-notes .draft-strip .ico { flex: none; width: 22px; height: 22px; color: var(--hd-amber-ink) }
+.page-notes .draft-strip .txt { font-size: 15.5px; line-height: 1.6 }
+.page-notes .draft-strip .txt b { font-weight: 400; color: var(--hd-red) }
+.page-notes .draft-strip .arr { margin-left: auto; padding-left: 10px; color: var(--hd-red); font-size: 17px }
+
+/* 工具条 */
+.page-notes .tools { margin-top: 24px; display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap }
+.page-notes .tools .hd-search { flex: 1 1 220px; max-width: 330px }
+.page-notes .tools .hd-search svg {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; color: var(--hd-ink-faint); pointer-events: none;
+}
+.page-notes .tools .hd-search .hd-input {
+  padding: 4px 10px 4px 34px; font-size: 15px; line-height: 1.6;
+}
+.page-notes .tools .hd-chips { gap: 8px }
+.page-notes .tools .count { margin-left: auto; font-size: 13.5px; color: var(--hd-ink-soft) }
+
+/* 卡片 */
+.page-notes .hd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px 26px; margin-top: 26px }
+.page-notes .note-card { text-decoration: none; color: var(--hd-ink) }
+.page-notes .note-sheet {
+  position: relative; height: 100%; display: flex; flex-direction: column; gap: 7px;
+  background-color: var(--hd-paper); padding: 20px 20px 15px;
+  border-radius: 6px; box-shadow: var(--hd-shadow);
+  transition: transform .12s, box-shadow .12s;
+}
+.page-notes .note-card:hover .note-sheet { transform: translateY(-2px); box-shadow: var(--hd-shadow-lift) }
+.page-notes .note-sheet .hd-tape { top: -9px; width: 84px; height: 20px }
+.page-notes .nt-hit {
+  position: absolute; top: 16px; right: 17px;
+  font-size: 13px; letter-spacing: .5px; color: var(--hd-ink-faint);
+}
+.page-notes .nt-title { font-size: 18.5px; line-height: 1.45; padding-right: 74px }
+.page-notes .nt-title .hd-stamp { margin-left: 5px; vertical-align: 3px }
+.page-notes .nt-excerpt {
+  font-size: 14.5px; line-height: 1.75; color: var(--hd-ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.page-notes .nt-meta {
+  margin-top: auto; padding-top: 10px;
+  display: flex; align-items: center; gap: 5px 8px; flex-wrap: wrap;
+  font-size: 13.5px; color: var(--hd-ink-soft);
+}
+.page-notes .nt-meta .item { display: inline-flex; align-items: center; gap: 5px; min-width: 0 }
+.page-notes .nt-meta .item svg { flex: none; width: 14px; height: 14px; color: var(--hd-amber-ink) }
+.page-notes .nt-meta .time { margin-left: auto; font-size: 13px; color: var(--hd-ink-faint); white-space: nowrap }
+
+.page-notes .load-more { margin-top: 40px; display: flex; flex-direction: column; align-items: center; gap: 8px }
+
+@media (max-width: 960px) {
+  .page-notes .hd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 20px }
+  .page-notes .nt-title { padding-right: 62px }
+}
+@media (max-width: 720px) {
+  .page-notes .hd-banner { padding: 20px 18px }
+  .page-notes .hd-banner h1 { font-size: 31px }
+  .page-notes .draft-strip { margin-top: 24px; padding: 10px 14px; transform: none }
+  .page-notes .draft-strip .txt { font-size: 14.5px }
+  .page-notes .tools { margin-top: 20px }
+  .page-notes .tools .hd-search { flex-basis: 100%; max-width: none }
+  .page-notes .tools .count { margin-left: 0 }
+  .page-notes .hd-grid { grid-template-columns: minmax(0, 1fr); gap: 26px }
+  .page-notes .nt-title { font-size: 18px }
+  .page-notes .load-more { margin-top: 32px }
+}
+</style>
+</head>
+<body class="hd-app page-notes" data-page="note">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html" data-nav="home">首页</a>
+      <a href="movie.html" data-nav="movie">影单</a>
+      <a href="book.html" data-nav="book">书单</a>
+      <a href="travel.html" data-nav="travel">足迹</a>
+      <a href="notes.html" data-nav="note">笔记</a>
+      <a href="plan.html" data-nav="plan">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="hd-banner">
+    <span class="hd-tape" aria-hidden="true"></span>
+    <div>
+      <div class="eyebrow">写下即记得</div>
+      <h1>笔记</h1>
+      <p class="desc">记录你的思考与学习笔记。</p>
+    </div>
+    <div class="acts">
+      <button class="hd-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16 L12 4"/><path d="M7.6 8.4 Q9.2 6.4 12 4 Q14.8 6.4 16.4 8.4"/><path d="M4 15 L4 18.5 Q4 20.5 6 20.5 L18 20.5 Q20 20.5 20 18.5 L20 15"/></svg>
+        导入 md
+      </button>
+      <button class="hd-btn go" type="button">＋ 写笔记</button>
+    </div>
+  </section>
+
+  <a class="draft-strip hd-rough" href="note-edit.html">
+    <span class="hd-tape" aria-hidden="true"></span>
+    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7 Q3 5.5 4.6 5.5 L9 5.5 L11 8 L19.4 8 Q21 8 21 9.6 L21 18.4 Q21 20 19.4 20 L4.6 20 Q3 20 3 18.4 Z"/><path d="M3 11 L21 11"/></svg>
+    <span class="txt">草稿箱里有 <b>2 份</b>没写完的笔记</span>
+    <span class="arr" aria-hidden="true">→</span>
+  </a>
+
+  <div class="tools">
+    <label class="hd-search">
+      <span class="hd-sr">搜索笔记</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      <input class="hd-input" type="search" placeholder="搜索标题与正文">
+    </label>
+    <div class="hd-chips">
+      <button class="hd-chip on" type="button">全部</button>
+      <button class="hd-chip" type="button">阅读</button>
+      <button class="hd-chip" type="button">电影</button>
+      <button class="hd-chip" type="button">旅行</button>
+      <button class="hd-chip" type="button">随想</button>
+    </div>
+    <span class="count">共 36 篇</span>
+  </div>
+
+  <div class="hd-grid">
+    <a class="hd-card note-card" href="note-edit.html">
+      <div class="note-sheet hd-grain hd-rough">
+        <span class="hd-tape" aria-hidden="true"></span>
+        <span class="nt-hit">文中 3 处</span>
+        <h3 class="nt-title">为什么我还在用纸质票根</h3>
+        <p class="nt-excerpt">数字票根不会皱、也不会褪色，但它也不会在某个下午从一本书里掉出来，让我忽然想起那场电影。</p>
+        <div class="nt-meta">
+          <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14 Q7 11 10 8 L13 5 Q16 2 19 5 Q22 8 19 11 L17 13"/><path d="M14 10 Q17 13 14 16 L11 19 Q8 22 5 19 Q2 16 5 13 L7 11"/></svg>条目：沙丘 2</span>
+          <span class="hd-tag plain">电影</span>
+          <span class="time">10 月 05 日</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="hd-card note-card" href="note-edit.html">
+      <div class="note-sheet hd-grain hd-rough">
+        <span class="hd-tape amber right" aria-hidden="true"></span>
+        <span class="nt-hit">文中 2 处</span>
+        <h3 class="nt-title"><mark>洱海</mark>骑行的路线和几个停下来的理由 <span class="hd-stamp">公开</span></h3>
+        <p class="nt-excerpt">从才村码头到喜洲古镇一共十四公里，我们停了七次，每一次停下来都值得。</p>
+        <div class="nt-meta">
+          <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14 Q7 11 10 8 L13 5 Q16 2 19 5 Q22 8 19 11 L17 13"/><path d="M14 10 Q17 13 14 16 L11 19 Q8 22 5 19 Q2 16 5 13 L7 11"/></svg>条目：洱海 · 才村码头</span>
+          <span class="hd-tag plain">旅行</span>
+          <span class="time">10 月 12 日</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="hd-card note-card" href="note-edit.html">
+      <div class="note-sheet hd-grain hd-rough">
+        <span class="hd-tape left" aria-hidden="true"></span>
+        <h3 class="nt-title">这个月想明白的三件小事</h3>
+        <p class="nt-excerpt">第一件是别把休息当成奖励，第二件是把话说慢一点，第三件到现在还没想明白。</p>
+        <div class="nt-meta">
+          <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 4 L19 4 L19 20 L5 20 Z"/><path d="M8 9 L16 9 M8 13 L16 13 M8 17 L13 17"/></svg>独立笔记</span>
+          <span class="hd-tag plain">随想</span>
+          <span class="time">09 月 28 日</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="hd-card note-card" href="note-edit.html">
+      <div class="note-sheet hd-grain hd-rough">
+        <span class="hd-tape amber" aria-hidden="true"></span>
+        <span class="nt-hit">文中 1 处</span>
+        <h3 class="nt-title">重读《克拉拉与太阳》的三个问题</h3>
+        <p class="nt-excerpt">石黑一雄把光写得很具体，具体到你会怀疑那束光是不是也在照着你自己。</p>
+        <div class="nt-meta">
+          <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14 Q7 11 10 8 L13 5 Q16 2 19 5 Q22 8 19 11 L17 13"/><path d="M14 10 Q17 13 14 16 L11 19 Q8 22 5 19 Q2 16 5 13 L7 11"/></svg>条目：克拉拉与太阳</span>
+          <span class="hd-tag plain">阅读</span>
+          <span class="time">09 月 20 日</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="hd-card note-card" href="note-edit.html">
+      <div class="note-sheet hd-grain hd-rough">
+        <span class="hd-tape right" aria-hidden="true"></span>
+        <h3 class="nt-title">三体里的「慢」与「快」</h3>
+        <p class="nt-excerpt">叶文洁按下按钮那一刻很快，人类明白过来那件事，用了几百年。</p>
+        <div class="nt-meta">
+          <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14 Q7 11 10 8 L13 5 Q16 2 19 5 Q22 8 19 11 L17 13"/><path d="M14 10 Q17 13 14 16 L11 19 Q8 22 5 19 Q2 16 5 13 L7 11"/></svg>条目：三体</span>
+          <span class="hd-tag plain">阅读</span>
+          <span class="time">09 月 12 日</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="hd-card note-card" href="note-edit.html">
+      <div class="note-sheet hd-grain hd-rough">
+        <span class="hd-tape left amber" aria-hidden="true"></span>
+        <h3 class="nt-title">旅行照片整理术</h3>
+        <p class="nt-excerpt">先删掉九成，再按地点归档，最后只留那些能让你想起风的方向的照片。</p>
+        <div class="nt-meta">
+          <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 4 L19 4 L19 20 L5 20 Z"/><path d="M8 9 L16 9 M8 13 L16 13 M8 17 L13 17"/></svg>独立笔记</span>
+          <span class="hd-tag plain">旅行</span>
+          <span class="time">09 月 06 日</span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="load-more">
+    <button class="hd-btn" type="button">加载更多 ↓</button>
+    <span class="hd-tiny hd-faint">已展示 6 / 共 36 篇</span>
+  </div>
+
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<nav class="hd-tabbar" aria-label="移动端导航">
+  <a href="home.html" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11 Q4 6 12 5 Q20 6 20 11 L20 20 L4 20 Z"/><path d="M9 20 L9 14 L15 14 L15 20"/></svg><span>首页</span></a>
+  <a href="movie.html" data-nav="movie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10 L21 10 M8 6 L8 19 M16 6 L16 19"/></svg><span>影单</span></a>
+  <a href="travel.html" data-nav="travel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21 Q12 14 8 10 Q4 6 12 4 Q20 6 16 10 Q12 14 12 21 Z"/><circle cx="12" cy="9" r="2"/></svg><span>足迹</span></a>
+  <a href="notes.html" data-nav="note" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3 L18 3 L18 21 L6 21 Z"/><path d="M9 8 L15 8 M9 12 L15 12 M9 16 L13 16"/></svg><span>笔记</span></a>
+</nav>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>
