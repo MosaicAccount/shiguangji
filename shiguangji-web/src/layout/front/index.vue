@@ -1,5 +1,5 @@
 <template>
-  <div class="front-layout">
+  <div class="front-layout hd-app">
     <header class="front-header">
       <div class="front-header-inner">
         <router-link to="/home" class="logo">
@@ -59,6 +59,8 @@
 
 <script setup lang="ts" name="FrontLayout">
 import { getToken } from '@/utils/auth'
+// 0.0.6 手绘形制层（--hd-*）全站装载；字体同步全局加载（核心片复核见 #108）
+import '@/assets/styles/handdrawn/handdrawn-site.css'
 import useSettingsStore from '@/store/modules/settings'
 import { animateThemeToggle } from '@/utils/theme'
 
@@ -103,7 +105,7 @@ const mobileTabs = [
   display: flex;
   flex-direction: column;
   background: var(--sgj-bg);
-  font-family: var(--sgj-font-sans);
+  font-family: var(--hd-hand);
 }
 
 .front-header {
