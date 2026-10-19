@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>默认封面三方向 · 设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+.page-covers .intro { padding: 30px 34px 26px; margin-top: 8px }
+.page-covers .intro h1 { font-size: 36px; letter-spacing: 2px; margin-top: 8px }
+.page-covers .intro p { margin-top: 10px; font-size: 16px; line-height: 1.85; color: var(--hd-ink-soft); max-width: 720px }
+.page-covers .palette { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; align-items: center; font-size: 13px; color: var(--hd-ink-soft) }
+.page-covers .palette i { width: 26px; height: 26px; border-radius: 7px 3px 8px 3px / 3px 8px 3px 7px; border: 1.5px solid var(--hd-line); display: inline-block; vertical-align: -7px; margin-right: 4px }
+
+.page-covers .dir { margin-top: 46px }
+.page-covers .dir-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap }
+.page-covers .dir-head h2 { font-size: 26px; letter-spacing: 1px }
+.page-covers .dir-head .badge { font-size: 12.5px; color: var(--hd-brick); border: 1.5px solid var(--hd-brick); border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px; padding: 0 8px; transform: rotate(-2deg) }
+.page-covers .dir-head .sub { font-size: 14px; color: var(--hd-ink-soft) }
+.page-covers .dir-note { margin-top: 8px; font-size: 14.5px; color: var(--hd-ink-soft); line-height: 1.8; max-width: 640px }
+.page-covers .dir-note b { font-weight: 400; color: var(--hd-ink) }
+.page-covers .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 198px)); gap: 24px; margin-top: 22px }
+
+/* 封面样张共用的框 */
+.page-covers .cv { position: relative; aspect-ratio: 3 / 4; overflow: hidden; border: 2px solid var(--hd-line); border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px; box-shadow: var(--hd-shadow-lift); transform: rotate(-.4deg) }
+.page-covers .cv:nth-child(2) { transform: rotate(.35deg) }
+.page-covers .cv .cap { position: absolute; left: 0; right: 0; bottom: -26px; text-align: center; font-size: 12.5px; color: var(--hd-ink-faint); transform: rotate(0) }
+.page-covers .cv-wrap { position: relative; padding-bottom: 26px }
+
+/* 方向 A：影像封面（当前页面在用） */
+.page-covers .cv-a .hd-fallback { padding: 12px 13px 14px }
+.page-covers .cv-a .hd-fallback .fc-title { font-size: 19px }
+.page-covers .cv-a .hd-fallback .fc-band { font-size: 12.5px }
+
+/* 方向 B：字体封面 */
+.page-covers .cv-type { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 22px 18px; color: #FFF8ED; background: var(--cv-bg, #8E4F3E) }
+.page-covers .cv-type::before { content: ""; position: absolute; inset: 7px; border: 1px solid rgba(255, 248, 237, .32); border-radius: 2px }
+.page-covers .cv-type .k { position: absolute; top: 14px; left: 15px; font-size: 12px; letter-spacing: 2px; border: 1px solid rgba(255, 248, 237, .55); padding: 0 6px; border-radius: 7px 3px 6px 3px / 3px 6px 3px 7px }
+.page-covers .cv-type .t { font-size: 25px; line-height: 1.38; letter-spacing: 1px; position: relative; z-index: 1 }
+.page-covers .cv-type .r { width: 58%; border-top: 1px solid rgba(255, 248, 237, .5); margin: 15px 0 13px }
+.page-covers .cv-type .m { font-size: 12.5px; letter-spacing: 2px; opacity: .92; position: relative; z-index: 1 }
+.page-covers .cv-type .n { position: absolute; bottom: 15px; font-size: 11px; letter-spacing: 3px; opacity: .55 }
+.page-covers .cv-type.movie { --cv-bg: linear-gradient(160deg, #8E4F3E, #6E3A2D) }
+.page-covers .cv-type.book { --cv-bg: linear-gradient(160deg, #5E6650, #474E3D) }
+.page-covers .cv-type.place { --cv-bg: linear-gradient(160deg, #9A6B3F, #77502C) }
+
+/* 方向 C：手账拼贴 */
+.page-covers .cv-collage { position: absolute; inset: 0; padding: 13px 13px 12px; display: flex; flex-direction: column; background-color: var(--hd-paper-2); background-image: var(--hd-grain); color: var(--hd-ink) }
+.page-covers .cv-collage .ph { position: relative; height: 58%; overflow: hidden; border: 1.8px solid var(--hd-line); border-radius: 2px; transform: rotate(-2.2deg); box-shadow: var(--hd-shadow) }
+.page-covers .cv-collage .ph img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.75) brightness(1.02) }
+.page-covers .cv-collage .ph .tp { position: absolute; top: -8px; left: 50%; width: 56px; height: 17px; transform: translateX(-50%) rotate(-2deg); background: var(--hd-tape); clip-path: polygon(0 4%,5% 0,95% 2%,100% 6%,98% 96%,93% 100%,4% 98%,0 94%) }
+.page-covers .cv-collage .t { margin-top: 12px; font-size: 18px; line-height: 1.35 }
+.page-covers .cv-collage .m { margin-top: 3px; font-size: 12.5px; color: var(--hd-ink-soft) }
+.page-covers .cv-collage .st { position: absolute; right: 11px; bottom: 12px; font-size: 11.5px; letter-spacing: 1.5px; color: var(--hd-red); border: 1.5px solid var(--hd-red); padding: 0 6px; border-radius: 6px 2px 5px 2px / 2px 5px 2px 6px; transform: rotate(-4deg) }
+
+.page-covers .verdict { margin-top: 40px; padding: 22px 26px }
+.page-covers .verdict h2 { font-size: 20px }
+.page-covers .verdict table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px }
+.page-covers .verdict th, .page-covers .verdict td { border: 1.6px solid var(--hd-line-soft); padding: 8px 11px; text-align: left; vertical-align: top; line-height: 1.7 }
+.page-covers .verdict th { border-color: var(--hd-line); color: var(--hd-ink-soft); font-weight: 400; white-space: nowrap }
+.page-covers .verdict code { font-family: ui-monospace, Menlo, monospace; font-size: .9em; background: var(--hd-paper-2); padding: 1px 4px; border-radius: 4px }
+
+@media (max-width: 860px) {
+  .page-covers .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px }
+  .page-covers .cv-type .t { font-size: 18px }
+  .page-covers .cv-type .r { margin: 10px 0 }
+  .page-covers .cv-collage .t { font-size: 14px }
+  .page-covers .cv-collage .m, .page-covers .cv-collage .st { display: none }
+  .page-covers .verdict table { font-size: 13px }
+}
+</style>
+</head>
+<body class="hd-app page-covers">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="index.html">设计说明</a>
+      <a href="home.html">首页</a>
+      <a href="movie.html">影单</a>
+      <a href="book.html">书单</a>
+      <a href="travel.html">足迹</a>
+      <a href="notes.html">笔记</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+  <section class="intro hd-paper">
+    <span class="hd-tape"></span>
+    <div class="eyebrow" style="font-size:13px;letter-spacing:4px;color:var(--hd-red)">默认封面 · 三个方向</div>
+    <h1>没有封面的那一格，应该长什么样</h1>
+    <p>上传封面是少数、缺封面是常态。上一次把它做成了「色块 + 图标」，太像占位；这次把三种思路并排摊开，选一个再铺到全站。三个方向都只用暖忆色板与公有领域素材，不额外引风格。</p>
+    <div class="palette">
+      <span><i style="background:#F5F2EC"></i>页面底 #F5F2EC</span>
+      <span><i style="background:#FFFDF9"></i>纸 #FFFDF9</span>
+      <span><i style="background:#37322C"></i>墨 #37322C</span>
+      <span><i style="background:#96503F"></i>陶红 #96503F</span>
+      <span><i style="background:#8A5C31"></i>赭石 #8A5C31</span>
+      <span><i style="background:#5A6350"></i>橄榄 #5A6350</span>
+    </div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head">
+      <h2>A · 影像封面</h2>
+      <span class="badge">当前页面在用</span>
+      <span class="sub">一张旧照片 / 一段布纹，标题压在底部暗角上</span>
+    </div>
+    <p class="dir-note">最像「电影海报 / 旅行照片」，扫一眼就知道这是影像内容。片子与照片内容无关，只承担气氛；好处是整屏有画面、不像占位，坏处是每张都要挑图，且图片风格会左右整站气质。</p>
+    <div class="grid3">
+      <div class="cv-wrap"><div class="cv cv-a"><span class="hd-fallback movie"><span class="fc-band">电影</span><span class="fc-body"><span class="fc-title">沙丘 2</span><span class="fc-meta">丹尼斯·维伦纽瓦 · 2024</span></span><span class="fc-motif"></span></span></div><span class="cap">影单</span></div>
+      <div class="cv-wrap"><div class="cv cv-a"><span class="hd-fallback book"><span class="fc-band">书籍</span><span class="fc-body"><span class="fc-title">失明症漫记</span><span class="fc-meta">若泽·萨拉马戈</span></span><span class="fc-motif"></span></span></div><span class="cap">书单</span></div>
+      <div class="cv-wrap"><div class="cv cv-a"><span class="hd-fallback place"><span class="fc-band">地点</span><span class="fc-body"><span class="fc-title">洱海 · 才村码头</span><span class="fc-meta">大理 · 中国</span></span><span class="fc-motif"></span></span></div><span class="cap">足迹</span></div>
+    </div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head">
+      <h2>B · 字体封面</h2>
+      <span class="sub">整块低饱和色 + 书名 / 片名 + 双细线，没有照片</span>
+    </div>
+    <p class="dir-note">像旧书封或 CC 标准收藏的碟封：<b>标题本身就是画面</b>。最耐看、最不会出错，也最省素材；缺点是没有「照片」带来的记忆钩子，影单会显得太安静。</p>
+    <div class="grid3">
+      <div class="cv-wrap"><div class="cv"><div class="cv-type movie"><span class="k">电影</span><span class="t">沙丘 2</span><span class="r"></span><span class="m">维伦纽瓦 · 2024</span><span class="n">DUNE PART TWO</span></div></div><span class="cap">影单</span></div>
+      <div class="cv-wrap"><div class="cv"><div class="cv-type book"><span class="k">书籍</span><span class="t">失明症漫记</span><span class="r"></span><span class="m">若泽·萨拉马戈</span><span class="n">BLINDNESS</span></div></div><span class="cap">书单</span></div>
+      <div class="cv-wrap"><div class="cv"><div class="cv-type place"><span class="k">地点</span><span class="t">洱海 · 才村码头</span><span class="r"></span><span class="m">大理 · 中国 · 2026</span><span class="n">LAKE</span></div></div><span class="cap">足迹</span></div>
+    </div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head">
+      <h2>C · 手账拼贴</h2>
+      <span class="sub">纸卡上贴一张小照片，手写标题 + 胶带 + 印章</span>
+    </div>
+    <p class="dir-note">最贴「一个人的手账」：照片是贴上去的，标题写在下面，像真的把票根和照片收进本子。情绪最对，但信息密度低、每张卡都更「手作」，大批量列表会显得碎。</p>
+    <div class="grid3">
+      <div class="cv-wrap"><div class="cv"><div class="cv-collage"><div class="ph"><img src="assets/covers/place-lake.jpg" alt=""><span class="tp"></span></div><div class="t">沙丘 2</div><div class="m">丹尼斯·维伦纽瓦 · 2024</div><span class="st">看过</span></div></div><span class="cap">影单</span></div>
+      <div class="cv-wrap"><div class="cv"><div class="cv-collage"><div class="ph"><img src="assets/covers/movie-garden.jpg" alt=""><span class="tp"></span></div><div class="t">失明症漫记</div><div class="m">若泽·萨拉马戈</div><span class="st">读过</span></div></div><span class="cap">书单</span></div>
+      <div class="cv-wrap"><div class="cv"><div class="cv-collage"><div class="ph"><img src="assets/covers/place-garden.jpg" alt=""><span class="tp"></span></div><div class="t">洱海 · 才村码头</div><div class="m">大理 · 中国</div><span class="st">去过</span></div></div><span class="cap">足迹</span></div>
+    </div>
+  </section>
+
+  <section class="verdict hd-paper">
+    <h2>怎么选</h2>
+    <table>
+      <thead><tr><th></th><th>A 影像</th><th>B 字体</th><th>C 拼贴</th></tr></thead>
+      <tbody>
+        <tr><td>气质</td><td>电影感、画面强</td><td>书卷气、安静</td><td>手账感、暖</td></tr>
+        <tr><td>信息密度</td><td>高</td><td>中</td><td>低</td></tr>
+        <tr><td>素材成本</td><td>需要一组图（可用公有领域 / 随包素材）</td><td>零素材</td><td>需要一组图 + 手作细节</td></tr>
+        <tr><td>适合</td><td>影单、足迹</td><td>书单、笔记</td><td>首页时间线、回顾</td></tr>
+        <tr><td>风险</td><td>图片风格决定整站气质</td><td>容易显得太素</td><td>列表里会碎</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px;font-size:14px;color:var(--hd-ink-soft);line-height:1.8;max-width:640px">我的建议：<b style="font-weight:400;color:var(--hd-ink)">A 与 B 混用</b>——影单 / 足迹用 A（有画面），书单用 B（书封本来就是字体封面），首页时间线用 C 的小尺寸（像贴进本子）。三个方向都只改 <code>hd-fallback</code> 的样式，不动页面结构。</p>
+  </section>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 0.0.6 · 默认封面选型</span>
+    <span>素材：NASA / Yellowstone NPS / Poly Haven（公有领域或 CC0），见 assets/covers/SOURCES.md</span>
+    <a href="index.html">返回设计说明</a>
+  </div>
+</footer>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>

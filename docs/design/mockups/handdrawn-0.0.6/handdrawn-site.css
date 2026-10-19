@@ -13,36 +13,36 @@
 
 .hd-app {
   /* ---- 形制层：日 · 纸 + 钢笔 ---- */
-  /* 暖忆色板：米纸、墨褐、陶红、赭石、橄榄、旧玫瑰。
-     回忆要暖 —— 页面底是奶油米，纸是暖白，阴影带一点咖啡色，不用冷灰。 */
-  --hd-page: #F4EBDD;
-  --hd-paper: #FFFAF1;
-  --hd-paper-2: #FBF2E2;
-  --hd-paper-3: #F5E6CD;
-  --hd-ink: #3B2F26;
-  /* 次级 / 三级墨色按 WCAG AA 定（纸面 ≥4.5:1）：#6A5847 6.52:1、#7C6A57 4.98:1 */
-  --hd-ink-soft: #6A5847;
-  --hd-ink-faint: #7C6A57;
-  --hd-line: rgba(59, 47, 38, .5);
-  --hd-line-soft: rgba(59, 47, 38, .26);
-  --hd-brick: #9C523F;
+  /* 暖忆 v3：暖而不黄。页面底是近中性的暖白灰，纸是暖白，
+     陶红 / 赭石 / 橄榄都压低饱和，暗色是中性暖炭而不是棕黄。 */
+  --hd-page: #F5F2EC;
+  --hd-paper: #FFFDF9;
+  --hd-paper-2: #F8F4ED;
+  --hd-paper-3: #F0E9DD;
+  --hd-ink: #37322C;
+  /* 次级 / 三级墨色按 WCAG AA 定（纸面 ≥4.5:1）：#6A6158 5.97:1、#7A7066 4.6:1 */
+  --hd-ink-soft: #6A6158;
+  --hd-ink-faint: #7A7066;
+  --hd-line: rgba(55, 50, 44, .5);
+  --hd-line-soft: rgba(55, 50, 44, .24);
+  --hd-brick: #96503F;
   --hd-red: var(--hd-brick);
-  --hd-red-ink: #8C4635;
-  --hd-red-soft: rgba(156, 82, 63, .12);
-  --hd-ochre: #B07A3C;
+  --hd-red-ink: #8A4638;
+  --hd-red-soft: rgba(150, 80, 63, .12);
+  --hd-ochre: #9C6B3F;
   --hd-amber: var(--hd-ochre);
-  --hd-amber-ink: #8C5A26;
-  --hd-amber-soft: rgba(176, 122, 60, .14);
-  --hd-olive: #55613F;
+  --hd-amber-ink: #8A5C31;
+  --hd-amber-soft: rgba(156, 107, 63, .14);
+  --hd-olive: #5A6350;
   --hd-moss: var(--hd-olive);
-  --hd-moss-soft: rgba(85, 97, 63, .14);
-  --hd-rose: #B98A7B;
-  --hd-tape: rgba(156, 82, 63, .22);
-  --hd-tape-2: rgba(176, 122, 60, .24);
+  --hd-moss-soft: rgba(90, 99, 80, .14);
+  --hd-rose: #B08A7E;
+  --hd-tape: rgba(150, 80, 63, .18);
+  --hd-tape-2: rgba(156, 107, 63, .20);
   --hd-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0.055'/></feComponentTransfer></filter><rect width='140' height='140' filter='url(%23g)'/></svg>");
-  --hd-shadow: 2px 3px 0 rgba(99, 66, 38, .16);
-  --hd-shadow-lift: 4px 6px 0 rgba(99, 66, 38, .15);
-  --hd-dot: rgba(59, 47, 38, .09);
+  --hd-shadow: 2px 3px 0 rgba(70, 58, 46, .13);
+  --hd-shadow-lift: 4px 6px 0 rgba(70, 58, 46, .13);
+  --hd-dot: rgba(55, 50, 44, .075);
 
   --hd-hand: 'LXGW WenKai', 'Kaiti SC', 'STKaiti', 'KaiTi', 'Songti SC', serif;
   --hd-radius: 10px 4px 12px 5px / 5px 12px 4px 10px;
@@ -68,32 +68,32 @@
 
 html.dark .hd-app {
   /* ---- 形制层：夜 · 黑板 + 粉笔 ---- */
-  --hd-page: #221D18;
-  --hd-paper: #2B251E;
-  --hd-paper-2: #332B23;
-  --hd-paper-3: #3A3128;
-  --hd-ink: #F1E7D7;
-  --hd-ink-soft: #C3B5A3;
-  --hd-ink-faint: #AB9D8B;
-  --hd-line: rgba(241, 231, 215, .55);
-  --hd-line-soft: rgba(241, 231, 215, .24);
-  --hd-brick: #D69B86;
+  --hd-page: #1E1D1B;
+  --hd-paper: #272624;
+  --hd-paper-2: #2D2B28;
+  --hd-paper-3: #34312D;
+  --hd-ink: #EFEAE2;
+  --hd-ink-soft: #C1B9AE;
+  --hd-ink-faint: #A59C91;
+  --hd-line: rgba(239, 234, 226, .5);
+  --hd-line-soft: rgba(239, 234, 226, .22);
+  --hd-brick: #D29C8C;
   --hd-red: var(--hd-brick);
-  --hd-red-ink: #E0AF9D;
-  --hd-red-soft: rgba(214, 155, 134, .16);
-  --hd-ochre: #D8AC70;
+  --hd-red-ink: #DFAFA0;
+  --hd-red-soft: rgba(210, 156, 140, .16);
+  --hd-ochre: #D5B07E;
   --hd-amber: var(--hd-ochre);
   --hd-amber-ink: #DDB57A;
-  --hd-amber-soft: rgba(216, 172, 112, .16);
-  --hd-olive: #A9B08A;
+  --hd-amber-soft: rgba(213, 176, 126, .16);
+  --hd-olive: #ACB59D;
   --hd-moss: var(--hd-olive);
-  --hd-moss-soft: rgba(169, 176, 138, .16);
-  --hd-rose: #D5A096;
-  --hd-tape: rgba(214, 155, 134, .20);
-  --hd-tape-2: rgba(216, 172, 112, .20);
+  --hd-moss-soft: rgba(172, 181, 157, .16);
+  --hd-rose: #D3A89B;
+  --hd-tape: rgba(210, 156, 140, .18);
+  --hd-tape-2: rgba(213, 176, 126, .18);
   --hd-shadow: 2px 3px 0 rgba(0, 0, 0, .34);
   --hd-shadow-lift: 4px 6px 0 rgba(0, 0, 0, .3);
-  --hd-dot: rgba(241, 231, 215, .06);
+  --hd-dot: rgba(239, 234, 226, .05);
 }
 
 .hd-app * { box-sizing: border-box }
@@ -332,67 +332,99 @@ html.dark .hd-app .hd-btn.go:hover { background: var(--hd-red); border-color: va
 }
 .hd-app .hd-photo.note .ph-glyph { color: var(--hd-ink-soft); text-shadow: none }
 
-/* ===== 默认封面：没有上传图时也像一本旧书 / 一张旧票根 ===== */
+/* ===== 默认封面：影像 / 布纹 + 标题，不做图标占位 ===== */
 .hd-app .hd-fallback {
   position: absolute; inset: 0; display: flex; flex-direction: column;
-  padding: 13px 14px 14px; overflow: hidden;
-  color: #FFF7EA; background: var(--fc-bg, linear-gradient(155deg, #A75B47, #84402F));
+  padding: 14px 15px 16px; overflow: hidden; color: #FFF8ED;
+  background-color: var(--fc-tint, #2A211B);
+  background-image: linear-gradient(180deg, rgba(50, 34, 24, .06) 28%, rgba(22, 17, 13, .68) 100%), var(--fc-img, none);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-blend-mode: normal, normal;
 }
 .hd-app .hd-fallback .fc-band {
   align-self: flex-start; font-size: 13px; letter-spacing: 2px; padding: 0 7px;
-  border: 1px solid rgba(255, 247, 234, .55);
-  border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px; opacity: .95;
+  border: 1px solid rgba(255, 248, 237, .62);
+  border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px;
+  background: rgba(26, 20, 16, .22);
 }
 .hd-app .hd-fallback .fc-body { margin-top: auto; position: relative; z-index: 2; min-width: 0 }
 .hd-app .hd-fallback .fc-title {
-  font-size: 21px; line-height: 1.3; letter-spacing: .5px;
+  font-size: 22px; line-height: 1.32; letter-spacing: .5px;
+  text-shadow: 0 1px 8px rgba(20, 14, 10, .62);
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 .hd-app .hd-fallback .fc-meta {
-  margin-top: 4px; font-size: 13px; line-height: 1.5; opacity: .88;
+  margin-top: 5px; font-size: 13px; line-height: 1.5; opacity: .95;
+  text-shadow: 0 1px 6px rgba(20, 14, 10, .55);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .hd-app .hd-fallback::before {
-  content: ""; position: absolute; inset: 5px; pointer-events: none;
-  border: 1.4px solid rgba(255, 247, 234, .38);
-  border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px;
+  content: ""; position: absolute; inset: 6px; pointer-events: none;
+  border: 1px solid rgba(255, 248, 237, .34);
+  border-radius: 3px 1px 4px 2px / 2px 4px 1px 3px;
 }
-.hd-app .hd-fallback .fc-motif {
-  position: absolute; right: -6px; top: 20%; width: 60%; height: 48%;
-  background-repeat: no-repeat; background-position: center; background-size: contain; opacity: .9;
-}
-.hd-app .hd-fallback.movie { --fc-bg: linear-gradient(155deg, #A75B47, #84402F) }
-.hd-app .hd-fallback.tv { --fc-bg: linear-gradient(155deg, #7C5B42, #5A4231) }
-.hd-app .hd-fallback.book { --fc-bg: linear-gradient(155deg, #96662E, #754B1F) }
-.hd-app .hd-fallback.place { --fc-bg: linear-gradient(155deg, #66734F, #4A5738) }
-.hd-app .hd-fallback.movie .fc-motif { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100' fill='none' stroke='%23FFF7EA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='10' y='18' width='100' height='64' rx='4'/><path d='M10 32 H110 M10 68 H110'/><path d='M20 18 V32 M34 18 V32 M48 18 V32 M62 18 V32 M76 18 V32 M90 18 V32 M20 68 V82 M34 68 V82 M48 68 V82 M62 68 V82 M76 68 V82 M90 68 V82'/><circle cx='60' cy='50' r='9'/><path d='M56 47 Q58 43 62 44'/></svg>") }
-.hd-app .hd-fallback.tv .fc-motif { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100' fill='none' stroke='%23FFF7EA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='16' y='26' width='88' height='58' rx='4'/><path d='M60 26 L46 9 M60 26 L74 9'/><circle cx='60' cy='55' r='12'/><path d='M55 49 Q58 45 63 46'/></svg>") }
-.hd-app .hd-fallback.book .fc-motif { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100' fill='none' stroke='%23FFF7EA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 30 Q40 22 60 32 Q80 22 106 30 L106 78 Q80 70 60 80 Q40 70 14 78 Z'/><path d='M60 32 L60 80'/><path d='M26 40 Q40 36 52 41 M26 52 Q40 48 52 53'/></svg>") }
-.hd-app .hd-fallback.place .fc-motif { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100' fill='none' stroke='%23FFF7EA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='86' cy='26' r='9'/><path d='M12 82 L40 44 L60 68 L78 50 L110 82'/><path d='M12 88 Q40 82 60 88 T108 86'/><path d='M22 34 Q28 30 34 34'/><path d='M96 40 Q102 44 108 40'/></svg>") }
-.hd-app .hd-fallback.note { --fc-bg: var(--hd-paper-2); color: var(--hd-ink) }
-.hd-app .hd-fallback.note::before { border-color: var(--hd-line-soft) }
-.hd-app .hd-fallback.note .fc-band { border-color: var(--hd-line-soft); color: var(--hd-ink-soft) }
-.hd-app .hd-fallback.note .fc-motif { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100' fill='none' stroke='%233B2F26' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M24 18 H96 M24 34 H86 M24 50 H96 M24 66 H70'/><path d='M84 88 L104 68 L112 76 L92 96 Z' stroke-opacity='.55'/></svg>"); opacity: .5 }
 .hd-app .hd-fallback::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background-image: var(--hd-grain); opacity: .55; mix-blend-mode: multiply;
+  background-image: var(--hd-grain); opacity: .45; mix-blend-mode: multiply;
 }
-html.dark .hd-app .hd-fallback { filter: brightness(.86) saturate(.92) }
-html.dark .hd-app .hd-fallback::after { opacity: .35; mix-blend-mode: screen }
-/* 同一系列里做一点明度差，避免一整屏封面像复制粘贴 */
-.hd-app .hd-grid > .hd-card:nth-child(3n+2) .hd-fallback { filter: brightness(1.06) saturate(.95) }
-.hd-app .hd-grid > .hd-card:nth-child(3n) .hd-fallback { filter: brightness(.94) saturate(1.05) }
-.hd-app .hd-fallback.sm { padding: 9px 10px 10px }
-.hd-app .hd-fallback.sm .fc-band { display: none }
-.hd-app .hd-fallback.sm .fc-title { font-size: 12.5px; line-height: 1.35; -webkit-line-clamp: 2 }
-.hd-app .hd-fallback.sm .fc-meta { display: none }
-.hd-app .hd-fallback.sm .fc-motif { top: 10%; width: 52%; height: 42%; opacity: .3 }
-.hd-app .hd-fallback.xs { padding: 0; justify-content: center; align-items: center }
-.hd-app .hd-fallback.xs .fc-motif { width: 82%; height: 82%; opacity: .95; }
-html.dark .hd-app .hd-fallback.note .fc-motif { filter: invert(1) }
+.hd-app .hd-fallback .fc-motif { display: none }
 
+/* 影 / 剧：一张旧剧照，片名压在底部的暗角上 */
+.hd-app .hd-fallback.movie { --fc-img: url("assets/covers/place-lake.jpg"); --fc-tint: #8A5A44 }
+.hd-app .hd-fallback.tv { --fc-img: url("assets/covers/tv-city.jpg"); --fc-tint: #2A2420 }
+
+/* 书：布面精装，标题居中、上下双细线 */
+.hd-app .hd-fallback.book {
+  --fc-img: url("assets/covers/book-linen.jpg"); --fc-tint: #8E7B55;
+  justify-content: center; align-items: center; text-align: center; padding: 20px 18px;
+  background-image: linear-gradient(rgba(30, 24, 18, .14), rgba(30, 24, 18, .24)), var(--fc-img);
+  background-blend-mode: normal, multiply;
+}
+.hd-app .hd-fallback.book .fc-band { position: absolute; top: 14px; left: 15px; align-self: auto }
+.hd-app .hd-fallback.book .fc-body { margin: 0 }
+.hd-app .hd-fallback.book .fc-title {
+  font-size: 20px; line-height: 1.42; padding: 12px 0;
+  border-top: 1px solid rgba(255, 248, 237, .5);
+  border-bottom: 1px solid rgba(255, 248, 237, .5);
+  text-shadow: 0 1px 4px rgba(20, 14, 10, .45);
+}
+.hd-app .hd-fallback.book .fc-meta { margin-top: 9px }
+
+/* 地点：一张老照片 */
+.hd-app .hd-fallback.place {
+  --fc-img: url("assets/covers/place-lake.jpg"); --fc-tint: #9A8160;
+  background-image: linear-gradient(180deg, rgba(30, 23, 18, 0) 48%, rgba(26, 20, 16, .5) 100%), var(--fc-img);
+}
+
+/* 笔记：纸页 */
+.hd-app .hd-fallback.note {
+  color: var(--hd-ink); background-color: var(--hd-paper-2);
+  background-image: repeating-linear-gradient(0deg, transparent 0 24px, var(--hd-line-soft) 24px 25px), var(--hd-grain);
+  background-blend-mode: normal;
+}
+.hd-app .hd-fallback.note .fc-band { border-color: var(--hd-line-soft); background: transparent; color: var(--hd-ink-soft) }
+.hd-app .hd-fallback.note .fc-title { text-shadow: none }
+.hd-app .hd-fallback.note .fc-meta { text-shadow: none; opacity: 1; color: var(--hd-ink-soft) }
+
+/* 同一网格里换底图，避免一整屏复制粘贴 */
+.hd-app .hd-grid > .hd-card:nth-child(3n+2) .hd-fallback.movie { --fc-img: url("assets/covers/movie-garden.jpg"); --fc-tint: #7A5A42 }
+.hd-app .hd-grid > .hd-card:nth-child(3n) .hd-fallback.movie { --fc-img: url("assets/covers/place-garden.jpg"); --fc-tint: #6A5A44 }
+.hd-app .hd-grid > .hd-card:nth-child(2n) .hd-fallback.tv { background-position: center, 42% 58% }
+.hd-app .hd-grid > .hd-card:nth-child(2n) .hd-fallback.book { --fc-img: url("assets/covers/book-cotton.jpg"); --fc-tint: #8A7450 }
+.hd-app .hd-grid > .hd-card:nth-child(3n) .hd-fallback.book { --fc-img: url("assets/covers/book-denim.jpg"); --fc-tint: #7C6A55 }
+.hd-app .hd-grid > .hd-card:nth-child(2n) .hd-fallback.place { --fc-img: url("assets/covers/place-garden.jpg"); --fc-tint: #6E6150; background-position: center, 60% 45% }
+
+/* 尺寸 */
+.hd-app .hd-fallback.sm { padding: 9px 10px }
+.hd-app .hd-fallback.sm .fc-band, .hd-app .hd-fallback.sm .fc-body { display: none }
+.hd-app .hd-fallback.sm .fc-title { font-size: 12.5px; line-height: 1.35; -webkit-line-clamp: 2; border: 0; padding: 0 }
+.hd-app .hd-fallback.sm .fc-meta { display: none }
+.hd-app .hd-fallback.sm.book { justify-content: flex-end; align-items: flex-start; text-align: left; padding: 9px 10px }
+.hd-app .hd-fallback.xs { padding: 0 }
 .hd-app .hd-fallback.xs .fc-band, .hd-app .hd-fallback.xs .fc-body { display: none }
-.hd-app .hd-fallback.xs .fc-motif { position: static; width: 72%; height: 72%; opacity: .85 }
+
+html.dark .hd-app .hd-fallback { filter: brightness(.9) saturate(.9) }
 
 /* ===== 版面小结条：一行说明「这段时间攒下了什么」 ===== */
 .hd-app .hd-summary {

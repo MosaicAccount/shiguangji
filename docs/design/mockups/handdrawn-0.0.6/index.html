@@ -220,19 +220,25 @@
         <div class="d">按钮 / 表单 / 日期 / 评分 / 弹窗 / 抽屉 / 提示 / 空态 + EP 映射（D-43）。</div>
         <div class="tags"><span class="hd-tag plain">FR-007-1</span><span class="hd-tag plain">FR-007-3</span></div>
       </a>
+      <a class="page-card hd-paper" href="covers.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">封面选型 <span class="risk mid">待拍板</span></div>
+        <div class="d">影像 / 字体 / 拼贴三个方向并排，附取舍表；当前页面暂用影像方向。</div>
+        <div class="tags"><span class="hd-tag plain">默认封面</span><span class="hd-tag plain">三方向</span></div>
+      </a>
     </div>
   </section>
 
   <section class="sec">
     <h2><span class="no">03</span>设计语言</h2>
-    <p class="sub">暖忆色板：冷灰全部退场。米纸打底、暖白做纸、墨褐写字；陶红只给主动作与当前状态，赭石给地点与评分，橄榄给完成与书籍，旧玫瑰只做装饰。明暗两套都按 WCAG AA 校准正文对比度。当前设计图里所有页面共用这一套令牌。</p>
+    <p class="sub">暖忆 v3：暖而不黄。页面底从奶油米调回近中性的暖白灰 #F5F2EC，纸是暖白，墨是暖褐；陶红 / 赭石 / 橄榄全部压低饱和，旧玫瑰只做装饰。暗色是中性暖炭 #1E1D1B，不是棕黄。明暗两套都按 WCAG AA 校准正文对比度，所有页面共用这一套令牌。</p>
     <div class="swatches">
-      <div class="swatch"><div class="c" style="background:#F4EBDD"></div><b>页面底 · 米纸</b>#F4EBDD</div>
-      <div class="swatch"><div class="c" style="background:#FFFAF1"></div><b>纸 · 暖白</b>#FFFAF1</div>
-      <div class="swatch"><div class="c" style="background:#3B2F26"></div><b>墨褐</b>#3B2F26</div>
-      <div class="swatch"><div class="c" style="background:#9C523F"></div><b>陶红 · 主动作</b>#9C523F</div>
-      <div class="swatch"><div class="c" style="background:#8C5A26"></div><b>赭石 · 地点/评分</b>#8C5A26</div>
-      <div class="swatch"><div class="c" style="background:#5F6B4A"></div><b>橄榄 · 完成</b>#5F6B4A</div>
+      <div class="swatch"><div class="c" style="background:#F5F2EC"></div><b>页面底 · 暖白灰</b>#F5F2EC</div>
+      <div class="swatch"><div class="c" style="background:#FFFDF9"></div><b>纸</b>#FFFDF9</div>
+      <div class="swatch"><div class="c" style="background:#37322C"></div><b>墨褐</b>#37322C</div>
+      <div class="swatch"><div class="c" style="background:#96503F"></div><b>陶红 · 主动作</b>#96503F</div>
+      <div class="swatch"><div class="c" style="background:#8A5C31"></div><b>赭石 · 地点/评分</b>#8A5C31</div>
+      <div class="swatch"><div class="c" style="background:#5A6350"></div><b>橄榄 · 完成</b>#5A6350</div>
     </div>
 
     <div class="type-spec hd-paper">
@@ -276,7 +282,7 @@
       <div class="iter-item hd-paper">
         <span class="hd-tape left"></span>
         <h3>默认封面</h3>
-        <p>没有上传图时不再用色块：影单是旧票根、书单是布面书封、地点是老照片、笔记是纸页。标题就是内容，类型写在左上角的小签上。</p>
+        <p>没有上传图时不再用色块：影单 / 足迹是旧照片、书单是布面书封、笔记是纸页。标题是封面主角。<a href="covers.html" style="color:var(--hd-red)">三个封面方向并排看 →</a></p>
         <div class="demo-fbs">
           <span class="demo-fb"><span class="hd-fallback movie"><span class="fc-body"><span class="fc-title">沙丘 2</span></span><span class="fc-motif"></span></span></span>
           <span class="demo-fb"><span class="hd-fallback book"><span class="fc-body"><span class="fc-title">失明症漫记</span></span><span class="fc-motif"></span></span></span>
@@ -319,7 +325,7 @@
         <tr><td>FR-007-4 字体全站加载</td><td>沿用自托管霞鹜文楷分片；本组图直接引产品字体 CSS。实现时并入全局，并按脚本重跑核心片、给出体积与首屏量化结论（D-44）。</td></tr>
         <tr><td>FR-007-5 暗色与移动端</td><td>每页都有暗色令牌与 960 / 720 断点；移动底部 tab 仍是首页 / 影单 / 足迹 / 笔记四项。</td></tr>
         <tr><td>FR-007-6 笔记长文排版</td><td>D-46 建议：正文 16.5px / 2.0、标题 24px + 手绘下划线、代码块方格纸、表格抖线、引用红侧笔、图片贴胶带；见笔记详情。</td></tr>
-        <tr><td>默认封面（本轮新增）</td><td>没有上传图时用品类专属的 <code>hd-fallback</code>：影单票根 / 书单布封 / 地点老照片 / 笔记纸页；标题就是封面主角，不再出现渐变+大字占位。</td></tr>
+        <tr><td>默认封面（本轮迭代）</td><td>没有上传图时用品类专属的 <code>hd-fallback</code>：影像封面（影单 / 足迹）、布面书封（书单）、纸页（笔记）。三种封面方向与取舍见 <a href="covers.html">默认封面三方向</a>。</td></tr>
         <tr><td>页面小结（本轮新增）</td><td>影单 / 书单 / 足迹 / 笔记统一用 <code>hd-summary</code>：一行说明累计数量与最近一次，和足迹原有的「去过 12 城 / 留下 214 张照片」同一形制。</td></tr>
         <tr><td>足迹结构（本轮调整）</td><td>取消卡片 / 地图双模式：地图看方位、时间线看年份、卡片看细节，同页完成。</td></tr>
         <tr><td>FR-007-7 后台管理端</td><td>D-41 建议维持「不纳入」：后台访客不可见、受众不同，不一致不构成体验割裂。</td></tr>
