@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>足迹 · 手绘手账设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 足迹：地图是主角——纸框 + 抖线把它「裱」进手账，瓦片本身不手绘 ===== */
+.page-travel .hd-banner .hd-tape.left { left: 15%; width: 92px }
+.page-travel .hd-banner .hd-tape.right { left: 88% }
+.page-travel .banner-main { min-width: 0 }
+.page-travel .stat-chip { font-size: 13px; line-height: 1.95; padding: 0 10px; color: var(--hd-ink-soft); border-color: var(--hd-line-soft) }
+.page-travel .stat-chip b { font-weight: 400; color: var(--hd-ink); font-size: 15px; padding: 0 2px }
+.page-travel .hd-search { max-width: 280px }
+
+/* 地图区：左边裱框地图，右边时间线 */
+.page-travel .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 292px; gap: 34px; margin-top: 20px; align-items: start }
+.page-travel .map-frame { margin: 0; padding: 15px 15px 12px; border-radius: 5px }
+.page-travel .map-frame > .hd-tape.left { left: 15%; top: -11px; width: 92px }
+.page-travel .map-frame > .hd-tape.right { left: 84%; top: -10px }
+.page-travel .map-frame > .hd-tape-corner { top: -12px; right: -12px }
+
+.page-travel .map-canvas-wrap { position: relative }
+.page-travel .map-canvas {
+  position: relative; aspect-ratio: 700 / 430; overflow: hidden;
+  background: var(--hd-paper);
+  border: 2px solid var(--hd-line);
+  border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px;
+}
+.page-travel .map-art { display: block; width: 100%; height: 100% }
+.page-travel .map-art pattern circle { fill: var(--hd-ink-faint); opacity: .42 }
+.page-travel .map-art .map-grid path { fill: none; stroke: var(--hd-line-soft); stroke-width: 1.2; stroke-dasharray: 3 9; opacity: .9 }
+.page-travel .map-art .map-sea { fill: var(--hd-moss-soft); stroke: none }
+.page-travel .map-art .map-coast { fill: none; stroke: var(--hd-line); stroke-width: 2.6; stroke-dasharray: 10 7; stroke-linecap: round }
+.page-travel .map-art .map-island { fill: var(--hd-amber-soft); stroke: var(--hd-line); stroke-width: 2.4; stroke-linejoin: round }
+.page-travel .map-art .map-isle path { fill: var(--hd-amber-soft); stroke: var(--hd-line); stroke-width: 2; stroke-linejoin: round }
+.page-travel .map-art .map-river path { fill: none; stroke: var(--hd-olive); stroke-width: 2.4; stroke-dasharray: 2 8; stroke-linecap: round; opacity: .6 }
+.page-travel .map-art .map-route path { fill: none; stroke: var(--hd-ochre); stroke-width: 2.6; stroke-dasharray: 8 7; stroke-linecap: round; opacity: .8 }
+.page-travel .map-art .map-hill path { fill: none; stroke: var(--hd-ink-faint); stroke-width: 2; stroke-linecap: round; opacity: .6 }
+.page-travel .map-art .map-wave path { fill: none; stroke: var(--hd-olive); stroke-width: 1.8; stroke-linecap: round; opacity: .5 }
+.page-travel .map-rough {
+  position: absolute; inset: -2px; pointer-events: none;
+  border: 2.4px solid var(--hd-line);
+  border-radius: 6px 3px 7px 3px / 3px 7px 3px 6px;
+  filter: url(#rough);
+}
+
+/* 图钉：HTML 层，缩到 390 也不缩字 */
+.page-travel .map-pin {
+  position: absolute; z-index: 2; transform: translate(-50%, -50%);
+  width: 28px; height: 28px; display: grid; place-items: center;
+  font-size: 14px; line-height: 1; color: var(--hd-amber-ink);
+  background: var(--hd-paper); border: 2px solid var(--hd-amber-ink);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+  box-shadow: 1px 2px 0 var(--hd-line-soft);
+}
+.page-travel .map-pin.wish { color: var(--hd-ink-soft); border-color: var(--hd-ink-soft); border-style: dashed; background: var(--hd-paper-2) }
+
+.page-travel .map-legend {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3;
+  display: flex; align-items: center; gap: 12px;
+  padding: 2px 10px; font-size: 13px; color: var(--hd-ink-soft);
+  background: var(--hd-paper); border: 1.6px solid var(--hd-line-soft);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-travel .lg-dot { width: 12px; height: 12px; margin-right: 5px; display: inline-block; vertical-align: -1px;
+  background: var(--hd-amber-ink); border: 1.8px solid var(--hd-amber-ink); border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%; }
+.page-travel .lg-dot.wish { background: var(--hd-paper-2); border: 1.8px dashed var(--hd-ink-soft) }
+
+.page-travel .map-compass { position: absolute; right: 10px; bottom: 8px; z-index: 3; display: flex; flex-direction: column; align-items: center;
+  color: var(--hd-ink-soft); background: var(--hd-paper); border-radius: 50%; padding: 3px; }
+.page-travel .map-compass svg { width: 38px; height: 38px; display: block }
+.page-travel .map-compass i { font-style: normal; font-size: 13px; line-height: 1; letter-spacing: 1px; margin-top: 1px }
+
+.page-travel .map-index {
+  margin-top: 11px; padding-top: 10px; border-top: 1.5px dashed var(--hd-line-soft);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 14px;
+  font-size: 13px; color: var(--hd-ink-soft); line-height: 1.6;
+}
+.page-travel .map-index b { font-weight: 400; color: var(--hd-ink-faint); margin-right: 4px }
+
+/* 旅行时间线 */
+.page-travel .tl-col { min-width: 0 }
+.page-travel .tl-h { font-size: 19px; letter-spacing: 1px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.page-travel .tl-h-sub { font-size: 13px; color: var(--hd-ink-faint); letter-spacing: 1px }
+.page-travel .tl-year { margin-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: 2px; color: var(--hd-ink-faint) }
+.page-travel .tl-year::after { content: ""; flex: 1; border-top: 1.5px dashed var(--hd-line-soft) }
+.page-travel .tl-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; text-decoration: none; color: var(--hd-ink); border-bottom: 1.5px dashed var(--hd-line-soft) }
+.page-travel .tl-row:last-of-type { border-bottom: 0 }
+.page-travel .tl-row:hover .tl-name { color: var(--hd-red) }
+.page-travel .tl-thumb { flex: none; width: 52px; height: 52px; aspect-ratio: auto; box-shadow: none }
+.page-travel .tl-txt { min-width: 0; display: flex; flex-direction: column }
+.page-travel .tl-name { font-size: 15px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-travel .tl-date { font-size: 13px; color: var(--hd-ink-soft) }
+
+/* 地点卡片（地图下方的同一批数据） */
+.page-travel .place-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px }
+.page-travel .place-card {
+  display: flex; flex-direction: column; min-width: 0;
+  background-color: var(--hd-paper); background-image: var(--hd-grain);
+  border-radius: 6px; box-shadow: var(--hd-shadow);
+  padding: 10px 10px 14px;
+  transition: transform .14s, box-shadow .14s;
+}
+.page-travel .place-card:hover { transform: translateY(-3px) rotate(0); box-shadow: var(--hd-shadow-lift) }
+.page-travel .place-card > .hd-tape { z-index: 3; top: -8px; width: 64px; height: 18px }
+.page-travel .place-card:nth-child(even) > .hd-tape { left: 32%; transform: translateX(-50%) rotate(2.6deg) }
+.page-travel .place-card:nth-child(3n) > .hd-tape { left: 68%; transform: translateX(-50%) rotate(-1.2deg) }
+.page-travel .place-card .hd-cover { aspect-ratio: 16 / 10; z-index: 1 }
+.page-travel .place-card .hd-cover .hd-fallback { transition: transform .25s }
+.page-travel .place-card:hover .hd-fallback { transform: scale(1.03) }
+.page-travel .place-card .hd-fallback { padding: 10px 11px 11px }
+.page-travel .place-card .hd-fallback .fc-band { font-size: 13px; line-height: 1.4; letter-spacing: 1px }
+.page-travel .place-card .hd-fallback .fc-title { font-size: 16px; line-height: 1.3; -webkit-line-clamp: 2 }
+.page-travel .place-card .hd-fallback .fc-meta { font-size: 13px; margin-top: 2px; opacity: .84 }
+.page-travel .map-note { margin-top: 14px; font-size: 13px; line-height: 1.7; color: var(--hd-ink-soft) }
+.page-travel .photo-num {
+  position: absolute; right: 8px; top: 8px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px 1px 6px; font-size: 13px; color: var(--hd-ink);
+  background: var(--hd-paper); border: 1.6px solid var(--hd-line);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-travel .photo-num svg { width: 14px; height: 14px; color: var(--hd-amber-ink) }
+.page-travel .photo-num b { font-weight: 400 }
+.page-travel .place-card .body { display: flex; flex-direction: column; flex: 1; padding: 12px 2px 0 }
+.page-travel .place-card .title { font-size: 18.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-travel .place-card .title .hd-st { margin-left: auto; flex: none; font-size: 13px }
+.page-travel .meta-row { margin-top: 4px; font-size: 13.5px; color: var(--hd-ink-soft); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px }
+.page-travel .meta-row .sep { color: var(--hd-ink-faint) }
+.page-travel .season-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 6px }
+.page-travel .card-comment {
+  margin-top: 8px; font-size: 14px; line-height: 1.7; color: var(--hd-ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: 3.4em;
+}
+.page-travel .card-acts { margin-top: auto; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap }
+
+@media (max-width: 960px) {
+  .page-travel .map-layout { grid-template-columns: minmax(0, 1fr); gap: 26px }
+  .page-travel .place-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px 18px }
+  .page-travel .map-index { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+}
+@media (max-width: 720px) {
+  .page-travel .map-frame { padding: 11px 11px 10px }
+  .page-travel .map-pin { width: 26px; height: 26px; font-size: 13px }
+  .page-travel .map-legend { left: 8px; bottom: 8px; gap: 9px; padding: 1px 8px }
+  .page-travel .map-compass { right: 8px; bottom: 6px }
+  .page-travel .map-compass svg { width: 32px; height: 32px }
+  .page-travel .place-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; margin-top: 18px }
+  .page-travel .place-card { padding: 8px 8px 12px }
+  .page-travel .place-card .title { font-size: 16.5px }
+  .page-travel .card-comment { font-size: 13.5px; min-height: 3.3em; -webkit-line-clamp: 3 }
+  .page-travel .card-acts .hd-btn { flex: 1 1 100% }
+  .page-travel .hd-banner .hd-tape.left { left: 22% }
+  .page-travel .hd-banner .hd-tape.right { left: 78% }
+}
+</style>
+</head>
+<body class="hd-app page-travel" data-page="travel">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html" data-nav="home">首页</a>
+      <a href="movie.html" data-nav="movie">影单</a>
+      <a href="book.html" data-nav="book">书单</a>
+      <a href="travel.html" data-nav="travel" aria-current="page">足迹</a>
+      <a href="notes.html" data-nav="note">笔记</a>
+      <a href="plan.html" data-nav="plan">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="hd-banner">
+    <span class="hd-tape left"></span>
+    <span class="hd-tape right amber"></span>
+    <div class="banner-main">
+      <div class="eyebrow">去过的远方</div>
+      <h1>足迹</h1>
+      <p class="desc">记录你去过和想去的地方。</p>
+    </div>
+    <div class="acts">
+      <button class="hd-btn go lg" type="button">＋ 添加想去</button>
+    </div>
+  </section>
+
+  <div class="hd-summary">
+    <span class="item">去过 <b>12</b> 城</span><span class="sep" aria-hidden="true">·</span>
+    <span class="item">留下 <b>214</b> 张照片</span><span class="sep" aria-hidden="true">·</span>
+    <span class="item">想去 <b>6</b> 处</span>
+    <span class="recent">最近 <b>大理</b></span>
+  </div>
+
+  <section class="hd-section map-sec" aria-labelledby="map-title">
+    <div class="hd-section-head">
+      <h2 class="hd-h2" id="map-title">旅行地图</h2>
+      <span class="sub">去过的地点连起来，就是这一年的路线。</span>
+    </div>
+
+    <div class="map-layout">
+      <figure class="hd-paper map-frame">
+        <span class="hd-tape left"></span>
+        <span class="hd-tape right"></span>
+        <span class="hd-tape-corner"></span>
+
+        <div class="map-canvas-wrap">
+          <div class="map-canvas">
+            <svg class="map-art" viewBox="0 0 700 430" role="img" aria-label="东亚地图：大理、泉州、京都、阿那亚、喜洲与杭州的相对位置">
+              <defs>
+                <pattern id="map-dots" width="15" height="15" patternUnits="userSpaceOnUse">
+                  <circle cx="2" cy="2" r="1.1"/>
+                </pattern>
+              </defs>
+              <rect class="map-bg" width="700" height="430" fill="url(#map-dots)"/>
+
+              <g class="map-grid" aria-hidden="true">
+                <path d="M0 108 H700"/><path d="M0 216 H700"/><path d="M0 324 H700"/>
+                <path d="M140 0 V430"/><path d="M350 0 V430"/><path d="M560 0 V430"/>
+              </g>
+
+              <path class="map-sea" d="M330 -20 C 362 52 322 110 356 172 C 386 228 350 290 380 348 C 398 382 410 404 408 450 L 720 450 L 720 -20 Z" filter="url(#rough)"/>
+              <path class="map-coast" d="M330 -20 C 362 52 322 110 356 172 C 386 228 350 290 380 348 C 398 382 410 404 408 450" filter="url(#rough)"/>
+              <path class="map-island" d="M556 22 C 588 38 574 76 604 92 C 630 106 606 138 632 158 C 650 172 628 194 606 184 C 586 175 594 156 572 148 C 554 141 562 122 546 110 C 532 99 542 78 532 62 C 524 46 540 26 556 22 Z" filter="url(#rough)"/>
+              <g class="map-isle" aria-hidden="true">
+                <path d="M596 300 c 9 -6 20 -1 20 7 c 0 8 -11 13 -19 9 Z" filter="url(#rough)"/>
+                <path d="M644 352 c 7 -5 15 -2 15 5 c 0 7 -9 10 -15 7 Z" filter="url(#rough)"/>
+                <path d="M516 372 c 6 -4 13 -2 13 4 c 0 6 -8 9 -13 6 Z" filter="url(#rough)"/>
+              </g>
+
+              <g class="map-river" aria-hidden="true">
+                <path d="M92 92 C 150 120 122 160 190 176 C 256 192 294 226 268 268 C 248 302 284 326 326 334" filter="url(#rough)"/>
+                <path d="M470 118 C 492 150 462 176 486 204" filter="url(#rough)"/>
+              </g>
+
+              <g class="map-hill" aria-hidden="true">
+                <path d="M44 232 l 9 -13 l 9 13" filter="url(#rough)"/>
+                <path d="M72 246 l 7 -10 l 7 10" filter="url(#rough)"/>
+                <path d="M110 206 l 8 -12 l 8 12" filter="url(#rough)"/>
+                <path d="M196 392 l 9 -13 l 9 13" filter="url(#rough)"/>
+                <path d="M228 400 l 7 -10 l 7 10" filter="url(#rough)"/>
+              </g>
+              <g class="map-wave" aria-hidden="true">
+                <path d="M560 262 q 9 -7 18 0 q 9 7 18 0" filter="url(#rough)"/>
+                <path d="M512 322 q 9 -7 18 0 q 9 7 18 0" filter="url(#rough)"/>
+              </g>
+
+              <g class="map-route" aria-hidden="true">
+                <path d="M84 310 C 178 352 278 356 350 344" filter="url(#rough)"/>
+                <path d="M350 344 C 370 300 378 262 385 236 C 394 180 374 118 371 60" filter="url(#rough)"/>
+                <path d="M371 60 C 450 68 540 118 602 155" filter="url(#rough)"/>
+              </g>
+            </svg>
+
+            <span class="map-pin" style="left:12%;top:72%" aria-hidden="true">①</span>
+            <span class="map-pin" style="left:50%;top:80%" aria-hidden="true">②</span>
+            <span class="map-pin" style="left:86%;top:36%" aria-hidden="true">③</span>
+            <span class="map-pin" style="left:53%;top:14%" aria-hidden="true">④</span>
+            <span class="map-pin" style="left:22%;top:60%" aria-hidden="true">⑤</span>
+            <span class="map-pin wish" style="left:55%;top:55%" aria-hidden="true">⑥</span>
+
+            <span class="map-legend" aria-hidden="true">
+              <span><i class="lg-dot"></i>去过</span>
+              <span><i class="lg-dot wish"></i>想去</span>
+            </span>
+
+            <span class="map-compass" aria-hidden="true">
+              <svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="22" cy="22" r="16" stroke-dasharray="4 5"/><path d="M22 8 L26 24 L22 20.6 L18 24 Z" fill="currentColor" stroke="none"/><path d="M22 37 L22 30" stroke-dasharray="2 4"/></svg>
+              <i>北</i>
+            </span>
+          </div>
+          <span class="map-rough" aria-hidden="true"></span>
+        </div>
+
+        <div class="map-index">
+          <span><b>①</b>洱海 · 才村码头</span>
+          <span><b>②</b>泉州 · 开元寺</span>
+          <span><b>③</b>京都 · 鸭川</span>
+          <span><b>④</b>阿那亚 · 孤独图书馆</span>
+          <span><b>⑤</b>大理 · 喜洲古镇</span>
+          <span><b>⑥</b>杭州 · 九溪</span>
+        </div>
+      </figure>
+
+      <aside class="tl-col" aria-labelledby="tl-title">
+        <h2 class="tl-h" id="tl-title">旅行时间线 <span class="tl-h-sub">按到访年份</span></h2>
+
+        <div class="tl-year">2026</div>
+        <a class="tl-row" href="travel.html">
+          <span class="hd-cover tl-thumb"><span class="hd-fallback place xs"><span class="fc-motif"></span></span></span>
+          <span class="tl-txt"><span class="tl-name">大理 · 洱海</span><span class="tl-date">10 月 12 日 · 才村码头</span></span>
+        </a>
+        <a class="tl-row" href="travel.html">
+          <span class="hd-cover tl-thumb"><span class="hd-fallback place xs"><span class="fc-motif"></span></span></span>
+          <span class="tl-txt"><span class="tl-name">泉州 · 开元寺</span><span class="tl-date">03 月 16 日</span></span>
+        </a>
+
+        <div class="tl-year">2025</div>
+        <a class="tl-row" href="travel.html">
+          <span class="hd-cover tl-thumb"><span class="hd-fallback place xs"><span class="fc-motif"></span></span></span>
+          <span class="tl-txt"><span class="tl-name">京都 · 鸭川</span><span class="tl-date">04 月 08 日</span></span>
+        </a>
+        <a class="tl-row" href="travel.html">
+          <span class="hd-cover tl-thumb"><span class="hd-fallback place xs"><span class="fc-motif"></span></span></span>
+          <span class="tl-txt"><span class="tl-name">秦皇岛 · 阿那亚</span><span class="tl-date">09 月 27 日</span></span>
+        </a>
+      </aside>
+    </div>
+
+    <p class="map-note">地图看方位，卡片看细节；点地图上的点可以定位到下面这张卡。</p>
+  </section>
+
+  <section class="hd-section cards-sec" aria-labelledby="places-title">
+    <div class="hd-section-head">
+      <h2 class="hd-h2" id="places-title">地点卡片</h2>
+      <span class="sub">按最近到访排序</span>
+    </div>
+
+    <div class="hd-toolbar">
+      <div class="hd-chips" role="group" aria-label="状态">
+        <button class="hd-chip on" type="button" aria-pressed="true">全部</button>
+        <button class="hd-chip" type="button" aria-pressed="false">想去</button>
+        <button class="hd-chip" type="button" aria-pressed="false">去过</button>
+      </div>
+      <div class="hd-search hd-input-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+        <input class="hd-input" type="search" placeholder="搜索地点" aria-label="搜索地点">
+      </div>
+    </div>
+
+    <div class="hd-grid place-grid">
+
+      <article class="hd-card place-card hd-rough">
+        <span class="hd-tape"></span>
+        <a class="hd-cover" href="travel.html" aria-label="查看 洱海 · 才村码头">
+          <span class="hd-fallback place">
+            <span class="fc-band">地点</span>
+            <span class="fc-body"><span class="fc-title">洱海 · 才村码头</span><span class="fc-meta">大理 · 中国</span></span>
+            <span class="fc-motif"></span>
+          </span>
+          <span class="photo-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 L7 9 L9 6 L15 6 L17 9 L21 9 L21 19 L3 19 Z"/><circle cx="12" cy="14" r="3.2"/></svg><b>58</b></span>
+        </a>
+        <div class="body">
+          <h3 class="title">洱海 · 才村码头 <span class="hd-st done">去过</span></h3>
+          <div class="meta-row"><span>大理 · 中国</span></div>
+          <div class="season-row"><span class="hd-tag plain">最佳 10 月</span></div>
+          <p class="card-comment">赶在日落前骑到码头，风把耳朵吹得发烫。水面上有一条很长的金色拉链。</p>
+          <div class="card-acts">
+            <button class="hd-btn sm sub" type="button">取消完成</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="hd-card place-card hd-rough">
+        <span class="hd-tape"></span>
+        <a class="hd-cover" href="travel.html" aria-label="查看 泉州 · 开元寺">
+          <span class="hd-fallback place">
+            <span class="fc-band">地点</span>
+            <span class="fc-body"><span class="fc-title">泉州 · 开元寺</span><span class="fc-meta">泉州 · 中国</span></span>
+            <span class="fc-motif"></span>
+          </span>
+          <span class="photo-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 L7 9 L9 6 L15 6 L17 9 L21 9 L21 19 L3 19 Z"/><circle cx="12" cy="14" r="3.2"/></svg><b>24</b></span>
+        </a>
+        <div class="body">
+          <h3 class="title">泉州 · 开元寺 <span class="hd-st done">去过</span></h3>
+          <div class="meta-row"><span>泉州 · 中国</span></div>
+          <div class="season-row"><span class="hd-tag plain">最佳 3 月</span></div>
+          <p class="card-comment">石塔上的飞天被风磨了几百年，抬头看久了脖子酸。香火味和隔壁的面线糊是一个味道。</p>
+          <div class="card-acts">
+            <button class="hd-btn sm sub" type="button">取消完成</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="hd-card place-card hd-rough">
+        <span class="hd-tape"></span>
+        <a class="hd-cover" href="travel.html" aria-label="查看 京都 · 鸭川">
+          <span class="hd-fallback place">
+            <span class="fc-band">地点</span>
+            <span class="fc-body"><span class="fc-title">京都 · 鸭川</span><span class="fc-meta">京都 · 日本</span></span>
+            <span class="fc-motif"></span>
+          </span>
+          <span class="photo-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 L7 9 L9 6 L15 6 L17 9 L21 9 L21 19 L3 19 Z"/><circle cx="12" cy="14" r="3.2"/></svg><b>67</b></span>
+        </a>
+        <div class="body">
+          <h3 class="title">京都 · 鸭川 <span class="hd-st done">去过</span></h3>
+          <div class="meta-row"><span>京都 · 日本</span></div>
+          <div class="season-row"><span class="hd-tag plain">最佳 4 月</span></div>
+          <p class="card-comment">沿着河堤一直走到天黑，等距坐着的人都像约好了。樱花落进水里，没有人去捞。</p>
+          <div class="card-acts">
+            <button class="hd-btn sm sub" type="button">取消完成</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="hd-card place-card hd-rough">
+        <span class="hd-tape"></span>
+        <a class="hd-cover" href="travel.html" aria-label="查看 阿那亚 · 孤独图书馆">
+          <span class="hd-fallback place">
+            <span class="fc-band">地点</span>
+            <span class="fc-body"><span class="fc-title">阿那亚 · 孤独图书馆</span><span class="fc-meta">秦皇岛 · 中国</span></span>
+            <span class="fc-motif"></span>
+          </span>
+          <span class="photo-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 L7 9 L9 6 L15 6 L17 9 L21 9 L21 19 L3 19 Z"/><circle cx="12" cy="14" r="3.2"/></svg><b>31</b></span>
+        </a>
+        <div class="body">
+          <h3 class="title">阿那亚 · 孤独图书馆 <span class="hd-st done">去过</span></h3>
+          <div class="meta-row"><span>秦皇岛 · 中国</span></div>
+          <div class="season-row"><span class="hd-tag plain">最佳 9 月</span></div>
+          <p class="card-comment">涨潮的时候，图书馆像停在海边的一本书。里面不能拍照，反而看得特别专心。</p>
+          <div class="card-acts">
+            <button class="hd-btn sm sub" type="button">取消完成</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="hd-card place-card hd-rough">
+        <span class="hd-tape"></span>
+        <a class="hd-cover" href="travel.html" aria-label="查看 大理 · 喜洲古镇">
+          <span class="hd-fallback place">
+            <span class="fc-band">地点</span>
+            <span class="fc-body"><span class="fc-title">大理 · 喜洲古镇</span><span class="fc-meta">大理 · 中国</span></span>
+            <span class="fc-motif"></span>
+          </span>
+          <span class="photo-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 L7 9 L9 6 L15 6 L17 9 L21 9 L21 19 L3 19 Z"/><circle cx="12" cy="14" r="3.2"/></svg><b>34</b></span>
+        </a>
+        <div class="body">
+          <h3 class="title">大理 · 喜洲古镇 <span class="hd-st done">去过</span></h3>
+          <div class="meta-row"><span>大理 · 中国</span></div>
+          <div class="season-row"><span class="hd-tag plain">最佳 9 月</span></div>
+          <p class="card-comment">稻田中间的白族房子，墙是土黄的，转角都是圆的。买了刚出锅的破酥粑粑。</p>
+          <div class="card-acts">
+            <button class="hd-btn sm sub" type="button">取消完成</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="hd-card place-card hd-rough">
+        <span class="hd-tape"></span>
+        <a class="hd-cover" href="travel.html" aria-label="查看 杭州 · 九溪">
+          <span class="hd-fallback place">
+            <span class="fc-band">地点</span>
+            <span class="fc-body"><span class="fc-title">杭州 · 九溪</span><span class="fc-meta">杭州 · 中国</span></span>
+            <span class="fc-motif"></span>
+          </span>
+        </a>
+        <div class="body">
+          <h3 class="title">杭州 · 九溪 <span class="hd-st want">想去</span></h3>
+          <div class="meta-row"><span>杭州 · 中国</span></div>
+          <div class="season-row"><span class="hd-tag plain">最佳 4 月</span></div>
+          <p class="card-comment">看过一次夏末的照片，溪水从石头缝里过去，两边全是绿。想挑一个不用赶路的日子去。</p>
+          <div class="card-acts">
+            <button class="hd-btn sm go" type="button">标记去过</button>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<nav class="hd-tabbar" aria-label="移动端导航">
+  <a href="home.html" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11 Q4 6 12 5 Q20 6 20 11 L20 20 L4 20 Z"/><path d="M9 20 L9 14 L15 14 L15 20"/></svg><span>首页</span></a>
+  <a href="movie.html" data-nav="movie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10 L21 10 M8 6 L8 19 M16 6 L16 19"/></svg><span>影单</span></a>
+  <a href="travel.html" data-nav="travel" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21 Q12 14 8 10 Q4 6 12 4 Q20 6 16 10 Q12 14 12 21 Z"/><circle cx="12" cy="9" r="2"/></svg><span>足迹</span></a>
+  <a href="notes.html" data-nav="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3 L18 3 L18 21 L6 21 Z"/><path d="M9 8 L15 8 M9 12 L15 12 M9 16 L13 16"/></svg><span>笔记</span></a>
+</nav>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>

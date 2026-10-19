@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · 手绘手账设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 登录 / 注册（独立页，不含前台顶栏与 tabbar） ===== */
+.page-auth { display: flex; flex-direction: column; min-height: 100vh }
+
+.page-auth .auth-stage { flex: 1; display: flex; flex-direction: column }
+
+/* ---- 左栏：手账封面 ---- */
+.page-auth .auth-login {
+  flex: 1; display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr);
+  min-height: calc(100vh - 54px);
+}
+.page-auth .auth-cover {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 46px 54px 40px;
+  background-color: var(--hd-ink);
+  background-image: var(--hd-grain), radial-gradient(color-mix(in srgb, var(--hd-paper) 9%, transparent) .9px, transparent 1px);
+  background-size: auto, 24px 24px;
+  color: var(--hd-paper);
+}
+.page-auth .auth-cover::before {
+  content: ""; position: absolute; inset: 18px; pointer-events: none;
+  border: 1.5px dashed color-mix(in srgb, var(--hd-paper) 26%, transparent);
+  border-radius: 4px;
+}
+.page-auth .cover-top { position: relative; display: flex; align-items: center; gap: 12px }
+.page-auth .cover-seal {
+  width: 40px; height: 40px; flex: none;
+  display: inline-grid; place-items: center; font-size: 21px; line-height: 1;
+  border: 2px solid currentColor; border-radius: 10px 4px 12px 5px / 5px 12px 4px 10px;
+  transform: rotate(-5deg);
+}
+.page-auth .cover-brand { font-size: 26px; letter-spacing: 5px; line-height: 1.2; white-space: nowrap }
+.page-auth .cover-en { font-size: 13px; letter-spacing: 4px; color: color-mix(in srgb, var(--hd-paper) 78%, transparent); margin-top: 1px }
+.page-auth .cover-mid { position: relative; padding: 10px 0 }
+.page-auth .cover-title { font-size: 44px; letter-spacing: 3px; line-height: 1.35 }
+.page-auth .cover-sub { margin-top: 14px; font-size: 15px; line-height: 1.8; color: color-mix(in srgb, var(--hd-paper) 84%, transparent); max-width: 330px }
+.page-auth .cover-rule { display: flex; align-items: center; gap: 10px; margin-top: 22px; max-width: 300px }
+.page-auth .cover-rule span { flex: 1; height: 0; border-top: 1.5px dashed color-mix(in srgb, var(--hd-paper) 34%, transparent) }
+.page-auth .cover-rule svg { width: 22px; height: 22px; flex: none; color: color-mix(in srgb, var(--hd-paper) 78%, transparent) }
+.page-auth .cover-doodle { position: absolute; right: 40px; bottom: 46px; width: 132px; height: 108px; color: color-mix(in srgb, var(--hd-paper) 62%, transparent) }
+.page-auth .cover-foot { position: relative; font-size: 13px; letter-spacing: 2px; color: color-mix(in srgb, var(--hd-paper) 78%, transparent) }
+.page-auth .cover-stamp {
+  position: absolute; right: 44px; top: 40px;
+  width: 74px; height: 74px; display: grid; place-items: center;
+  border: 2px solid color-mix(in srgb, var(--hd-paper) 62%, transparent); border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+  font-size: 25px; letter-spacing: 2px; color: color-mix(in srgb, var(--hd-paper) 82%, transparent);
+  transform: rotate(9deg);
+}
+.page-auth .cover-stamp small { font-size: 13px; letter-spacing: 1px; display: block; margin-top: -2px }
+
+/* ---- 右栏：表单 ---- */
+.page-auth .auth-form-side {
+  display: flex; align-items: center; justify-content: center;
+  padding: 44px 30px;
+}
+.page-auth .auth-card {
+  position: relative; width: min(420px, 100%);
+  background-color: var(--hd-paper); background-image: var(--hd-grain);
+  padding: 30px 34px 28px; border-radius: 6px; box-shadow: var(--hd-shadow-lift);
+}
+.page-auth .auth-card .hd-tape { top: -10px; width: 86px }
+.page-auth .auth-card h1 { font-size: 30px; letter-spacing: 1px }
+.page-auth .auth-card .sub { margin-top: 5px; font-size: 15px; color: var(--hd-ink-soft) }
+.page-auth .auth-card .hd-field { margin-top: 16px }
+.page-auth .auth-card .hd-label { font-size: 14px; margin-bottom: 4px }
+.page-auth .auth-card .hd-input { font-size: 15px; padding: 7px 12px }
+.page-auth .code-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 10px; align-items: stretch }
+.page-auth .code-box {
+  display: grid; place-items: center;
+  background: var(--hd-paper-2); border: 2px solid var(--hd-line);
+  border-radius: 9px 3px 10px 4px / 4px 10px 3px 9px;
+  color: var(--hd-ink-soft);
+}
+.page-auth .code-box svg { width: 84px; height: 26px }
+.page-auth .auth-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px 16px; flex-wrap: wrap; margin-top: 16px;
+}
+.page-auth .auth-links { display: flex; align-items: center; gap: 14px; font-size: 13.5px }
+.page-auth .auth-links a {
+  color: var(--hd-ink-soft); text-decoration: none;
+  border-bottom: 1.5px dashed var(--hd-line-soft); padding-bottom: 1px;
+}
+.page-auth .auth-links a:hover { color: var(--hd-red); border-bottom-color: var(--hd-red) }
+.page-auth .auth-card .submit { margin-top: 20px; letter-spacing: 4px }
+.page-auth .auth-card .back-link {
+  display: block; margin-top: 14px; text-align: center;
+  font-size: 13.5px; color: var(--hd-ink-soft); text-decoration: none;
+}
+.page-auth .auth-card .back-link:hover { color: var(--hd-red) }
+
+/* ---- 注册态：单卡居中 ---- */
+.page-auth .auth-register { display: none }
+.page-auth .auth-register {
+  flex: 1; flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px; padding: 46px 24px 30px; min-height: calc(100vh - 54px);
+}
+.page-auth .reg-brand { display: flex; align-items: center; gap: 10px; font-size: 22px; letter-spacing: 4px }
+.page-auth .reg-brand .seal {
+  width: 30px; height: 30px; display: inline-grid; place-items: center; font-size: 16px;
+  border: 2px solid var(--hd-red); color: var(--hd-red);
+  border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px; transform: rotate(-4deg);
+}
+.page-auth[data-mode="register"] .auth-login { display: none }
+.page-auth[data-mode="register"] .auth-register { display: flex }
+
+/* ---- 页脚一行小字 ---- */
+.page-auth .auth-foot {
+  border-top: 2px dashed var(--hd-line-soft);
+  padding: 14px 20px 16px; text-align: center;
+  font-size: 13px; color: var(--hd-ink-faint);
+}
+
+@media (max-width: 960px) {
+  .page-auth .auth-cover { padding: 36px 34px 32px }
+  .page-auth .cover-title { font-size: 36px }
+  .page-auth .cover-doodle { width: 108px; height: 88px; right: 26px; bottom: 30px }
+}
+@media (max-width: 720px) {
+  .page-auth .auth-login { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; min-height: 0 }
+  .page-auth .auth-cover {
+    min-height: 0; padding: 18px 22px 20px; gap: 8px;
+    flex-direction: column; align-items: flex-start; justify-content: flex-start;
+  }
+  .page-auth .auth-cover::before { inset: 8px }
+  .page-auth .cover-top { gap: 9px }
+  .page-auth .cover-seal { width: 32px; height: 32px; font-size: 17px }
+  .page-auth .cover-brand { font-size: 21px; letter-spacing: 3px }
+  .page-auth .cover-en, .page-auth .cover-stamp, .page-auth .cover-doodle, .page-auth .cover-rule { display: none }
+  .page-auth .cover-mid { padding: 0; text-align: left }
+  .page-auth .cover-title { font-size: 18px; letter-spacing: 1px }
+  .page-auth .cover-sub { margin-top: 2px; font-size: 13px; max-width: none }
+  .page-auth .cover-foot { display: none }
+  .page-auth .auth-form-side { padding: 24px 16px 30px }
+  .page-auth .auth-card { padding: 24px 20px 22px }
+  .page-auth .auth-card h1 { font-size: 26px }
+  .page-auth .code-row { grid-template-columns: minmax(0, 1fr) 92px }
+  .page-auth .auth-register { padding: 28px 16px 24px; gap: 18px; min-height: 0 }
+}
+</style>
+</head>
+<body class="hd-app page-auth" data-page="auth">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<div class="auth-stage">
+
+  <!-- ===== 登录态 ===== -->
+  <section class="auth-login">
+    <aside class="auth-cover">
+      <div class="cover-top">
+        <span class="cover-seal" aria-hidden="true">拾</span>
+        <div>
+          <div class="cover-brand">拾光记</div>
+          <div class="cover-en">S H I G U A N G J I</div>
+        </div>
+      </div>
+
+      <div class="cover-mid">
+        <div class="cover-title">把日子，<br>过成照片</div>
+        <p class="cover-sub">管理后台 · 内容 / 用户 / 数据，一处安放。</p>
+        <div class="cover-rule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16 L4 20 L20 20 L20 16"/><path d="M9 9 L12 4 L15 9"/><path d="M12 4 L12 14"/></svg>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="cover-foot">© 2026 SHIGUANGJI</div>
+
+      <div class="cover-stamp" aria-hidden="true">拾<small>手账</small></div>
+
+      <svg class="cover-doodle" viewBox="0 0 132 108" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 88 Q42 76 70 82 T118 76"/>
+        <rect x="26" y="26" width="52" height="38" rx="4"/>
+        <circle cx="52" cy="45" r="9"/>
+        <path d="M70 32 L82 32 L86 39 L94 39 L94 58 L70 58"/>
+        <path d="M78 26 L78 18 L96 18 L96 26"/>
+        <path d="M104 22 Q112 30 106 38 M112 44 Q120 48 118 56"/>
+        <circle cx="18" cy="34" r="3"/><circle cx="120" cy="24" r="3"/>
+        <path d="M14 52 L20 52 M17 49 L17 55"/>
+      </svg>
+    </aside>
+
+    <div class="auth-form-side">
+      <form class="auth-card hd-rough" action="#" method="post">
+        <span class="hd-tape" aria-hidden="true"></span>
+        <h1>欢迎回来</h1>
+        <p class="sub">登录拾光记管理台</p>
+
+        <label class="hd-field">
+          <span class="hd-label">账号</span>
+          <input class="hd-input" type="text" placeholder="请输入账号" autocomplete="username">
+        </label>
+
+        <label class="hd-field">
+          <span class="hd-label">密码</span>
+          <input class="hd-input" type="password" placeholder="请输入密码" autocomplete="current-password">
+        </label>
+
+        <label class="hd-field">
+          <span class="hd-label">验证码</span>
+          <span class="code-row">
+            <input class="hd-input" type="text" placeholder="请输入验证码" autocomplete="off">
+            <span class="code-box" role="img" aria-label="图形验证码">
+              <svg viewBox="0 0 84 26" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M5 17 Q12 5 19 15 T33 13 T47 18 T61 12 T79 16"/></svg>
+            </span>
+          </span>
+        </label>
+
+        <div class="auth-row">
+          <label class="hd-check"><input type="checkbox" checked><span>记住我</span></label>
+          <span class="auth-links">
+            <a href="auth.html?mode=register">注册账号</a>
+            <a href="#forgot">忘记密码？</a>
+          </span>
+        </div>
+
+        <button class="hd-btn go block lg submit" type="submit">登 录</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== 注册态（?mode=register） ===== -->
+  <section class="auth-register">
+    <div class="reg-brand"><span class="seal" aria-hidden="true">拾</span>拾光记</div>
+
+    <form class="auth-card hd-rough" action="#" method="post">
+      <span class="hd-tape" aria-hidden="true"></span>
+      <h1>注册拾光记</h1>
+      <p class="sub">建一个账号，把日子记下来</p>
+
+      <label class="hd-field">
+        <span class="hd-label">账号 <span class="req">*</span></span>
+        <input class="hd-input" type="text" placeholder="账号" autocomplete="username">
+      </label>
+
+      <label class="hd-field">
+        <span class="hd-label">密码 <span class="req">*</span></span>
+        <input class="hd-input" type="password" placeholder="密码" autocomplete="new-password">
+      </label>
+
+      <label class="hd-field">
+        <span class="hd-label">确认密码 <span class="req">*</span></span>
+        <input class="hd-input" type="password" placeholder="确认密码" autocomplete="new-password">
+      </label>
+
+      <label class="hd-field">
+        <span class="hd-label">验证码 <span class="req">*</span></span>
+        <span class="code-row">
+          <input class="hd-input" type="text" placeholder="验证码" autocomplete="off">
+          <span class="code-box" role="img" aria-label="图形验证码">
+            <svg viewBox="0 0 84 26" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M5 17 Q12 5 19 15 T33 13 T47 18 T61 12 T79 16"/></svg>
+          </span>
+        </span>
+      </label>
+
+      <button class="hd-btn go block lg submit" type="submit">注 册</button>
+      <a class="back-link" href="auth.html">使用已有账户登录</a>
+    </form>
+
+  </section>
+
+</div>
+
+<footer class="auth-foot">拾光记 · 把平凡的日子，写成值得回看的照片</footer>
+
+<script>
+  /* 注册态：?mode=register 时切到单卡注册表单（产品里是 /register 独立页） */
+  (function () {
+    var mode = new URLSearchParams(location.search).get('mode');
+    if (mode === 'register') {
+      document.body.dataset.mode = 'register';
+      document.title = '注册 · 手绘手账设计图 — 拾光记 0.0.6';
+    }
+  })();
+</script>
+<script src="handdrawn-site.js"></script>
+</body>
+</html>
