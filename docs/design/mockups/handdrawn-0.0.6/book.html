@@ -25,9 +25,10 @@
 .page-book .book-card:nth-child(even) > .hd-tape { left: 32%; transform: translateX(-50%) rotate(2.6deg) }
 .page-book .book-card:nth-child(3n) > .hd-tape { left: 68%; transform: translateX(-50%) rotate(-1.2deg) }
 .page-book .book-card .hd-cover { aspect-ratio: 2 / 3; z-index: 1 }
-.page-book .cover-type { position: absolute; left: 8px; top: 8px; z-index: 2; letter-spacing: 1px }
-.page-book .book-card .hd-cover .hd-photo { transition: transform .25s }
-.page-book .book-card:hover .hd-photo { transform: scale(1.03) }
+.page-book .book-card .hd-cover .hd-fallback { transition: transform .25s }
+.page-book .book-card:hover .hd-fallback { transform: scale(1.03) }
+.page-book .book-card .hd-fallback .fc-band { font-size: 13px; line-height: 1.4; letter-spacing: 1px }
+.page-book .book-card .hd-fallback .fc-meta { font-size: 13px; opacity: .84 }
 .page-book .book-card .body { display: flex; flex-direction: column; flex: 1; padding: 12px 2px 0 }
 .page-book .book-card .title { font-size: 18.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 .page-book .book-card .title .hd-st { margin-left: auto; flex: none; font-size: 13px }
@@ -104,6 +105,13 @@
     </div>
   </section>
 
+  <div class="hd-summary">
+    <span class="item">读过 <b>13</b> 本</span><span class="sep" aria-hidden="true">·</span>
+    <span class="item">在读 <b>2</b> 本</span><span class="sep" aria-hidden="true">·</span>
+    <span class="item">想读 <b>8</b> 本</span><span class="sep" aria-hidden="true">·</span>
+    <span class="recent">最近 <b>克拉拉与太阳</b></span>
+  </div>
+
   <div class="hd-toolbar">
     <div class="hd-chips" role="group" aria-label="状态">
       <button class="hd-chip on" type="button" aria-pressed="true">全部</button>
@@ -115,7 +123,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
       <input class="hd-input" type="search" placeholder="搜索书名" aria-label="搜索书名">
     </div>
-    <div class="right"><span class="hd-tiny hd-faint">共 23 本</span></div>
+    <div class="right"><span class="hd-tiny hd-muted">共 23 本</span></div>
   </div>
 
   <section aria-labelledby="book-list-title">
@@ -126,8 +134,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《克拉拉与太阳》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">克拉拉与太阳</span><span class="fc-meta">石黑一雄</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">克拉拉与太阳 <span class="hd-st done">已读</span></h3>
@@ -147,8 +158,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《失明症漫记》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">失明症漫记</span><span class="fc-meta">若泽·萨拉马戈</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">失明症漫记 <span class="hd-st doing">在读</span></h3>
@@ -164,8 +178,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《百年孤独》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">百年孤独</span><span class="fc-meta">加西亚·马尔克斯</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">百年孤独 <span class="hd-st done">已读</span></h3>
@@ -185,8 +202,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《献给阿尔吉侬的花束》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">献给阿尔吉侬的花束</span><span class="fc-meta">丹尼尔·凯斯</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">献给阿尔吉侬的花束 <span class="hd-st done">已读</span></h3>
@@ -206,8 +226,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《夜晚的潜水艇》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">夜晚的潜水艇</span><span class="fc-meta">陈春成</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">夜晚的潜水艇 <span class="hd-st want">想读</span></h3>
@@ -224,8 +247,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《我与地坛》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">我与地坛</span><span class="fc-meta">史铁生</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">我与地坛 <span class="hd-st done">已读</span></h3>
@@ -245,8 +271,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《悉达多》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">悉达多</span><span class="fc-meta">赫尔曼·黑塞</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">悉达多 <span class="hd-st doing">在读</span></h3>
@@ -262,8 +291,11 @@
       <article class="hd-card book-card hd-rough">
         <span class="hd-tape"></span>
         <a class="hd-cover" href="book.html" aria-label="查看《人类简史》">
-          <span class="hd-photo book"><span class="ph-glyph">书</span></span>
-          <span class="hd-stamp moss cover-type">书籍</span>
+          <span class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body"><span class="fc-title">人类简史</span><span class="fc-meta">尤瓦尔·赫拉利</span></span>
+            <span class="fc-motif"></span>
+          </span>
         </a>
         <div class="body">
           <h3 class="title">人类简史 <span class="hd-st want">想读</span></h3>
@@ -281,7 +313,7 @@
 
     <div class="load-more">
       <button class="hd-btn" type="button">加载更多 ↓</button>
-      <span class="hd-tiny hd-faint">已展示 8 / 共 23 本</span>
+      <span class="hd-tiny hd-muted">已展示 8 / 共 23 本</span>
     </div>
   </section>
 </main>
