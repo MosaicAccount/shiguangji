@@ -19,7 +19,7 @@
 /* 草稿条：整宽暖色便签，与 banner 拉开一层 */
 .page-notes .draft-strip {
   position: relative; display: flex; align-items: center; gap: 12px;
-  margin-top: 30px; padding: 11px 18px;
+  margin-top: 24px; padding: 11px 18px;
   background-color: var(--hd-paper-3); background-image: var(--hd-grain);
   border-radius: 3px; box-shadow: var(--hd-shadow);
   color: var(--hd-ink); text-decoration: none; transform: rotate(-.35deg);
@@ -43,7 +43,6 @@
   padding: 4px 10px 4px 34px; font-size: 15px; line-height: 1.6;
 }
 .page-notes .tools .hd-chips { gap: 8px }
-.page-notes .tools .count { margin-left: auto; font-size: 13.5px; color: var(--hd-ink-soft) }
 
 /* 卡片 */
 .page-notes .hd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px 26px; margin-top: 26px }
@@ -86,9 +85,9 @@
   .page-notes .hd-banner h1 { font-size: 31px }
   .page-notes .draft-strip { margin-top: 24px; padding: 10px 14px; transform: none }
   .page-notes .draft-strip .txt { font-size: 14.5px }
+  .page-notes .hd-summary .sep:nth-last-child(2) { display: none }
   .page-notes .tools { margin-top: 20px }
   .page-notes .tools .hd-search { flex-basis: 100%; max-width: none }
-  .page-notes .tools .count { margin-left: 0 }
   .page-notes .hd-grid { grid-template-columns: minmax(0, 1fr); gap: 26px }
   .page-notes .nt-title { font-size: 18px }
   .page-notes .load-more { margin-top: 32px }
@@ -140,6 +139,16 @@
     </div>
   </section>
 
+  <div class="hd-summary">
+    <span class="item">共 <b>36</b> 篇</span>
+    <span class="sep" aria-hidden="true">·</span>
+    <span class="item">本月 <b>5</b> 篇</span>
+    <span class="sep" aria-hidden="true">·</span>
+    <span class="item">关联条目 <b>21</b> 篇</span>
+    <span class="sep" aria-hidden="true">·</span>
+    <span class="recent">最近 <b>纸质票根</b></span>
+  </div>
+
   <a class="draft-strip hd-rough" href="note-edit.html">
     <span class="hd-tape" aria-hidden="true"></span>
     <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7 Q3 5.5 4.6 5.5 L9 5.5 L11 8 L19.4 8 Q21 8 21 9.6 L21 18.4 Q21 20 19.4 20 L4.6 20 Q3 20 3 18.4 Z"/><path d="M3 11 L21 11"/></svg>
@@ -160,7 +169,6 @@
       <button class="hd-chip" type="button">旅行</button>
       <button class="hd-chip" type="button">随想</button>
     </div>
-    <span class="count">共 36 篇</span>
   </div>
 
   <div class="hd-grid">
@@ -248,7 +256,7 @@
 
   <div class="load-more">
     <button class="hd-btn" type="button">加载更多 ↓</button>
-    <span class="hd-tiny hd-faint">已展示 6 / 共 36 篇</span>
+    <span class="hd-tiny hd-muted">已展示 6 / 共 36 篇</span>
   </div>
 
 </main>

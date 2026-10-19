@@ -71,8 +71,8 @@
 }
 .page-note-edit .item-pick:hover { border-color: var(--hd-red); color: var(--hd-red) }
 .page-note-edit .item-pick .cover {
-  width: 16px; height: 20px; flex: none; border-radius: 2px;
-  background: radial-gradient(circle at 30% 20%, #C98F82 0%, #8E5A4E 45%, #3B342C 100%);
+  position: relative; width: 17px; height: 21px; flex: none;
+  border-radius: 2px; overflow: hidden;
 }
 .page-note-edit .item-pick .arr { font-size: 12px; color: var(--hd-ink-faint) }
 .page-note-edit .tag-field { margin-left: 0 }
@@ -121,13 +121,8 @@
   box-shadow: var(--hd-shadow); overflow: hidden;
   background: var(--hd-paper-2);
 }
-.page-note-edit .note-figure .ph { position: relative; display: block; height: 168px }
-.page-note-edit .note-figure .ph.place { background: radial-gradient(circle at 48% 76%, #93A99B 0%, #5D6F66 55%, #2F3A34 100%) }
-.page-note-edit .note-figure .ph .glyph {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  font-size: 26px; color: #FFFDF6; text-shadow: 0 1px 2px rgba(0, 0, 0, .4);
-}
-.page-note-edit .note-figure .hd-tape { top: 6px; left: 30%; width: 76px; height: 20px; transform: translateX(-50%) rotate(-3deg); background: rgba(255, 253, 246, .62) }
+.page-note-edit .note-figure .ph { position: relative; display: block; height: 168px; background: var(--hd-paper-2) }
+.page-note-edit .note-figure .hd-tape { top: 6px; left: 30%; width: 76px; height: 20px; transform: translateX(-50%) rotate(-3deg); background: color-mix(in srgb, var(--hd-paper) 66%, transparent) }
 .page-note-edit .note-figure figcaption {
   padding: 5px 12px 6px; font-size: 13px; color: var(--hd-ink-soft);
   border-top: 1.5px dashed var(--hd-line-soft);
@@ -213,7 +208,7 @@
     <div class="meta-field">
       <span class="k">关联条目</span>
       <button class="item-pick" type="button">
-        <span class="cover" aria-hidden="true"></span>沙丘 2<span class="arr" aria-hidden="true">▾</span>
+        <span class="cover" aria-hidden="true"><span class="hd-fallback xs movie"><span class="fc-motif"></span></span></span>沙丘 2<span class="arr" aria-hidden="true">▾</span>
       </button>
     </div>
     <div class="meta-field tag-field">
@@ -291,7 +286,7 @@ const rides = [
             <li>回程坐中巴，人比车晃得快</li>
           </ul>
           <figure class="note-figure">
-            <span class="ph place hd-grain"><span class="glyph" aria-hidden="true">地</span></span>
+            <span class="ph"><span class="hd-photo place"><span class="ph-glyph" aria-hidden="true">地</span></span></span>
             <span class="hd-tape" aria-hidden="true"></span>
             <figcaption>才村码头的傍晚，风把云吹成一条线。</figcaption>
           </figure>

@@ -64,11 +64,9 @@
   border: 2px solid var(--hd-line); border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px;
   background: var(--hd-paper-3); display: grid; place-items: center;
 }
-.page-search .s-cover .hd-photo { position: absolute; inset: 0 }
-.page-search .s-cover .ph-glyph {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  font-size: 15px; color: #FFFDF6; text-shadow: 0 1px 2px rgba(0, 0, 0, .4);
-}
+.page-search .s-cover .hd-fallback::before { inset: 3px; border-radius: 2px }
+.page-search .s-cover .hd-fallback.note .fc-motif { opacity: .72 }
+html.dark .page-search .s-cover .hd-fallback.note .fc-motif { filter: invert(1); opacity: .62 }
 .page-search .s-main { min-width: 0; flex: 1 }
 .page-search .s-title { display: block; font-size: 17px; line-height: 1.5 }
 .page-search .s-type { display: inline-block; margin-left: 7px; vertical-align: 2px; font-size: 13px; color: var(--hd-ink-soft); border: 1.5px solid var(--hd-line-soft); border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px; padding: 0 7px; line-height: 1.5 }
@@ -175,7 +173,7 @@
     </div>
     <div class="s-sheet hd-rough">
       <a class="s-row" href="travel.html">
-        <span class="s-cover"><span class="hd-photo place"></span><span class="ph-glyph" aria-hidden="true">地</span></span>
+        <span class="s-cover"><span class="hd-fallback xs place"><span class="fc-band" aria-hidden="true">地点</span><span class="fc-body"><span class="fc-title" aria-hidden="true">地点</span></span><span class="fc-motif" aria-hidden="true"></span></span></span>
         <span class="s-main">
           <span class="s-title"><mark>洱海</mark> · 才村码头 <span class="s-type">地点</span></span>
           <span class="s-excerpt">赶在日落前骑到码头，风把耳朵吹得发烫。<mark>洱海</mark>的水面上有一条很长的金色拉链。</span>
@@ -184,7 +182,7 @@
         <span class="s-arrow" aria-hidden="true">→</span>
       </a>
       <a class="s-row" href="travel.html">
-        <span class="s-cover"><span class="hd-photo place"></span><span class="ph-glyph" aria-hidden="true">地</span></span>
+        <span class="s-cover"><span class="hd-fallback xs place"><span class="fc-band" aria-hidden="true">地点</span><span class="fc-body"><span class="fc-title" aria-hidden="true">地点</span></span><span class="fc-motif" aria-hidden="true"></span></span></span>
         <span class="s-main">
           <span class="s-title">大理 · 喜洲古镇 <span class="s-type">地点</span></span>
           <span class="s-excerpt">从<mark>洱海</mark>边拐进来的第一座古镇，白墙上的日影比地图好看。</span>
@@ -203,7 +201,7 @@
     </div>
     <div class="s-sheet hd-rough">
       <a class="s-row" href="note-edit.html">
-        <span class="s-cover"><span class="hd-photo note"></span><span class="ph-glyph" aria-hidden="true" style="color:var(--hd-ink-soft);text-shadow:none">文</span></span>
+        <span class="s-cover"><span class="hd-fallback xs note"><span class="fc-band" aria-hidden="true">笔记</span><span class="fc-body"><span class="fc-title" aria-hidden="true">笔记</span></span><span class="fc-motif" aria-hidden="true"></span></span></span>
         <span class="s-main">
           <span class="s-title"><mark>洱海</mark>骑行的路线和几个停下来的理由 <span class="s-type">笔记</span></span>
           <span class="s-excerpt">从才村码头到喜洲古镇一共十四公里，<mark>洱海</mark>的风一直在背后推着我们走。</span>
@@ -212,7 +210,7 @@
         <span class="s-arrow" aria-hidden="true">→</span>
       </a>
       <a class="s-row" href="note-edit.html">
-        <span class="s-cover"><span class="hd-photo note"></span><span class="ph-glyph" aria-hidden="true" style="color:var(--hd-ink-soft);text-shadow:none">文</span></span>
+        <span class="s-cover"><span class="hd-fallback xs note"><span class="fc-band" aria-hidden="true">笔记</span><span class="fc-body"><span class="fc-title" aria-hidden="true">笔记</span></span><span class="fc-motif" aria-hidden="true"></span></span></span>
         <span class="s-main">
           <span class="s-title">旅行照片整理术 <span class="s-type">笔记</span></span>
           <span class="s-excerpt">把<mark>洱海</mark>那一段单独建了一个相册，回看时才发现那天拍了最多的是云。</span>
