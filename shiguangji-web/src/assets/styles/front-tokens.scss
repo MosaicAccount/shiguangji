@@ -1,59 +1,60 @@
 /**
- * 拾光记前台 Design Tokens（设计稿 v3.3「冷雾胶片」）
+ * 拾光记前台 Design Tokens（0.0.6「暖忆」）
  * 亮色 + 暗色双主题：
- *   亮色 —— 页面冷雾灰 #F1F3F2 / 卡片微冷白 #FBFCFB / 主色灰陶红 #A85F52 / 辅色鼠尾草绿 #5D6F66
- *   暗色 —— 页面冷炭灰 #171B1A / 卡片 #222826 / 主色提亮灰陶红 #C27A6D / 辅色提亮鼠尾草绿 #7F9B8D
+ *   亮色 —— 页面暖白灰 #F5F2EC / 卡片暖白 #FFFDF9 / 主色陶红 #96503F / 辅色橄榄 #5A6350 / 赭石 #9C6B3F
+ *   暗色 —— 中性暖炭 #1B1B1C / 卡片 #242426 / 主色提亮 #C99585 / 辅色提亮 #A6AE9B（无棕黄罩层）
  * 暗色不是亮色反相：`html.dark` 下重新校准层级与对比度。
  * 双写：SCSS 变量（$sgj-*，取亮色值，供 ECharts 等 JS 场景） + CSS 自定义属性（var(--sgj-*)）。
+ * 手绘形制层（--hd-*）见 src/assets/styles/handdrawn/handdrawn-site.css。
  */
 
 /* ===== 字体 ===== */
 $sgj-font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;   /* 标题/Hero/大数字 */
 $sgj-font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; /* 正文 */
 
-/* ===== 色彩（亮色 · 冷雾胶片）===== */
-$sgj-primary: #A85F52;        /* 主色 · 灰陶红 */
-$sgj-primary-dark: #874A41;   /* hover/强调 · 深灰陶 */
-$sgj-primary-light: #C27A6D;  /* 浅灰陶点缀 */
-$sgj-primary-soft: #EFE0DC;   /* 浅色块 · 灰陶浅 */
-$sgj-moss: #5D6F66;           /* 完成/自然 · 鼠尾草 */
-$sgj-moss-soft: #E1E9E5;      /* 浅色块 */
-$sgj-amber: #B18458;          /* 星标/心愿 · 灰铜 */
-$sgj-amber-soft: #F0E7DC;     /* 浅色块 */
-$sgj-brick: #934C47;          /* 危险/删除 */
-$sgj-bg: #F1F3F2;             /* 页面底 · 冷雾灰 */
-$sgj-bg-deep: #E5E9E7;        /* 色块/页脚 */
-$sgj-bg-card: #FBFCFB;        /* 卡片 */
-$sgj-border: #D5DCD9;         /* 边框/分隔/输入描边 */
-$sgj-border-card: #E6EBE9;    /* 卡片描边 */
-$sgj-cover: #DCE2DF;          /* 封面占位中性色 */
-$sgj-text: #262B2A;           /* 主文字 · 炭墨 */
-$sgj-text-2: #525B58;         /* 次级文字 */
-$sgj-text-3: #7D8783;         /* 弱化文字/辅助 */
-$sgj-text-4: #A4ADA9;         /* 占位/时间戳/页脚 */
-$sgj-success: #5D6F66;        /* 已完成/成功 */
-$sgj-warning: #B18458;        /* 心愿/待完成/星标 */
-$sgj-danger: #934C47;         /* 删除/危险 */
-$sgj-link: #A85F52;           /* 链接（陶土，非蓝） */
+/* ===== 色彩（亮色 · 暖忆）===== */
+$sgj-primary: #96503F;        /* 主色 · 陶红 */
+$sgj-primary-dark: #7E4234;   /* hover/强调 · 深陶 */
+$sgj-primary-light: #B47863;  /* 浅陶点缀 */
+$sgj-primary-soft: #F0E2DC;   /* 浅色块 · 陶浅 */
+$sgj-moss: #5A6350;           /* 完成/自然 · 橄榄 */
+$sgj-moss-soft: #E9EAE2;      /* 浅色块 */
+$sgj-amber: #9C6B3F;          /* 星标/地点 · 赭石 */
+$sgj-amber-soft: #F1E7D8;     /* 浅色块 */
+$sgj-brick: #8E4B3B;          /* 危险/删除 */
+$sgj-bg: #F5F2EC;             /* 页面底 · 暖白灰 */
+$sgj-bg-deep: #EDE8DE;        /* 色块/页脚 */
+$sgj-bg-card: #FFFDF9;        /* 卡片 · 暖白 */
+$sgj-border: #DCCDB8;         /* 边框/分隔/输入描边 */
+$sgj-border-card: #E7DFD0;    /* 卡片描边 */
+$sgj-cover: #EFE8DB;          /* 封面占位中性色 */
+$sgj-text: #37322C;           /* 主文字 · 墨褐 */
+$sgj-text-2: #6A6158;         /* 次级文字 */
+$sgj-text-3: #7A7066;         /* 弱化文字/辅助 */
+$sgj-text-4: #756C60;         /* 占位/时间戳/页脚（暖忆 · 纸面对比 ≥4.5） */
+$sgj-success: #5A6350;        /* 已完成/成功 */
+$sgj-warning: #9C6B3F;        /* 心愿/待完成/星标 */
+$sgj-danger: #8E4B3B;         /* 删除/危险 */
+$sgj-link: #96503F;           /* 链接（陶红，非蓝） */
 
-/* ===== 色彩（暗色 · 冷炭灰）===== */
-$sgj-dark-primary: #C27A6D;
-$sgj-dark-primary-deep: #D4968A;
-$sgj-dark-primary-soft: #3D2D2A;
-$sgj-dark-moss: #7F9B8D;
-$sgj-dark-moss-soft: #293833;
-$sgj-dark-amber: #C69A67;
-$sgj-dark-amber-soft: #3C3329;
-$sgj-dark-brick: #D67870;
-$sgj-dark-bg: #171B1A;
-$sgj-dark-bg-deep: #1C2220;
-$sgj-dark-bg-card: #222826;
-$sgj-dark-border: #39423E;
-$sgj-dark-cover: #303835;
-$sgj-dark-text: #EEF2F0;
-$sgj-dark-text-2: #C8D0CC;
-$sgj-dark-text-3: #96A09B;
-$sgj-dark-text-4: #6E7974;
+/* ===== 色彩（暗色 · 中性暖炭）===== */
+$sgj-dark-primary: #C99585;
+$sgj-dark-primary-deep: #D9A797;
+$sgj-dark-primary-soft: #3A2E2A;
+$sgj-dark-moss: #A6AE9B;
+$sgj-dark-moss-soft: #2B2F28;
+$sgj-dark-amber: #C9AC80;
+$sgj-dark-amber-soft: #37322A;
+$sgj-dark-brick: #CE9184;
+$sgj-dark-bg: #1B1B1C;
+$sgj-dark-bg-deep: #171718;
+$sgj-dark-bg-card: #242426;
+$sgj-dark-border: #3A3A3C;
+$sgj-dark-cover: #2D2B28;
+$sgj-dark-text: #ECEBE8;
+$sgj-dark-text-2: #B9B7B2;
+$sgj-dark-text-3: #9C9A95;
+$sgj-dark-text-4: #726F6A;
 
 /* ===== 字体尺寸 ===== */
 $sgj-font-xs: 12px;           /* 时间戳/元信息 */
@@ -73,10 +74,10 @@ $sgj-radius-xl: 20px;         /* 大区块 */
 $sgj-radius-pill: 999px;      /* 胶囊：导航/圆按钮/标签 */
 
 /* ===== 阴影（冷灰 rgba 档，不偏暖）===== */
-$sgj-shadow-sm: 0 1px 3px rgba(23, 27, 26, 0.05);
-$sgj-shadow-card: 0 4px 16px rgba(23, 27, 26, 0.05);
-$sgj-shadow-hover: 0 8px 24px rgba(23, 27, 26, 0.1);
-$sgj-shadow-hero: 0 8px 30px rgba(23, 27, 26, 0.06);
+$sgj-shadow-sm: 0 1px 3px rgba(70, 58, 46, 0.06);
+$sgj-shadow-card: 0 4px 16px rgba(70, 58, 46, 0.07);
+$sgj-shadow-hover: 0 8px 24px rgba(70, 58, 46, 0.12);
+$sgj-shadow-hero: 0 8px 30px rgba(70, 58, 46, 0.08);
 
 /* ===== 间距（4px 基准）===== */
 $sgj-space-1: 4px;

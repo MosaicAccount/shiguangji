@@ -1,9 +1,9 @@
-// 处理主题样式：亮色主色 #A85F52，暗色按设计稿 v3.3 用提亮灰陶红 #C27A6D
+// 处理主题样式：亮色主色取 settings.theme（0.0.6 暖忆陶红 #96503F），暗色用提亮陶红 #C99585
 export function handleThemeStyle(theme: string): void {
 	const isDark =
 		typeof document !== "undefined" &&
 		document.documentElement.classList.contains("dark");
-	const primary = isDark ? "#C27A6D" : theme;
+	const primary = isDark ? "#C99585" : theme;
 	document.documentElement.style.setProperty("--el-color-primary", primary);
 	for (let i = 1; i <= 9; i++) {
 		document.documentElement.style.setProperty(

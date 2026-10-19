@@ -64,7 +64,7 @@ const useSettingsStore = defineStore("settings", {
 		title: "",
 		//  品牌化：默认主色从 RuoYi 蓝 #409EFF 切到设计稿 v3.3 灰陶红 #A85F52
 		// （老用户 localStorage 中旧 theme 值仍会覆盖默认值，可接受）
-		theme: storageSetting.theme || "#A85F52",
+		theme: storageSetting.theme || "#96503F",
 		showSettings: showSettings,
 		tagsView:
 			storageSetting.tagsView === undefined
