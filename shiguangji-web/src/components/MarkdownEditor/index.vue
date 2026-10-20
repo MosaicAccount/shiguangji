@@ -196,8 +196,8 @@ function insertNoteToken(title: string): void {
 </script>
 
 <style scoped lang="scss">
+/* 0.0.6 编辑器：工具条 = 纸条，编辑区 = 方格纸，预览 = 纸片（颜色只用 --hd-*） */
 .markdown-editor {
-  /* 父级常为 flex 容器（如 el-form-item__content），需显式占满一行 */
   width: 100%;
 
   .md-toolbar {
@@ -205,40 +205,26 @@ function insertNoteToken(title: string): void {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    background: var(--hd-paper-2);
+    border: 1.5px dashed var(--hd-line-soft);
+    border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
 
     .md-toolbar-left {
       display: flex;
       align-items: center;
       gap: 8px;
+      min-width: 0;
 
       .md-tip {
-        font-size: 12px;
-        color: var(--sgj-text-4);
+        font-size: 13px;
+        color: var(--hd-ink-faint);
       }
 
       .md-link-icon {
         margin-right: 4px;
         font-size: 13px;
-      }
-
-      /* 互链入口用强调色（原型 .btn.accent）：浅陶红底 + 深陶红字，与「插图」的中性 plain 拉开层次 */
-      .md-note-link-btn.el-button {
-        color: var(--sgj-primary-dark);
-        background: var(--sgj-primary-soft);
-        border-color: rgba(168, 95, 82, 0.36);
-
-        &:hover,
-        &:focus-visible {
-          color: var(--sgj-primary-dark);
-          background: var(--sgj-primary-soft);
-          border-color: var(--sgj-primary);
-        }
-      }
-
-      html.dark .md-note-link-btn.el-button {
-        color: var(--sgj-primary-light);
-        border-color: rgba(194, 122, 109, 0.4);
       }
     }
 
@@ -246,15 +232,16 @@ function insertNoteToken(title: string): void {
       display: flex;
       align-items: center;
       gap: 10px;
+      flex: none;
     }
 
     .md-hint,
     .md-count {
-      font-size: 12px;
-      color: var(--sgj-text-4);
+      font-size: 13px;
+      color: var(--hd-ink-faint);
+      white-space: nowrap;
     }
 
-    /* 窄屏让位：插图按钮留下，说明文字与语法提示收起来（移动端预览按钮仍有位置） */
     @media (max-width: 900px) {
       .md-tip,
       .md-hint {
@@ -265,7 +252,7 @@ function insertNoteToken(title: string): void {
 
   .md-panes {
     display: flex;
-    gap: 12px;
+    gap: 0;
 
     .md-input,
     .md-preview {
@@ -275,22 +262,34 @@ function insertNoteToken(title: string): void {
     }
 
     .md-input {
-      :deep(.el-textarea) {
-        height: 100%;
-      }
-
+      :deep(.el-textarea),
       :deep(.el-textarea__inner) {
         height: 100%;
         resize: none;
       }
+
+      :deep(.el-textarea__inner) {
+        background-color: var(--hd-paper);
+        background-image:
+          linear-gradient(rgba(122, 112, 102, .08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(122, 112, 102, .08) 1px, transparent 1px);
+        background-size: 22px 22px;
+        border: 1.8px solid var(--hd-line);
+        border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px;
+        color: var(--hd-ink);
+        font-size: 15px;
+        line-height: 1.9;
+        box-shadow: none;
+      }
     }
 
     .md-preview {
-      border: 1px solid var(--sgj-border-card);
-      border-radius: 4px;
-      padding: 5px 14px;
+      margin-left: 12px;
+      padding: 10px 18px;
       overflow-y: auto;
-      background: var(--sgj-bg-card);
+      background-color: var(--hd-paper);
+      border: 1.8px solid var(--hd-line-soft);
+      border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px;
       box-sizing: border-box;
     }
   }
