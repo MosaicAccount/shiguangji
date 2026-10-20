@@ -74,7 +74,13 @@
               @click="openDetailById(p.itemId!)"
             >
               <span class="tl-thumb">
-                <img v-if="p.cover" :src="photoUrl(p.cover)" :alt="p.title" loading="lazy" />
+                <img
+                  v-if="p.cover && p.itemId !== undefined && !brokenThumbs[p.itemId]"
+                  :src="photoUrl(p.cover)"
+                  :alt="p.title"
+                  loading="lazy"
+                  @error="markThumbBroken(p.itemId)"
+                />
                 <span v-else class="hd-fallback place xs"><span class="fc-motif"></span></span>
               </span>
               <span class="tl-body">
@@ -117,13 +123,19 @@
         >
           <span class="hd-tape"></span>
           <a class="hd-cover" href="#" @click.prevent="openDetail(item)">
-            <img
-              v-if="cardCover(item) && !isCoverError(item)"
-              :src="cardCover(item)"
-              :alt="item.title"
-              loading="lazy"
-              @error="onCoverError(item)"
-            />
+            <template v-if="cardCover(item) && !isCoverError(item)">
+              <img
+                :src="cardCover(item)"
+                :alt="item.title"
+                loading="lazy"
+                @error="onCoverError(item)"
+              />
+              <span class="cover-shade" aria-hidden="true"></span>
+              <span class="cover-txt">
+                <span class="cover-title">{{ item.title }}</span>
+                <span class="cover-meta">{{ [item.city, item.country].filter(Boolean).join(' · ') }}</span>
+              </span>
+            </template>
             <span v-else class="hd-fallback place">
               <span class="fc-band">地点</span>
               <span class="fc-body">
@@ -139,7 +151,7 @@
           </a>
           <div class="body">
             <h3 class="title">
-              {{ item.title }}
+              <span class="t-title">{{ item.title }}</span>
               <span class="hd-st" :class="{ done: item.status === 'DONE' }">{{ statusLabel(item) }}</span>
             </h3>
             <div v-if="item.city || item.country" class="meta-row">
@@ -519,6 +531,13 @@ const bannerStats = computed(() => {
 /** 旅行时间线数据（轨迹接口按到访时间升序） */
 const timelinePhotos = computed<TravelPoint[]>(() => trajectory.value?.visited || [])
 
+/** 时间线缩略图兜底：加载失败的封面记下来，改走 hd-fallback.place.xs */
+const brokenThumbs = ref<Record<string, boolean>>({})
+
+function markThumbBroken(itemId?: string | number): void {
+  if (itemId !== undefined) brokenThumbs.value[String(itemId)] = true
+}
+
 /** 想去地点数（小结条用） */
 const wishCount = computed(() => (trajectory.value?.wish || []).length)
 
@@ -870,7 +889,7 @@ onMounted(() => {
 .page-travel .tl-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; text-decoration: none; color: var(--hd-ink); border-bottom: 1.5px dashed var(--hd-line-soft) }
 .page-travel .tl-row:last-of-type { border-bottom: 0 }
 .page-travel .tl-row:hover .tl-name { color: var(--hd-red) }
-.page-travel .tl-thumb { flex: none; width: 52px; height: 52px; aspect-ratio: auto; box-shadow: none }
+.page-travel .tl-thumb { flex: none; width: 46px; height: 58px; aspect-ratio: auto; box-shadow: none }
 .page-travel .tl-txt { min-width: 0; display: flex; flex-direction: column }
 .page-travel .tl-name { font-size: 15px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .page-travel .tl-date { font-size: 13px; color: var(--hd-ink-soft) }
@@ -957,4 +976,15 @@ onMounted(() => {
 .page-travel .load-error { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 0; color: var(--hd-ink-soft) }
 .page-travel .hd-empty { grid-column: 1 / -1 }
 
+
+/* 卡片骨架：标题一行（状态章右侧固定）、按钮贴底、短评两行截断 */
+.page-travel .hd-card { display: flex; flex-direction: column }
+.page-travel .hd-card .body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 0 }
+.page-travel .hd-card .title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px }
+.page-travel .hd-card .title .t-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-travel .hd-card .title .hd-st { flex: none }
+.page-travel .hd-card .meta-row { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-travel .hd-card .stars-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-travel .hd-card .card-comment { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.page-travel .hd-card .card-acts { margin-top: auto }
 </style>
