@@ -353,7 +353,7 @@ html.dark .hd-app .hd-btn.go:hover { background: var(--hd-red); border-color: va
 }
 .hd-app .hd-fallback .fc-body { margin-top: auto; position: relative; z-index: 2; min-width: 0 }
 .hd-app .hd-fallback .fc-title {
-  font-size: 22px; line-height: 1.32; letter-spacing: .5px;
+  font-size: 22px; line-height: 1.42; letter-spacing: .5px;
   text-shadow: 0 1px 8px rgba(20, 14, 10, .62);
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
