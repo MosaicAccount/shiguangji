@@ -1,5 +1,13 @@
 <template>
   <div class="front-layout hd-app">
+    <!-- 手绘抖线滤镜：全局皮肤里 .hd-rough / 装饰线用 filter:url(#rough) 指向它 -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <filter id="rough">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
     <header class="hd-top">
       <div class="hd-top-in">
         <router-link to="/home" class="hd-brand"><span class="seal">拾</span>拾光记</router-link>
