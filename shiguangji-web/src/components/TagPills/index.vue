@@ -66,55 +66,49 @@ function toggle(tag: string): void {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+/* 0.0.6 标签筛选行：手绘胶囊（纸色底 + 抖线边，选中陶红） */
 .tag-pills {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  font-family: var(--hd-hand);
 }
 
 .tag-label {
   font-size: 13px;
-  color: var(--sgj-text-3);
-  margin-right: 2px;
+  color: var(--hd-ink-faint);
+  letter-spacing: 1px;
 }
 
 .tag-pill {
-  padding: 0 14px;
-  height: 28px;
-  border: 1px solid var(--sgj-border);
-  border-radius: 14px;
-  background: var(--sgj-bg-card);
-  color: var(--sgj-text-2);
-  font-size: 12px;
+  padding: 2px 12px;
+  font-size: 13.5px;
+  color: var(--hd-ink-soft);
+  background: var(--hd-paper);
+  border: 1.5px solid var(--hd-line-soft);
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.16s;
-}
+  transition: color .14s, border-color .14s, background-color .14s;
 
-.tag-pill:hover {
-  border-color: var(--sgj-primary);
-  color: var(--sgj-primary);
-}
+  &:hover { color: var(--hd-red); border-color: var(--hd-red) }
 
-.tag-pill.active {
-  background: var(--sgj-primary);
-  border-color: var(--sgj-primary);
-  color: #fff;
+  &.active {
+    color: var(--hd-red);
+    border-color: var(--hd-red);
+    background: var(--hd-red-soft);
+  }
 }
 
 .tag-more {
-  border: none;
+  padding: 2px 8px;
+  font-size: 13px;
+  color: var(--hd-ink-faint);
   background: none;
-  padding: 0 4px;
-  color: var(--sgj-text-4);
-  font-size: 12px;
+  border: 0;
   cursor: pointer;
-  transition: color 0.16s;
-}
 
-.tag-more:hover {
-  color: var(--sgj-primary);
+  &:hover { color: var(--hd-red) }
 }
 </style>

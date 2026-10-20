@@ -96,7 +96,7 @@
                       </div>
                       <div class="tl-meta">
                         <span>{{ typeName(item.itemType) }}{{ metaSuffix(item) }}</span>
-                        <span v-if="item.rating" class="tl-stars" :aria-label="`评分 ${item.rating} 分，满分 5 分`">{{ '★'.repeat(item.rating) }}</span>
+                        <span v-if="item.rating" class="tl-stars" :aria-label="`评分 ${item.rating} 分，满分 10 分`">{{ starText(item.rating) }}</span>
                       </div>
                       <div v-if="item.comment" class="tl-comment">{{ item.comment }}</div>
                     </div>
@@ -162,6 +162,7 @@
 import { getToken } from '@/utils/auth'
 import { photoUrl } from '@/utils/sgj'
 import { itemStatusLabel } from '@/utils/itemStatus'
+import { starText } from '@/utils/rating'
 import { getFrontHomeData, listFrontHomeTimeline } from '@/api/front/home'
 import { listPlanItems } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
@@ -566,6 +567,20 @@ if (isLogin.value) {
   border: 2px solid var(--hd-red); background: var(--hd-paper);
   border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
 }
+.page-home .tl-card::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 62px;
+  height: 16px;
+  transform: translateX(-50%) rotate(-2.5deg);
+  background: var(--hd-tape);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  pointer-events: none;
+}
+
 .page-home .tl-card {
   position: relative; background: var(--hd-paper); padding: 14px 16px;
   border-radius: 5px; box-shadow: var(--hd-shadow); display: flex; gap: 16px;

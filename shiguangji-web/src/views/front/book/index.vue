@@ -68,13 +68,19 @@
       >
         <span class="hd-tape"></span>
         <a class="hd-cover" href="#" @click.prevent="openDetail(item)">
-          <img
-            v-if="item.coverUrl && !isCoverError(item)"
+          <template v-if="item.coverUrl && !isCoverError(item)">
+            <img
             :src="photoUrl(item.coverUrl)"
             :alt="item.title"
             loading="lazy"
             @error="onCoverError(item)"
           />
+            <span class="cover-shade" aria-hidden="true"></span>
+            <span class="cover-txt">
+              <span class="cover-title">{{ item.title }}</span>
+              <span class="cover-meta">{{ item.author || '' }}</span>
+            </span>
+          </template>
           <span v-else class="hd-fallback book">
             <span class="fc-band">书籍</span>
             <span class="fc-body">
@@ -86,13 +92,13 @@
         </a>
         <div class="body">
           <h3 class="title">
-            {{ item.title }}
+            <span class="t-title">{{ item.title }}</span>
             <span class="hd-st" :class="{ done: item.status === 'DONE', doing: item.status === 'DOING' }">{{ statusLabel(item) }}</span>
           </h3>
           <div class="meta-row"><span>{{ item.author || '—' }}</span></div>
           <div class="stars-row">
             <plan-date-badge :item="item" @saved="loadData" />
-            <span v-if="item.rating" class="hd-stars" :aria-label="`评分 ${item.rating} 分，满分 5 分`">{{ '★'.repeat(item.rating) }}</span>
+            <span v-if="item.rating" class="hd-stars" :aria-label="`评分 ${item.rating} 分，满分 10 分`">{{ starText(item.rating) }}</span>
             <span v-else class="no-rating">未评分</span>
           </div>
           <p v-if="item.comment" class="card-comment">{{ item.comment }}</p>
@@ -199,6 +205,7 @@ import TagPills from '@/components/TagPills/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
 import { getFrontHomeData } from '@/api/front/home'
 import { itemStatusLabel } from '@/utils/itemStatus'
+import { starText } from '@/utils/rating'
 import type { FrontHomeSummary } from '@/types/api/front/home'
 import type { SgjItem, ItemStatus } from '@/types/api/business/item'
 import { planDateLabel, localDateKey } from '@/utils/plan'
@@ -589,4 +596,15 @@ handleRouteQuery()
   gap: 12px; padding: 48px 0; color: var(--hd-ink-soft);
 }
 .page-book .hd-empty { grid-column: 1 / -1 }
+
+/* 卡片骨架：标题一行（状态章右侧固定）、按钮贴底、短评两行截断 */
+.page-book .hd-card { display: flex; flex-direction: column }
+.page-book .hd-card .body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 0 }
+.page-book .hd-card .title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px }
+.page-book .hd-card .title .t-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-book .hd-card .title .hd-st { flex: none }
+.page-book .hd-card .meta-row { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-book .hd-card .stars-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-book .hd-card .card-comment { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.page-book .hd-card .card-acts { margin-top: auto }
 </style>
