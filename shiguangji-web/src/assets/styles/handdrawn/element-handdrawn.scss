@@ -7,7 +7,7 @@ body.hd-front.hd-app {
 }
 
 /* ===== 输入类：抖线框 + 纸色底 ===== */
-body.hd-front {
+body.hd-front, .hd-app {
   .el-input__wrapper,
   .el-textarea__inner,
   .el-input-number .el-input__wrapper,

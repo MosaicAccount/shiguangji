@@ -1,5 +1,5 @@
 <template>
-  <div class="login">
+  <div class="login hd-app">
     <!-- 左：品牌面板（冷炭灰 studio） -->
     <aside class="login-brand">
       <div class="brand-top">
@@ -574,6 +574,66 @@ html.dark .login-brand {
     .form-sub {
       margin: 8px 0 28px;
     }
+  }
+}
+
+/* ===== 0.0.6 手绘换装：左封面 / 右表单纸卡 ===== */
+.login.hd-app {
+  background-color: var(--hd-page);
+  font-family: var(--hd-hand);
+
+  .login-brand {
+    background-color: #37322C;
+    background-image: radial-gradient(rgba(245, 242, 236, .10) 1px, transparent 1px);
+    background-size: 16px 16px;
+    color: #F5F2EC;
+  }
+
+  .brand-logo { color: #F5F2EC; font-family: var(--hd-hand); }
+  .brand-logo-en { color: rgba(245, 242, 236, .62) }
+  .brand-h { color: #F5F2EC }
+  .brand-sub,
+  .brand-footer { color: rgba(245, 242, 236, .62) }
+  .brand-num { color: #D9A797 }
+  .brand-label { color: rgba(245, 242, 236, .62) }
+  .film-strip .perf { background: rgba(245, 242, 236, .22) }
+
+  .login-main { background: var(--hd-page) }
+
+  .login-form {
+    position: relative;
+    width: 408px;
+    max-width: calc(100vw - 40px);
+    padding: 34px 36px 30px;
+    background-color: var(--hd-paper);
+    border: 2.2px solid var(--hd-line);
+    border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+    box-shadow: var(--hd-shadow-lift);
+  }
+
+  .login-form::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 92px;
+    height: 22px;
+    transform: translateX(-50%) rotate(-2deg);
+    background: var(--hd-tape);
+    pointer-events: none;
+  }
+
+  .form-title { font-size: 30px; color: var(--hd-ink); letter-spacing: 2px }
+  .form-sub { color: var(--hd-ink-soft); font-size: 14px }
+  .form-label { color: var(--hd-ink-soft); font-size: 13.5px }
+  .form-forgot { color: var(--hd-ink-faint); font-size: 13px }
+  .form-register .link-type { color: var(--hd-red) }
+
+  .login-btn.el-button {
+    width: 100%;
+    height: 44px;
+    font-size: 15px;
+    letter-spacing: 2px;
   }
 }
 </style>
