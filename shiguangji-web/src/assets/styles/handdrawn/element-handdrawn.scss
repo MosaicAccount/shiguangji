@@ -1,0 +1,375 @@
+/* 0.0.6 Element Plus 手绘化（FR-007-3 / D-43）
+ * 前台布局挂 body.hd-app.hd-front 后生效（弹层 teleport 到 body，靠 body 上的令牌作用域取 --hd-*）。
+ * 约定：表单控件换肤；弹窗 / 抽屉 / 消息 / 浮层自绘——纸片 + 胶带 + 墨色薄雾，标题即动作。 */
+
+body.hd-front.hd-app {
+  background-image: none;
+}
+
+/* ===== 输入类：抖线框 + 纸色底 ===== */
+body.hd-front {
+  .el-input__wrapper,
+  .el-textarea__inner,
+  .el-input-number .el-input__wrapper,
+  .el-select__wrapper {
+    background-color: var(--hd-paper);
+    box-shadow: none;
+    border: 1.6px solid var(--hd-line-soft);
+    border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
+    padding: 2px 10px;
+    transition: border-color .14s, background-color .14s;
+  }
+
+  .el-input__wrapper:hover,
+  .el-textarea__inner:hover,
+  .el-select__wrapper:hover {
+    border-color: var(--hd-line);
+  }
+
+  .el-input__wrapper.is-focus,
+  .el-textarea__inner:focus,
+  .el-select__wrapper.is-focused {
+    border-color: var(--hd-red);
+    box-shadow: none;
+  }
+
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select__placeholder {
+    color: var(--hd-ink);
+    font-family: var(--hd-hand);
+  }
+
+  .el-input__inner::placeholder,
+  .el-textarea__inner::placeholder {
+    color: var(--hd-ink-faint);
+  }
+
+  .el-form-item__label {
+    color: var(--hd-ink-soft);
+    font-size: 14px;
+  }
+
+  /* 数字输入去掉描边重复 */
+  .el-input-number .el-input__wrapper { padding: 2px 6px; }
+
+  /* ===== 按钮：纸片按钮，主按钮用陶红 ===== */
+  .el-button {
+    font-family: var(--hd-hand);
+    border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+    border: 1.6px solid var(--hd-line);
+    background: var(--hd-paper);
+    color: var(--hd-ink);
+    transition: transform .12s, background-color .14s, border-color .14s, color .14s;
+  }
+
+  .el-button:hover {
+    border-color: var(--hd-red);
+    color: var(--hd-red);
+    background: var(--hd-paper-2);
+  }
+
+  .el-button--primary {
+    border-color: var(--hd-red);
+    color: var(--hd-red);
+    background: var(--hd-paper);
+  }
+
+  .el-button--primary:hover {
+    background: var(--hd-red);
+    border-color: var(--hd-red);
+    color: var(--hd-paper);
+  }
+
+  .el-button--danger {
+    border-color: var(--hd-red);
+    color: var(--hd-red);
+  }
+
+  .el-button--danger:hover {
+    background: var(--hd-red);
+    color: var(--hd-paper);
+  }
+
+  .el-button.is-round { border-radius: 999px; }
+
+  .el-button.is-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+  }
+
+  .el-button.is-link {
+    border: 0;
+    background: none;
+    color: var(--hd-red);
+    padding: 0 2px;
+  }
+
+  /* ===== 复选 / 单选 / 开关：手绘圈与纸片滑钮 ===== */
+  .el-checkbox__inner,
+  .el-radio__inner {
+    border: 1.8px solid var(--hd-line);
+    background: var(--hd-paper);
+    width: 16px;
+    height: 16px;
+  }
+
+  .el-checkbox__input.is-checked .el-checkbox__inner,
+  .el-radio__input.is-checked .el-radio__inner {
+    background: var(--hd-paper);
+    border-color: var(--hd-red);
+  }
+
+  .el-checkbox__inner::after {
+    border-color: var(--hd-red);
+    left: 5px;
+    top: 2px;
+  }
+
+  .el-radio__inner::after {
+    width: 7px;
+    height: 7px;
+    background: var(--hd-red);
+  }
+
+  .el-checkbox__label,
+  .el-radio__label {
+    color: var(--hd-ink);
+  }
+
+  .el-switch.is-checked .el-switch__core {
+    background: var(--hd-red);
+    border-color: var(--hd-red);
+  }
+
+  /* ===== 标签 / 分页 / 空态 ===== */
+  .el-tag {
+    border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px;
+    font-family: var(--hd-hand);
+    border-color: var(--hd-line-soft);
+    background: var(--hd-paper-2);
+    color: var(--hd-ink-soft);
+  }
+
+  .el-pagination {
+    --el-pagination-bg-color: var(--hd-paper);
+    --el-pagination-button-color: var(--hd-ink-soft);
+    --el-pagination-hover-color: var(--hd-red);
+    font-family: var(--hd-hand);
+  }
+
+  .el-pagination button,
+  .el-pager li {
+    border-radius: 7px 3px 6px 3px / 3px 6px 3px 7px;
+    background: var(--hd-paper);
+    border: 1.4px solid var(--hd-line-soft);
+    margin: 0 3px;
+  }
+
+  .el-pager li.is-active {
+    color: var(--hd-paper);
+    background: var(--hd-red);
+    border-color: var(--hd-red);
+  }
+
+  .el-empty__description p {
+    color: var(--hd-ink-soft);
+    font-family: var(--hd-hand);
+  }
+
+  .el-loading-mask {
+    background-color: color-mix(in srgb, var(--hd-paper) 72%, transparent);
+  }
+
+  .el-loading-spinner .circular .path {
+    stroke: var(--hd-red);
+  }
+
+  /* ===== 浮层：纸片 + 手写星期（下拉 / 日期 / 弹层） ===== */
+  .el-popper.is-light,
+  .el-select-dropdown,
+  .el-picker-panel,
+  .el-dropdown-menu {
+    background-color: var(--hd-paper);
+    border: 1.8px solid var(--hd-line) !important;
+    border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
+    box-shadow: var(--hd-shadow);
+    font-family: var(--hd-hand);
+  }
+
+  .el-popper__arrow::before {
+    background: var(--hd-paper) !important;
+    border-color: var(--hd-line) !important;
+  }
+
+  .el-select-dropdown__item {
+    color: var(--hd-ink);
+    font-family: var(--hd-hand);
+  }
+
+  .el-select-dropdown__item.is-hovering,
+  .el-select-dropdown__item:hover {
+    background: var(--hd-paper-2);
+    color: var(--hd-red);
+  }
+
+  .el-select-dropdown__item.is-selected {
+    color: var(--hd-red);
+    font-weight: 400;
+  }
+
+  .el-date-picker,
+  .el-date-picker__header,
+  .el-date-table th,
+  .el-date-table td {
+    font-family: var(--hd-hand);
+    color: var(--hd-ink);
+  }
+
+  .el-date-table th {
+    color: var(--hd-ink-soft);
+    border-bottom: 1.5px dashed var(--hd-line-soft);
+  }
+
+  .el-date-table td.current:not(.disabled) .el-date-table-cell__text {
+    background: var(--hd-red);
+    color: var(--hd-paper);
+    border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+  }
+
+  .el-date-table td.today .el-date-table-cell__text {
+    color: var(--hd-red);
+  }
+
+  /* ===== 弹窗：一张贴在页面上的纸 ===== */
+  .el-overlay {
+    background-color: rgba(28, 24, 20, .28);
+  }
+
+  .el-dialog {
+    background-color: var(--hd-paper);
+    background-image: var(--hd-grain);
+    border: 2.3px solid var(--hd-line);
+    border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+    box-shadow: var(--hd-shadow-lift);
+    padding: 0;
+    position: relative;
+  }
+
+  .el-dialog::before {
+    content: "";
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    width: 92px;
+    height: 22px;
+    transform: translateX(-50%) rotate(-2deg);
+    background: var(--hd-tape);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .el-dialog__header {
+    padding: 22px 26px 4px;
+    margin: 0;
+  }
+
+  .el-dialog__title {
+    font-size: 23px;
+    letter-spacing: 1px;
+    color: var(--hd-ink);
+    font-family: var(--hd-hand);
+  }
+
+  .el-dialog__headerbtn {
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .el-dialog__headerbtn .el-dialog__close {
+    color: var(--hd-ink-soft);
+    font-size: 18px;
+  }
+
+  .el-dialog__headerbtn:hover .el-dialog__close { color: var(--hd-red); }
+
+  .el-dialog__body {
+    padding: 12px 26px 6px;
+    color: var(--hd-ink);
+  }
+
+  .el-dialog__footer {
+    padding: 6px 26px 22px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  /* ===== 抽屉：从右侧抽出的纸 ===== */
+  .el-drawer {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .el-drawer__body {
+    padding: 0;
+    overflow: visible;
+  }
+
+  /* ===== 消息与确认框 ===== */
+  .el-message {
+    background-color: var(--hd-paper);
+    border: 1.8px solid var(--hd-line);
+    border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
+    box-shadow: var(--hd-shadow);
+    font-family: var(--hd-hand);
+  }
+
+  .el-message .el-message__content { color: var(--hd-ink); }
+
+  .el-message--success { border-color: var(--hd-olive); }
+  .el-message--warning { border-color: var(--hd-amber-ink); }
+  .el-message--error { border-color: var(--hd-red); }
+
+  .el-message-box {
+    background-color: var(--hd-paper);
+    border: 2px solid var(--hd-line);
+    border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+    padding: 20px 22px;
+    box-shadow: var(--hd-shadow-lift);
+    font-family: var(--hd-hand);
+  }
+
+  .el-message-box__title {
+    font-size: 20px;
+    color: var(--hd-ink);
+  }
+
+  .el-message-box__message { color: var(--hd-ink-soft); }
+
+  .el-message-box__btns { padding-top: 14px; }
+
+  /* ===== 评分 ===== */
+  .el-rate__icon {
+    color: var(--hd-line-soft);
+    font-size: 20px;
+  }
+
+  .el-rate__icon.is-active { color: var(--hd-amber-ink); }
+
+  /* ===== 上传：虚线胶带框 ===== */
+  .el-upload--picture-card,
+  .el-upload-dragger {
+    background-color: var(--hd-paper-2);
+    border: 1.8px dashed var(--hd-line);
+    border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
+  }
+
+  .el-upload-list__item {
+    border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px;
+  }
+}
