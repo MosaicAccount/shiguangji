@@ -1,130 +1,169 @@
 <template>
-  <div class="travel-page">
-    <div class="page-banner anim">
-      <div class="banner-blob" aria-hidden="true"></div>
-      <div class="banner-blob2" aria-hidden="true"></div>
-      <div class="banner-text">
+  <div class="travel-page page-travel">
+    <section class="hd-banner anim">
+      <span class="hd-tape left"></span>
+      <span class="hd-tape right amber"></span>
+      <div>
+        <div class="eyebrow">去过的远方</div>
         <h1>足迹</h1>
-        <p>记录你去过和想去的地方。</p>
+        <p class="desc">记录你去过和想去的地方。</p>
       </div>
-      <div class="banner-stats">
-        <span class="stat-chip">去过<b>{{ bannerStats.cities }}</b>城</span>
-        <span class="stat-chip">留下<b>{{ bannerStats.total }}</b>张照片</span>
-        <span v-if="bannerStats.latest" class="stat-chip">最近<b>{{ bannerStats.latest.title }}</b></span>
+      <div class="acts">
+        <button v-if="isLogin" class="hd-btn go lg" type="button" @click="openAdd">＋ 添加想去</button>
       </div>
-      <el-button v-if="isLogin" type="primary" class="banner-add" @click="openAdd">＋ 添加想去</el-button>
+    </section>
+
+    <div class="hd-summary">
+      <span class="item">去过 <b>{{ bannerStats.cities }}</b> 城</span><span class="sep" aria-hidden="true">·</span>
+      <span class="item">留下 <b>{{ bannerStats.total }}</b> 张照片</span><span class="sep" aria-hidden="true">·</span>
+      <span class="item">想去 <b>{{ wishCount }}</b> 处</span>
+      <span v-if="bannerStats.latest" class="recent">最近 <b>{{ bannerStats.latest.title }}</b></span>
     </div>
 
-    <div class="filter-bar">
-      <div class="filter-group">
-        <button class="filter-pill" :class="{ active: mode === 'card' }" @click="switchMode('card')">卡片模式</button>
-        <button class="filter-pill" :class="{ active: mode === 'map' }" @click="switchMode('map')">地图模式</button>
-      </div>
-      <div v-if="isLogin && mode === 'card'" class="filter-group">
+    <div class="hd-toolbar">
+      <div v-if="isLogin" class="hd-chips" role="group" aria-label="状态">
         <button
-          v-for="(s, si) in sgj_place_status"
+          v-for="s in sgj_place_status"
           :key="s.value"
-          class="filter-pill"
-          :class="{ active: activeStatus === s.value }"
+          class="hd-chip"
+          :class="{ on: activeStatus === s.value }"
+          type="button"
           @click="switchStatus(s.value)"
         >{{ s.label }}</button>
       </div>
-      <el-input
-        v-if="mode === 'card'"
-        v-model="searchTitle"
-        placeholder="搜索地点"
-        clearable
-        class="search-input"
-        @keyup.enter="loadData"
-        @clear="loadData"
-      >
-        <template #prefix><span class="search-icon">⌕</span></template>
-        <template #append>
-          <el-button @click="loadData">搜索</el-button>
-        </template>
-      </el-input>
+      <div class="hd-search hd-input-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+        <input v-model="searchTitle" class="hd-input" type="search" placeholder="搜索地点" aria-label="搜索地点" @keyup.enter="loadData" />
+      </div>
+      <div class="right"><span class="hd-tiny hd-muted">共 {{ total }} 处</span></div>
     </div>
 
-    <!-- 标签筛选：豆瓣式标签行（PLACE 模块，仅卡片模式），点击选中、再点取消 -->
-    <tag-pills v-if="mode === 'card'" v-model="searchTag" module="PLACE" @update:model-value="loadData" />
-
-    <!-- 卡片模式 -->
-    <template v-if="mode === 'card'">
-      <div v-loading="loading" class="card-grid">
-        <el-empty v-if="!loading && !list.length && !loadError" description="暂无数据" />
-        <div v-if="loadError" class="load-error">
-          <span>加载失败，请稍后重试</span>
-          <el-button size="small" round @click="loadData">重试</el-button>
-        </div>
-        <div v-for="(item, idx) in list" :key="item.itemId" class="place-card anim" :style="{ '--d': ((idx % 4) * 30) + 'ms' }" @click="openDetail(item)">
-          <div class="card-cover" :style="coverStyle(idx)">
-            <!-- ：封面优先用条目封面，无封面回退首张照片；加载失败兜底（隐藏 img 显示占位图标） -->
-            <img v-if="cardCover(item) && !isCoverError(item)" :src="cardCover(item)" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
-            <template v-else>
-              <span class="card-glyph">地</span>
-              <span class="card-type-pill">地点</span>
-            </template>
-            <span v-if="item.photoCount" class="photo-badge">📷 {{ item.photoCount }}</span>
-          </div>
-          <div class="card-body">
-            <div class="card-title">{{ item.title }}</div>
-            <div v-if="item.city || item.country" class="card-location">
-              {{ [item.city, item.country].filter(Boolean).join(' · ') }}
-            </div>
-            <div class="card-meta-row">
-              <plan-date-badge :item="item" @saved="onPlanDateSaved" />
-              <span v-if="item.bestSeason" class="card-season">{{ item.bestSeason }}</span>
-            </div>
-            <div v-if="item.comment" class="card-comment">{{ item.comment }}</div>
-          </div>
-          <!-- ：整卡点击已开详情，操作区只留高频操作（去重「查看详情」按钮） -->
-          <div class="card-actions" @click.stop>
-            <el-button v-if="item.status === 'WANT' && isLogin" type="primary" size="small" round @click="openComplete(item)">
-              标记去过
-            </el-button>
-            <el-button v-if="item.status === 'DONE' && isLogin" type="warning" size="small" round @click="handleUncomplete(item)">
-              取消完成
-            </el-button>
-          </div>
-        </div>
+    <section class="hd-section map-sec" aria-labelledby="map-title">
+      <div class="hd-section-head">
+        <h2 class="hd-h2" id="map-title">旅行地图</h2>
+        <span class="sub">去过的地点连起来，就是这一年的路线。</span>
       </div>
 
-      <div v-if="hasMore" class="load-more-wrap">
-        <el-button :loading="loadingMore" round @click="loadMore">加载更多</el-button>
-      </div>
-    </template>
+      <div class="map-layout">
+        <figure class="hd-paper map-frame">
+          <span class="hd-tape left"></span>
+          <span class="hd-tape right"></span>
+          <div v-loading="mapLoading" class="map-container">
+            <div v-if="mapError" class="map-error">{{ mapError }}</div>
+            <travel-map
+              v-else
+              :visited="trajectory?.visited || []"
+              :wish="trajectory?.wish || []"
+              :height="430"
+              class="real-map"
+              @select="openDetailById"
+            />
+          </div>
+        </figure>
 
-    <!-- 地图模式：高德地图 + 照片就近聚合 + 旅行时间线 -->
-    <div v-else class="map-mode">
-      <div v-loading="mapLoading" class="map-container">
-        <div v-if="mapError" class="map-error">{{ mapError }}</div>
-        <travel-map
-          v-else
-          :visited="trajectory?.visited || []"
-          :wish="trajectory?.wish || []"
-          @select="openDetailById"
-        />
-      </div>
-      <!-- 旅行时间线：按到访年份串联去过的地方，点击回看详情 -->
-      <div class="timeline">
-        <div class="tl-title">旅行时间线 <span class="tl-sub">按到访年份 · 点击回看</span></div>
-        <div class="tl-track">
-          <button
-            v-for="p in timelinePhotos"
-            :key="p.itemId"
-            class="tl-item"
-            :aria-label="`回看 ${p.title}`"
-            @click="openDetailById(p.itemId!)"
-          >
-            <img v-if="p.cover" class="thumb" :src="photoUrl(p.cover)" :alt="p.title" loading="lazy" />
-            <span v-else class="thumb thumb-fallback" aria-hidden="true">📍</span>
-            <span class="tl-name">{{ p.title }}</span>
-            <span class="tl-date">{{ p.finishDate ? String(p.finishDate).slice(0, 10) : '—' }}</span>
-          </button>
+        <div class="tl-col">
+          <h3 class="tl-h">旅行时间线 <span class="tl-h-sub">按到访年份 · 点击回看</span></h3>
+          <div v-for="group in timelineByYear" :key="group.year" class="tl-year-group">
+            <div class="tl-year">{{ group.year }}</div>
+            <button
+              v-for="p in group.items"
+              :key="p.itemId"
+              class="tl-row"
+              type="button"
+              :aria-label="`回看 ${p.title}`"
+              @click="openDetailById(p.itemId!)"
+            >
+              <span class="tl-thumb">
+                <img v-if="p.cover" :src="photoUrl(p.cover)" :alt="p.title" loading="lazy" />
+                <span v-else class="hd-fallback place xs"><span class="fc-motif"></span></span>
+              </span>
+              <span class="tl-body">
+                <span class="tl-name">{{ p.title }}</span>
+                <span class="tl-date">{{ p.finishDate ? String(p.finishDate).slice(0, 10) : '—' }}</span>
+              </span>
+            </button>
+          </div>
           <div v-if="!timelinePhotos.length" class="tl-empty">去过的地方会按年份串在这里</div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <section class="hd-section" aria-labelledby="place-cards-title">
+      <div class="hd-section-head">
+        <h2 class="hd-h2" id="place-cards-title">地点卡片</h2>
+        <span class="sub">地图看方位，卡片看细节；点地图上的点可以定位到下面这张卡。</span>
+      </div>
+
+      <tag-pills v-model="searchTag" module="PLACE" class="tag-filter" @update:model-value="loadData" />
+
+      <div v-loading="loading" class="hd-grid place-grid">
+        <div v-if="!loading && !list.length && !loadError" class="hd-empty">
+          <p>还没有地点 —— 先把想去的那个地方记下来。</p>
+          <div class="acts">
+            <button v-if="isLogin" class="hd-btn go" type="button" @click="openAdd">＋ 添加想去</button>
+          </div>
+        </div>
+        <div v-if="loadError" class="load-error">
+          <span>加载失败，请稍后重试</span>
+          <button class="hd-btn sm" type="button" @click="loadData">重试</button>
+        </div>
+
+        <article
+          v-for="(item, idx) in list"
+          :key="item.itemId"
+          class="hd-card place-card hd-rough anim"
+          :style="{ '--d': ((idx % 4) * 30) + 'ms' }"
+          @click="openDetail(item)"
+        >
+          <span class="hd-tape"></span>
+          <a class="hd-cover" href="#" @click.prevent="openDetail(item)">
+            <img
+              v-if="cardCover(item) && !isCoverError(item)"
+              :src="cardCover(item)"
+              :alt="item.title"
+              loading="lazy"
+              @error="onCoverError(item)"
+            />
+            <span v-else class="hd-fallback place">
+              <span class="fc-band">地点</span>
+              <span class="fc-body">
+                <span class="fc-title">{{ item.title }}</span>
+                <span class="fc-meta">{{ [item.city, item.country].filter(Boolean).join(' · ') }}</span>
+              </span>
+              <span class="fc-motif"></span>
+            </span>
+            <span v-if="item.photoCount" class="photo-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.6"/><path d="M8 7 L9.5 4.5 H14.5 L16 7"/></svg>
+              {{ item.photoCount }}
+            </span>
+          </a>
+          <div class="body">
+            <h3 class="title">
+              {{ item.title }}
+              <span class="hd-st" :class="{ done: item.status === 'DONE' }">{{ statusLabel(item) }}</span>
+            </h3>
+            <div v-if="item.city || item.country" class="meta-row">
+              <span>{{ [item.city, item.country].filter(Boolean).join(' · ') }}</span>
+            </div>
+            <div class="stars-row">
+              <plan-date-badge :item="item" @saved="onPlanDateSaved" />
+              <span v-if="item.bestSeason" class="hd-tag plain">最佳 {{ item.bestSeason }}</span>
+            </div>
+            <p v-if="item.comment" class="card-comment">{{ item.comment }}</p>
+            <div class="card-acts" @click.stop>
+              <button v-if="item.status === 'WANT' && isLogin" class="hd-btn sm go" type="button" @click="openComplete(item)">标记去过</button>
+              <button v-if="item.status === 'DONE' && isLogin" class="hd-btn sm sub" type="button" @click="handleUncomplete(item)">取消完成</button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div v-if="hasMore" class="load-more">
+        <button class="hd-btn" type="button" :disabled="loadingMore" @click="loadMore">{{ loadingMore ? '加载中…' : '加载更多 ↓' }}</button>
+        <span class="hd-tiny hd-muted">已展示 {{ list.length }} / 共 {{ total }} 处</span>
+      </div>
+      <div v-else-if="list.length" class="grid-end">—— 已到底部 · 共 {{ total }} 处 ——</div>
+    </section>
 
     <!-- 添加想去 -->
     <el-dialog v-model="addOpen" title="添加想去" width="560px" append-to-body>
@@ -298,6 +337,7 @@ import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
 import PlanDateBadge from '@/components/PlanDateBadge/index.vue'
 import type { PickedPlace, PlaceResult } from '@/utils/map'
 import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
+import { itemStatusLabel } from '@/utils/itemStatus'
 import { getTravelTrajectory } from '@/api/front/travel'
 import { selectDictLabel, photoUrl } from '@/utils/sgj'
 import type { SgjItem, ItemStatus } from '@/types/api/business/item'
@@ -478,6 +518,26 @@ const bannerStats = computed(() => {
 
 /** 旅行时间线数据（轨迹接口按到访时间升序） */
 const timelinePhotos = computed<TravelPoint[]>(() => trajectory.value?.visited || [])
+
+/** 想去地点数（小结条用） */
+const wishCount = computed(() => (trajectory.value?.wish || []).length)
+
+/** 时间线按到访年份倒序分组（同年按接口顺序） */
+const timelineByYear = computed(() => {
+  const groups: { year: string; items: TravelPoint[] }[] = []
+  for (const p of timelinePhotos.value) {
+    const year = p.finishDate ? String(p.finishDate).slice(0, 4) : '未标记年份'
+    let group = groups.find(g => g.year === year)
+    if (!group) { group = { year, items: [] }; groups.push(group) }
+    group.items.push(p)
+  }
+  return groups.sort((a, b) => (a.year < b.year ? 1 : a.year > b.year ? -1 : 0))
+})
+
+/** 状态胶囊文案：字典优先，缺失时用类型兜底 */
+function statusLabel(item: SgjItem): string {
+  return itemStatusLabel(item, { sgj_place_status: sgj_place_status.value })
+}
 
 /** 详情相册照片数组（顺序即展示顺序） */
 const photosArr = computed<string[]>(() => (detail.value?.photos ? detail.value.photos.split(',').filter(Boolean) : []))
@@ -717,6 +777,7 @@ function handleDelete(item?: SgjItem): void {
 
 onMounted(() => {
   loadData()
+  loadMapData()
   // 横幅统计与时间线常驻需要轨迹数据；地图组件由模式切换时挂载
   loadMapData()
   handleRouteQuery()
@@ -724,700 +785,176 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.travel-page {
-  color: var(--sgj-text);
+/* 0.0.6 足迹：样式取自设计图 travel.html（.page-travel 作用域），形制来自 handdrawn-site.css */
+
+/* ===== 足迹：地图是主角——纸框 + 抖线把它「裱」进手账，瓦片本身不手绘 ===== */
+.page-travel .hd-banner .hd-tape.left { left: 15%; width: 92px }
+.page-travel .hd-banner .hd-tape.right { left: 88% }
+.page-travel .banner-main { min-width: 0 }
+.page-travel .stat-chip { font-size: 13px; line-height: 1.95; padding: 0 10px; color: var(--hd-ink-soft); border-color: var(--hd-line-soft) }
+.page-travel .stat-chip b { font-weight: 400; color: var(--hd-ink); font-size: 15px; padding: 0 2px }
+.page-travel .hd-search { max-width: 280px }
+
+/* 地图区：左边裱框地图，右边时间线 */
+.page-travel .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 292px; gap: 34px; margin-top: 20px; align-items: start }
+.page-travel .map-frame { margin: 0; padding: 15px 15px 12px; border-radius: 5px }
+.page-travel .map-frame > .hd-tape.left { left: 15%; top: -11px; width: 92px }
+.page-travel .map-frame > .hd-tape.right { left: 84%; top: -10px }
+.page-travel .map-frame > .hd-tape-corner { top: -12px; right: -12px }
+
+.page-travel .map-canvas-wrap { position: relative }
+.page-travel .map-canvas {
+  position: relative; aspect-ratio: 700 / 430; overflow: hidden;
+  background: var(--hd-paper);
+  border: 2px solid var(--hd-line);
+  border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px;
+}
+.page-travel .map-art { display: block; width: 100%; height: 100% }
+.page-travel .map-art pattern circle { fill: var(--hd-ink-faint); opacity: .42 }
+.page-travel .map-art .map-grid path { fill: none; stroke: var(--hd-line-soft); stroke-width: 1.2; stroke-dasharray: 3 9; opacity: .9 }
+.page-travel .map-art .map-sea { fill: var(--hd-moss-soft); stroke: none }
+.page-travel .map-art .map-coast { fill: none; stroke: var(--hd-line); stroke-width: 2.6; stroke-dasharray: 10 7; stroke-linecap: round }
+.page-travel .map-art .map-island { fill: var(--hd-amber-soft); stroke: var(--hd-line); stroke-width: 2.4; stroke-linejoin: round }
+.page-travel .map-art .map-isle path { fill: var(--hd-amber-soft); stroke: var(--hd-line); stroke-width: 2; stroke-linejoin: round }
+.page-travel .map-art .map-river path { fill: none; stroke: var(--hd-olive); stroke-width: 2.4; stroke-dasharray: 2 8; stroke-linecap: round; opacity: .6 }
+.page-travel .map-art .map-route path { fill: none; stroke: var(--hd-ochre); stroke-width: 2.6; stroke-dasharray: 8 7; stroke-linecap: round; opacity: .8 }
+.page-travel .map-art .map-hill path { fill: none; stroke: var(--hd-ink-faint); stroke-width: 2; stroke-linecap: round; opacity: .6 }
+.page-travel .map-art .map-wave path { fill: none; stroke: var(--hd-olive); stroke-width: 1.8; stroke-linecap: round; opacity: .5 }
+.page-travel .map-rough {
+  position: absolute; inset: -2px; pointer-events: none;
+  border: 2.4px solid var(--hd-line);
+  border-radius: 6px 3px 7px 3px / 3px 7px 3px 6px;
+  filter: url(#rough);
 }
 
-.load-more-wrap {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
+/* 图钉：HTML 层，缩到 390 也不缩字 */
+.page-travel .map-pin {
+  position: absolute; z-index: 2; transform: translate(-50%, -50%);
+  width: 28px; height: 28px; display: grid; place-items: center;
+  font-size: 14px; line-height: 1; color: var(--hd-amber-ink);
+  background: var(--hd-paper); border: 2px solid var(--hd-amber-ink);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+  box-shadow: 1px 2px 0 var(--hd-line-soft);
+}
+.page-travel .map-pin.wish { color: var(--hd-ink-soft); border-color: var(--hd-ink-soft); border-style: dashed; background: var(--hd-paper-2) }
+
+.page-travel .map-legend {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3;
+  display: flex; align-items: center; gap: 12px;
+  padding: 2px 10px; font-size: 13px; color: var(--hd-ink-soft);
+  background: var(--hd-paper); border: 1.6px solid var(--hd-line-soft);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-travel .lg-dot { width: 12px; height: 12px; margin-right: 5px; display: inline-block; vertical-align: -1px;
+  background: var(--hd-amber-ink); border: 1.8px solid var(--hd-amber-ink); border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%; }
+.page-travel .lg-dot.wish { background: var(--hd-paper-2); border: 1.8px dashed var(--hd-ink-soft) }
+
+.page-travel .map-compass { position: absolute; right: 10px; bottom: 8px; z-index: 3; display: flex; flex-direction: column; align-items: center;
+  color: var(--hd-ink-soft); background: var(--hd-paper); border-radius: 50%; padding: 3px; }
+.page-travel .map-compass svg { width: 38px; height: 38px; display: block }
+.page-travel .map-compass i { font-style: normal; font-size: 13px; line-height: 1; letter-spacing: 1px; margin-top: 1px }
+
+.page-travel .map-index {
+  margin-top: 11px; padding-top: 10px; border-top: 1.5px dashed var(--hd-line-soft);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 14px;
+  font-size: 13px; color: var(--hd-ink-soft); line-height: 1.6;
+}
+.page-travel .map-index b { font-weight: 400; color: var(--hd-ink-faint); margin-right: 4px }
+
+/* 旅行时间线 */
+.page-travel .tl-col { min-width: 0 }
+.page-travel .tl-h { font-size: 19px; letter-spacing: 1px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.page-travel .tl-h-sub { font-size: 13px; color: var(--hd-ink-faint); letter-spacing: 1px }
+.page-travel .tl-year { margin-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: 2px; color: var(--hd-ink-faint) }
+.page-travel .tl-year::after { content: ""; flex: 1; border-top: 1.5px dashed var(--hd-line-soft) }
+.page-travel .tl-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; text-decoration: none; color: var(--hd-ink); border-bottom: 1.5px dashed var(--hd-line-soft) }
+.page-travel .tl-row:last-of-type { border-bottom: 0 }
+.page-travel .tl-row:hover .tl-name { color: var(--hd-red) }
+.page-travel .tl-thumb { flex: none; width: 52px; height: 52px; aspect-ratio: auto; box-shadow: none }
+.page-travel .tl-txt { min-width: 0; display: flex; flex-direction: column }
+.page-travel .tl-name { font-size: 15px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-travel .tl-date { font-size: 13px; color: var(--hd-ink-soft) }
+
+/* 地点卡片（地图下方的同一批数据） */
+.page-travel .place-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px }
+.page-travel .place-card {
+  display: flex; flex-direction: column; min-width: 0;
+  background-color: var(--hd-paper); background-image: var(--hd-grain);
+  border-radius: 6px; box-shadow: var(--hd-shadow);
+  padding: 10px 10px 14px;
+  transition: transform .14s, box-shadow .14s;
+}
+.page-travel .place-card:hover { transform: translateY(-3px) rotate(0); box-shadow: var(--hd-shadow-lift) }
+.page-travel .place-card > .hd-tape { z-index: 3; top: -8px; width: 64px; height: 18px }
+.page-travel .place-card:nth-child(even) > .hd-tape { left: 32%; transform: translateX(-50%) rotate(2.6deg) }
+.page-travel .place-card:nth-child(3n) > .hd-tape { left: 68%; transform: translateX(-50%) rotate(-1.2deg) }
+.page-travel .place-card .hd-cover { aspect-ratio: 16 / 10; z-index: 1 }
+.page-travel .place-card .hd-cover .hd-fallback { transition: transform .25s }
+.page-travel .place-card:hover .hd-fallback { transform: scale(1.03) }
+.page-travel .place-card .hd-fallback { padding: 10px 11px 11px }
+.page-travel .place-card .hd-fallback .fc-band { font-size: 13px; line-height: 1.4; letter-spacing: 1px }
+.page-travel .place-card .hd-fallback .fc-title { font-size: 16px; line-height: 1.3; -webkit-line-clamp: 2 }
+.page-travel .place-card .hd-fallback .fc-meta { font-size: 13px; margin-top: 2px; opacity: .84 }
+.page-travel .map-note { margin-top: 14px; font-size: 13px; line-height: 1.7; color: var(--hd-ink-soft) }
+.page-travel .photo-num {
+  position: absolute; right: 8px; top: 8px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px 1px 6px; font-size: 13px; color: var(--hd-ink);
+  background: var(--hd-paper); border: 1.6px solid var(--hd-line);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-travel .photo-num svg { width: 14px; height: 14px; color: var(--hd-amber-ink) }
+.page-travel .photo-num b { font-weight: 400 }
+.page-travel .place-card .body { display: flex; flex-direction: column; flex: 1; padding: 12px 2px 0 }
+.page-travel .place-card .title { font-size: 18.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-travel .place-card .title .hd-st { margin-left: auto; flex: none; font-size: 13px }
+.page-travel .meta-row { margin-top: 4px; font-size: 13.5px; color: var(--hd-ink-soft); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px }
+.page-travel .meta-row .sep { color: var(--hd-ink-faint) }
+.page-travel .season-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 6px }
+.page-travel .card-comment {
+  margin-top: 8px; font-size: 14px; line-height: 1.7; color: var(--hd-ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: 3.4em;
+}
+.page-travel .card-acts { margin-top: auto; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap }
+
+@media (max-width: 960px) {
+  .page-travel .map-layout { grid-template-columns: minmax(0, 1fr); gap: 26px }
+  .page-travel .place-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px 18px }
+  .page-travel .map-index { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+}
+@media (max-width: 720px) {
+  .page-travel .map-frame { padding: 11px 11px 10px }
+  .page-travel .map-pin { width: 26px; height: 26px; font-size: 13px }
+  .page-travel .map-legend { left: 8px; bottom: 8px; gap: 9px; padding: 1px 8px }
+  .page-travel .map-compass { right: 8px; bottom: 6px }
+  .page-travel .map-compass svg { width: 32px; height: 32px }
+  .page-travel .place-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; margin-top: 18px }
+  .page-travel .place-card { padding: 8px 8px 12px }
+  .page-travel .place-card .title { font-size: 16.5px }
+  .page-travel .card-comment { font-size: 13.5px; min-height: 3.3em; -webkit-line-clamp: 3 }
+  .page-travel .card-acts .hd-btn { flex: 1 1 100% }
+  .page-travel .hd-banner .hd-tape.left { left: 22% }
+  .page-travel .hd-banner .hd-tape.right { left: 78% }
 }
 
-.load-error {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 40px 0;
-  color: var(--sgj-text-4);
-}
-
-.page-banner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 56px;
-  height: 176px;
-  margin-bottom: 24px;
-  border-radius: 24px;
-  background: #282e2c;
-  color: #e7ece9;
-  overflow: hidden;
-
-  .banner-blob {
-    position: absolute;
-    right: -40px;
-    top: -120px;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background: rgba(168, 95, 82, 0.35);
-    pointer-events: none;
-  }
-
-  .banner-blob2 {
-    position: absolute;
-    right: 140px;
-    bottom: -90px;
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    background: rgba(93, 111, 102, 0.4);
-    pointer-events: none;
-  }
-
-  .banner-text {
-    position: relative;
-    z-index: 1;
-
-    h1 {
-      margin: 0;
-      font-family: var(--sgj-font-serif);
-      font-weight: 700;
-      font-size: 36px;
-      line-height: 1.3;
-    }
-
-    p {
-      margin: 12px 0 0;
-      font-size: 14px;
-      color: #aeb8b3;
-      letter-spacing: 0.5px;
-    }
-  }
-
-  .banner-add {
-    position: relative;
-    z-index: 1;
-    height: 46px;
-    padding: 0 28px;
-    border-radius: 23px;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 1px;
-  }
-
-  .banner-stats {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    min-width: 240px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-
-    .stat-chip {
-      padding: 7px 14px;
-      border-radius: 999px;
-      background: rgba(231, 236, 233, 0.1);
-      border: 1px solid rgba(231, 236, 233, 0.22);
-      font-size: 12.5px;
-      color: #d8e0db;
-
-      b {
-        color: #f0c9a8;
-        font-family: var(--sgj-font-serif);
-        font-size: 15px;
-        margin: 0 3px;
-      }
-    }
-  }
-}
-
-html.dark .page-banner {
-  background: var(--sgj-bg-deep);
-}
-
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-
-  .filter-group {
-    display: flex;
-    gap: 8px;
-  }
-
-  .filter-pill {
-    padding: 8px 18px;
-    border: 1px solid var(--sgj-border-card);
-    border-radius: 17px;
-    background: var(--sgj-bg-card);
-    color: var(--sgj-text-2);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.16s;
-
-    &:hover {
-      border-color: var(--sgj-primary);
-      color: var(--sgj-primary);
-    }
-
-    &.active {
-      background: var(--sgj-primary);
-      border-color: var(--sgj-primary);
-      color: #fff;
-    }
-  }
-
-  .search-input {
-    width: 220px;
-    margin-left: auto;
-  }
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  min-height: 200px;
-}
-
-.place-card {
-  background: var(--sgj-bg-card);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(23, 27, 26, 0.06);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  display: flex;
-  flex-direction: column;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(23, 27, 26, 0.12);
-  }
-
-  .card-cover {
-    position: relative;
-    aspect-ratio: 16 / 10;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-
-    .card-cover-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .card-glyph {
-      font-family: var(--sgj-font-serif);
-      font-size: 44px;
-      line-height: 1;
-    }
-
-    .card-type-pill {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      padding: 2px 10px;
-      border-radius: 10px;
-      background: var(--sgj-bg-card);
-      color: var(--sgj-text-2);
-      font-size: 11px;
-    }
-
-    .photo-badge {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      padding: 2px 10px;
-      border-radius: 999px;
-      background: rgba(40, 46, 44, 0.78);
-      color: #f0ece2;
-      font-size: 11px;
-    }
-  }
-
-  .card-body {
-    padding: 16px;
-    flex: 1;
-
-    .card-title {
-      font-family: var(--sgj-font-serif);
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--sgj-text);
-      margin-bottom: 4px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .card-location {
-      font-size: 12px;
-      color: var(--sgj-text-3);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .card-meta-row {
-      margin-top: 8px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 12.5px;
-    }
-
-    .card-season {
-      display: inline-block;
-      padding: 1px 10px;
-      border-radius: 11px;
-      background: var(--sgj-moss-soft);
-      color: var(--sgj-moss);
-      font-size: 11px;
-    }
-
-    .card-comment {
-      font-size: 12px;
-      color: var(--sgj-text-2);
-      line-height: 1.5;
-      margin-top: 8px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-  }
-
-  .card-actions {
-    padding: 0 16px 16px;
-    display: flex;
-    gap: 8px;
-  }
-}
-
-.map-mode {
-  .map-container {
-    min-height: 420px;
-    position: relative;
-    border-radius: 16px;
-    overflow: hidden;
-
-    .map-error {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--sgj-text-4);
-      z-index: 180;
-      background: var(--sgj-bg-card);
-    }
-  }
-}
-
-/* 旅行时间线：圆形照片珠按年份串在虚线上 */
-.timeline {
-  margin-top: 18px;
-
-  .tl-title {
-    font: 700 15px/1 var(--sgj-font-serif);
-    color: var(--sgj-text-2);
-    margin-bottom: 12px;
-
-    .tl-sub {
-      font: 400 12px/1 var(--sgj-font);
-      color: var(--sgj-text-4);
-      margin-left: 8px;
-    }
-  }
-
-  .tl-track {
-    position: relative;
-    display: flex;
-    gap: 26px;
-    overflow-x: auto;
-    padding: 6px 4px 14px;
-
-    &::before {
-      content: '';
-      position: absolute;
-      left: 30px;
-      right: 30px;
-      top: 34px;
-      border-top: 2px dashed rgba(168, 95, 82, 0.35);
-    }
-  }
-
-  .tl-item {
-    position: relative;
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    width: 92px;
-    padding: 0;
-    background: none;
-    border: 0;
-    cursor: pointer;
-
-    .thumb {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      border: 3px solid #fff;
-      box-shadow: 0 3px 10px rgba(23, 27, 26, 0.2);
-      object-fit: cover;
-      background: var(--sgj-bg-card);
-      transition: transform 0.18s ease;
-    }
-
-    .thumb-fallback {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-    }
-
-    &:hover .thumb {
-      transform: translateY(-3px) scale(1.05);
-    }
-
-    .tl-name {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--sgj-text);
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .tl-date {
-      font-size: 11px;
-      color: var(--sgj-text-4);
-      font-family: var(--sgj-font-serif);
-    }
-  }
-
-  .tl-empty {
-    color: var(--sgj-text-4);
-    font-size: 13px;
-    padding: 12px 0;
-  }
-}
-
-.coord-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.coord-tip {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--sgj-text-4);
-}
-
-/* 详情抽屉（hero + 手账信息卡）；容器由全局 .place-drawer 规则去内边距 */
-.drawer-inner {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  text-align: left;
-}
-
-/* Hero：首图/封面铺底，标题叠底 */
-.d-hero {
-  position: relative;
-  height: 216px;
-  flex: none;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-  background: linear-gradient(160deg, var(--sgj-primary-soft), var(--sgj-cover));
-
-  &.is-empty .d-hero-glyph {
-    font-family: var(--sgj-font-serif);
-    font-size: 96px;
-    font-weight: 700;
-    color: var(--sgj-primary-dark);
-    opacity: 0.28;
-  }
-}
-
-.d-hero-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.d-hero-glyph {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.d-hero-mask {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(23, 27, 26, 0.08) 0%, rgba(23, 27, 26, 0) 35%, rgba(23, 27, 26, 0.66) 100%);
-}
-
-.d-status {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  padding: 3px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  backdrop-filter: blur(4px);
-
-  &.DONE {
-    background: rgba(93, 111, 102, 0.92);
-  }
-
-  &.WANT {
-    background: rgba(192, 138, 62, 0.92);
-  }
-}
-
-.d-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 0;
-  background: var(--sgj-bg-card);
-  color: var(--sgj-text);
-  font-size: 14px;
-  cursor: pointer;
-
-  &:hover {
-    background: #fff;
-  }
-}
-
-.d-hero-bottom {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  padding: 0 18px 14px;
-
-  h2 {
-    margin: 0;
-    font: 700 24px/1.3 var(--sgj-font-serif);
-    color: #fff;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  .d-meta-line {
-    margin-top: 6px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    font-size: 12.5px;
-    color: rgba(255, 255, 255, 0.94);
-  }
-}
-
-.d-body {
-  padding: 16px 18px 26px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  flex: 1;
-}
-
-.d-chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-
-  .chip {
-    padding: 3px 12px;
-    border-radius: 999px;
-    background: var(--sgj-primary-soft);
-    color: var(--sgj-primary-dark);
-    font-size: 12px;
-  }
-
-  .chip-season {
-    background: var(--sgj-moss-soft);
-    color: var(--sgj-moss);
-  }
-
-  .chip-plan {
-    background: var(--sgj-primary-soft);
-    color: var(--sgj-primary);
-  }
-}
-
-.d-addr {
-  display: flex;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--sgj-text-2);
-  line-height: 1.7;
-
-  .ico {
-    flex: none;
-  }
-}
-
-/* 我的回忆：手账引言卡 */
-.d-memory {
-  padding: 13px 16px 15px;
-  background: var(--sgj-bg-card);
-  border-radius: 4px 16px 16px 16px;
-  border-left: 3px solid var(--sgj-primary);
-
-  .d-memory-label {
-    font-size: 10.5px;
-    letter-spacing: 2px;
-    color: var(--sgj-text-4);
-    margin-bottom: 6px;
-  }
-
-  p {
-    margin: 0;
-    font-family: var(--sgj-font-serif);
-    font-size: 13.5px;
-    line-height: 1.8;
-    color: var(--sgj-text);
-  }
-}
-
-.d-coords {
-  font-size: 11px;
-  color: var(--sgj-text-4);
-  letter-spacing: 0.5px;
-}
-
-.d-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 8px;
-}
-
-/* 地点照片区：标题行与扇形相册入口 */
-.detail-photos {
-  text-align: left;
-
-  .detail-photos-head {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 8px;
-
-    h3 {
-      color: var(--sgj-text-2);
-      margin: 0;
-    }
-
-    .detail-photos-count {
-      font-size: 12px;
-      color: var(--sgj-text-4);
-    }
-
-    .detail-photos-add {
-      margin-left: auto;
-      font-size: 12px;
-    }
-  }
-
-  .album-empty {
-    margin-top: 4px;
-    padding: 26px 16px;
-    border: 1.5px dashed var(--sgj-border-card);
-    border-radius: 14px;
-    text-align: center;
-    color: var(--sgj-text-4);
-    font-size: 13px;
-    line-height: 1.8;
-
-    .big {
-      font-size: 26px;
-    }
-  }
-}
-
-/* 移动端最小适配：工具栏换行、搜索框占满整行、卡片操作按钮可换行、地图高度收敛 */
-@media (max-width: 768px) {
-  .toolbar {
-    flex-wrap: wrap;
-    gap: 8px;
-
-    .el-input {
-      width: 100% !important;
-    }
-  }
-
-  /*  移动端卡片栅格：minmax(160px,1fr) */
-  .card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-  }
-
-  .card-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-
-    .el-button + .el-button {
-      margin-left: 0;
-    }
-  }
-
-  /* 地图高度收敛由 TravelMap 组件内部处理 */
-  .timeline {
-    display: none;
-  }
-
-  .d-hero {
-    height: 180px;
-  }
-
-  .d-actions {
-    flex-wrap: wrap;
-  }
-}
-</style>
-
-<style lang="scss">
-/* 详情抽屉容器（el-drawer 传送至 body，scoped 无法作用）：去内边距、限宽 */
-.place-drawer {
-  .el-drawer__body {
-    padding: 0;
-  }
-}
+/* 产品补充：真实地图组件、卡片封面、时间线列、加载态 */
+.page-travel .map-frame { position: relative; padding: 10px; overflow: hidden }
+.page-travel .map-frame .map-container { position: relative; height: 430px; border-radius: 3px; overflow: hidden }
+.page-travel .map-frame .map-error { display: grid; place-items: center; height: 430px; color: var(--hd-ink-soft) }
+.page-travel .real-map { display: block; width: 100% }
+.page-travel .place-card .hd-cover img { width: 100%; height: 100%; object-fit: cover; display: block }
+.page-travel .tag-filter { margin-top: 16px }
+.page-travel .grid-end { margin-top: 34px; text-align: center; font-size: 13.5px; color: var(--hd-ink-soft) }
+.page-travel .tl-year-group { margin-top: 10px }
+.page-travel .tl-year { margin-top: 14px }
+.page-travel .tl-row { width: 100%; border: 0; background: none; text-align: left; cursor: pointer }
+.page-travel .tl-thumb { flex: none; width: 46px; height: 58px; overflow: hidden; border: 1.6px solid var(--hd-line); border-radius: 3px 1px 4px 2px; position: relative; display: block }
+.page-travel .tl-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
+.page-travel .tl-body { min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.page-travel .tl-name { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-travel .tl-date { font-size: 13px; color: var(--hd-ink-soft) }
+.page-travel .load-error { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 0; color: var(--hd-ink-soft) }
+.page-travel .hd-empty { grid-column: 1 / -1 }
 
 </style>
