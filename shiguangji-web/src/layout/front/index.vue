@@ -72,6 +72,7 @@
 import { getToken } from '@/utils/auth'
 // 0.0.6 手绘形制层（--hd-*）全站装载；字体同步全局加载（核心片复核见 #108）
 import '@/assets/styles/handdrawn/handdrawn-site.css'
+import '@/assets/styles/handdrawn/element-handdrawn.scss'
 import useSettingsStore from '@/store/modules/settings'
 import { animateThemeToggle } from '@/utils/theme'
 
@@ -80,6 +81,16 @@ const isLogin = computed(() => !!getToken())
 const settingsStore = useSettingsStore()
 const router = useRouter()
 const route = useRoute()
+
+/** 手绘作用域挂到 body：EP 的弹窗/抽屉/浮层 teleport 到 body，靠它取 --hd-* 令牌 */
+function applyBodyScope(): void {
+  document.body.classList.add('hd-app', 'hd-front')
+}
+
+onMounted(applyBodyScope)
+onBeforeUnmount(() => {
+  document.body.classList.remove('hd-app', 'hd-front')
+})
 
 /** 当前导航项（手绘下划线）：/note/detail 之类的子路由仍高亮所属一级项 */
 function isActive(to: string): boolean {

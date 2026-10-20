@@ -192,8 +192,8 @@
     </el-form>
     <template #footer>
       <el-button v-if="props.itemId" @click="viewNotes">查看关联笔记</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">确 定</el-button>
-      <el-button @click="dialogVisible = false">取 消</el-button>
+      <el-button type="primary" :loading="submitting" @click="submitForm">保存修改</el-button>
+      <el-button @click="dialogVisible = false">取消</el-button>
     </template>
   </el-dialog>
 
