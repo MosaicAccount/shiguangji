@@ -41,8 +41,10 @@
           @click="emit('select', p.item)"
           @keydown.enter="emit('select', p.item)"
         >
-          <circle class="bubble" r="13" />
-          <text y="4.5" text-anchor="middle">{{ p.no }}</text>
+          <circle class="pin-shadow" cx="2" cy="2.5" r="16" />
+          <circle class="bubble" r="16" />
+          <text y="5.5" text-anchor="middle">{{ p.no }}</text>
+          <text v-if="showSingleLabels" class="cap" y="38" text-anchor="middle">{{ p.item.city || p.item.title }}</text>
         </g>
 
         <!-- 城市叠针：单泡数量 + 虚线外环 + 城市小签 -->
@@ -57,10 +59,11 @@
           @click="emit('cluster', c.items)"
           @keydown.enter="emit('cluster', c.items)"
         >
-          <circle class="ring" r="19" />
-          <circle class="bubble" r="15" />
-          <text class="cnt" y="5" text-anchor="middle">{{ c.items.length }}</text>
-          <text class="cap" y="36" text-anchor="middle">{{ cityOf(c) }} · {{ c.items.length }} 处</text>
+          <circle class="pin-shadow" cx="2" cy="2.5" r="18" />
+          <circle class="ring" r="22" />
+          <circle class="bubble" r="18" />
+          <text class="cnt" y="6" text-anchor="middle">{{ c.items.length }}</text>
+          <text class="cap" y="40" text-anchor="middle">{{ cityOf(c) }} · {{ c.items.length }} 处</text>
         </g>
       </svg>
 
@@ -229,6 +232,9 @@ const routeD = computed(() =>
     : ''
 )
 
+/** 单点少时补城市小签：点多就收起，免得糊成一片 */
+const showSingleLabels = computed(() => singles.value.length + clusters.value.length <= 8)
+
 const arrows = computed(() => {
   const out: { x: number; y: number; deg: number }[] = []
   for (let i = 0; i < routePts.value.length - 1; i++) {
@@ -255,18 +261,24 @@ const arrows = computed(() => {
 .sm-arrow { stroke: var(--hd-ochre); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round }
 
 .sm-pin { cursor: pointer }
-.sm-pin .bubble { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2 }
-.sm-pin text { fill: var(--hd-amber-ink); font-size: 13px; font-family: var(--hd-hand) }
+.sm-pin .pin-shadow { fill: rgba(70, 58, 46, .20) }
+.sm-pin .bubble { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2.8 }
+.sm-pin text { fill: var(--hd-amber-ink); font-size: 15.5px; font-weight: 600; font-family: var(--hd-hand) }
+.sm-pin .cap {
+  fill: var(--hd-ink); font-size: 12.5px; font-weight: 400; font-family: var(--hd-hand);
+  paint-order: stroke; stroke: var(--hd-paper); stroke-width: 3.5px;
+}
 .sm-pin:hover .bubble, .sm-pin:focus-visible .bubble { stroke: var(--hd-red) }
 .sm-pin:hover text, .sm-pin:focus-visible text { fill: var(--hd-red) }
 
 .sm-cluster { cursor: pointer }
-.sm-cluster .bubble { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2.2 }
-.sm-cluster .ring { fill: none; stroke: var(--hd-amber-ink); stroke-width: 1.5; stroke-dasharray: 3 4; opacity: .75 }
-.sm-cluster .cnt { fill: var(--hd-amber-ink); font-size: 13.5px; font-family: var(--hd-hand) }
+.sm-cluster .pin-shadow { fill: rgba(70, 58, 46, .20) }
+.sm-cluster .bubble { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 3 }
+.sm-cluster .ring { fill: none; stroke: var(--hd-amber-ink); stroke-width: 1.8; stroke-dasharray: 4 5; opacity: .8 }
+.sm-cluster .cnt { fill: var(--hd-amber-ink); font-size: 16px; font-weight: 600; font-family: var(--hd-hand) }
 .sm-cluster .cap {
-  fill: var(--hd-ink-soft); font-size: 12.5px; font-family: var(--hd-hand);
-  paint-order: stroke; stroke: var(--hd-paper); stroke-width: 3.5px;
+  fill: var(--hd-ink); font-size: 14px; font-family: var(--hd-hand);
+  paint-order: stroke; stroke: var(--hd-paper); stroke-width: 4px;
 }
 .sm-cluster:hover .bubble, .sm-cluster:hover .ring,
 .sm-cluster:focus-visible .bubble, .sm-cluster:focus-visible .ring { stroke: var(--hd-red) }
