@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>足迹地图重设计 · 设计提案 — 拾光记 0.0.6</title>
+<title>手绘足迹图 · 设计提案 — 拾光记 0.0.6</title>
 <link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
 <link rel="stylesheet" href="handdrawn-site.css">
 <style>
@@ -129,6 +129,40 @@
 .page-mapdoc .back-link { border: 0; background: none; padding: 0 0 2px; font-size: 13px; color: var(--hd-ink-soft); cursor: pointer; border-bottom: 1.4px dashed var(--hd-line-soft); font-family: var(--hd-hand) }
 .page-mapdoc .back-link:hover { color: var(--hd-red) }
 
+/* 无照片默认封面（列表小图 / 详情大图共用形制） */
+.page-mapdoc .clu-fb, .page-mapdoc .ph.ph-fb {
+  flex: none; position: relative; overflow: hidden;
+  width: 44px; height: 56px;
+  background: var(--hd-amber-soft);
+  border: 1.6px solid var(--hd-line); border-radius: 3px 1px 4px 2px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.page-mapdoc .ph.ph-fb { width: 100%; height: 150px; border-radius: 3px; justify-content: flex-end }
+.page-mapdoc .fb-band {
+  position: absolute; top: 0; left: 0; font-style: normal;
+  font-size: 11px; padding: 1px 7px; color: var(--hd-paper);
+  background: var(--hd-ochre); border-radius: 2px 0 3px 0; font-family: var(--hd-hand);
+}
+.page-mapdoc .ph .fb-band { font-size: 13px; padding: 2px 10px }
+.page-mapdoc .fb-t {
+  font-weight: 400; font-size: 12.5px; color: var(--hd-ink);
+  padding: 2px 6px 4px; line-height: 1.3;
+  background: linear-gradient(180deg, transparent, rgba(255, 253, 249, .9) 38%);
+  font-family: var(--hd-hand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.page-mapdoc .ph .fb-t { font-size: 17px; padding: 6px 12px 8px }
+.page-mapdoc .ph-img { width: 100%; height: 150px; object-fit: cover; border-radius: 3px; display: block }
+
+/* 高德单点视图 */
+.page-mapdoc .amap-back { position: absolute; left: 12px; top: 12px; z-index: 5 }
+.page-mapdoc .amap-title {
+  position: absolute; left: 50%; top: calc(44% + 40px); transform: translateX(-50%);
+  z-index: 4; padding: 3px 12px; font-size: 13.5px; color: var(--hd-ink);
+  background: var(--hd-paper); border: 1.6px solid var(--hd-line);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px; font-family: var(--hd-hand);
+  white-space: nowrap;
+}
+
 /* 状态机 / 规则 */
 .page-mapdoc .logic { margin-top: 26px; padding: 20px 24px 18px }
 .page-mapdoc .logic h2 { font-size: 21px; letter-spacing: 1px; margin: 14px 0 0 }
@@ -184,9 +218,9 @@
     <span class="hd-tape left"></span>
     <span class="hd-tape right amber"></span>
     <div>
-      <div class="eyebrow">足迹地图 · 重设计提案</div>
-      <h1>双层地图</h1>
-      <p class="desc">默认看手绘路线图（真实坐标相对投影 + 编号图钉 + 虚线路径）；点叠针弹「这一片」纸卡；要精确位置时一键切到真实地图（照片图钉）。下面这页可以点：切月份、点叠针、点图钉、切模式。</p>
+      <div class="eyebrow">足迹地图 · 终版方案</div>
+      <h1>手绘足迹图</h1>
+      <p class="desc">真实坐标相对投影 + 编号图钉 + 方向箭标 + 城市叠针；点叠针看「这一片」纸卡；要看精确位置，在详情里点「在高德地图上查看」。下面这页可以点：切月份、点图钉、点叠针、进详情开高德。</p>
     </div>
     <div class="acts">
       <a class="hd-btn" href="travel.html">现有足迹页 →</a>
@@ -198,10 +232,6 @@
     <span class="hd-tape"></span>
     <div class="map-toolbar">
       <div class="hd-chips" id="monthChips" role="group" aria-label="按月份筛选"></div>
-      <div class="mode-toggle">
-        <button class="hd-chip on" id="modeHand" type="button">手绘示意</button>
-        <button class="hd-chip" id="modeReal" type="button">真实地图</button>
-      </div>
     </div>
     <div class="map-stage" id="mapStage">
       <svg class="map-art" id="handMap" viewBox="0 0 720 440" role="img" aria-label="手绘足迹示意图"></svg>
@@ -209,7 +239,6 @@
       <div class="map-legend">
         <span><i class="lg-dot"></i>去过（编号 = 到访顺序）</span>
         <span><i class="lg-dot cluster"></i>叠针 = 附近 N 处</span>
-        <span id="lgWish"><i class="lg-dot wish"></i>想去（仅真实地图）</span>
       </div>
     </div>
     <p class="map-note">示意位置 · 非比例 —— 方位关系真实，距离不是；要看精确位置就点右上「真实地图」。</p>
@@ -225,10 +254,8 @@
 ├─ 点编号图钉 ──→ 详情抽屉
 ├─ 点叠针 ──────→ 「这一片」纸卡（簇内地点列表 + 小路线示意）
 │    └─ 点条目 → 详情抽屉（纸卡里可返回列表）
-├─ 点「真实地图」→ 高德模式（照片图钉 + 就近聚合 + 想去灰度针）
-│    ├─ 点叠照 → 同一张「这一片」纸卡
-│    └─ 点想去照片 → 详情抽屉（想去态，可「定个日子」）
-└─ 手绘示意不画想去：足迹图只画走过的路</div>
+└─ 详情抽屉 ────→ 点「在高德地图上查看」→ 高德单点视图
+                     （照片图钉，沿用原样式）→ 「返回手绘示意」</div>
 
     <table class="rule-table">
       <thead><tr><th style="width:120px">环节</th><th>规则</th></tr></thead>
@@ -239,9 +266,11 @@
         <tr><td class="k">叠针 → 纸卡</td><td>点叠针弹<b>「这一片」纸卡</b>：簇内地点按到访先后排列（照片 + 日期 + 张数），顶部一条编号小路线示意，标注跨度 km；点条目进详情抽屉，纸卡内可返回。同坐标多次到访在列表里天然可表达，无需特殊兜底。</td></tr>
         <tr><td class="k">月份口径</td><td>按 finishDate 归月；胶囊只列<b>有足迹的月份</b>并带数量（空月不出现）；默认「全年」；切换只重画路径与图钉。</td></tr>
         <tr><td class="k">路径</td><td>选中范围按日期升序串联成虚线路径，<b>每段中点带方向箭标</b>（先后顺序一眼可读）；仅 1 个点不画线；想去不进路径。</td></tr>
-        <tr><td class="k">想去</td><td><b>不上手绘示意</b>——足迹图只画走过的路，没去过的地方出现在上面反而别扭；真实地图模式仍以灰度照片针显示（那边本来就是「工具地图」），卡片区与详情照常管理想去。</td></tr>
+        <tr><td class="k">想去</td><td>不上地图——足迹图只画走过的路；想去在地点卡片区与详情里管理（定日子 / 标记去过）。</td></tr>
         <tr><td class="k">空态</td><td>一个足迹都没有 → 手绘空态 +「＋ 添加想去」；坐标缺失的地点不上图，仍在卡片与时间线里。</td></tr>
-        <tr><td class="k">真实地图</td><td>现有高德模式原样保留：照片图钉 + 就近聚合 + 路线 + 点选详情；与手绘图共用同一个装裱框，一次明确的模式切换，不做逐点击跳转。</td></tr>
+        <tr><td class="k">高德按需</td><td>不再做整图模式切换；详情抽屉里的<b>「在高德地图上查看」</b>打开单点高德视图（照片图钉沿用原样式 + 地名签 + 返回），看完即回手绘示意。</td></tr>
+        <tr><td class="k">无照片兜底</td><td>详情与「这一片」列表没有封面 / 照片时显示手绘默认封面（赭石类型签 + 名称压角），不留空块。</td></tr>
+        <tr><td class="k">回顾复用</td><td>回顾页的年度足迹地图换用<b>同一套手绘示意组件</b>（投影 / 叠针 / 箭标 / 纸卡一致），跨页视觉统一。</td></tr>
         <tr><td class="k">性能</td><td>个人站量级（≤ 数百点），投影 / 松弛 / 聚合全在前端一次算完，无接口改动。</td></tr>
       </tbody>
     </table>
@@ -275,7 +304,7 @@ var PLACES = [
   { id: 3, t: '鸭川', city: '京都', lng: 135.77, lat: 35.01, d: '2026-04-08', photos: 22 },
   { id: 5, t: '洱海', city: '大理', lng: 100.18, lat: 25.75, d: '2026-09-22', photos: 18 },
   { id: 6, t: '喜洲', city: '大理', lng: 100.13, lat: 25.99, d: '2026-09-23', photos: 9 },
-  { id: 7, t: '古城', city: '大理', lng: 100.16, lat: 25.69, d: '2026-09-24', photos: 12 },
+  { id: 7, t: '古城', city: '大理', lng: 100.16, lat: 25.69, d: '2026-09-24', photos: 12, cover: null },
   { id: 4, t: '阿那亚', city: '秦皇岛', lng: 119.30, lat: 39.78, d: '2026-09-27', photos: 31 },
   { id: 8, t: '外滩', city: '上海', lng: 121.48, lat: 31.23, d: '2026-10-12', photos: 7 },
   { id: 9, t: '西湖', city: '杭州', lng: 120.15, lat: 30.25, wish: true, photos: 0 }
@@ -474,9 +503,16 @@ function openCluster(G) {
   members.forEach(function (m) {
     var r = document.createElement('div');
     r.className = 'clu-row';
-    var img = document.createElement('img');
-    img.src = PHOTOS[m.id % PHOTOS.length]; img.alt = m.t;
-    r.appendChild(img);
+    if (m.cover) {
+      var img = document.createElement('img');
+      img.src = m.cover; img.alt = m.t;
+      r.appendChild(img);
+    } else {
+      var fb = document.createElement('span');
+      fb.className = 'clu-fb';
+      fb.innerHTML = '<i class="fb-band">地点</i><b class="fb-t">' + m.t + '</b>';
+      r.appendChild(fb);
+    }
     var tx = document.createElement('div');
     tx.style.minWidth = '0';
     tx.innerHTML = '<div class="clu-t">' + m.t + '</div><div class="clu-m">' + m.city + ' · ' + (m.d || '').slice(5).replace('-', '/') + ' · ' + (m.photos || 0) + ' 张照片</div>';
@@ -513,7 +549,15 @@ function renderPlace(p, fromCluster) {
   meta.innerHTML = '<span>' + p.city + ' · 中国</span><span>' + (p.d ? (Number(p.d.slice(5, 7)) + ' 月 ' + Number(p.d.slice(8, 10)) + ' 日') : '还没定日子') + '</span><span>' + (p.photos || 0) + ' 张照片</span>';
   body.appendChild(meta);
   var ph = document.createElement('div');
-  ph.className = 'ph'; ph.textContent = '首张照片（cover）';
+  ph.className = 'ph';
+  if (p.cover) {
+    var phImg = document.createElement('img');
+    phImg.className = 'ph-img'; phImg.src = p.cover; phImg.alt = p.t;
+    ph.appendChild(phImg);
+  } else {
+    ph.classList.add('ph-fb');
+    ph.innerHTML = '<i class="fb-band">地点</i><b class="fb-t">' + p.t + '</b>';
+  }
   body.appendChild(ph);
   var say = document.createElement('div');
   say.className = 'say';
@@ -521,14 +565,28 @@ function renderPlace(p, fromCluster) {
   body.appendChild(say);
   var acts = document.createElement('div');
   acts.className = 'acts';
-  acts.innerHTML = '<button class="hd-btn sub" type="button">编辑</button><button class="hd-btn sub" type="button">删除</button>';
+  var amapBtn = document.createElement('button');
+  amapBtn.className = 'hd-btn go'; amapBtn.type = 'button';
+  amapBtn.textContent = '在高德地图上查看';
+  amapBtn.addEventListener('click', function () {
+    document.getElementById('mockDrawer').classList.remove('open');
+    drawAmap(p);
+  });
+  acts.appendChild(amapBtn);
+  var edit = document.createElement('button');
+  edit.className = 'hd-btn sub'; edit.type = 'button'; edit.textContent = '编辑';
+  acts.appendChild(edit);
+  var del = document.createElement('button');
+  del.className = 'hd-btn sub'; del.type = 'button'; del.textContent = '删除';
+  acts.appendChild(del);
   body.appendChild(acts);
   document.getElementById('mockDrawer').classList.add('open');
 }
 
-/* ===== 真实地图模式（伪高德演示） ===== */
-var realMap = document.getElementById('realMap');
-function drawReal() {
+/* ===== 高德单点视图（按需）：详情里点「在高德地图上查看」打开，只看这一个点 ===== */
+function drawAmap(p) {
+  handMap.hidden = true;
+  realMap.hidden = false;
   realMap.innerHTML = '';
   [['road', '8%', '30%', '70%', '3px', '-6deg'], ['road', '30%', '80%', '50%', '2px', '4deg'], ['road', '60%', '10%', '60%', '2.5px', '10deg'],
    ['water', 'left:2%;top:55%;width:180px;height:110px'], ['park', 'right:6%;top:8%;width:150px;height:100px']]
@@ -538,48 +596,42 @@ function drawReal() {
      else { n.className = d[0]; n.style.cssText = d[1]; }
      realMap.appendChild(n);
    });
-  var svg = document.createElementNS(SVGNS, 'svg');
-  svg.setAttribute('class', 'real-svg'); svg.setAttribute('viewBox', '0 0 720 440'); svg.setAttribute('preserveAspectRatio', 'none');
-  realMap.appendChild(svg);
-  var visited = filtered();
-  var groups = decluster(visited).groups;
-  if (visited.length > 1) {
-    var pts = visited.map(function (p) {
-      var G = groups.find(function (G) { return G.items.includes(p); });
-      return [G.cx, G.cy];
-    });
-    el('path', { class: 'map-route', d: 'M' + pts.map(function (q) { return q[0] + ',' + q[1]; }).join(' L'), 'stroke-width': 3 }, svg);
-    routeArrows(pts, svg);
-  }
-  groups.forEach(function (G) {
-    var d = document.createElement('div');
-    d.className = 'real-pin';
-    d.style.left = (G.cx / VB.w * 100) + '%';
-    d.style.top = (G.cy / VB.h * 100) + '%';
-    if (G.items.length > 1) {
-      d.classList.add('stack');
-      var im2 = document.createElement('img'); im2.src = PHOTOS[2]; im2.className = 'sec'; d.appendChild(im2);
-      var im3 = document.createElement('img'); im3.src = PHOTOS[3]; im3.className = 'thi'; d.appendChild(im3);
-    }
-    var best = G.items.slice().sort(function (a, b) { return (b.photos || 0) - (a.photos || 0); })[0];
-    var im = document.createElement('img'); im.src = PHOTOS[best.id % PHOTOS.length]; im.alt = best.t; d.appendChild(im);
-    var c = document.createElement('span'); c.className = 'cnt'; c.textContent = G.items.reduce(function (s, q) { return s + (q.photos || 1); }, 0); d.appendChild(c);
-    d.addEventListener('click', function (e) { e.stopPropagation(); openCluster(G); });
-    realMap.appendChild(d);
-  });
-  PLACES.filter(function (p) { return p.wish; }).forEach(function (p) {
-    var d = document.createElement('div');
-    d.className = 'real-pin wish-pin';
-    d.style.left = (p.x / VB.w * 100) + '%'; d.style.top = (p.y / VB.h * 100) + '%';
-    var im = document.createElement('img'); im.src = PHOTOS[p.id % PHOTOS.length]; im.alt = p.t; d.appendChild(im);
-    var c = document.createElement('span'); c.className = 'cnt'; c.textContent = '想'; d.appendChild(c);
-    d.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(p); });
-    realMap.appendChild(d);
-  });
-  var attrib = document.createElement('div'); attrib.className = 'real-attrib'; attrib.textContent = '高德地图 · 演示底图'; realMap.appendChild(attrib);
+  /* 返回按钮 */
+  var back = document.createElement('button');
+  back.className = 'hd-btn amap-back';
+  back.type = 'button';
+  back.textContent = '← 返回手绘示意';
+  back.addEventListener('click', closeAmap);
+  realMap.appendChild(back);
+  /* 单点照片图钉（沿用原样式）+ 地名签 */
+  var pin = document.createElement('div');
+  pin.className = 'real-pin';
+  pin.style.left = '50%'; pin.style.top = '44%';
+  var im = document.createElement('img');
+  im.src = p.cover || PHOTOS[p.id % PHOTOS.length];
+  im.alt = p.t;
+  pin.appendChild(im);
+  var c = document.createElement('span');
+  c.className = 'cnt'; c.textContent = p.photos || 1;
+  pin.appendChild(c);
+  pin.addEventListener('click', function () { renderPlace(p); });
+  realMap.appendChild(pin);
+  var title = document.createElement('div');
+  title.className = 'amap-title';
+  title.textContent = p.t + ' · ' + p.city;
+  realMap.appendChild(title);
+  var attrib = document.createElement('div');
+  attrib.className = 'real-attrib';
+  attrib.textContent = '高德地图 · 演示底图';
+  realMap.appendChild(attrib);
+}
+function closeAmap() {
+  realMap.hidden = true;
+  handMap.hidden = false;
+  drawHand();
 }
 
-/* ===== 月份胶囊 / 模式切换 / 详情抽屉 ===== */
+/* ===== 月份胶囊 / 抽屉 ===== */
 var chips = document.getElementById('monthChips');
 function drawChips() {
   var counts = {};
@@ -592,28 +644,13 @@ function drawChips() {
   chips.querySelectorAll('button').forEach(function (b) {
     b.addEventListener('click', function () {
       state.month = b.dataset.m;
-      drawChips(); render();
+      drawChips(); drawHand();
     });
   });
 }
-var modeHand = document.getElementById('modeHand'), modeReal = document.getElementById('modeReal');
-modeHand.addEventListener('click', function () { state.mode = 'hand'; setMode(); });
-modeReal.addEventListener('click', function () { state.mode = 'real'; setMode(); });
-function setMode() {
-  modeHand.classList.toggle('on', state.mode === 'hand');
-  modeReal.classList.toggle('on', state.mode === 'real');
-  handMap.hidden = state.mode !== 'hand';
-  realMap.hidden = state.mode !== 'real';
-  var lg = document.querySelector('.map-legend');
-  lg.style.display = '';
-  document.getElementById('lgWish').style.display = state.mode === 'hand' ? 'none' : '';
-  render();
-}
-function render() { if (state.mode === 'hand') drawHand(); else drawReal(); }
+document.getElementById('drawerClose').addEventListener('click', function () { document.getElementById('mockDrawer').classList.remove('open'); });
 
-document.getElementById('drawerClose').addEventListener('click', function () { drawer.classList.remove('open'); });
-
-drawChips(); render();
+drawChips(); drawHand();
 </script>
 </body>
 </html>
