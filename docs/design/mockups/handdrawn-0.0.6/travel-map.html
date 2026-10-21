@@ -61,6 +61,12 @@
 .page-mapdoc .lens-pin text { fill: var(--hd-ink); font-size: 13px; font-family: var(--hd-hand) }
 .page-mapdoc .lens-pin .sub { fill: var(--hd-red); font-size: 11px }
 .page-mapdoc .lens-pin:hover circle { stroke-width: 2.8 }
+.page-mapdoc .lens-label {
+  fill: var(--hd-ink); font-size: 13px; font-family: var(--hd-hand);
+  paint-order: stroke; stroke: var(--hd-paper); stroke-width: 3.5px; cursor: pointer;
+}
+.page-mapdoc .lens-label:hover { fill: var(--hd-red) }
+.page-mapdoc .lens-scale { fill: var(--hd-ink-faint); font-size: 12px; font-family: var(--hd-hand) }
 
 /* 真实地图模式（伪高德：浅灰路网 + 照片图钉） */
 .page-mapdoc .real-map {
@@ -243,7 +249,7 @@
         <tr><td class="k">投影</td><td>等距圆柱<b>相对投影</b>：把全部足迹的经纬度包围盒映射到纸面（国内外地点通吃），保持方位关系；页角常驻「示意位置 · 非比例」。投影框按<b>全部足迹</b>计算，月份筛选不改变它。</td></tr>
         <tr><td class="k">防重叠 · 位移</td><td>图钉最小间距 52px；力导向互斥微位移，单针位移上限 26px——只「挪半步」，方位感不破坏。</td></tr>
         <tr><td class="k">防重叠 · 聚合</td><td>位移后仍 &lt;30px（同城多点）→ 合成<b>叠针</b>（三针叠放 + 数量角标），停在真实位置；不去伪造间隔。</td></tr>
-        <tr><td class="k">放大镜</td><td>点叠针 → 半径 118px 手绘圆窗，簇内点按 14× 尺度重投影；仍 &lt;22px（同坐标）→ 纸片列表兜底。</td></tr>
+        <tr><td class="k">放大镜</td><td>点叠针 → 叠针隐藏，半径 116px 圆窗内<b>把底图以簇心放大 K 倍</b>（同一张纸、比例尺真的变大），簇内点按真实相对位置展开；K 自适应（6–34×）；均匀倍率仍展不开 → 保留方位角的径向归一展开；同坐标 → 纸片列表兜底。</td></tr>
         <tr><td class="k">月份口径</td><td>按 finishDate 归月；胶囊只列<b>有足迹的月份</b>并带数量（空月不出现）；默认「全年」；切换只重画路径与图钉。</td></tr>
         <tr><td class="k">路径</td><td>选中范围内按日期升序串联成虚线路径；仅 1 个点不画线；<b>想去不进路径</b>。</td></tr>
         <tr><td class="k">想去</td><td>虚线图钉常显，不受月份筛选影响；点开是想去态详情（可定日子）。</td></tr>
@@ -367,15 +373,18 @@ var handMap = document.getElementById('handMap');
 function drawHand() {
   handMap.innerHTML = '';
   var defs = el('defs', {}, handMap);
+  window._mdDefs = defs;
   var pat = el('pattern', { id: 'mdots', width: 15, height: 15, patternUnits: 'userSpaceOnUse' }, defs);
   el('circle', { cx: 2, cy: 2, r: 1.1 }, pat);
-  el('rect', { width: VB.w, height: VB.h, fill: 'url(#mdots)', 'fill-opacity': .5 }, handMap);
-  var grid = el('g', { class: 'map-grid' }, handMap);
+  /* 底图整组：放大镜里 <use> 它并放大——比例尺真的变了 */
+  var base = el('g', { id: 'md-basemap' }, handMap);
+  el('rect', { width: VB.w, height: VB.h, fill: 'url(#mdots)', 'fill-opacity': .5 }, base);
+  var grid = el('g', { class: 'map-grid' }, base);
   [140, 280, 420, 560].forEach(function (x) { el('path', { d: 'M' + x + ' 24 V416' }, grid); });
   [110, 220, 330].forEach(function (y) { el('path', { d: 'M30 ' + y + ' H690' }, grid); });
-  el('path', { class: 'deco', d: 'M40 78 q14 -18 28 0 q12 -14 24 2' }, handMap);
-  el('path', { class: 'deco wave', d: 'M600 380 q12 6 24 0 t24 0' }, handMap);
-  el('path', { class: 'deco wave', d: 'M640 400 q10 5 20 0 t20 0' }, handMap);
+  el('path', { class: 'deco', d: 'M40 78 q14 -18 28 0 q12 -14 24 2' }, base);
+  el('path', { class: 'deco wave', d: 'M600 380 q12 6 24 0 t24 0' }, base);
+  el('path', { class: 'deco wave', d: 'M640 400 q10 5 20 0 t20 0' }, base);
 
   var visited = filtered();
   var wishes = PLACES.filter(function (p) { return p.wish; });
@@ -414,6 +423,7 @@ function drawHand() {
       var bt = el('text', { class: 'badge-text', x: 15, y: -11.5, 'text-anchor': 'middle' }, gc);
       bt.textContent = G.items.length;
       gc.addEventListener('click', function (e) { e.stopPropagation(); openLens(G, G.cx, G.cy); });
+      G.node = gc;
     }
   });
 
@@ -427,32 +437,86 @@ function drawHand() {
   });
 }
 
-/* 放大镜：簇内 14× 重投影 */
+/* 放大镜：真放大——叠针隐藏，圆窗内把底图以簇心放大 K 倍（<use> + scale + clip），
+   簇内点按真实相对位置展开；K 自适应（最小间距不达标时退化为「方位归一」径向展开） */
 function openLens(G, cx, cy) {
-  var grp = G.items;
-  var R = 118, K = 14;
-  var dim = el('g', { class: 'lens-dim' }, handMap);
+  var R = 116;
+  var members = G.items.slice().sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); });
+  var maxD = 1;
+  members.forEach(function (p) { maxD = Math.max(maxD, Math.hypot(p.x - cx, p.y - cy)); });
+  var K = Math.min(34, Math.max(6, (R - 34) / maxD));
+  /* 均匀倍率下最小点对仍 <30px → 方位归一：保留真实方位角，径向归一到环上 */
+  var radial = false;
+  for (var i = 0; i < members.length && !radial; i++) {
+    for (var j = i + 1; j < members.length; j++) {
+      if (Math.hypot(members[i].x - members[j].x, members[i].y - members[j].y) * K < 24) { radial = true; break; }
+    }
+  }
+  function lensXY(p) {
+    if (!radial) return { x: cx + (p.x - cx) * K, y: cy + (p.y - cy) * K };
+    var dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy) || .001;
+    var r = (R - 46) * (0.45 + 0.55 * d / maxD);
+    return { x: cx + dx / d * r, y: cy + dy / d * r };
+  }
+
+  var lens = el('g', {}, handMap);
   var hole = 'M0 0 H' + VB.w + ' V' + VB.h + ' H0 Z M' + cx + ' ' + cy + ' m-' + R + ' 0 a' + R + ' ' + R + ' 0 1 0 ' + R * 2 + ' 0 a' + R + ' ' + R + ' 0 1 0 -' + R * 2 + ' 0 Z';
-  el('path', { d: hole, fill: 'rgba(55,50,44,.30)', 'fill-rule': 'evenodd' }, dim);
-  el('circle', { class: 'lens-frame', cx: cx, cy: cy, r: R }, dim);
-  el('circle', { class: 'lens-frame2', cx: cx, cy: cy, r: R - 9 }, dim);
-  var close = el('g', { transform: 'translate(' + (cx + R - 16) + ',' + (cy - R + 18) + ')', style: 'cursor:pointer' }, dim);
+  el('path', { d: hole, fill: 'rgba(55,50,44,.32)', 'fill-rule': 'evenodd' }, lens);
+
+  /* 圆窗内：同一张底图放大 K 倍（radial 兜底时不放大底图，只重排点） */
+  var cp = el('clipPath', { id: 'md-lensclip' }, window._mdDefs);
+  el('circle', { cx: cx, cy: cy, r: R }, cp);
+  var clipped = el('g', { 'clip-path': 'url(#md-lensclip)' }, lens);
+  if (!radial) {
+    var zoom = el('g', { transform: 'translate(' + cx + ' ' + cy + ') scale(' + K + ') translate(-' + cx + ' -' + cy + ')' }, clipped);
+    el('use', { href: '#md-basemap' }, zoom);
+    if (members.length > 1) {
+      el('path', { class: 'map-route', d: 'M' + members.map(function (p) { return p.x + ',' + p.y; }).join(' L'), 'vector-effect': 'non-scaling-stroke' }, zoom);
+    }
+  } else {
+    el('use', { href: '#md-basemap' }, clipped);
+  }
+
+  /* 簇内点：按展开后的坐标摆编号针（不随底图缩放，保持针的大小可读） */
+  var order = {};
+  PLACES.filter(function (p) { return !p.wish; }).sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); })
+    .forEach(function (p, i) { order[p.id] = i + 1; });
+  var labeled = members.map(function (p) {
+    var pos = lensXY(p);
+    return { p: p, x: pos.x, y: pos.y, side: pos.x < cx ? -1 : 1 };
+  });
+  /* 同侧标签纵向避让：按 y 排序后推开 ≥18px */
+  [-1, 1].forEach(function (side) {
+    var col = labeled.filter(function (L) { return L.side === side; }).sort(function (a, b) { return a.y - b.y; });
+    col.forEach(function (L, i) {
+      if (i > 0 && L.y - col[i - 1].ly < 18) L.ly = col[i - 1].ly + 18; else L.ly = L.y;
+    });
+  });
+  labeled.forEach(function (L) {
+    var g = el('g', { class: 'lens-pin', transform: 'translate(' + L.x + ',' + L.y + ')' }, lens);
+    el('circle', { r: 11 }, g);
+    var t = el('text', { y: 4, 'text-anchor': 'middle' }, g);
+    t.textContent = order[L.p.id];
+    var lb = el('text', { class: 'lens-label', x: L.x + 17 * L.side, y: (L.ly === undefined ? L.y : L.ly) + 4.5, 'text-anchor': L.side < 0 ? 'end' : 'start' }, lens);
+    lb.textContent = L.p.t + ' · ' + (L.p.d || '').slice(5).replace('-', '/');
+    function open(e) { e.stopPropagation(); openDrawer(L.p); }
+    g.addEventListener('click', open); lb.addEventListener('click', open);
+  });
+
+  /* 原来那一坨的脚印 + 倍率标注 */
+  el('circle', { cx: cx, cy: cy, r: 13, fill: 'none', stroke: 'var(--hd-line-soft)', 'stroke-dasharray': '3 4' }, lens);
+  var sc = el('text', { class: 'lens-scale', x: cx, y: cy + (R - 18), 'text-anchor': 'middle' }, lens);
+  sc.textContent = radial ? '方位展开 · 距离归一' : '× ' + Math.round(K) + ' 放大';
+
+  el('circle', { class: 'lens-frame', cx: cx, cy: cy, r: R }, lens);
+  el('circle', { class: 'lens-frame2', cx: cx, cy: cy, r: R - 9 }, lens);
+  var close = el('g', { transform: 'translate(' + (cx + R - 16) + ',' + (cy - R + 18) + ')', style: 'cursor:pointer' }, lens);
   el('circle', { r: 11, fill: 'var(--hd-paper)', stroke: 'var(--hd-line)' }, close);
   var xt = el('text', { y: 4, 'text-anchor': 'middle', fill: 'var(--hd-ink-soft)', 'font-size': 12 }, close);
   xt.textContent = '×';
-  grp.forEach(function (p, i) {
-    var dx = (p.x - cx) * K, dy = (p.y - cy) * K;
-    var d = Math.hypot(dx, dy), lim = R - 34;
-    if (d > lim) { dx = dx / d * lim; dy = dy / d * lim; }
-    var px = cx + dx, py = cy + dy;
-    var side = px < cx ? -1 : 1;
-    var g = el('g', { class: 'lens-pin', transform: 'translate(' + px + ',' + py + ')' }, dim);
-    el('circle', { r: 11 }, g);
-    var t = el('text', { x: 6 * side, y: -16, 'text-anchor': side < 0 ? 'end' : 'start' }, g);
-    t.textContent = p.t + ' · ' + (p.d || '').slice(5).replace('-', '/');
-    g.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(p); });
-  });
-  dim.addEventListener('click', function () { dim.remove(); });
+
+  G.node.style.display = 'none';
+  lens.addEventListener('click', function () { lens.remove(); cp.remove(); G.node.style.display = ''; });
 }
 
 /* ===== 真实地图模式（伪高德演示） ===== */
