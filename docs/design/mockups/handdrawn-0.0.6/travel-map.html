@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>足迹地图重设计 · 设计提案 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 足迹地图重设计提案：双层地图（手绘示意 ⇄ 真实地图） ===== */
+.page-mapdoc .hd-banner { margin-top: 4px }
+.page-mapdoc .demo { margin-top: 26px; padding: 18px 20px 16px; position: relative }
+.page-mapdoc .demo .hd-tape { top: -10px }
+
+/* 工具条：月份胶囊 + 模式切换 */
+.page-mapdoc .map-toolbar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap }
+.page-mapdoc .map-toolbar .hd-chips { gap: 7px }
+.page-mapdoc .mode-toggle { margin-left: auto; display: flex; gap: 8px; flex: none }
+.page-mapdoc .map-note { margin-top: 10px; font-size: 13px; color: var(--hd-ink-faint) }
+
+/* 地图画布 */
+.page-mapdoc .map-stage { position: relative; margin-top: 12px; aspect-ratio: 720 / 440; overflow: hidden; border-radius: 3px }
+.page-mapdoc .map-stage svg.map-art { display: block; width: 100%; height: 100% }
+.page-mapdoc .map-stage svg.map-art pattern circle { fill: var(--hd-ink-faint); opacity: .38 }
+.page-mapdoc .map-grid path { fill: none; stroke: var(--hd-line-soft); stroke-width: 1.1; stroke-dasharray: 3 9; opacity: .8 }
+.page-mapdoc .map-art .deco { stroke: var(--hd-ink-faint); stroke-width: 2; stroke-linecap: round; opacity: .5; fill: none }
+.page-mapdoc .map-art .deco.wave { stroke: var(--hd-olive); opacity: .45; stroke-width: 1.8 }
+.page-mapdoc .map-route { fill: none; stroke: var(--hd-ochre); stroke-width: 2.4; stroke-dasharray: 8 7; stroke-linecap: round; opacity: .8 }
+.page-mapdoc .map-pin { cursor: pointer }
+.page-mapdoc .map-pin circle.bubble {
+  fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2;
+}
+.page-mapdoc .map-pin text { fill: var(--hd-amber-ink); font-size: 13px; font-family: var(--hd-hand) }
+.page-mapdoc .map-pin.wish circle.bubble { stroke-dasharray: 4 3; stroke: var(--hd-ink-soft) }
+.page-mapdoc .map-pin.wish text { fill: var(--hd-ink-soft) }
+.page-mapdoc .map-pin:hover circle.bubble { stroke: var(--hd-red) }
+.page-mapdoc .map-pin:hover text { fill: var(--hd-red) }
+.page-mapdoc .cluster-pin { cursor: pointer }
+.page-mapdoc .cluster-pin circle { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2 }
+.page-mapdoc .cluster-pin .badge { fill: var(--hd-amber-ink) }
+.page-mapdoc .cluster-pin .badge-text { fill: var(--hd-paper); font-size: 11.5px; font-family: var(--hd-hand) }
+.page-mapdoc .cluster-pin:hover circle { stroke: var(--hd-red) }
+.page-mapdoc .cluster-pin:hover .badge { fill: var(--hd-red) }
+.page-mapdoc .map-legend {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3;
+  display: flex; align-items: center; gap: 12px; padding: 2px 10px;
+  font-size: 13px; color: var(--hd-ink-soft); background: var(--hd-paper);
+  border: 1.6px solid var(--hd-line-soft); border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-mapdoc .lg-dot { width: 11px; height: 11px; margin-right: 5px; display: inline-block; vertical-align: -1px;
+  background: var(--hd-paper); border: 1.8px solid var(--hd-amber-ink); border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%; }
+.page-mapdoc .lg-dot.wish { border: 1.8px dashed var(--hd-ink-soft) }
+.page-mapdoc .lg-dot.cluster { box-shadow: 3px 3px 0 -1px var(--hd-paper), 3px 3px 0 0 var(--hd-amber-ink), -3px -3px 0 -1px var(--hd-paper), -3px -3px 0 0 var(--hd-amber-ink) }
+
+/* 放大镜层 */
+.page-mapdoc .lens-dim { cursor: pointer }
+.page-mapdoc .lens-frame { fill: none; stroke: var(--hd-line); stroke-width: 2.6 }
+.page-mapdoc .lens-frame2 { fill: none; stroke: var(--hd-line-soft); stroke-width: 1.6; stroke-dasharray: 5 6 }
+.page-mapdoc .lens-pin { cursor: pointer }
+.page-mapdoc .lens-pin circle { fill: var(--hd-paper); stroke: var(--hd-red); stroke-width: 2 }
+.page-mapdoc .lens-pin text { fill: var(--hd-ink); font-size: 13px; font-family: var(--hd-hand) }
+.page-mapdoc .lens-pin .sub { fill: var(--hd-red); font-size: 11px }
+.page-mapdoc .lens-pin:hover circle { stroke-width: 2.8 }
+
+/* 真实地图模式（伪高德：浅灰路网 + 照片图钉） */
+.page-mapdoc .real-map {
+  position: absolute; inset: 0; overflow: hidden;
+  background-color: #EDEAE3;
+  background-image:
+    linear-gradient(90deg, rgba(125, 132, 138, .16) 1.5px, transparent 1.5px),
+    linear-gradient(rgba(125, 132, 138, .16) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(125, 132, 138, .10) 2px, transparent 2.5px);
+  background-size: 72px 72px, 72px 72px, 24px 24px;
+}
+.page-mapdoc .real-map .road { position: absolute; background: rgba(255, 255, 255, .75); box-shadow: 0 0 0 1px rgba(150, 155, 160, .18) }
+.page-mapdoc .real-map .water { position: absolute; background: #D7DFDF; border-radius: 40% 55% 60% 45% / 55% 40% 50% 50%; opacity: .8 }
+.page-mapdoc .real-map .park { position: absolute; background: #DDE3D2; border-radius: 45% 60% 50% 55% / 60% 45% 55% 50%; opacity: .9 }
+.page-mapdoc .real-svg { position: absolute; inset: 0; width: 100%; height: 100% }
+.page-mapdoc .real-pin {
+  position: absolute; width: 48px; height: 48px; transform: translate(-50%, -58%);
+  border-radius: 8px 8px 8px 2px; overflow: visible; cursor: pointer;
+}
+.page-mapdoc .real-pin img {
+  width: 48px; height: 48px; object-fit: cover; display: block;
+  border-radius: 8px 8px 8px 2px; border: 2.5px solid var(--hd-paper);
+  box-shadow: 0 2px 6px rgba(40, 36, 30, .28);
+  transition: transform .14s;
+}
+.page-mapdoc .real-pin:hover img { transform: scale(1.1) }
+.page-mapdoc .real-pin .cnt {
+  position: absolute; right: -6px; bottom: -6px; min-width: 18px; height: 18px;
+  padding: 0 4px; display: grid; place-items: center;
+  font-size: 11.5px; color: var(--hd-paper); background: var(--hd-amber-ink);
+  border-radius: 9px 4px 8px 3px; font-family: var(--hd-hand);
+}
+.page-mapdoc .real-pin.stack img.sec { position: absolute; left: 5px; top: -5px; z-index: -1; transform: rotate(6deg) }
+.page-mapdoc .real-pin.stack img.thi { position: absolute; left: -4px; top: 4px; z-index: -2; transform: rotate(-7deg) }
+.page-mapdoc .real-pin.wish-pin img { filter: grayscale(.9); opacity: .8; border-style: dashed }
+.page-mapdoc .real-attrib { position: absolute; right: 8px; bottom: 6px; font-size: 11px; color: #7C8288; z-index: 3 }
+
+/* 详情抽屉（演示用） */
+.page-mapdoc .mock-drawer {
+  position: fixed; top: 14px; right: 14px; bottom: 14px; width: 400px; z-index: 60;
+  background-color: var(--hd-paper); background-image: var(--hd-grain);
+  border: 2.2px solid var(--hd-line); border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+  box-shadow: var(--hd-shadow-lift); padding: 22px 22px 18px; overflow-y: auto;
+  transform: translateX(30px); opacity: 0; pointer-events: none; transition: transform .2s, opacity .2s;
+}
+.page-mapdoc .mock-drawer.open { transform: none; opacity: 1; pointer-events: auto }
+.page-mapdoc .mock-drawer .hd-tape { top: -9px; width: 86px }
+.page-mapdoc .mock-drawer .x { position: absolute; top: 10px; right: 12px; border: 0; background: none; color: var(--hd-ink-soft); font-size: 18px; cursor: pointer }
+.page-mapdoc .mock-drawer .st-row { display: flex; gap: 10px; align-items: center }
+.page-mapdoc .mock-drawer h3 { font-size: 26px; margin-top: 6px }
+.page-mapdoc .mock-drawer .meta { margin-top: 6px; font-size: 13.5px; color: var(--hd-ink-soft); display: flex; gap: 12px; flex-wrap: wrap }
+.page-mapdoc .mock-drawer .ph { margin-top: 14px; border: 1.6px solid var(--hd-line-soft); border-radius: 3px; background: var(--hd-paper-2); height: 150px; display: grid; place-items: center; color: var(--hd-ink-faint); font-size: 13px }
+.page-mapdoc .mock-drawer .say { margin-top: 14px; padding: 10px 14px; background: var(--hd-paper-2); border-left: 3px solid var(--hd-red); font-size: 14.5px; color: var(--hd-ink-soft); line-height: 1.8 }
+.page-mapdoc .mock-drawer .acts { margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end }
+
+/* 状态机 / 规则 */
+.page-mapdoc .logic { margin-top: 26px; padding: 20px 24px 18px }
+.page-mapdoc .logic h2 { font-size: 21px; letter-spacing: 1px; margin: 14px 0 0 }
+.page-mapdoc .flow {
+  margin-top: 14px; padding: 16px 20px; font-size: 14.5px; line-height: 2.05;
+  background: var(--hd-paper-2); border: 1.6px dashed var(--hd-line-soft);
+  border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px; color: var(--hd-ink);
+  overflow-x: auto; white-space: pre; font-family: var(--hd-hand);
+}
+.page-mapdoc .rule-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px }
+.page-mapdoc .rule-table th, .page-mapdoc .rule-table td { text-align: left; padding: 8px 10px; border-bottom: 1.5px dashed var(--hd-line-soft); vertical-align: top }
+.page-mapdoc .rule-table th { color: var(--hd-ink-soft); font-weight: 400; white-space: nowrap }
+.page-mapdoc .rule-table td.k { color: var(--hd-red); white-space: nowrap }
+.page-mapdoc .edges { margin-top: 14px; font-size: 14px; color: var(--hd-ink-soft); line-height: 1.9; max-width: 46em }
+.page-mapdoc .edges b { color: var(--hd-ink); font-weight: 400 }
+
+/* 同坐标兜底示例 */
+.page-mapdoc .fallback-fig { margin-top: 26px; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 26px; align-items: center }
+.page-mapdoc .fallback-fig .fig-cap { font-size: 14px; color: var(--hd-ink-soft); line-height: 2; max-width: 46em }
+.page-mapdoc .fallback-fig svg text { font-family: var(--hd-hand) }
+</style>
+</head>
+<body class="hd-app page-mapdoc" data-page="travel">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html">首页</a>
+      <a href="movie.html">影单</a>
+      <a href="book.html">书单</a>
+      <a href="travel.html" class="on">足迹</a>
+      <a href="notes.html">笔记</a>
+      <a href="plan.html">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="hd-banner">
+    <span class="hd-tape left"></span>
+    <span class="hd-tape right amber"></span>
+    <div>
+      <div class="eyebrow">足迹地图 · 重设计提案</div>
+      <h1>双层地图</h1>
+      <p class="desc">默认看手绘路线图（真实坐标相对投影 + 编号图钉 + 虚线路径）；要精确位置时一键切到真实地图（照片图钉）。下面这页可以点：切月份、点叠针、点图钉、切模式。</p>
+    </div>
+    <div class="acts">
+      <a class="hd-btn" href="travel.html">现有足迹页 →</a>
+    </div>
+  </section>
+
+  <!-- ===== 可交互演示 ===== -->
+  <section class="demo hd-paper">
+    <span class="hd-tape"></span>
+    <div class="map-toolbar">
+      <div class="hd-chips" id="monthChips" role="group" aria-label="按月份筛选"></div>
+      <div class="mode-toggle">
+        <button class="hd-chip on" id="modeHand" type="button">手绘示意</button>
+        <button class="hd-chip" id="modeReal" type="button">真实地图</button>
+      </div>
+    </div>
+    <div class="map-stage" id="mapStage">
+      <svg class="map-art" id="handMap" viewBox="0 0 720 440" role="img" aria-label="手绘足迹示意图"></svg>
+      <div class="real-map" id="realMap" hidden></div>
+      <div class="map-legend">
+        <span><i class="lg-dot"></i>去过（编号 = 到访顺序）</span>
+        <span><i class="lg-dot cluster"></i>叠针 = 附近 N 处</span>
+        <span><i class="lg-dot wish"></i>想去（不受月份筛选）</span>
+      </div>
+    </div>
+    <p class="map-note">示意位置 · 非比例 —— 方位关系真实，距离不是；要看精确位置就点右上「真实地图」。</p>
+  </section>
+
+  <!-- ===== 同坐标兜底 ===== -->
+  <section class="fallback-fig">
+    <svg viewBox="0 0 300 190" class="map-art" role="img" aria-label="同坐标兜底：纸片列表示例">
+      <rect width="300" height="190" fill="none"/>
+      <g>
+        <rect x="18" y="20" width="264" height="150" rx="5" fill="var(--hd-paper)" stroke="var(--hd-line)" stroke-width="2"/>
+        <circle cx="150" cy="52" r="13" fill="var(--hd-paper)" stroke="var(--hd-red)" stroke-width="2"/>
+        <circle cx="158" cy="49" r="13" fill="var(--hd-paper)" stroke="var(--hd-amber-ink)" stroke-width="2"/>
+        <circle cx="142" cy="49" r="13" fill="var(--hd-paper)" stroke="var(--hd-amber-ink)" stroke-width="2"/>
+        <text x="150" y="88" text-anchor="middle" font-size="13" fill="var(--hd-ink-soft)">同一坐标 · 3 次到访（放大镜内也分不开）</text>
+        <text x="150" y="112" text-anchor="middle" font-size="14" fill="var(--hd-ink)">→ 落成纸片列表，点条目进详情</text>
+        <text x="150" y="138" text-anchor="middle" font-size="13" fill="var(--hd-ink-faint)">洱海 · 9/22 · 18 张　喜洲 · 9/23 · 9 张</text>
+        <text x="150" y="158" text-anchor="middle" font-size="13" fill="var(--hd-ink-faint)">古城 · 9/24 · 12 张</text>
+      </g>
+    </svg>
+    <div class="fig-cap">
+      <b>兜底：同坐标多次到访。</b>放大镜里按 14× 重投影仍然重合（同一家店去了两次这种），就不硬摆图钉了，落成一张纸片小列表——名称、日期、照片数，点条目照样进详情抽屉。图钉是给「不同地方」的，同一个地方反复去，列表反而更诚实。
+    </div>
+  </section>
+
+  <!-- ===== 业务逻辑 ===== -->
+  <section class="logic hd-paper">
+    <span class="hd-tape right"></span>
+    <h2>业务逻辑</h2>
+
+    <div class="flow" aria-label="交互状态机">全国手绘图（默认 · 全年）
+├─ 点月份胶囊 ──→ 重画路径与图钉（投影框不动，地图不跳）
+├─ 点编号图钉 ──→ 详情抽屉（与地点卡片同一交互）
+├─ 点叠针 ──────→ 放大镜局部图（簇内按 14× 重投影）
+│    ├─ 点子图钉 → 详情抽屉
+│    └─ 点空白处 → 复原全国图
+├─ 点「真实地图」→ 高德模式（照片图钉 + 路线，现有能力保留）
+│    └─ 点照片 → 详情抽屉；点「手绘示意」返回
+└─ 点想去图钉 ──→ 详情抽屉（想去态，可「定个日子」）</div>
+
+    <table class="rule-table">
+      <thead><tr><th style="width:120px">环节</th><th>规则</th></tr></thead>
+      <tbody>
+        <tr><td class="k">投影</td><td>等距圆柱<b>相对投影</b>：把全部足迹的经纬度包围盒映射到纸面（国内外地点通吃），保持方位关系；页角常驻「示意位置 · 非比例」。投影框按<b>全部足迹</b>计算，月份筛选不改变它。</td></tr>
+        <tr><td class="k">防重叠 · 位移</td><td>图钉最小间距 52px；力导向互斥微位移，单针位移上限 26px——只「挪半步」，方位感不破坏。</td></tr>
+        <tr><td class="k">防重叠 · 聚合</td><td>位移后仍 &lt;30px（同城多点）→ 合成<b>叠针</b>（三针叠放 + 数量角标），停在真实位置；不去伪造间隔。</td></tr>
+        <tr><td class="k">放大镜</td><td>点叠针 → 半径 118px 手绘圆窗，簇内点按 14× 尺度重投影；仍 &lt;22px（同坐标）→ 纸片列表兜底。</td></tr>
+        <tr><td class="k">月份口径</td><td>按 finishDate 归月；胶囊只列<b>有足迹的月份</b>并带数量（空月不出现）；默认「全年」；切换只重画路径与图钉。</td></tr>
+        <tr><td class="k">路径</td><td>选中范围内按日期升序串联成虚线路径；仅 1 个点不画线；<b>想去不进路径</b>。</td></tr>
+        <tr><td class="k">想去</td><td>虚线图钉常显，不受月份筛选影响；点开是想去态详情（可定日子）。</td></tr>
+        <tr><td class="k">空态</td><td>一个足迹都没有 → 手绘空态 +「＋ 添加想去」；坐标缺失的地点不上图，仍在卡片与时间线里。</td></tr>
+        <tr><td class="k">真实地图</td><td>现有高德模式原样保留：照片图钉 + 就近聚合 + 路线 + 点选详情；与手绘图共用同一个装裱框，一次明确的模式切换，不做逐点击跳转。</td></tr>
+        <tr><td class="k">性能</td><td>个人站量级（≤ 数百点），投影 / 松弛 / 聚合全在前端一次算完，无接口改动。</td></tr>
+      </tbody>
+    </table>
+
+    <p class="edges">
+      <b>为什么点图钉不直接跳高德：</b>点图钉时用户要的是信息（照片 / 日期 / 短评），不是地理核查；逐点击在「手账跨页」和「工具地图」两种心智模型间跳，连看五个地方就要跳五次。地理核查是低频需求，用一次显式切换满足——两种地图里「点图钉 / 点照片 = 开详情」保持同一个动作。
+    </p>
+  </section>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<!-- 详情抽屉（演示） -->
+<aside class="mock-drawer" id="mockDrawer" aria-label="地点详情（演示）">
+  <span class="hd-tape"></span>
+  <button class="x" type="button" id="drawerClose" aria-label="关闭">✕</button>
+  <div class="st-row"><span class="hd-st done" id="dSt">去过</span><span style="font-size:13px;color:var(--hd-ink-faint)" id="dKind">地点</span></div>
+  <h3 id="dTitle">洱海</h3>
+  <div class="meta"><span id="dCity">大理 · 云南</span><span id="dDate">9 月 22 日</span><span id="dPhotos">18 张照片</span></div>
+  <div class="ph">首张照片（cover）</div>
+  <div class="say" id="dSay">赶在日落前骑到码头，风把耳朵吹得发烫。水面上有一条很长的金色拉链。</div>
+  <div class="acts"><button class="hd-btn sub" type="button">编辑</button><button class="hd-btn sub" type="button">删除</button></div>
+</aside>
+
+<script>
+/* ===== 演示数据：一年足迹 + 想去（坐标真实，用于驱动投影演示） ===== */
+var PLACES = [
+  { id: 1, t: '松花江', city: '哈尔滨', lng: 126.63, lat: 45.75, d: '2026-01-18', photos: 6 },
+  { id: 2, t: '开元寺', city: '泉州', lng: 118.58, lat: 24.91, d: '2026-03-16', photos: 14 },
+  { id: 3, t: '鸭川', city: '京都', lng: 135.77, lat: 35.01, d: '2026-04-08', photos: 22 },
+  { id: 5, t: '洱海', city: '大理', lng: 100.18, lat: 25.75, d: '2026-09-22', photos: 18 },
+  { id: 6, t: '喜洲', city: '大理', lng: 100.13, lat: 25.99, d: '2026-09-23', photos: 9 },
+  { id: 7, t: '古城', city: '大理', lng: 100.16, lat: 25.69, d: '2026-09-24', photos: 12 },
+  { id: 4, t: '阿那亚', city: '秦皇岛', lng: 119.30, lat: 39.78, d: '2026-09-27', photos: 31 },
+  { id: 8, t: '外滩', city: '上海', lng: 121.48, lat: 31.23, d: '2026-10-12', photos: 7 },
+  { id: 9, t: '西湖', city: '杭州', lng: 120.15, lat: 30.25, wish: true, photos: 0 }
+];
+var PHOTOS = ['assets/covers/place-lake.jpg', 'assets/covers/place-garden.jpg', 'assets/covers/movie-garden.jpg', 'assets/covers/tv-city.jpg'];
+
+var VB = { w: 720, h: 440, pad: 52 };
+var state = { month: 'all', mode: 'hand' };
+
+/* 等距圆柱相对投影：包围盒来自全部点（筛选不改变投影框） */
+var BOX = (function () {
+  var xs = PLACES.map(function (p) { return p.lng }), ys = PLACES.map(function (p) { return p.lat });
+  return { x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs), y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys) };
+})();
+function project() {
+  PLACES.forEach(function (p) {
+    p.x = VB.pad + (p.lng - BOX.x0) / (BOX.x1 - BOX.x0) * (VB.w - VB.pad * 2);
+    p.y = VB.pad + (BOX.y1 - p.lat) / (BOX.y1 - BOX.y0) * (VB.h - VB.pad * 2);
+  });
+}
+project();
+
+/* 防重叠：先按真实距离聚簇（同城），散点再对簇心/彼此微位移（上限 26px） */
+var MIN = 52, PUSH_MAX = 26, SAME_SPOT = 34, CLUSTER_AT = 30;
+function decluster(list) {
+  var items = list.filter(function (p) { return !p.wish; });
+  /* 1) 真实投影距离 < SAME_SPOT 的并成一组（同城多点），不去伪造间隔 */
+  var groups = [];
+  items.forEach(function (p) {
+    var g = groups.find(function (G) { return G.items.some(function (q) { return Math.hypot(p.x - q.x, p.y - q.y) < SAME_SPOT; }); });
+    if (g) g.items.push(p); else groups.push({ items: [p], multi: false });
+  });
+  groups.forEach(function (G) {
+    G.cx = G.items.reduce(function (s, q) { return s + q.x; }, 0) / G.items.length;
+    G.cy = G.items.reduce(function (s, q) { return s + q.y; }, 0) / G.items.length;
+  });
+  /* 2) 散点微位移：避开簇心与已放好的散点；仍贴着某簇（<CLUSTER_AT）就并进去 */
+  var fixed = groups.filter(function (G) { return G.items.length > 1; });
+  var singles = groups.filter(function (G) { return G.items.length === 1; });
+  var placed = [];
+  singles.forEach(function (G) {
+    var it = G.items[0], mx = it.x, my = it.y;
+    var obs = fixed.map(function (F) { return { x: F.cx, y: F.cy }; }).concat(placed);
+    for (var i = 0; i < 40; i++) {
+      var moved = false;
+      obs.forEach(function (q) {
+        var dx = mx - q.x, dy = my - q.y, d = Math.hypot(dx, dy);
+        if (d < MIN) { var ang = Math.atan2(dy || .01, dx || .01), step = (MIN - d) / 2; mx += Math.cos(ang) * step; my += Math.sin(ang) * step; moved = true; }
+      });
+      var ddx = mx - it.x, ddy = my - it.y, dd = Math.hypot(ddx, ddy);
+      if (dd > PUSH_MAX) { mx = it.x + ddx / dd * PUSH_MAX; my = it.y + ddy / dd * PUSH_MAX; }
+      if (!moved) break;
+    }
+    var near = fixed.find(function (F) { return Math.hypot(mx - F.cx, my - F.cy) < CLUSTER_AT; });
+    if (near) { near.items.push(it); near.cx = (near.cx * (near.items.length - 1) + mx) / near.items.length; near.cy = (near.cy * (near.items.length - 1) + my) / near.items.length; G.absorbed = true; return; }
+    G.cx = mx; G.cy = my; placed.push({ x: mx, y: my });
+  });
+  return { groups: groups.filter(function (G) { return !G.absorbed; }), pins: placed };
+}
+
+function filtered() {
+  var v = PLACES.filter(function (p) { return !p.wish && (state.month === 'all' || (p.d || '').slice(5, 7) === state.month); });
+  v.sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); });
+  return v;
+}
+
+/* ===== SVG 渲染 ===== */
+var SVGNS = 'http://www.w3.org/2000/svg';
+function el(name, attrs, parent) {
+  var n = document.createElementNS(SVGNS, name);
+  for (var k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+var handMap = document.getElementById('handMap');
+
+function drawHand() {
+  handMap.innerHTML = '';
+  var defs = el('defs', {}, handMap);
+  var pat = el('pattern', { id: 'mdots', width: 15, height: 15, patternUnits: 'userSpaceOnUse' }, defs);
+  el('circle', { cx: 2, cy: 2, r: 1.1 }, pat);
+  el('rect', { width: VB.w, height: VB.h, fill: 'url(#mdots)', 'fill-opacity': .5 }, handMap);
+  var grid = el('g', { class: 'map-grid' }, handMap);
+  [140, 280, 420, 560].forEach(function (x) { el('path', { d: 'M' + x + ' 24 V416' }, grid); });
+  [110, 220, 330].forEach(function (y) { el('path', { d: 'M30 ' + y + ' H690' }, grid); });
+  el('path', { class: 'deco', d: 'M40 78 q14 -18 28 0 q12 -14 24 2' }, handMap);
+  el('path', { class: 'deco wave', d: 'M600 380 q12 6 24 0 t24 0' }, handMap);
+  el('path', { class: 'deco wave', d: 'M640 400 q10 5 20 0 t20 0' }, handMap);
+
+  var visited = filtered();
+  var wishes = PLACES.filter(function (p) { return p.wish; });
+  var res = decluster(visited);
+  var groups = res.groups;
+
+  /* 到访序号（全年口径，月份切换不重编） */
+  var order = {};
+  PLACES.filter(function (p) { return !p.wish; }).sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); })
+    .forEach(function (p, i) { order[p.id] = i + 1; });
+
+  /* 路径：选中范围按日期串联，经过组心 */
+  if (visited.length > 1) {
+    var pts = visited.map(function (p) {
+      var G = groups.find(function (G) { return G.items.includes(p); });
+      return G.cx + ',' + G.cy;
+    });
+    el('path', { class: 'map-route', d: 'M' + pts.join(' L') }, handMap);
+  }
+
+  /* 图钉：单点组 = 编号针；多点组 = 叠针 */
+  groups.forEach(function (G) {
+    if (G.items.length === 1) {
+      var p = G.items[0];
+      var g = el('g', { class: 'map-pin', transform: 'translate(' + G.cx + ',' + G.cy + ')' }, handMap);
+      el('circle', { class: 'bubble', r: 13 }, g);
+      var t = el('text', { y: 4.5, 'text-anchor': 'middle' }, g);
+      t.textContent = order[p.id];
+      g.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(p); });
+    } else {
+      var gc = el('g', { class: 'cluster-pin', transform: 'translate(' + G.cx + ',' + G.cy + ')' }, handMap);
+      el('circle', { cx: -9, cy: 4, r: 12 }, gc);
+      el('circle', { cx: 9, cy: 4, r: 12 }, gc);
+      el('circle', { cx: 0, cy: -4, r: 13 }, gc);
+      el('circle', { class: 'badge', cx: 15, cy: -15, r: 9.5 }, gc);
+      var bt = el('text', { class: 'badge-text', x: 15, y: -11.5, 'text-anchor': 'middle' }, gc);
+      bt.textContent = G.items.length;
+      gc.addEventListener('click', function (e) { e.stopPropagation(); openLens(G, G.cx, G.cy); });
+    }
+  });
+
+  /* 想去：虚线针，常显 */
+  wishes.forEach(function (p) {
+    var g = el('g', { class: 'map-pin wish', transform: 'translate(' + p.x + ',' + p.y + ')' }, handMap);
+    el('circle', { class: 'bubble', r: 13 }, g);
+    var t = el('text', { y: 4.5, 'text-anchor': 'middle' }, g);
+    t.textContent = '想';
+    g.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(p); });
+  });
+}
+
+/* 放大镜：簇内 14× 重投影 */
+function openLens(G, cx, cy) {
+  var grp = G.items;
+  var R = 118, K = 14;
+  var dim = el('g', { class: 'lens-dim' }, handMap);
+  var hole = 'M0 0 H' + VB.w + ' V' + VB.h + ' H0 Z M' + cx + ' ' + cy + ' m-' + R + ' 0 a' + R + ' ' + R + ' 0 1 0 ' + R * 2 + ' 0 a' + R + ' ' + R + ' 0 1 0 -' + R * 2 + ' 0 Z';
+  el('path', { d: hole, fill: 'rgba(55,50,44,.30)', 'fill-rule': 'evenodd' }, dim);
+  el('circle', { class: 'lens-frame', cx: cx, cy: cy, r: R }, dim);
+  el('circle', { class: 'lens-frame2', cx: cx, cy: cy, r: R - 9 }, dim);
+  var close = el('g', { transform: 'translate(' + (cx + R - 16) + ',' + (cy - R + 18) + ')', style: 'cursor:pointer' }, dim);
+  el('circle', { r: 11, fill: 'var(--hd-paper)', stroke: 'var(--hd-line)' }, close);
+  var xt = el('text', { y: 4, 'text-anchor': 'middle', fill: 'var(--hd-ink-soft)', 'font-size': 12 }, close);
+  xt.textContent = '×';
+  grp.forEach(function (p, i) {
+    var dx = (p.x - cx) * K, dy = (p.y - cy) * K;
+    var d = Math.hypot(dx, dy), lim = R - 34;
+    if (d > lim) { dx = dx / d * lim; dy = dy / d * lim; }
+    var px = cx + dx, py = cy + dy;
+    var side = px < cx ? -1 : 1;
+    var g = el('g', { class: 'lens-pin', transform: 'translate(' + px + ',' + py + ')' }, dim);
+    el('circle', { r: 11 }, g);
+    var t = el('text', { x: 6 * side, y: -16, 'text-anchor': side < 0 ? 'end' : 'start' }, g);
+    t.textContent = p.t + ' · ' + (p.d || '').slice(5).replace('-', '/');
+    g.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(p); });
+  });
+  dim.addEventListener('click', function () { dim.remove(); });
+}
+
+/* ===== 真实地图模式（伪高德演示） ===== */
+var realMap = document.getElementById('realMap');
+function drawReal() {
+  realMap.innerHTML = '';
+  [['road', '8%', '30%', '70%', '3px', '-6deg'], ['road', '30%', '80%', '50%', '2px', '4deg'], ['road', '60%', '10%', '60%', '2.5px', '10deg'],
+   ['water', 'left:2%;top:55%;width:180px;height:110px'], ['park', 'right:6%;top:8%;width:150px;height:100px']]
+   .forEach(function (d) {
+     var n = document.createElement('div');
+     if (d[0] === 'road') { n.className = 'road'; n.style.cssText = 'left:' + d[1] + ';top:' + d[2] + ';width:' + d[3] + ';height:' + d[4] + ';transform:rotate(' + d[5] + ')'; }
+     else { n.className = d[0]; n.style.cssText = d[1]; }
+     realMap.appendChild(n);
+   });
+  var svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('class', 'real-svg'); svg.setAttribute('viewBox', '0 0 720 440'); svg.setAttribute('preserveAspectRatio', 'none');
+  realMap.appendChild(svg);
+  var visited = filtered();
+  var groups = decluster(visited).groups;
+  if (visited.length > 1) {
+    var pts = visited.map(function (p) {
+      var G = groups.find(function (G) { return G.items.includes(p); });
+      return G.cx + ',' + G.cy;
+    });
+    el('path', { class: 'map-route', d: 'M' + pts.join(' L'), 'stroke-width': 3 }, svg);
+  }
+  groups.forEach(function (G) {
+    var d = document.createElement('div');
+    d.className = 'real-pin';
+    d.style.left = (G.cx / VB.w * 100) + '%';
+    d.style.top = (G.cy / VB.h * 100) + '%';
+    if (G.items.length > 1) {
+      d.classList.add('stack');
+      var im2 = document.createElement('img'); im2.src = PHOTOS[2]; im2.className = 'sec'; d.appendChild(im2);
+      var im3 = document.createElement('img'); im3.src = PHOTOS[3]; im3.className = 'thi'; d.appendChild(im3);
+    }
+    var best = G.items.slice().sort(function (a, b) { return (b.photos || 0) - (a.photos || 0); })[0];
+    var im = document.createElement('img'); im.src = PHOTOS[best.id % PHOTOS.length]; im.alt = best.t; d.appendChild(im);
+    var c = document.createElement('span'); c.className = 'cnt'; c.textContent = G.items.reduce(function (s, q) { return s + (q.photos || 1); }, 0); d.appendChild(c);
+    d.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(best); });
+    realMap.appendChild(d);
+  });
+  PLACES.filter(function (p) { return p.wish; }).forEach(function (p) {
+    var d = document.createElement('div');
+    d.className = 'real-pin wish-pin';
+    d.style.left = (p.x / VB.w * 100) + '%'; d.style.top = (p.y / VB.h * 100) + '%';
+    var im = document.createElement('img'); im.src = PHOTOS[p.id % PHOTOS.length]; im.alt = p.t; d.appendChild(im);
+    var c = document.createElement('span'); c.className = 'cnt'; c.textContent = '想'; d.appendChild(c);
+    d.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(p); });
+    realMap.appendChild(d);
+  });
+  var attrib = document.createElement('div'); attrib.className = 'real-attrib'; attrib.textContent = '高德地图 · 演示底图'; realMap.appendChild(attrib);
+}
+
+/* ===== 月份胶囊 / 模式切换 / 详情抽屉 ===== */
+var chips = document.getElementById('monthChips');
+function drawChips() {
+  var counts = {};
+  PLACES.filter(function (p) { return !p.wish && p.d; }).forEach(function (p) { var m = p.d.slice(5, 7); counts[m] = (counts[m] || 0) + 1; });
+  var html = '<button class="hd-chip' + (state.month === 'all' ? ' on' : '') + '" data-m="all">全年</button>';
+  Object.keys(counts).sort().forEach(function (m) {
+    html += '<button class="hd-chip' + (state.month === m ? ' on' : '') + '" data-m="' + m + '">' + Number(m) + '月 · ' + counts[m] + '</button>';
+  });
+  chips.innerHTML = html;
+  chips.querySelectorAll('button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.month = b.dataset.m;
+      drawChips(); render();
+    });
+  });
+}
+var modeHand = document.getElementById('modeHand'), modeReal = document.getElementById('modeReal');
+modeHand.addEventListener('click', function () { state.mode = 'hand'; setMode(); });
+modeReal.addEventListener('click', function () { state.mode = 'real'; setMode(); });
+function setMode() {
+  modeHand.classList.toggle('on', state.mode === 'hand');
+  modeReal.classList.toggle('on', state.mode === 'real');
+  handMap.hidden = state.mode !== 'hand';
+  realMap.hidden = state.mode !== 'real';
+  document.querySelector('.map-legend').style.display = state.mode === 'hand' ? '' : 'none';
+  render();
+}
+function render() { if (state.mode === 'hand') drawHand(); else drawReal(); }
+
+var drawer = document.getElementById('mockDrawer');
+function openDrawer(p) {
+  document.getElementById('dSt').textContent = p.wish ? '想去' : '去过';
+  document.getElementById('dSt').className = 'hd-st' + (p.wish ? '' : ' done');
+  document.getElementById('dTitle').textContent = p.t;
+  document.getElementById('dCity').textContent = p.city + ' · 中国';
+  document.getElementById('dDate').textContent = p.d ? (Number(p.d.slice(5, 7)) + ' 月 ' + Number(p.d.slice(8, 10)) + ' 日') : '还没定日子';
+  document.getElementById('dPhotos').textContent = (p.photos || 0) + ' 张照片';
+  drawer.classList.add('open');
+}
+document.getElementById('drawerClose').addEventListener('click', function () { drawer.classList.remove('open'); });
+
+drawChips(); render();
+</script>
+</body>
+</html>
