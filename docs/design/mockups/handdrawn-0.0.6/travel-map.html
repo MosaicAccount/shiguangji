@@ -70,6 +70,11 @@
 .page-mapdoc .lens-handle { stroke: var(--hd-line); stroke-width: 8; stroke-linecap: round }
 .page-mapdoc .lens-handle-in { stroke: var(--hd-paper); stroke-width: 2.6; stroke-linecap: round }
 .page-mapdoc .lens-leader { stroke: var(--hd-line-soft); stroke-width: 1.8; stroke-dasharray: 4 5; fill: none }
+.page-mapdoc .lens-cone {
+  fill: rgba(156, 107, 63, .12);
+  stroke: var(--hd-line-soft); stroke-width: 1.6; stroke-dasharray: 5 6;
+}
+.page-mapdoc .lens-anchor { fill: none; stroke: var(--hd-line-soft); stroke-width: 1.8; stroke-dasharray: 3 4 }
 
 /* 真实地图模式（伪高德：浅灰路网 + 照片图钉） */
 .page-mapdoc .real-map {
@@ -252,7 +257,7 @@
         <tr><td class="k">投影</td><td>等距圆柱<b>相对投影</b>：把全部足迹的经纬度包围盒映射到纸面（国内外地点通吃），保持方位关系；页角常驻「示意位置 · 非比例」。投影框按<b>全部足迹</b>计算，月份筛选不改变它。</td></tr>
         <tr><td class="k">防重叠 · 位移</td><td>图钉最小间距 52px；力导向互斥微位移，单针位移上限 26px——只「挪半步」，方位感不破坏。</td></tr>
         <tr><td class="k">防重叠 · 聚合</td><td>位移后仍 &lt;30px（同城多点）→ 合成<b>叠针</b>（三针叠放 + 数量角标），停在真实位置；不去伪造间隔。</td></tr>
-        <tr><td class="k">放大镜</td><td>点叠针 → 一枚更大的玻璃镜片<b>压在那一坨上</b>：原图一切不动，镜片不透明底盖住叠针，镜内是一张<b>新的局部手绘小地图</b>（视口 = 簇内点经纬度包围盒，留 32% 余量，窄轴拉伸撑满内接方形的范围视图），三点自然展开，标注实际跨度 km 与「非等比」；镜片被画布边界推离簇时补一条虚线指引；同坐标 → 纸片列表兜底；点镜外或 × 复原。</td></tr>
+        <tr><td class="k">放大镜</td><td>点叠针 → 一枚更大的玻璃镜片<b>压在那一坨上</b>：原图一切不动，镜片不透明底盖住叠针，镜内是一张<b>新的局部手绘小地图</b>（视口 = 簇内点经纬度包围盒，留 32% 余量，窄轴拉伸撑满内接方形的范围视图），三点自然展开，标注实际跨度 km 与「非等比」；镜片悬浮在簇的斜上方（方向自适应、不出画布），镜沿到叠针之间画一条<b>圆锥光路</b>（宽头贴镜、窄头箍住叠针）标明展示对象；同坐标 → 纸片列表兜底；点镜外或 × 复原。</td></tr>
         <tr><td class="k">月份口径</td><td>按 finishDate 归月；胶囊只列<b>有足迹的月份</b>并带数量（空月不出现）；默认「全年」；切换只重画路径与图钉。</td></tr>
         <tr><td class="k">路径</td><td>选中范围内按日期升序串联成虚线路径；仅 1 个点不画线；<b>想去不进路径</b>。</td></tr>
         <tr><td class="k">想去</td><td>虚线图钉常显，不受月份筛选影响；点开是想去态详情（可定日子）。</td></tr>
@@ -446,9 +451,16 @@ function openLens(G, cx, cy) {
   var R = 140;
   var members = G.items.slice().sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); });
 
-  /* 玻璃中心：尽量压住簇，但不许出了地图画布 */
-  var gx = Math.min(Math.max(cx, R + 10), VB.w - R - 10);
-  var gy = Math.min(Math.max(cy, R + 10), VB.h - R - 10);
+  /* 玻璃悬浮在簇的斜上方：按候选方向找一处「锥长 ≥70 且镜片不出画布」的位置 */
+  var gx = cx, gy = cy;
+  var cands = [-1.15, -0.55, -1.8, -2.5, 0.55, 1.05, 2.6, 3.5];
+  for (var ci = 0; ci < cands.length; ci++) {
+    var ux = Math.cos(cands[ci]), uy = Math.sin(cands[ci]);
+    var wx = Math.min(Math.max(cx + ux * (R + 105), R + 16), VB.w - R - 16);
+    var wy = Math.min(Math.max(cy + uy * (R + 105), R + 16), VB.h - R - 16);
+    gx = wx; gy = wy;
+    if (Math.hypot(gx - cx, gy - cy) >= R + 70) break;
+  }
 
   /* 局部地图视口 = 簇内经纬度包围盒（留 32% 余量），两轴各自撑满圆的内接方形
      （范围视图：窄轴会拉伸，标注「非等比」与实际范围公里数） */
@@ -469,11 +481,27 @@ function openLens(G, cx, cy) {
 
   var lens = el('g', {}, handMap);
 
-  /* 若玻璃被画布边界推离了簇，画一条虚线把两者连起来 */
-  if (Math.hypot(gx - cx, gy - cy) > 30) {
-    var a = Math.atan2(cy - gy, cx - gx);
-    el('path', { class: 'lens-leader', d: 'M' + (gx + Math.cos(a) * (R + 4)) + ' ' + (gy + Math.sin(a) * (R + 4)) + ' L' + cx + ' ' + cy }, lens);
-  }
+  /* 圆锥光路：宽头贴镜沿、窄头箍住叠针——放大镜看的就是这一坨 */
+  var a = Math.atan2(cy - gy, cx - gx);
+  var perp = a + Math.PI / 2;
+  var W1 = 74, W2 = 26;
+  var rx = gx + Math.cos(a) * (R + 2), ry = gy + Math.sin(a) * (R + 2);
+  function pt(px, py, w, k) { return (px + Math.cos(perp) * w / 2 * k) + ' ' + (py + Math.sin(perp) * w / 2 * k); }
+  var ax = rx + Math.cos(perp) * W1 / 2, ay = ry + Math.sin(perp) * W1 / 2;
+  var bx = rx - Math.cos(perp) * W1 / 2, by = ry - Math.sin(perp) * W1 / 2;
+  var ex = cx + Math.cos(perp) * W2 / 2, ey = cy + Math.sin(perp) * W2 / 2;
+  var fx = cx - Math.cos(perp) * W2 / 2, fy = cy - Math.sin(perp) * W2 / 2;
+  var m1x = (ax + ex) / 2 + Math.cos(perp) * 6, m1y = (ay + ey) / 2 + Math.sin(perp) * 6;
+  var m2x = (bx + fx) / 2 - Math.cos(perp) * 6, m2y = (by + fy) / 2 - Math.sin(perp) * 6;
+  el('path', {
+    class: 'lens-cone',
+    d: 'M' + ax + ' ' + ay + ' Q' + m1x + ' ' + m1y + ' ' + ex + ' ' + ey +
+       ' A' + (W2 / 2) + ' ' + (W2 / 2) + ' 0 0 1 ' + fx + ' ' + fy +
+       ' Q' + m2x + ' ' + m2y + ' ' + bx + ' ' + by +
+       ' A' + (W1 / 2) + ' ' + (W1 / 2) + ' 0 0 0 ' + ax + ' ' + ay + ' Z'
+  }, lens);
+  /* 窄头的箍圈：锚在叠针上 */
+  el('circle', { class: 'lens-anchor', cx: cx, cy: cy, r: W2 / 2 + 5 }, lens);
 
   /* 投影 + 影子 + 不透明玻璃底：把那一坨盖住 */
   el('circle', { cx: gx + 9, cy: gy + 11, r: R, fill: 'rgba(40,34,28,.16)' }, lens);
