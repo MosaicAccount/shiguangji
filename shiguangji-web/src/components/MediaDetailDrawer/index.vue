@@ -19,6 +19,15 @@
       <figure v-if="heroImage" class="sheet-photo">
         <img :src="heroImage" :alt="item.title" @error="onHeroError" />
       </figure>
+      <!-- 无封面/照片时：与卡片网格同形制的 A 影像封面兜底，不留空块 -->
+      <div v-else class="sheet-fb hd-fallback" :class="fallbackType">
+        <span class="fc-band">{{ fallbackBand }}</span>
+        <span class="fc-body">
+          <span class="fc-title">{{ item.title }}</span>
+          <span class="fc-meta">{{ (heroMeta || []).join(' · ') }}</span>
+        </span>
+        <span class="fc-motif"></span>
+      </div>
 
       <div class="sheet-body">
         <!-- 页面差异内容：chips / 信息行 / 短评等（使用本组件提供的 md-* 类名） -->
@@ -79,6 +88,25 @@ const visible = computed({
 })
 
 /** 状态徽标文案：显式三态，缺 doingLabel 的页面回退 wantLabel（地点无中间态） */
+/** 无封面兜底：与卡片网格的 A 影像封面同一形制（电影/电视剧/书籍） */
+const fallbackType = computed(() => {
+  switch (props.item?.itemType) {
+    case 'MOVIE': return 'movie'
+    case 'TV': return 'tv'
+    case 'BOOK': return 'book'
+    default: return 'note'
+  }
+})
+
+const fallbackBand = computed(() => {
+  switch (props.item?.itemType) {
+    case 'MOVIE': return '电影'
+    case 'TV': return '电视剧'
+    case 'BOOK': return '书籍'
+    default: return '记录'
+  }
+})
+
 const statusText = computed(() => {
   if (props.item?.status === 'DONE') return props.doneLabel
   if (props.item?.status === 'DOING') return props.doingLabel || props.wantLabel
@@ -190,6 +218,16 @@ function onHeroError(): void {
   max-height: 300px;
   object-fit: cover;
   border-radius: 2px;
+}
+
+.sheet-fb {
+  position: relative;
+  height: 220px;
+  margin: 16px 0 4px;
+  border: 1.6px solid var(--hd-line-soft);
+  border-radius: 3px 2px 4px 2px / 2px 4px 2px 3px;
+  transform: rotate(-.4deg);
+  box-shadow: var(--hd-shadow);
 }
 
 .sheet-body { margin-top: 16px; }

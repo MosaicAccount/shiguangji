@@ -50,14 +50,36 @@
           <span class="hd-tape right"></span>
           <div v-loading="mapLoading" class="map-container">
             <div v-if="mapError" class="map-error">{{ mapError }}</div>
-            <travel-map
-              v-else
-              :visited="trajectory?.visited || []"
-              :wish="trajectory?.wish || []"
-              :height="430"
-              class="real-map"
-              @select="openDetailById"
-            />
+
+            <!-- 高德单点视图：详情里「在高德地图上查看」打开，看完即回 -->
+            <template v-else-if="amapPoint">
+              <travel-map :visited="[amapPoint]" :wish="[]" :height="430" class="real-map" />
+              <button class="amap-back hd-btn" type="button" @click="amapPoint = null">← 返回手绘示意</button>
+              <span class="amap-title">{{ amapPoint.title }} · {{ amapPoint.city }}</span>
+            </template>
+
+            <!-- 默认：手绘足迹图（真实坐标相对投影）+ 月份胶囊 -->
+            <template v-else>
+              <div class="month-bar">
+                <div class="hd-chips" role="group" aria-label="按月份筛选足迹">
+                  <button
+                    v-for="m in monthChips"
+                    :key="m.value"
+                    class="hd-chip"
+                    :class="{ on: activeMonth === m.value }"
+                    type="button"
+                    @click="activeMonth = m.value"
+                  >{{ m.label }}</button>
+                </div>
+              </div>
+              <schematic-map
+                :places="visitedAll"
+                :month="activeMonth"
+                class="sm-wrap"
+                @select="onMapPoint"
+                @cluster="openCluster"
+              />
+            </template>
           </div>
         </figure>
 
@@ -252,10 +274,24 @@
     <!-- 详情抽屉：照片 hero + 手账风信息卡 -->
     <el-drawer v-model="detailOpen" size="440px" :with-header="false" class="place-drawer">
       <div v-if="detail" class="drawer-inner">
-        <!-- Hero：首图/封面铺底，标题与位置叠底 -->
+        <!-- 从「这一片」纸卡进入时可返回列表 -->
+        <button
+          v-if="detailFromCluster && clusterItems.length"
+          class="d-back"
+          type="button"
+          @click="backToCluster"
+        >← 返回{{ clusterCity || '这一片' }}的足迹</button>
+        <!-- Hero：首图/封面铺底；无照片时手绘默认封面兜底 -->
         <div class="d-hero" :class="{ 'is-empty': !heroImage }">
           <img v-if="heroImage" class="d-hero-img" :src="heroImage" :alt="detail.title" @error="onHeroError" />
-          <span v-else class="d-hero-glyph" aria-hidden="true">地</span>
+          <span v-else class="hd-fallback place">
+            <span class="fc-band">地点</span>
+            <span class="fc-body">
+              <span class="fc-title">{{ detail.title }}</span>
+              <span class="fc-meta">{{ locText }}</span>
+            </span>
+            <span class="fc-motif"></span>
+          </span>
           <div class="d-hero-mask" aria-hidden="true"></div>
           <span class="d-status" :class="detail.status">{{ detail.status === 'DONE' ? '去过' : '想去' }}</span>
           <button class="d-close" aria-label="关闭详情" @click="detailOpen = false">✕</button>
@@ -316,13 +352,28 @@
             经纬度 {{ detail.latitude }}, {{ detail.longitude }}
           </div>
 
-          <div v-if="isLogin" class="d-actions">
-            <el-button type="primary" round @click="openEditDetail">编辑</el-button>
-            <el-button type="danger" plain round @click="handleDelete(detail)">删除</el-button>
+          <div class="d-actions">
+            <el-button
+              v-if="detail.latitude != null && detail.longitude != null"
+              type="primary"
+              round
+              @click="openAmapPoint"
+            >在高德地图上查看</el-button>
+            <el-button v-if="isLogin" round @click="openEditDetail">编辑</el-button>
+            <el-button v-if="isLogin" type="danger" plain round @click="handleDelete(detail)">删除</el-button>
           </div>
         </div>
       </div>
     </el-drawer>
+
+    <!-- 「这一片」纸卡：手绘足迹图上点城市叠针弹出 -->
+    <place-cluster-drawer
+      v-model="clusterOpen"
+      :places="clusterItems"
+      :city="clusterCity"
+      :order-map="orderMap"
+      @select="onClusterRow"
+    />
 
     <!-- 编辑条目 -->
     <item-edit-dialog
@@ -343,6 +394,8 @@ import PlaceSearchInput from '@/components/PlaceSearchInput/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import TravelMap from '@/components/TravelMap/index.vue'
+import SchematicMap from '@/components/SchematicMap/index.vue'
+import PlaceClusterDrawer from '@/components/PlaceClusterDrawer/index.vue'
 import PhotoDeck from '@/components/PhotoDeck/index.vue'
 import PhotoAlbumDialog from '@/components/PhotoAlbumDialog/index.vue'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
@@ -538,6 +591,79 @@ function markThumbBroken(itemId?: string | number): void {
   if (itemId !== undefined) brokenThumbs.value[String(itemId)] = true
 }
 
+/** 手绘足迹图（0.0.6 终版）：月份胶囊 / 城市叠针纸卡 / 高德单点视图 */
+const activeMonth = ref('all')
+const visitedAll = computed<TravelPoint[]>(() =>
+  (trajectory.value?.visited || []).filter(p => p.latitude != null && p.longitude != null)
+)
+
+/** 月份胶囊：只列有足迹的月份并带数量，默认全年 */
+const monthChips = computed(() => {
+  const counts: Record<string, number> = {}
+  visitedAll.value.forEach(p => {
+    const m = String(p.finishDate || '').slice(5, 7)
+    if (/^\d{2}$/.test(m)) counts[m] = (counts[m] || 0) + 1
+  })
+  return [
+    { value: 'all', label: '全年' },
+    ...Object.keys(counts).sort().map(m => ({ value: m, label: `${Number(m)}月 · ${counts[m]}` }))
+  ]
+})
+
+/** 全年到访序号（地图编号与纸卡同一份） */
+const orderMap = computed(() => {
+  const m: Record<number, number> = {}
+  visitedAll.value
+    .slice()
+    .sort((a, b) => String(a.finishDate || '').localeCompare(String(b.finishDate || '')))
+    .forEach((p, i) => { if (p.itemId != null) m[p.itemId] = i + 1 })
+  return m
+})
+
+/** 「这一片」纸卡 */
+const clusterOpen = ref(false)
+const clusterItems = ref<TravelPoint[]>([])
+const clusterCity = ref('')
+const detailFromCluster = ref(false)
+
+function openCluster(items: TravelPoint[]): void {
+  clusterItems.value = items
+  clusterCity.value = items[0]?.city || ''
+  clusterOpen.value = true
+}
+
+function onClusterRow(p: TravelPoint): void {
+  clusterOpen.value = false
+  if (p.itemId != null) openDetailById(p.itemId, true)
+}
+
+function backToCluster(): void {
+  detailOpen.value = false
+  clusterOpen.value = true
+}
+
+function onMapPoint(p: TravelPoint): void {
+  if (p.itemId != null) openDetailById(p.itemId, false)
+}
+
+/** 高德单点视图：详情里「在高德地图上查看」打开，只看这一个点 */
+const amapPoint = ref<TravelPoint | null>(null)
+
+function openAmapPoint(): void {
+  const d = detail.value
+  if (!d || d.latitude == null || d.longitude == null) return
+  amapPoint.value = {
+    itemId: d.itemId,
+    title: d.title,
+    city: d.city || '',
+    latitude: d.latitude,
+    longitude: d.longitude,
+    photoCount: d.photoCount || photosArr.value.length,
+    cover: d.coverUrl || undefined
+  }
+  detailOpen.value = false
+}
+
 /** 想去地点数（小结条用） */
 const wishCount = computed(() => (trajectory.value?.wish || []).length)
 
@@ -718,7 +844,8 @@ function savePhotos(photos: string): void {
 /**
  *  配套：按 itemId 直接打开详情（首页时间线跳转 /travel?itemId= 时调用）
  */
-function openDetailById(itemId: number): void {
+function openDetailById(itemId: number, fromCluster = false): void {
+  detailFromCluster.value = fromCluster
   getFrontItem(itemId).then(response => {
     detail.value = response.data || null
     detailOpen.value = true
@@ -987,4 +1114,25 @@ onMounted(() => {
 .page-travel .hd-card .stars-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 .page-travel .hd-card .card-comment { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
 .page-travel .hd-card .card-acts { margin-top: auto }
+
+/* 0.0.6 终版：手绘足迹图的月份条与高德单点视图 */
+.page-travel .month-bar { padding: 10px 12px 0 }
+.page-travel .sm-wrap { padding: 6px 12px 10px }
+.page-travel .map-container { display: flex; flex-direction: column }
+.page-travel .amap-back { position: absolute; left: 12px; top: 12px; z-index: 5 }
+.page-travel .amap-title {
+  position: absolute; left: 50%; top: 46px; transform: translateX(-50%);
+  z-index: 4; padding: 3px 12px; font-size: 13.5px; color: var(--hd-ink);
+  background: var(--hd-paper); border: 1.6px solid var(--hd-line);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px; font-family: var(--hd-hand);
+  white-space: nowrap;
+}
+.page-travel .d-back {
+  position: absolute; top: 10px; left: 12px; z-index: 3;
+  padding: 2px 10px; font-size: 13px; color: var(--hd-ink-soft);
+  background: var(--hd-paper); border: 1.5px dashed var(--hd-line-soft);
+  border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px; cursor: pointer;
+  font-family: var(--hd-hand);
+}
+.page-travel .d-back:hover { color: var(--hd-red); border-color: var(--hd-red) }
 </style>
