@@ -68,84 +68,73 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.item-notes {
-  margin-top: 20px;
-  text-align: left;
+/* 0.0.6 关联笔记：手绘纸片行（放在详情抽屉的纸卡里也不违和） */
+.item-notes { text-align: left }
 
-  .notes-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--sgj-text-2);
-    font-weight: 600;
-    margin-bottom: 8px;
+.notes-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 17px;
+  color: var(--hd-ink-soft);
 
-    .notes-count {
-      background: #f5e6d3;
-      color: var(--sgj-primary);
-      border-radius: 10px;
-      padding: 0 8px;
-      font-size: 12px;
-      line-height: 20px;
-    }
-  }
-
-  .notes-loading,
-  .notes-empty {
-    color: var(--sgj-text-4);
+  .notes-count {
     font-size: 13px;
-    padding: 8px 0;
-  }
-
-  .notes-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-
-    .note-row {
-      background: var(--sgj-bg);
-      border-radius: 10px;
-      padding: 10px 14px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      border: 1px solid #f0e4d6;
-      transition: all 0.2s;
-
-      &:hover {
-        border-color: #d8a884;
-        background: #fffdf9;
-      }
-
-      .note-row-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--sgj-text);
-      }
-
-      .note-row-summary {
-        margin-top: 4px;
-        font-size: 12px;
-        color: var(--sgj-text-3);
-        line-height: 1.5;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-
-      .note-row-meta {
-        margin-top: 4px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        font-size: 12px;
-        color: var(--sgj-text-4);
-
-        .note-row-tags {
-          color: var(--sgj-amber);
-        }
-      }
-    }
+    color: var(--hd-paper);
+    background: var(--hd-amber-ink);
+    border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+    padding: 0 7px;
+    line-height: 1.6;
   }
 }
+
+.notes-loading,
+.notes-empty {
+  margin-top: 10px;
+  padding: 14px 12px;
+  font-size: 13.5px;
+  color: var(--hd-ink-faint);
+  border: 1.5px dashed var(--hd-line-soft);
+  border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px;
+  text-align: center;
+}
+
+.notes-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.note-row {
+  padding: 10px 2px;
+  border-bottom: 1.5px dashed var(--hd-line-soft);
+  cursor: pointer;
+
+  &:last-child { border-bottom: 0 }
+  &:hover .note-row-title { color: var(--hd-red) }
+}
+
+.note-row-title { font-size: 15.5px; color: var(--hd-ink) }
+
+.note-row-summary {
+  margin-top: 3px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--hd-ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-row-meta {
+  margin-top: 4px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--hd-ink-faint);
+}
+
+.note-row-tags { color: var(--hd-amber-ink) }
 </style>
