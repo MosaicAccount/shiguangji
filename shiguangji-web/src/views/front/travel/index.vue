@@ -274,6 +274,7 @@
     <!-- 详情抽屉：照片 hero + 手账风信息卡 -->
     <el-drawer v-model="detailOpen" size="440px" :with-header="false" class="place-drawer">
       <div v-if="detail" class="drawer-inner">
+        <span class="hd-tape" aria-hidden="true"></span>
         <!-- 从「这一片」纸卡进入时可返回列表 -->
         <button
           v-if="detailFromCluster && clusterItems.length"
@@ -293,9 +294,9 @@
             <span class="fc-motif"></span>
           </span>
           <div class="d-hero-mask" aria-hidden="true"></div>
-          <span class="d-status" :class="detail.status">{{ detail.status === 'DONE' ? '去过' : '想去' }}</span>
+          <span v-if="heroImage" class="d-status" :class="detail.status">{{ detail.status === 'DONE' ? '去过' : '想去' }}</span>
           <button class="d-close" aria-label="关闭详情" @click="detailOpen = false">✕</button>
-          <div class="d-hero-bottom">
+          <div v-if="heroImage" class="d-hero-bottom">
             <h2>{{ detail.title }}</h2>
             <div class="d-meta-line">
               <span>📍 {{ locText }}</span>
@@ -305,8 +306,9 @@
         </div>
 
         <div class="d-body">
-          <!-- 分类 / 最佳季节 / 计划日期 -->
-          <div v-if="detail.placeCategory || detail.bestSeason || detail.startDate" class="d-chips">
+          <!-- 状态 / 分类 / 最佳季节 / 计划日期 -->
+          <div class="d-chips">
+            <span class="chip chip-status" :class="detail.status">{{ detail.status === 'DONE' ? '去过' : '想去' }}</span>
             <span v-if="detail.placeCategory" class="chip">{{ selectDictLabel(sgj_place_category, detail.placeCategory) || detail.placeCategory }}</span>
             <span v-if="detail.bestSeason" class="chip chip-season">🍂 {{ selectDictLabel(sgj_best_season, detail.bestSeason) || detail.bestSeason }}</span>
             <span v-if="detail.startDate" class="chip chip-plan">📅 计划 {{ detail.startDate.slice(0, 10) }}</span>
@@ -707,7 +709,9 @@ function onHeroError(): void {
 const locText = computed(() => {
   const d = detail.value
   if (!d) return ''
-  return [d.city, d.province, d.country].filter(Boolean).join(' · ') || '未定位'
+  // 直辖市市/省同名（北京市 · 北京市）去重，避免「北京市 · 北京市 · 中国」
+  const parts = [d.city, d.province, d.country].filter(Boolean) as string[]
+  return [...new Set(parts)].join(' · ') || '未定位'
 })
 
 /** 相册上传/删除后整体保存；失败时回读详情恢复一致 */
@@ -1136,4 +1140,186 @@ onMounted(() => {
   font-family: var(--hd-hand);
 }
 .page-travel .d-back:hover { color: var(--hd-red); border-color: var(--hd-red) }
+
+/* ===== 0.0.6 地点详情抽屉：一张贴胶带的纸，封面占上半 =====
+   注：#111 整体换装时这组 .d-* 规则随旧样式被替换掉，抽屉一度只剩裸图；
+   此处按手绘纸片形制补回（与影/书详情抽屉同语言）。 */
+.drawer-inner {
+  position: relative;
+  margin: 14px 16px 16px;
+  max-height: calc(100vh - 30px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--hd-paper);
+  background-image: var(--hd-grain);
+  border: 2.2px solid var(--hd-line);
+  border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+  box-shadow: var(--hd-shadow-lift);
+  text-align: left;
+}
+.drawer-inner > .hd-tape {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 92px;
+  z-index: 4;
+}
+.d-hero {
+  position: relative;
+  height: 216px;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--hd-amber-soft), var(--hd-paper-3));
+}
+.d-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.d-hero-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(30, 24, 18, .06) 0%, rgba(30, 24, 18, 0) 35%, rgba(30, 24, 18, .68) 100%);
+}
+.d-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--hd-paper);
+  font-family: var(--hd-hand);
+}
+.d-status.DONE { background: rgba(90, 99, 80, .92) }
+.d-status.WANT { background: rgba(138, 92, 49, .92) }
+.d-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.6px solid var(--hd-line-soft);
+  background: var(--hd-paper);
+  color: var(--hd-ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+}
+.d-close:hover { color: var(--hd-red); border-color: var(--hd-red) }
+.d-hero-bottom {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 0 18px 14px;
+}
+.d-hero-bottom h2 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.3;
+  color: #FBF6EC;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.d-hero-bottom .d-meta-line {
+  margin-top: 6px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: rgba(251, 246, 236, .94);
+}
+.d-body {
+  padding: 16px 18px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+.d-chips { display: flex; gap: 8px; flex-wrap: wrap }
+.d-chips .chip {
+  padding: 2px 11px;
+  font-size: 13px;
+  color: var(--hd-ink-soft);
+  border: 1.5px solid var(--hd-line-soft);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+  font-family: var(--hd-hand);
+}
+.d-chips .chip-status.DONE { color: var(--hd-olive); border-color: rgba(90, 99, 80, .45) }
+.d-chips .chip-status.WANT { color: var(--hd-amber-ink); border-color: rgba(138, 92, 49, .45) }
+.d-chips .chip-season { color: var(--hd-olive); border-color: rgba(90, 99, 80, .4) }
+.d-chips .chip-plan { color: var(--hd-amber-ink); border-color: rgba(138, 92, 49, .4) }
+.d-addr {
+  display: flex;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--hd-ink-soft);
+  line-height: 1.7;
+}
+.d-addr .ico { flex: none }
+.d-memory {
+  padding: 12px 16px 15px;
+  background: var(--hd-paper-2);
+  border-left: 3px solid var(--hd-red);
+  border-radius: 0 3px 3px 0;
+}
+.d-memory .d-memory-label {
+  font-size: 12.5px;
+  letter-spacing: 2px;
+  color: var(--hd-ink-faint);
+  margin-bottom: 6px;
+}
+.d-memory p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--hd-ink-soft);
+}
+.d-coords {
+  font-size: 12.5px;
+  color: var(--hd-ink-faint);
+  letter-spacing: .5px;
+}
+.d-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+.detail-photos .detail-photos-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.detail-photos .detail-photos-head h3 { margin: 0; font-size: 17px; color: var(--hd-ink-soft) }
+.detail-photos .detail-photos-count { font-size: 13px; color: var(--hd-ink-faint) }
+.detail-photos .detail-photos-add { margin-left: auto; font-size: 13px }
+.detail-photos .album-empty {
+  margin-top: 4px;
+  padding: 24px 16px;
+  border: 1.5px dashed var(--hd-line-soft);
+  border-radius: 14px;
+  text-align: center;
+  color: var(--hd-ink-faint);
+  font-size: 13.5px;
+  line-height: 1.8;
+  background: var(--hd-paper-2);
+}
+.detail-photos .album-empty .big { font-size: 26px }
+.place-drawer .el-drawer__body { padding: 0 }
+
+@media (max-width: 768px) {
+  .d-hero { height: 180px }
+  .d-actions { flex-wrap: wrap }
+}
 </style>
