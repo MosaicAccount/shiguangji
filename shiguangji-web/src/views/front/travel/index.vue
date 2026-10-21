@@ -1086,7 +1086,8 @@ onMounted(() => {
 
 /* 产品补充：真实地图组件、卡片封面、时间线列、加载态 */
 .page-travel .map-frame { position: relative; padding: 10px; overflow: hidden }
-.page-travel .map-frame .map-container { position: relative; height: 430px; border-radius: 3px; overflow: hidden }
+.page-travel .map-frame .map-container { position: relative; border-radius: 3px; overflow: hidden }
+.page-travel .map-frame .map-container .map-chart { height: 430px }
 .page-travel .map-frame .map-error { display: grid; place-items: center; height: 430px; color: var(--hd-ink-soft) }
 .page-travel .real-map { display: block; width: 100% }
 .page-travel .place-card .hd-cover img { width: 100%; height: 100%; object-fit: cover; display: block }
