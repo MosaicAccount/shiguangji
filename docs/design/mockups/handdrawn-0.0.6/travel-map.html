@@ -36,11 +36,17 @@
 .page-mapdoc .map-pin:hover circle.bubble { stroke: var(--hd-red) }
 .page-mapdoc .map-pin:hover text { fill: var(--hd-red) }
 .page-mapdoc .cluster-pin { cursor: pointer }
-.page-mapdoc .cluster-pin circle { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2 }
-.page-mapdoc .cluster-pin .badge { fill: var(--hd-amber-ink) }
-.page-mapdoc .cluster-pin .badge-text { fill: var(--hd-paper); font-size: 11.5px; font-family: var(--hd-hand) }
-.page-mapdoc .cluster-pin:hover circle { stroke: var(--hd-red) }
-.page-mapdoc .cluster-pin:hover .badge { fill: var(--hd-red) }
+.page-mapdoc .cluster-pin circle.bubble { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2.2 }
+.page-mapdoc .cluster-pin .ring { fill: none; stroke: var(--hd-amber-ink); stroke-width: 1.5; stroke-dasharray: 3 4; opacity: .75 }
+.page-mapdoc .cluster-pin .cnt { fill: var(--hd-amber-ink); font-size: 13.5px; font-family: var(--hd-hand) }
+.page-mapdoc .cluster-pin .cap {
+  fill: var(--hd-ink-soft); font-size: 12.5px; font-family: var(--hd-hand);
+  paint-order: stroke; stroke: var(--hd-paper); stroke-width: 3.5px;
+}
+.page-mapdoc .cluster-pin:hover circle.bubble { stroke: var(--hd-red) }
+.page-mapdoc .cluster-pin:hover .ring { stroke: var(--hd-red) }
+.page-mapdoc .cluster-pin:hover .cnt, .page-mapdoc .cluster-pin:hover .cap { fill: var(--hd-red) }
+.page-mapdoc .map-arrow { stroke: var(--hd-ochre); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round }
 .page-mapdoc .map-legend {
   position: absolute; left: 10px; bottom: 10px; z-index: 3;
   display: flex; align-items: center; gap: 12px; padding: 2px 10px;
@@ -203,7 +209,7 @@
       <div class="map-legend">
         <span><i class="lg-dot"></i>去过（编号 = 到访顺序）</span>
         <span><i class="lg-dot cluster"></i>叠针 = 附近 N 处</span>
-        <span><i class="lg-dot wish"></i>想去（不受月份筛选）</span>
+        <span id="lgWish"><i class="lg-dot wish"></i>想去（仅真实地图）</span>
       </div>
     </div>
     <p class="map-note">示意位置 · 非比例 —— 方位关系真实，距离不是；要看精确位置就点右上「真实地图」。</p>
@@ -219,9 +225,10 @@
 ├─ 点编号图钉 ──→ 详情抽屉
 ├─ 点叠针 ──────→ 「这一片」纸卡（簇内地点列表 + 小路线示意）
 │    └─ 点条目 → 详情抽屉（纸卡里可返回列表）
-├─ 点「真实地图」→ 高德模式（照片图钉 + 就近聚合）
-│    └─ 点叠照 → 同一张「这一片」纸卡
-└─ 点想去图钉 ──→ 详情抽屉（想去态，可「定个日子」）</div>
+├─ 点「真实地图」→ 高德模式（照片图钉 + 就近聚合 + 想去灰度针）
+│    ├─ 点叠照 → 同一张「这一片」纸卡
+│    └─ 点想去照片 → 详情抽屉（想去态，可「定个日子」）
+└─ 手绘示意不画想去：足迹图只画走过的路</div>
 
     <table class="rule-table">
       <thead><tr><th style="width:120px">环节</th><th>规则</th></tr></thead>
@@ -231,8 +238,8 @@
         <tr><td class="k">防重叠 · 聚合</td><td>位移后仍 &lt;30px（同城多点）→ 合成<b>叠针</b>（三针叠放 + 数量角标），停在真实位置；不去伪造间隔。</td></tr>
         <tr><td class="k">叠针 → 纸卡</td><td>点叠针弹<b>「这一片」纸卡</b>：簇内地点按到访先后排列（照片 + 日期 + 张数），顶部一条编号小路线示意，标注跨度 km；点条目进详情抽屉，纸卡内可返回。同坐标多次到访在列表里天然可表达，无需特殊兜底。</td></tr>
         <tr><td class="k">月份口径</td><td>按 finishDate 归月；胶囊只列<b>有足迹的月份</b>并带数量（空月不出现）；默认「全年」；切换只重画路径与图钉。</td></tr>
-        <tr><td class="k">路径</td><td>选中范围内按日期升序串联成虚线路径；仅 1 个点不画线；<b>想去不进路径</b>。</td></tr>
-        <tr><td class="k">想去</td><td>虚线图钉常显，不受月份筛选影响；点开是想去态详情（可定日子）。</td></tr>
+        <tr><td class="k">路径</td><td>选中范围按日期升序串联成虚线路径，<b>每段中点带方向箭标</b>（先后顺序一眼可读）；仅 1 个点不画线；想去不进路径。</td></tr>
+        <tr><td class="k">想去</td><td><b>不上手绘示意</b>——足迹图只画走过的路，没去过的地方出现在上面反而别扭；真实地图模式仍以灰度照片针显示（那边本来就是「工具地图」），卡片区与详情照常管理想去。</td></tr>
         <tr><td class="k">空态</td><td>一个足迹都没有 → 手绘空态 +「＋ 添加想去」；坐标缺失的地点不上图，仍在卡片与时间线里。</td></tr>
         <tr><td class="k">真实地图</td><td>现有高德模式原样保留：照片图钉 + 就近聚合 + 路线 + 点选详情；与手绘图共用同一个装裱框，一次明确的模式切换，不做逐点击跳转。</td></tr>
         <tr><td class="k">性能</td><td>个人站量级（≤ 数百点），投影 / 松弛 / 聚合全在前端一次算完，无接口改动。</td></tr>
@@ -345,6 +352,16 @@ function el(name, attrs, parent) {
 }
 var handMap = document.getElementById('handMap');
 
+/* 路线方向：每段 55% 处一枚 › 箭标，沿行进方向旋转 */
+function routeArrows(pts, parent) {
+  for (var i = 0; i < pts.length - 1; i++) {
+    var x1 = pts[i][0], y1 = pts[i][1], x2 = pts[i + 1][0], y2 = pts[i + 1][1];
+    var mx = x1 + (x2 - x1) * .55, my = y1 + (y2 - y1) * .55;
+    var ang = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+    el('path', { class: 'map-arrow', d: 'M-4.5 -4.5 L2.5 0 L-4.5 4.5', transform: 'translate(' + mx + ' ' + my + ') rotate(' + ang + ')' }, parent);
+  }
+}
+
 function drawHand() {
   handMap.innerHTML = '';
   var defs = el('defs', {}, handMap);
@@ -362,22 +379,21 @@ function drawHand() {
   el('path', { class: 'deco wave', d: 'M640 400 q10 5 20 0 t20 0' }, base);
 
   var visited = filtered();
-  var wishes = PLACES.filter(function (p) { return p.wish; });
-  var res = decluster(visited);
-  var groups = res.groups;
+  var groups = decluster(visited).groups;
 
   /* 到访序号（全年口径，月份切换不重编） */
   var order = {};
   PLACES.filter(function (p) { return !p.wish; }).sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); })
     .forEach(function (p, i) { order[p.id] = i + 1; });
 
-  /* 路径：选中范围按日期串联，经过组心 */
+  /* 路径：选中范围按日期串联（经过组心），每段带方向箭标 */
   if (visited.length > 1) {
     var pts = visited.map(function (p) {
       var G = groups.find(function (G) { return G.items.includes(p); });
-      return G.cx + ',' + G.cy;
+      return [G.cx, G.cy];
     });
-    el('path', { class: 'map-route', d: 'M' + pts.join(' L') }, handMap);
+    el('path', { class: 'map-route', d: 'M' + pts.map(function (q) { return q[0] + ',' + q[1]; }).join(' L') }, handMap);
+    routeArrows(pts, handMap);
   }
 
   /* 图钉：单点组 = 编号针；多点组 = 叠针 */
@@ -391,25 +407,17 @@ function drawHand() {
       g.addEventListener('click', function (e) { e.stopPropagation(); renderPlace(p); });
     } else {
       var gc = el('g', { class: 'cluster-pin', transform: 'translate(' + G.cx + ',' + G.cy + ')' }, handMap);
-      el('circle', { cx: -9, cy: 4, r: 12 }, gc);
-      el('circle', { cx: 9, cy: 4, r: 12 }, gc);
-      el('circle', { cx: 0, cy: -4, r: 13 }, gc);
-      el('circle', { class: 'badge', cx: 15, cy: -15, r: 9.5 }, gc);
-      var bt = el('text', { class: 'badge-text', x: 15, y: -11.5, 'text-anchor': 'middle' }, gc);
+      el('circle', { class: 'ring', r: 19 }, gc);
+      el('circle', { class: 'bubble', r: 15 }, gc);
+      var bt = el('text', { class: 'cnt', y: 5, 'text-anchor': 'middle' }, gc);
       bt.textContent = G.items.length;
+      var cap = el('text', { class: 'cap', y: 36, 'text-anchor': 'middle' }, gc);
+      cap.textContent = (G.items[0].city || '') + ' · ' + G.items.length + ' 处';
       gc.addEventListener('click', function (e) { e.stopPropagation(); openCluster(G); });
       G.node = gc;
     }
   });
 
-  /* 想去：虚线针，常显 */
-  wishes.forEach(function (p) {
-    var g = el('g', { class: 'map-pin wish', transform: 'translate(' + p.x + ',' + p.y + ')' }, handMap);
-    el('circle', { class: 'bubble', r: 13 }, g);
-    var t = el('text', { y: 4.5, 'text-anchor': 'middle' }, g);
-    t.textContent = '想';
-    g.addEventListener('click', function (e) { e.stopPropagation(); renderPlace(p); });
-  });
 }
 
 /* 「这一片」纸卡：点叠针弹出簇内地点列表 + 小路线示意，地图一个像素不动；
@@ -538,9 +546,10 @@ function drawReal() {
   if (visited.length > 1) {
     var pts = visited.map(function (p) {
       var G = groups.find(function (G) { return G.items.includes(p); });
-      return G.cx + ',' + G.cy;
+      return [G.cx, G.cy];
     });
-    el('path', { class: 'map-route', d: 'M' + pts.join(' L'), 'stroke-width': 3 }, svg);
+    el('path', { class: 'map-route', d: 'M' + pts.map(function (q) { return q[0] + ',' + q[1]; }).join(' L'), 'stroke-width': 3 }, svg);
+    routeArrows(pts, svg);
   }
   groups.forEach(function (G) {
     var d = document.createElement('div');
@@ -595,7 +604,9 @@ function setMode() {
   modeReal.classList.toggle('on', state.mode === 'real');
   handMap.hidden = state.mode !== 'hand';
   realMap.hidden = state.mode !== 'real';
-  document.querySelector('.map-legend').style.display = state.mode === 'hand' ? '' : 'none';
+  var lg = document.querySelector('.map-legend');
+  lg.style.display = '';
+  document.getElementById('lgWish').style.display = state.mode === 'hand' ? 'none' : '';
   render();
 }
 function render() { if (state.mode === 'hand') drawHand(); else drawReal(); }
