@@ -355,14 +355,14 @@
           </div>
 
           <div class="d-actions">
-            <el-button
+            <button
               v-if="detail.latitude != null && detail.longitude != null"
-              type="primary"
-              round
+              class="hd-btn go"
+              type="button"
               @click="openAmapPoint"
-            >在高德地图上查看</el-button>
-            <el-button v-if="isLogin" round @click="openEditDetail">编辑</el-button>
-            <el-button v-if="isLogin" type="danger" plain round @click="handleDelete(detail)">删除</el-button>
+            >在高德地图上查看</button>
+            <button v-if="isLogin" class="hd-btn sub" type="button" @click="openEditDetail">编辑</button>
+            <button v-if="isLogin" class="hd-btn sub" type="button" @click="handleDelete(detail)">删除</button>
           </div>
         </div>
       </div>
@@ -1150,6 +1150,7 @@ onMounted(() => {
   max-height: calc(100vh - 30px);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
   background-color: var(--hd-paper);
   background-image: var(--hd-grain);
   border: 2.2px solid var(--hd-line);
@@ -1157,6 +1158,7 @@ onMounted(() => {
   box-shadow: var(--hd-shadow-lift);
   text-align: left;
 }
+.drawer-inner::-webkit-scrollbar { width: 0; height: 0; display: none }
 .drawer-inner > .hd-tape {
   top: 6px;
   left: 50%;
