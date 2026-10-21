@@ -117,7 +117,9 @@ const stripD = computed(() =>
   box-shadow: var(--hd-shadow-lift);
   max-height: calc(100vh - 30px);
   overflow-y: auto;
+  scrollbar-width: none;
 }
+.cluster-sheet::-webkit-scrollbar { width: 0; height: 0; display: none }
 
 .cluster-sheet > .hd-tape {
   top: -10px;

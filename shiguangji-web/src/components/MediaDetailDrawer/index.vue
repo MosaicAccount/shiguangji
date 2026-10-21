@@ -2,34 +2,39 @@
   <el-drawer v-model="visible" size="480px" :with-header="false" append-to-body class="hd-app hd-drawer-wrap">
     <article v-if="item" class="detail-sheet hd-paper hd-grain">
       <span class="hd-tape" aria-hidden="true"></span>
-      <button class="sheet-close" type="button" aria-label="关闭详情" @click="visible = false">✕</button>
 
-      <div class="sheet-head">
-        <span class="hd-st" :class="{ done: item.status === 'DONE', doing: item.status === 'DOING' }">{{ statusText }}</span>
-        <span class="sheet-kind">{{ glyph }}</span>
-      </div>
-
-      <h2 class="sheet-title">{{ item.title }}</h2>
-
-      <div class="sheet-meta">
-        <span v-if="item.rating" class="sheet-stars" :aria-label="`评分 ${item.rating} 分，满分 10 分`">{{ '★'.repeat(Math.round(item.rating / 2)) }}</span>
-        <span v-for="meta in heroMeta" :key="meta">{{ meta }}</span>
-      </div>
-
-      <figure v-if="heroImage" class="sheet-photo">
-        <img :src="heroImage" :alt="item.title" @error="onHeroError" />
-      </figure>
-      <!-- 无封面/照片时：与卡片网格同形制的 A 影像封面兜底，不留空块 -->
-      <div v-else class="sheet-fb hd-fallback" :class="fallbackType">
-        <span class="fc-band">{{ fallbackBand }}</span>
-        <span class="fc-body">
-          <span class="fc-title">{{ item.title }}</span>
-          <span class="fc-meta">{{ (heroMeta || []).join(' · ') }}</span>
-        </span>
-        <span class="fc-motif"></span>
+      <!-- 封面区：真实封面压暗角叠标题；无图走 A 形制默认封面 -->
+      <div class="sheet-hero">
+        <template v-if="heroImage">
+          <img class="hero-img" :src="heroImage" :alt="item.title" @error="onHeroError" />
+          <span class="hero-mask" aria-hidden="true"></span>
+          <span class="hd-st hero-st" :class="{ done: item.status === 'DONE', doing: item.status === 'DOING' }">{{ statusText }}</span>
+          <div class="hero-bottom">
+            <h2>{{ item.title }}</h2>
+            <div class="hero-meta">
+              <span v-if="item.rating" class="hero-stars" :aria-label="`评分 ${item.rating} 分，满分 10 分`">{{ '★'.repeat(Math.round(item.rating / 2)) }}</span>
+              <span v-for="meta in heroMeta" :key="meta">{{ meta }}</span>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <span class="hd-fallback" :class="fallbackType">
+            <span class="fc-band">{{ fallbackBand }}</span>
+            <span class="fc-body">
+              <span class="fc-title">{{ item.title }}</span>
+              <span class="fc-meta">{{ (heroMeta || []).join(' · ') }}</span>
+            </span>
+            <span class="fc-motif"></span>
+          </span>
+        </template>
+        <button class="sheet-close" type="button" aria-label="关闭详情" @click="visible = false">✕</button>
       </div>
 
       <div class="sheet-body">
+        <div class="sheet-status">
+          <span class="hd-st" :class="{ done: item.status === 'DONE', doing: item.status === 'DOING' }">{{ statusText }}</span>
+          <span class="kind">{{ glyph }}</span>
+        </div>
         <!-- 页面差异内容：chips / 信息行 / 短评等（使用本组件提供的 md-* 类名） -->
         <slot />
 
@@ -129,129 +134,109 @@ function onHeroError(): void {
 
 <!-- 抽屉传送至 body 且默认插槽内容需复用样式，故用非 scoped 并以 .media-drawer 作命名空间 -->
 <style lang="scss">
-/* 0.0.6 详情抽屉：抽屉本体透明，内容是一张贴在右侧的纸（非 scoped：插槽内容来自页面） */
+/* 0.0.6 详情抽屉（影视/书籍）：与足迹地点抽屉同一张纸——纸底 + 胶带 + 抖线框 + 影；
+   封面区 200px，有图压暗角叠标题，无图走 A 形制默认封面；滚动条隐藏。 */
 .detail-sheet {
   position: relative;
   margin: 14px 16px 16px;
-  padding: 24px 24px 22px;
-  border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
-  box-shadow: var(--hd-shadow-lift);
   max-height: calc(100vh - 30px);
   overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--hd-paper);
+  background-image: var(--hd-grain);
+  border: 2.2px solid var(--hd-line);
+  border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+  box-shadow: var(--hd-shadow-lift);
+  scrollbar-width: none;
 }
+.detail-sheet::-webkit-scrollbar { width: 0; height: 0; display: none }
 
 .detail-sheet > .hd-tape {
-  top: -10px;
+  top: 6px;
   left: 50%;
   transform: translateX(-50%) rotate(-2deg);
   width: 92px;
+  z-index: 4;
 }
+
+.sheet-hero {
+  position: relative;
+  height: 210px;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--hd-amber-soft), var(--hd-paper-3));
+}
+.hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(30, 24, 18, .06) 0%, rgba(30, 24, 18, 0) 35%, rgba(30, 24, 18, .68) 100%);
+}
+.hero-st { position: absolute; top: 12px; left: 12px; z-index: 2 }
+.hero-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 0 18px 14px;
+}
+.hero-bottom h2 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.3;
+  color: #FBF6EC;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hero-meta {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: rgba(251, 246, 236, .94);
+}
+.hero-stars { color: #F2D9A8; letter-spacing: 1px }
 
 .sheet-close {
   position: absolute;
   top: 10px;
-  right: 12px;
+  right: 10px;
+  z-index: 5;
   width: 30px;
   height: 30px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--hd-ink-soft);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
   border-radius: 50%;
-}
-
-.sheet-close:hover { color: var(--hd-red); }
-
-.sheet-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-right: 34px;
-}
-
-.sheet-kind {
-  font-size: 13px;
-  letter-spacing: 2px;
-  color: var(--hd-ink-faint);
-}
-
-.sheet-title {
-  margin-top: 8px;
-  font-size: 28px;
-  line-height: 1.35;
-  letter-spacing: 1px;
-  color: var(--hd-ink);
-}
-
-.sheet-meta {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  font-size: 13.5px;
-  color: var(--hd-ink-soft);
-}
-
-.sheet-stars {
-  color: var(--hd-amber-ink);
-  letter-spacing: 1px;
-  font-size: 14px;
-}
-
-.sheet-photo {
-  margin: 16px 0 4px;
-  padding: 7px 7px 10px;
+  border: 1.6px solid var(--hd-line-soft);
   background: var(--hd-paper);
-  border: 1.6px solid var(--hd-line-soft);
-  border-radius: 3px 2px 4px 2px / 2px 4px 2px 3px;
-  box-shadow: var(--hd-shadow);
-  transform: rotate(-.5deg);
+  color: var(--hd-ink-soft);
+  font-size: 14px;
+  cursor: pointer;
 }
+.sheet-close:hover { color: var(--hd-red); border-color: var(--hd-red) }
 
-.sheet-photo img {
-  display: block;
-  width: 100%;
-  max-height: 300px;
-  object-fit: cover;
-  border-radius: 2px;
-}
-
-.sheet-fb {
-  position: relative;
-  height: 220px;
-  margin: 16px 0 4px;
-  border: 1.6px solid var(--hd-line-soft);
-  border-radius: 3px 2px 4px 2px / 2px 4px 2px 3px;
-  transform: rotate(-.4deg);
-  box-shadow: var(--hd-shadow);
-}
-
-.sheet-body { margin-top: 16px; }
+.sheet-body { padding: 14px 20px 20px }
+.sheet-status { display: flex; align-items: center; gap: 10px; margin-bottom: 10px }
+.sheet-status .kind { font-size: 13px; letter-spacing: 2px; color: var(--hd-ink-faint) }
 
 .sheet-memory {
-  margin-top: 18px;
-  padding: 12px 16px;
+  margin-top: 16px;
+  padding: 12px 16px 15px;
   background: var(--hd-paper-2);
   border-left: 3px solid var(--hd-red);
   border-radius: 0 3px 3px 0;
 }
-
-.memory-label {
-  font-size: 13px;
-  letter-spacing: 2px;
-  color: var(--hd-ink-faint);
-}
-
-.sheet-memory p {
-  margin-top: 6px;
-  font-size: 15px;
-  line-height: 1.9;
-  color: var(--hd-ink-soft);
-}
+.memory-label { font-size: 12.5px; letter-spacing: 2px; color: var(--hd-ink-faint); margin-bottom: 6px }
+.sheet-memory p { margin: 0; font-size: 15px; line-height: 1.9; color: var(--hd-ink-soft) }
 
 .sheet-actions {
   margin-top: 20px;
@@ -260,26 +245,17 @@ function onHeroError(): void {
   justify-content: flex-end;
 }
 
-/* 页面插槽内容 */
-.md-chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
+/* 页面插槽内容（父级作用域，需非 scoped 才能命中） */
+.md-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px }
 .md-chip {
   font-size: 13px;
-  padding: 2px 10px;
+  padding: 2px 11px;
   color: var(--hd-ink-soft);
   border: 1.5px solid var(--hd-line-soft);
   border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+  font-family: var(--hd-hand);
 }
-
-.md-rows {
-  margin-top: 12px;
-  border-top: 1.5px dashed var(--hd-line-soft);
-}
-
+.md-rows { margin-top: 6px; border-top: 1.5px dashed var(--hd-line-soft) }
 .md-row {
   display: flex;
   align-items: baseline;
@@ -289,17 +265,6 @@ function onHeroError(): void {
   color: var(--hd-ink);
   border-bottom: 1.5px dashed var(--hd-line-soft);
 }
-
-.md-ico {
-  flex: none;
-  width: 18px;
-  text-align: center;
-  color: var(--hd-ink-faint);
-}
-
-.md-label {
-  flex: none;
-  width: 64px;
-  color: var(--hd-ink-soft);
-}
+.md-ico { flex: none; width: 18px; text-align: center; color: var(--hd-ink-faint) }
+.md-label { flex: none; width: 64px; color: var(--hd-ink-soft) }
 </style>
