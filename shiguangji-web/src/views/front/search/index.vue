@@ -57,7 +57,10 @@
                   loading="lazy"
                   @error="onCoverError(row.key)"
                 />
-                <span v-else class="s-glyph" aria-hidden="true">{{ row.glyph }}</span>
+                <span v-else-if="row.isNote" class="s-glyph" aria-hidden="true">{{ row.glyph }}</span>
+                <span v-else class="s-fb hd-fallback xs" :class="typeClass(row.itemType)" aria-hidden="true">
+                  <span class="fc-motif"></span>
+                </span>
               </span>
               <span class="s-main">
                 <span class="s-title">
@@ -182,6 +185,17 @@ function buildRowView(row: SearchRow): RowView {
     glyph: item.itemType === 'BOOK' ? '书' : item.itemType === 'PLACE' ? '地' : item.itemType === 'TV' ? '剧' : '影',
     typeText: TYPE_TEXT[item.itemType || ''] || '',
     metas
+  }
+}
+
+/** 条目类型 → hd-fallback 形制类（与各页卡片同一套） */
+function typeClass(type?: string): string {
+  switch (type) {
+    case 'MOVIE': return 'movie'
+    case 'TV': return 'tv'
+    case 'BOOK': return 'book'
+    case 'PLACE': return 'place'
+    default: return 'note'
   }
 }
 
@@ -375,6 +389,7 @@ watch(() => route.query.keyword, value => {
 .s-row:hover .s-title { color: var(--hd-red) }
 
 .s-cover {
+  position: relative;
   flex: none;
   width: 46px;
   height: 58px;
@@ -388,6 +403,7 @@ watch(() => route.query.keyword, value => {
 .s-cover img { width: 100%; height: 100%; object-fit: cover; display: block }
 .s-cover.is-note { background: var(--hd-amber-soft) }
 .s-glyph { font-size: 18px; color: var(--hd-ink-soft) }
+.s-cover .s-fb { position: absolute; inset: 0 }
 
 .s-main { flex: 1; min-width: 0 }
 .s-title { display: block; font-size: 16.5px }
