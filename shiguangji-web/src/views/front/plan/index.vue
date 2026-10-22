@@ -219,10 +219,11 @@ import type { SgjItem } from '@/types/api/business/item'
  * 胶囊筛选（issue #92）：页头「共/在做/在想」即筛选开关，status 由服务端单档过滤；
  * 数字用响应的 wantTotal/doingTotal 全量分档，不受筛选与分页影响。
  *
- * 皮肤（issue #84）：样式全部来自 ./handdrawn.css —— 它是设计图
- * docs/design/mockups/plan-0.0.3/handdrawn-checklist.html 与产品共用的唯一来源，
- * 类名也与设计图逐一对齐（sheet/paper/row/ck/glyph/hdbtn…），因此「实现即设计图」，
- * 不存在两份样式各自漂移；组件样式块只放设计图没有的应用件。
+ * 皮肤（0.0.6）：形制层（hd-* 令牌与类）来自全局皮肤
+ * src/assets/styles/handdrawn/handdrawn-site.css（由 layout/front/index.vue 统一 import），
+ * 本页不再 import 页级 handdrawn.css（0.0.3 做法，随令牌升格退役）；
+ * 组件样式块只放 .page-plan 作用域内的版面规则，设计图为
+ * docs/design/mockups/handdrawn-0.0.6/plan.html。
  */
 
 const { sgj_movie_status, sgj_book_status, sgj_place_status } = useDict('sgj_movie_status', 'sgj_book_status', 'sgj_place_status')
@@ -439,7 +440,7 @@ onMounted(() => {
 })
 </script>
 
-<!-- 只放设计图里没有的应用件（加载容器、失败重试、到底部标记）；皮肤规则全在 handdrawn.css -->
+<!-- 形制规则全在全局皮肤 handdrawn-site.css；这里只放本页版面规则与应用件（加载容器、失败重试、到底部标记） -->
 
 <style scoped lang="scss">
 /* 0.0.6 心愿：样式取自设计图 plan.html（.page-plan 作用域），形制来自 handdrawn-site.css */
