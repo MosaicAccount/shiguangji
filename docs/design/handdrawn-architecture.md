@@ -22,8 +22,18 @@
 ## 3. 字体（FR-007-4 / D-44）
 
 - 自托管霞鹜文楷分片 CSS（`src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css`）从心愿页路由加载改为**前台布局全局加载**。
-- 重跑 `scripts/gen-handdrawn-font.py`，核心片语料补全站文案；产出体积与首屏代价的量化结论记录在实现 PR 中。
 - 字体栈保持自包含（`'LXGW WenKai','Kaiti SC',…`），不得引用站点变量作回退。
+
+**核心片复核（#108，实测）**：`scripts/check-handdrawn-font-coverage.py` 把 shiguangji-web/src 里用到的汉字与字体 CSS 的 unicode-range 比对——
+
+| 指标 | 实测 |
+| --- | --- |
+| 源码汉字种类 | 1267 |
+| 字体分片 | 42 片，共覆盖 18,941 码位 |
+| 核心片 `lw-core.woff2` | 1120 码位 / 178 KB（首屏只加载这一片） |
+| 缺字 | **0** |
+
+结论：现字体已覆盖全站文案（含 0.0.6 新增页面），**无需重跑 `gen-handdrawn-font.py`**；以后加了带新字的内容，先跑复核脚本，有缺字再重跑子集（脚本头有语料维护命令）。
 
 ## 4. Element Plus 组件（FR-007-3 / D-43）
 
