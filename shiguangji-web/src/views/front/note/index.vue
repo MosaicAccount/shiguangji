@@ -17,12 +17,23 @@
     </section>
 
     <button v-if="draftCount > 0" class="draft-strip" type="button" @click="openDrafts">
+      <span class="hd-tape" aria-hidden="true"></span>
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7 L20 7 L20 20 L4 20 Z"/><path d="M7 7 L7 4 L17 4 L17 7"/><path d="M9 12 L15 12 M9 16 L13 16"/></svg>
-      <span class="txt">草稿箱里有 <b>{{ draftCount }}</b> 份没写完的笔记</span>
+      <span class="stamp">草稿箱</span>
+      <span class="txt">有 <b>{{ draftCount }}</b> 份没写完的笔记，接着写？</span>
       <span class="arr" aria-hidden="true">→</span>
     </button>
 
-    <div class="tools">
+    <div class="hd-summary">
+      <span class="item">共 <b>{{ noteTotal }}</b> 篇</span>
+      <template v-if="total !== noteTotal">
+        <span class="sep" aria-hidden="true">·</span>
+        <span class="item">筛选后 <b>{{ total }}</b> 篇</span>
+      </template>
+      <span v-if="recentNoteTitle" class="recent">最近 <b>{{ recentNoteTitle }}</b></span>
+    </div>
+
+    <div class="hd-toolbar">
       <div class="hd-search hd-input-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
         <input
@@ -34,12 +45,7 @@
           @keyup.enter="loadData"
         />
       </div>
-      <div class="hd-summary">
-        <span class="item">共 <b>{{ total }}</b> 篇</span>
-        <span class="sep" aria-hidden="true">·</span>
-        <span class="item">已展示 <b>{{ list.length }}</b></span>
-        <span v-if="list.length" class="recent">最近 <b>{{ list[0]?.title }}</b></span>
-      </div>
+      <div class="right"><span class="hd-tiny hd-muted">共 {{ total }} 篇</span></div>
     </div>
 
     <input ref="importInputRef" type="file" accept=".md" hidden @change="onImportFileChange" />
@@ -108,6 +114,8 @@ import { Delete } from '@element-plus/icons-vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, delFrontNote } from '@/api/front/note'
 import { countNoteDrafts } from '@/api/front/noteDraft'
+import { getFrontHomeData } from '@/api/front/home'
+import type { FrontHomeSummary } from '@/types/api/front/home'
 import { getFrontItem } from '@/api/front/item'
 import { splitByKeyword } from '@/utils/sgj'
 import { ElMessageBox } from 'element-plus'
@@ -148,6 +156,19 @@ const filterItemId = ref<number | undefined>(undefined)
 const filterItemName = ref('')
 /** 草稿份数（入口条用；未登录不发请求，失败也不提示） */
 const draftCount = ref(0)
+/** 页头小结：全站笔记总数与最近一篇（取首页汇总；取不到时回退当前列表口径） */
+const homeSummary = ref<FrontHomeSummary | null>(null)
+const recentNoteTitle = ref('')
+const noteTotal = computed(() => homeSummary.value?.noteTotal ?? total.value)
+
+function loadSummary(): void {
+  getFrontHomeData().then(response => {
+    homeSummary.value = response.data?.summary || null
+    recentNoteTitle.value = response.data?.recentNotes?.[0]?.title || ''
+  }).catch(() => {
+    // 小结失败不阻塞列表；回退当前列表口径
+  })
+}
 
 /**
  * 拉草稿份数：匿名访客不发（本页免登录，拉了会因失效 token 弹「登录状态已过期」）；
@@ -419,6 +440,7 @@ function handleDelete(note: SgjNote): void {
 }
 
 loadData()
+loadSummary()
 handleRouteQuery()
 loadDraftCount()
 </script>
@@ -437,31 +459,32 @@ loadDraftCount()
 
 /* 草稿条：整宽暖色便签，与 banner 拉开一层 */
 .page-notes .draft-strip {
-  position: relative; display: flex; align-items: center; gap: 12px;
-  margin-top: 24px; padding: 11px 18px;
+  position: relative; display: flex; align-items: center; gap: 14px;
+  width: 100%; min-height: 58px; margin-top: 24px; padding: 12px 20px;
+  text-align: left; cursor: pointer; color: var(--hd-ink);
   background-color: var(--hd-paper-3); background-image: var(--hd-grain);
-  border-radius: 3px; box-shadow: var(--hd-shadow);
-  color: var(--hd-ink); text-decoration: none; transform: rotate(-.35deg);
+  border: 1.8px solid var(--hd-line-soft);
+  border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
+  box-shadow: var(--hd-shadow);
+  font-family: var(--hd-hand);
+  transition: transform .12s, border-color .14s;
 }
+.page-notes .draft-strip:hover { transform: translateY(-1px); border-color: var(--hd-red) }
 .page-notes .draft-strip .hd-tape {
-  top: -9px; left: 34px; width: 70px; height: 20px; transform: rotate(-2.5deg);
+  top: -9px; left: 28px; width: 88px; height: 20px; transform: rotate(-2.5deg);
 }
-.page-notes .draft-strip .ico { flex: none; width: 22px; height: 22px; color: var(--hd-amber-ink) }
+.page-notes .draft-strip .ico { flex: none; width: 24px; height: 24px; color: var(--hd-amber-ink) }
+.page-notes .draft-strip .stamp {
+  flex: none; font-size: 13px; letter-spacing: 1px; color: var(--hd-amber-ink);
+  padding: 1px 9px; border: 1.5px solid var(--hd-amber-ink);
+  border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px;
+}
 .page-notes .draft-strip .txt { font-size: 15.5px; line-height: 1.6 }
 .page-notes .draft-strip .txt b { font-weight: 400; color: var(--hd-red) }
-.page-notes .draft-strip .arr { margin-left: auto; padding-left: 10px; color: var(--hd-red); font-size: 17px }
+.page-notes .draft-strip .arr { margin-left: auto; color: var(--hd-red); font-size: 18px }
 
-/* 工具条 */
-.page-notes .tools { margin-top: 24px; display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap }
-.page-notes .tools .hd-search { flex: 1 1 220px; max-width: 330px }
-.page-notes .tools .hd-search svg {
-  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
-  width: 17px; height: 17px; color: var(--hd-ink-faint); pointer-events: none;
-}
-.page-notes .tools .hd-search .hd-input {
-  padding: 4px 10px 4px 34px; font-size: 15px; line-height: 1.6;
-}
-.page-notes .tools .hd-chips { gap: 8px }
+/* 工具条：搜索框与影单/书单同宽（右侧留给计数） */
+.page-notes .hd-toolbar .hd-search { max-width: 420px }
 
 /* 卡片 */
 .page-notes .hd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px 26px; margin-top: 26px }
@@ -505,15 +528,12 @@ loadDraftCount()
   .page-notes .draft-strip { margin-top: 24px; padding: 10px 14px; transform: none }
   .page-notes .draft-strip .txt { font-size: 14.5px }
   .page-notes .hd-summary .sep:nth-last-child(2) { display: none }
-  .page-notes .tools { margin-top: 20px }
-  .page-notes .tools .hd-search { flex-basis: 100%; max-width: none }
   .page-notes .hd-grid { grid-template-columns: minmax(0, 1fr); gap: 26px }
   .page-notes .nt-title { font-size: 18px }
   .page-notes .load-more { margin-top: 32px }
 }
 
 /* 产品补充：工具条、标签行、过滤提示、加载/空态、卡片删除按钮 */
-.page-notes .tools .hd-summary { margin: 0; padding: 0; border: 0; background: none; box-shadow: none }
 .page-notes .tag-row { margin-top: 16px }
 .page-notes .filter-tip {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
