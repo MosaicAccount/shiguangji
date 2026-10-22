@@ -175,6 +175,38 @@ function markImageMissing(img: HTMLImageElement): void {
     &:hover { text-decoration-style: solid }
   }
 
+  /* 互链（[[标题]] 渲染后的 a.note-link）：设计图口径——陶红波浪线 + 尾部 ↗ */
+  :deep(a.note-link) {
+    color: var(--hd-red);
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-thickness: 1.4px;
+    text-underline-offset: 4px;
+    cursor: pointer;
+  }
+  :deep(a.note-link::after) {
+    content: " ↗";
+    font-size: .8em;
+    text-decoration: none;
+  }
+  :deep(a.note-link:hover) { text-decoration-style: solid }
+  /* 降级互链（未找到 / 重名）：灰虚线 + 问号，保留标题与原因提示 */
+  :deep(.note-link.is-broken) {
+    color: var(--hd-ink-faint);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1.2px;
+    text-underline-offset: 4px;
+    cursor: help;
+  }
+  :deep(.note-link.is-broken::after) {
+    content: " ?";
+    font-size: .8em;
+    text-decoration: none;
+  }
+  /* 列表标记也用陶红（设计图 li::marker） */
+  :deep(li)::marker { color: var(--hd-red) }
+
   /* 图片 = 贴上去的照片：白边 + 轻微旋转 + 纸色阴影 */
   :deep(img) {
     display: block;

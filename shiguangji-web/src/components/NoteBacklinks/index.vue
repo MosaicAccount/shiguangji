@@ -53,118 +53,89 @@ function openNote(noteId: number): void {
 </script>
 
 <style scoped lang="scss">
-/* 与原型（mockups/link-0.0.5）同语言：鼠尾草底索引卡，桌面/移动同一位置 */
+/* 0.0.6 反向链接：设计图口径——顶部一条虚线，下面是引用清单，不再套一张冷雾卡片 */
 .backlinks {
-  margin-top: 28px;
-  padding: 18px 20px 6px;
-  background: var(--sgj-moss-soft);
-  border: 1px solid var(--sgj-border-card);
-  border-radius: var(--sgj-radius-lg);
+  margin-top: 34px;
+  padding-top: 20px;
+  border-top: 2px dashed var(--hd-line-soft);
 }
 
 .bl-head {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding-bottom: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 6px;
 
   .bl-kicker {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    color: var(--sgj-moss);
+    font-size: 12.5px;
+    letter-spacing: 2px;
+    color: var(--hd-ink-faint);
   }
 
   .bl-title {
-    font-family: var(--sgj-font-serif);
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--sgj-text);
+    font-size: 17px;
+    letter-spacing: 1px;
+    color: var(--hd-ink);
   }
 
   .bl-sub {
     margin-left: auto;
-    font-size: 12px;
-    color: var(--sgj-text-3);
+    font-size: 13px;
+    color: var(--hd-ink-soft);
   }
 }
 
 .bl-list {
   list-style: none;
-  margin: 0;
+  margin: 4px 0 0;
   padding: 0;
 }
 
 .bl-item {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 3px 12px;
+  gap: 2px 12px;
   width: 100%;
-  padding: 11px 2px;
+  padding: 9px 2px;
   text-align: left;
   background: transparent;
   border: 0;
-  border-top: 1px solid rgba(93, 111, 102, 0.22);
+  border-bottom: 1.5px dashed var(--hd-line-soft);
   cursor: pointer;
-  transition: background 0.15s ease;
+  font-family: var(--hd-hand);
 
-  &:hover,
-  &:focus-visible {
-    background: rgba(251, 252, 251, 0.6);
-  }
-
-  .bl-item-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--sgj-text);
-  }
-
-  .bl-item-time {
-    font-size: 11.5px;
-    color: var(--sgj-text-4);
-    white-space: nowrap;
-  }
-
-  .bl-item-snippet {
-    grid-column: 1 / -1;
-    font-size: 13px;
-    line-height: 1.65;
-    color: var(--sgj-text-2);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
+  &:last-child { border-bottom: 0 }
+  &:hover .bl-item-title,
+  &:focus-visible .bl-item-title { color: var(--hd-red) }
 }
 
-html.dark .bl-item:hover,
-html.dark .bl-item:focus-visible {
-  background: rgba(34, 40, 38, 0.55);
+.bl-item-title {
+  font-size: 15px;
+  color: var(--hd-ink);
+}
+
+.bl-item-time {
+  font-size: 13px;
+  color: var(--hd-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.bl-item-snippet {
+  grid-column: 1 / -1;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--hd-ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .bl-empty {
-  margin: 0;
-  padding: 4px 2px 14px;
-  border-top: 1px solid rgba(93, 111, 102, 0.22);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--sgj-text-2);
-}
-
-@media (max-width: 768px) {
-  .backlinks {
-    margin-top: 20px;
-    padding: 14px 14px 2px;
-    border-radius: 12px;
-  }
-
-  .bl-head {
-    flex-wrap: wrap;
-
-    .bl-sub {
-      width: 100%;
-      margin-left: 0;
-    }
-  }
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--hd-ink-soft);
 }
 </style>
