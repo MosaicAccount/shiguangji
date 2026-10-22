@@ -117,10 +117,10 @@ beforeEach(() => {
 describe('T-84 首页心愿条与心愿单', () => {
   it('心愿条数字 = wishTotal + doingTotal，文案拆列「在想 3 / 在做 2」', async () => {
     const wrapper = await mountHome()
-    const bar = wrapper.find('.wish-bar')
-    expect(bar.find('.wish-bar-num').text()).toBe('5')
-    expect(bar.find('.wish-bar-label').text()).toContain('在想 3')
-    expect(bar.find('.wish-bar-label').text()).toContain('在做 2')
+    const bar = wrapper.find('.wish-note')
+    expect(bar.find('.big').text()).toBe('5')
+    expect(bar.find('.txt').text()).toContain('在想 3')
+    expect(bar.find('.txt').text()).toContain('在做 2')
     wrapper.unmount()
   })
 
@@ -129,8 +129,9 @@ describe('T-84 首页心愿条与心愿单', () => {
     mockedPlanList.mockClear()
     const wrapper = await mountHome()
 
-    expect(wrapper.find('.wish-bar').exists(), '访客不应看到心愿条').toBe(false)
-    expect(wrapper.find('.wishlist-card').exists(), '访客不应看到心愿单卡片').toBe(false)
+    expect(wrapper.find('.wish-note').exists(), '访客不应看到心愿条').toBe(false)
+    const cardTitles = wrapper.findAll('.hd-paper .card-title').map(t => t.text())
+    expect(cardTitles.some(t => t.includes('心愿单')), '访客不应看到心愿单卡片').toBe(false)
     expect(mockedPlanList, '访客不该为空请求买单').not.toHaveBeenCalled()
 
     wrapper.unmount()
@@ -139,13 +140,13 @@ describe('T-84 首页心愿条与心愿单', () => {
 
   it('心愿条链接指向 /plan（回归：原误指 /note）', async () => {
     const wrapper = await mountHome()
-    expect(wrapper.find('.wish-bar').attributes('href')).toBe('/plan')
+    expect(wrapper.find('.wish-note').attributes('href')).toBe('/plan')
     wrapper.unmount()
   })
 
   it('心愿单状态文案：DOING 显示 在看/在读，WANT 显示 想看', async () => {
     const wrapper = await mountHome()
-    const statuses = wrapper.findAll('.wish-status').map(s => s.text())
+    const statuses = wrapper.findAll('.wish-item .hd-st').map(s => s.text())
     expect(statuses.slice(0, 3)).toEqual(['在看', '想看', '在读'])
     wrapper.unmount()
   })
@@ -163,10 +164,9 @@ describe('T-84 首页心愿条与心愿单', () => {
     // 只渲染首屏 10 条，其余去 /plan 看（结论 95/96）
     expect(wrapper.findAll('.wish-item')).toHaveLength(10)
 
-    const more = wrapper.find('.wishlist-card .note-more')
-    expect(more.exists()).toBe(true)
-    expect(more.text()).toBe('查看全部心愿 →')
-    expect(more.attributes('href')).toBe('/plan')
+    const more = wrapper.findAll('.more').find(m => m.text() === '查看全部心愿 →')
+    expect(more, '心愿单应有「查看全部心愿 →」入口').toBeTruthy()
+    expect(more!.attributes('href')).toBe('/plan')
     wrapper.unmount()
   })
 })

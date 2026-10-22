@@ -149,10 +149,10 @@ describe('T-98 心愿页状态胶囊即筛选', () => {
     const wrapper = await mountPlan()
     await clickChip(wrapper, 2)
 
-    expect(wrapper.find('.empty p').text()).toContain('这一档还没有心愿')
-    expect(wrapper.find('.empty').text()).not.toContain('去影单 / 书单挑一个')
+    expect(wrapper.find('.hd-empty p').text()).toContain('这一档还没有心愿')
+    expect(wrapper.find('.hd-empty').text()).not.toContain('去影单 / 书单挑一个')
 
-    await wrapper.find('.empty .hdbtn').trigger('click')
+    await wrapper.find('.hd-empty .hd-btn').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('.row')).toHaveLength(1)
     expect(mockedPlanList).toHaveBeenLastCalledWith(expect.objectContaining({ status: undefined }))
@@ -169,7 +169,7 @@ describe('T-98 心愿页状态胶囊即筛选', () => {
     const wrapper = await mountPlan()
     await clickChip(wrapper, 1)
 
-    await wrapper.find('.list-foot .hdbtn').trigger('click')
+    await wrapper.find('.list-foot .hd-btn').trigger('click')
     await flushPromises()
 
     // 首次 undefined 是挂载时的初始加载；之后两次（切档、加载更多）都必须带 DOING
