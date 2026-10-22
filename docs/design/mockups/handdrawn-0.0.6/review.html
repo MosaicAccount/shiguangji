@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>年度回顾 · 手绘手账设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 年度回顾：900 单列 → 1120 多栏报告 =====
+   报头整宽；统计 4 卡；地图（2/3）+ 评分榜（1/3）；标签 + 年度笔记并排。
+   ≤1060 地图/评分各自单栏，≤720 全部单列。 */
+.page-review { --hd-gutter: 8px }
+
+/* 报头：年份与说明句共用一条基线 */
+.page-review .rv-hero { position: relative; padding: 26px 30px 22px }
+.page-review .rv-eyebrow { font-size: 13px; letter-spacing: 5px; color: var(--hd-red) }
+.page-review .rv-main { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-top: 4px }
+.page-review .rv-year { font-size: 72px; line-height: 1.05; letter-spacing: 1px }
+.page-review .rv-switch {
+  width: 38px; height: 38px; flex: none; align-self: center;
+  border: 2px solid var(--hd-line); background: var(--hd-paper); cursor: pointer;
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%; font-size: 18px; color: var(--hd-ink-soft);
+  filter: url(#rough);
+}
+.page-review .rv-switch:hover { color: var(--hd-red); border-color: var(--hd-red) }
+.page-review .rv-switch[disabled] { opacity: .35; cursor: not-allowed }
+.page-review .rv-lead { font-size: 20px; line-height: 1.6 }
+.page-review .rv-lead b { font-weight: 400; font-size: 25px; color: var(--hd-red) }
+.page-review .rv-caliber { margin-top: 8px; font-size: 13.5px; color: var(--hd-ink-soft) }
+.page-review .rv-years { display: flex; gap: 9px; margin-top: 14px; flex-wrap: wrap; align-items: center }
+.page-review .rv-years .cap { font-size: 13px; color: var(--hd-ink-soft); margin-right: 2px }
+
+/* 统计四卡 */
+.page-review .rv-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 24px }
+.page-review .rv-stat { padding: 16px 12px 14px; text-align: center }
+.page-review .rv-stat .glyph {
+  width: 34px; height: 34px; margin: 0 auto 2px; display: grid; place-items: center; font-size: 18px;
+  border: 2px solid currentColor; border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.page-review .rv-stat:nth-child(1) .glyph { color: var(--hd-brick) }
+.page-review .rv-stat:nth-child(2) .glyph { color: var(--hd-olive) }
+.page-review .rv-stat:nth-child(3) .glyph { color: var(--hd-amber-ink) }
+.page-review .rv-stat:nth-child(4) .glyph { color: var(--hd-ink-soft) }
+.page-review .rv-stat .num { font-size: 32px; line-height: 1.15; letter-spacing: 1px }
+.page-review .rv-stat .label { font-size: 13px; color: var(--hd-ink-soft); margin-top: 2px }
+
+/* 地图 + 评分榜 */
+.page-review .rv-mid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 26px; margin-top: 26px; align-items: start }
+.page-review .rv-sec-title { font-size: 20px; letter-spacing: 1px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.page-review .rv-sec-title .sub { font-size: 13px; color: var(--hd-ink-soft); letter-spacing: 0 }
+
+/* 地图（裱框，同足迹画法） */
+.page-review .rv-map { position: relative; margin-top: 12px; aspect-ratio: 16 / 10; overflow: hidden }
+.page-review .rv-map .map-art { display: block; width: 100%; height: 100% }
+.page-review .rv-map .map-art pattern circle { fill: var(--hd-ink-faint); opacity: .4 }
+.page-review .rv-map .map-grid path { fill: none; stroke: var(--hd-line-soft); stroke-width: 1.1; stroke-dasharray: 3 9; opacity: .85 }
+.page-review .rv-map .map-sea { fill: var(--hd-moss-soft) }
+.page-review .rv-map .map-coast { fill: none; stroke: var(--hd-line); stroke-width: 2.4; stroke-dasharray: 10 7; stroke-linecap: round }
+.page-review .rv-map .map-island { fill: var(--hd-amber-soft); stroke: var(--hd-line); stroke-width: 2.2; stroke-linejoin: round }
+.page-review .rv-map .map-route { fill: none; stroke: var(--hd-ochre); stroke-width: 2.4; stroke-dasharray: 8 7; stroke-linecap: round; opacity: .8 }
+.page-review .rv-map .map-rough { position: absolute; inset: -2px; pointer-events: none; border: 2.4px solid var(--hd-line);
+  border-radius: 6px 3px 7px 3px / 3px 7px 3px 6px; filter: url(#rough) }
+.page-review .rv-pin {
+  position: absolute; z-index: 2; transform: translate(-50%, -50%);
+  width: 26px; height: 26px; display: grid; place-items: center;
+  font-size: 13px; line-height: 1; color: var(--hd-amber-ink);
+  background: var(--hd-paper); border: 2px solid var(--hd-amber-ink);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+  box-shadow: 1px 2px 0 var(--hd-line-soft);
+}
+.page-review .rv-pin.wish { color: var(--hd-ink-soft); border-color: var(--hd-ink-soft); border-style: dashed; background: var(--hd-paper-2) }
+.page-review .rv-legend {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3;
+  display: flex; align-items: center; gap: 12px; padding: 2px 10px;
+  font-size: 13px; color: var(--hd-ink-soft); background: var(--hd-paper);
+  border: 1.6px solid var(--hd-line-soft); border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-review .lg-dot { width: 12px; height: 12px; margin-right: 5px; display: inline-block; vertical-align: -1px;
+  background: var(--hd-amber-ink); border: 1.8px solid var(--hd-amber-ink); border-radius: 50% 46% 52% 48% / 48% 52% 46% 54% }
+.page-review .lg-dot.wish { background: var(--hd-paper-2); border: 1.8px dashed var(--hd-ink-soft) }
+.page-review .rv-map-note { margin-top: 10px; font-size: 13px; color: var(--hd-ink-faint); text-align: center }
+
+/* 评分榜 */
+.page-review .rv-top { margin-top: 12px; padding: 16px 18px 14px }
+.page-review .rv-top h3 { font-size: 16px; letter-spacing: 1px; color: var(--hd-ink-soft) }
+.page-review .rv-top .top-list { margin-top: 4px }
+.page-review .top-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1.5px dashed var(--hd-line-soft); text-decoration: none; color: var(--hd-ink) }
+.page-review .top-row:last-child { border-bottom: 0 }
+.page-review .top-row:hover .top-t { color: var(--hd-red) }
+.page-review .top-no { flex: none; width: 22px; font-size: 14px; color: var(--hd-ink-faint); font-variant-numeric: tabular-nums }
+.page-review .top-t { min-width: 0; flex: 1; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-review .top-stars { flex: none; color: var(--hd-amber-ink); font-size: 12.5px; letter-spacing: 1px }
+
+/* 标签 + 年度笔记 */
+.page-review .rv-low { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; margin-top: 26px; align-items: start }
+.page-review .rv-tags { margin-top: 12px; padding: 16px 18px }
+.page-review .tag-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 30px; gap: 10px; align-items: center; padding: 7px 0 }
+.page-review .tag-name { font-size: 14px; color: var(--hd-ink-soft); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-review .tag-bar { position: relative; height: 14px }
+.page-review .tag-bar i {
+  position: absolute; inset: 0 auto 0 0; display: block;
+  background: var(--hd-amber-soft); border: 1.6px solid var(--hd-amber-ink);
+  border-radius: 7px 2px 6px 2px / 2px 6px 2px 7px; filter: url(#rough);
+}
+.page-review .tag-row:nth-child(2) .tag-bar i { background: var(--hd-red-soft); border-color: var(--hd-brick) }
+.page-review .tag-row:nth-child(3) .tag-bar i { background: var(--hd-moss-soft); border-color: var(--hd-olive) }
+.page-review .tag-count { font-size: 13px; color: var(--hd-ink-soft); font-variant-numeric: tabular-nums }
+.page-review .rv-notes { margin-top: 12px; padding: 16px 18px }
+.page-review .note-row { display: flex; align-items: baseline; gap: 10px; padding: 9px 0; border-bottom: 1.5px dashed var(--hd-line-soft); text-decoration: none; color: var(--hd-ink) }
+.page-review .note-row:last-child { border-bottom: 0 }
+.page-review .note-row:hover .note-t { color: var(--hd-red) }
+.page-review .note-t { min-width: 0; flex: 1; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-review .note-d { flex: none; font-size: 13px; color: var(--hd-ink-faint); font-variant-numeric: tabular-nums }
+
+.page-review .rv-end { margin-top: 34px; text-align: center; font-size: 14px; letter-spacing: 5px; color: var(--hd-ink-faint) }
+.page-review .rv-end span { display: inline-block; padding: 0 12px; border-top: 1.5px dashed var(--hd-line-soft); border-bottom: 1.5px dashed var(--hd-line-soft) }
+
+@media (max-width: 1060px) {
+  .page-review .rv-mid { grid-template-columns: minmax(0, 1fr) }
+  .page-review .rv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+}
+@media (max-width: 720px) {
+  .page-review .rv-hero { padding: 20px 18px 18px }
+  .page-review .rv-year { font-size: 50px }
+  .page-review .rv-lead { font-size: 17px }
+  .page-review .rv-lead b { font-size: 20px }
+  .page-review .rv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+  .page-review .rv-low { grid-template-columns: minmax(0, 1fr) }
+  .page-review .rv-map { aspect-ratio: 4 / 3 }
+}
+</style>
+</head>
+<body class="hd-app page-review" data-page="review">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html" data-nav="home">首页</a>
+      <a href="movie.html" data-nav="movie">影单</a>
+      <a href="book.html" data-nav="book">书单</a>
+      <a href="travel.html" data-nav="travel">足迹</a>
+      <a href="notes.html" data-nav="note">笔记</a>
+      <a href="plan.html" data-nav="plan">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="rv-hero hd-paper">
+    <span class="hd-tape"></span>
+    <div class="rv-eyebrow">年度回顾 · ANNUAL REVIEW</div>
+    <div class="rv-main">
+      <span class="rv-year">2026</span>
+      <button class="rv-switch" type="button" disabled aria-label="上一年">‹</button>
+      <button class="rv-switch" type="button" aria-label="下一年">›</button>
+      <p class="rv-lead">这一年，你记录了 <b>158</b> 件值得记住的小事。</p>
+    </div>
+    <p class="rv-caliber">条目按完成日期归年 · 笔记按写下时间归年 —— 2023 年想看、2026 年看完的片子，算在 2026。</p>
+    <div class="rv-years">
+      <span class="cap">有记录的年份</span>
+      <button class="hd-chip on" type="button">2026</button>
+      <button class="hd-chip" type="button">2025</button>
+      <button class="hd-chip" type="button">2024</button>
+    </div>
+  </section>
+
+  <div class="rv-stats">
+    <div class="rv-stat hd-rough hd-paper hd-grain"><span class="glyph">影</span><div class="num">87</div><div class="label">看过 · 电影 / 剧集</div></div>
+    <div class="rv-stat hd-rough hd-paper hd-grain"><span class="glyph">书</span><div class="num">23</div><div class="label">读过 · 书籍</div></div>
+    <div class="rv-stat hd-rough hd-paper hd-grain"><span class="glyph">地</span><div class="num">12</div><div class="label">去过 · 地点</div></div>
+    <div class="rv-stat hd-rough hd-paper hd-grain"><span class="glyph">文</span><div class="num">36</div><div class="label">写过 · 笔记</div></div>
+  </div>
+
+  <div class="rv-mid">
+    <section aria-labelledby="rv-map-title">
+      <h2 class="rv-sec-title" id="rv-map-title">这一年的足迹 <span class="sub">按去过的先后串起来，不是路线图</span></h2>
+      <figure class="rv-map hd-paper hd-grain">
+        <span class="hd-tape left"></span>
+        <span class="hd-tape right"></span>
+        <svg class="map-art" viewBox="0 0 700 430" role="img" aria-label="示意地图：大理、泉州、京都、阿那亚、喜洲的相对位置">
+          <defs>
+            <pattern id="rv-dots" width="15" height="15" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1"/></pattern>
+          </defs>
+          <rect width="700" height="430" fill="url(#rv-dots)" fill-opacity=".5"/>
+          <g class="map-grid" aria-hidden="true">
+            <path d="M120 20 V410 M260 20 V410 M400 20 V410 M540 20 V410"/>
+            <path d="M20 110 H680 M20 230 H680 M20 350 H680"/>
+          </g>
+          <path class="map-sea" d="M430 20 Q520 90 640 70 Q690 160 660 260 Q600 380 470 400 Q430 300 450 200 Q445 90 430 20 Z"/>
+          <path class="map-coast" d="M430 20 Q520 90 640 70 Q690 160 660 260 Q600 380 470 400 Q430 300 450 200 Q445 90 430 20 Z"/>
+          <path class="map-island" d="M500 130 Q545 118 570 150 Q585 195 550 215 Q505 220 492 180 Q488 148 500 130 Z"/>
+          <path class="map-island" d="M545 250 Q575 244 588 270 Q590 300 560 305 Q535 296 540 270 Z"/>
+          <path class="map-route" d="M205 300 Q240 250 285 285 M285 285 Q330 320 372 296 M372 296 Q420 262 470 240 M470 240 Q505 224 528 196"/>
+          <path class="map-route" d="M205 300 Q180 335 148 352" stroke-dasharray="3 8" opacity=".55"/>
+        </svg>
+        <span class="rv-pin" style="left:29%;top:70%">①</span>
+        <span class="rv-pin" style="left:41%;top:66%">②</span>
+        <span class="rv-pin" style="left:53%;top:69%">③</span>
+        <span class="rv-pin" style="left:67%;top:56%">④</span>
+        <span class="rv-pin" style="left:75%;top:45%">⑤</span>
+        <span class="rv-pin wish" style="left:21%;top:82%">⑥</span>
+        <span class="rv-legend"><span><i class="lg-dot"></i>去过</span><span><i class="lg-dot wish"></i>想去</span></span>
+        <span class="map-rough" aria-hidden="true"></span>
+      </figure>
+      <p class="rv-map-note">手绘示意 · 非比例地图 —— ① 洱海 ② 泉州开元寺 ③ 京都鸭川 ④ 阿那亚 ⑤ 喜洲 ⑥ 杭州（想去）</p>
+    </section>
+
+    <section aria-labelledby="rv-top-title">
+      <h2 class="rv-sec-title" id="rv-top-title">年度评分榜 <span class="sub">只有打过分的参与评选</span></h2>
+      <div class="rv-top hd-paper hd-grain hd-rough">
+        <h3>影视 · 前三</h3>
+        <div class="top-list">
+          <a class="top-row" href="movie.html"><span class="top-no">1</span><span class="top-t">沙丘 2</span><span class="top-stars">★★★★★</span></a>
+          <a class="top-row" href="movie.html"><span class="top-no">2</span><span class="top-t">奥本海默</span><span class="top-stars">★★★★★</span></a>
+          <a class="top-row" href="movie.html"><span class="top-no">3</span><span class="top-t">花样年华</span><span class="top-stars">★★★★★</span></a>
+        </div>
+        <h3 style="margin-top:14px">书籍 · 前三</h3>
+        <div class="top-list">
+          <a class="top-row" href="book.html"><span class="top-no">1</span><span class="top-t">百年孤独</span><span class="top-stars">★★★★★</span></a>
+          <a class="top-row" href="book.html"><span class="top-no">2</span><span class="top-t">献给阿尔吉侬的花束</span><span class="top-stars">★★★★★</span></a>
+          <a class="top-row" href="book.html"><span class="top-no">3</span><span class="top-t">我与地坛</span><span class="top-stars">★★★★★</span></a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="rv-low">
+    <section aria-labelledby="rv-tag-title">
+      <h2 class="rv-sec-title" id="rv-tag-title">标签分布 <span class="sub">这一年最常写下的词</span></h2>
+      <div class="rv-tags hd-paper hd-grain hd-rough">
+        <div class="tag-row"><span class="tag-name">旅行</span><span class="tag-bar"><i style="width:100%"></i></span><span class="tag-count">14</span></div>
+        <div class="tag-row"><span class="tag-name">电影</span><span class="tag-bar"><i style="width:86%"></i></span><span class="tag-count">12</span></div>
+        <div class="tag-row"><span class="tag-name">随想</span><span class="tag-bar"><i style="width:64%"></i></span><span class="tag-count">9</span></div>
+        <div class="tag-row"><span class="tag-name">阅读</span><span class="tag-bar"><i style="width:50%"></i></span><span class="tag-count">7</span></div>
+        <div class="tag-row"><span class="tag-name">城市</span><span class="tag-bar"><i style="width:36%"></i></span><span class="tag-count">5</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="rv-note-title">
+      <h2 class="rv-sec-title" id="rv-note-title">年度笔记 <span class="sub">写下时间在这一年的最近五篇</span></h2>
+      <div class="rv-notes hd-paper hd-grain hd-rough">
+        <a class="note-row" href="note-detail.html"><span class="note-t">为什么我还在用纸质票根</span><span class="note-d">10-05</span></a>
+        <a class="note-row" href="note-detail.html"><span class="note-t">洱海骑行的路线和几个停下来的理由</span><span class="note-d">09-22</span></a>
+        <a class="note-row" href="note-detail.html"><span class="note-t">这个月想明白的三件小事</span><span class="note-d">09-28</span></a>
+        <a class="note-row" href="note-detail.html"><span class="note-t">重读《克拉拉与太阳》的三个问题</span><span class="note-d">08-14</span></a>
+        <a class="note-row" href="note-detail.html"><span class="note-t">旅行照片整理术</span><span class="note-d">07-30</span></a>
+      </div>
+    </section>
+  </div>
+
+  <div class="rv-end"><span>· 完 ·</span></div>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<nav class="hd-tabbar" aria-label="移动端导航">
+  <a href="home.html" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11 Q4 6 12 5 Q20 6 20 11 L20 20 L4 20 Z"/><path d="M9 20 L9 14 L15 14 L15 20"/></svg><span>首页</span></a>
+  <a href="movie.html" data-nav="movie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10 L21 10 M8 6 L8 19 M16 6 L16 19"/></svg><span>影单</span></a>
+  <a href="travel.html" data-nav="travel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21 Q12 14 8 10 Q4 6 12 4 Q20 6 16 10 Q12 14 12 21 Z"/><circle cx="12" cy="9" r="2"/></svg><span>足迹</span></a>
+  <a href="notes.html" data-nav="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3 L18 3 L18 21 L6 21 Z"/><path d="M9 8 L15 8 M9 12 L15 12 M9 16 L13 16"/></svg><span>笔记</span></a>
+</nav>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>

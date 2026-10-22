@@ -1,6 +1,6 @@
-# 外链图片转存 —— 详细设计（0.0.6，issue #68）
+# 外链图片转存 —— 详细设计（issue #68）
 
-> 配套文档：[需求](../requirements/0.0.6-external-images.md) · [架构](external-images-architecture.md) · [测试用例](external-images-testcases.md)
+> 配套文档：[需求](external-images-requirements.md) · [架构](external-images-architecture.md) · [测试用例](external-images-testcases.md)
 > 结论编号接 `note-images-design.md`（止于 64）。
 
 ## 1. 结论（65~70）
@@ -140,7 +140,7 @@ sgj:
 
 ## 5. 提交切分（每个提交自身检查过）
 
-1. `docs:` 需求 0.0.6 + 架构 / 设计 / 用例四件套 + `requirements/README.md` 版本表；
+1. `docs:` 需求 + 架构 / 设计 / 用例四件套 + `requirements/README.md` 版本表；
 2. `feat(file):` `ExternalImageFetcher` 接口 + `NoopExternalImageFetcher` 占位 + 配置键；
 3. `feat(file):` 转存服务 + `/common/upload/fetch-image` 端点 + 冒烟（stub 抓取器：匿名拒 / 成功落盘登记台账 / 失败不落盘 / 非图片拒 / 速率限制）；
 4. `test(file):` 转存服务单测（内容校验矩阵 + 速率限制边界）；

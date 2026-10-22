@@ -1,39 +1,56 @@
 <template>
-  <el-drawer v-model="visible" size="440px" :with-header="false" class="media-drawer" append-to-body>
-    <div v-if="item" class="drawer-inner">
-      <!-- Hero：封面铺底，标题与 meta 叠底（与足迹页详情抽屉同风格） -->
-      <div class="md-hero" :class="{ 'is-empty': !heroImage }">
-        <img v-if="heroImage" class="md-hero-img" :src="heroImage" :alt="item.title" @error="onHeroError" />
-        <span v-else class="md-hero-glyph" aria-hidden="true">{{ glyph }}</span>
-        <div class="md-hero-mask" aria-hidden="true"></div>
-        <span class="md-status" :class="item.status">{{ statusText }}</span>
-        <button class="md-close" aria-label="关闭详情" @click="visible = false">✕</button>
-        <div class="md-hero-bottom">
-          <h2>{{ item.title }}</h2>
-          <div class="md-meta-line">
-            <span v-if="item.rating">⭐ {{ item.rating }}</span>
-            <span v-for="meta in heroMeta" :key="meta">{{ meta }}</span>
+  <el-drawer v-model="visible" size="480px" :with-header="false" append-to-body class="hd-app hd-drawer-wrap">
+    <article v-if="item" class="detail-sheet hd-paper hd-grain">
+      <span class="hd-tape" aria-hidden="true"></span>
+
+      <!-- 封面区：真实封面压暗角叠标题；无图走 A 形制默认封面 -->
+      <div class="sheet-hero">
+        <template v-if="heroImage">
+          <img class="hero-img" :src="heroImage" :alt="item.title" @error="onHeroError" />
+          <span class="hero-mask" aria-hidden="true"></span>
+          <span class="hd-st hero-st" :class="{ done: item.status === 'DONE', doing: item.status === 'DOING' }">{{ statusText }}</span>
+          <div class="hero-bottom">
+            <h2>{{ item.title }}</h2>
+            <div class="hero-meta">
+              <span v-if="item.rating" class="hero-stars" :aria-label="`评分 ${item.rating} 分，满分 10 分`">{{ '★'.repeat(Math.round(item.rating / 2)) }}</span>
+              <span v-for="meta in heroMeta" :key="meta">{{ meta }}</span>
+            </div>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <span class="hd-fallback" :class="fallbackType">
+            <span class="fc-band">{{ fallbackBand }}</span>
+            <span class="fc-body">
+              <span class="fc-title">{{ item.title }}</span>
+              <span class="fc-meta">{{ (heroMeta || []).join(' · ') }}</span>
+            </span>
+            <span class="fc-motif"></span>
+          </span>
+        </template>
+        <button class="sheet-close" type="button" aria-label="关闭详情" @click="visible = false">✕</button>
       </div>
 
-      <div class="md-body">
+      <div class="sheet-body">
+        <div class="sheet-status">
+          <span class="hd-st" :class="{ done: item.status === 'DONE', doing: item.status === 'DOING' }">{{ statusText }}</span>
+          <span class="kind">{{ glyph }}</span>
+        </div>
         <!-- 页面差异内容：chips / 信息行 / 短评等（使用本组件提供的 md-* 类名） -->
         <slot />
 
-        <div v-if="memoryLabel && item.comment" class="md-memory">
-          <div class="md-memory-label">{{ memoryLabel }}</div>
+        <div v-if="memoryLabel && item.comment" class="sheet-memory">
+          <div class="memory-label">{{ memoryLabel }}</div>
           <p>{{ item.comment }}</p>
         </div>
 
         <item-notes :item-id="item.itemId" />
 
-        <div v-if="canOperate" class="md-actions">
-          <el-button type="primary" round @click="emit('edit')">编辑</el-button>
-          <el-button type="danger" plain round @click="emit('delete')">删除</el-button>
+        <div v-if="canOperate" class="sheet-actions">
+          <button class="hd-btn go" type="button" @click="emit('edit')">编辑</button>
+          <button class="hd-btn sub" type="button" @click="emit('delete')">删除</button>
         </div>
       </div>
-    </div>
+    </article>
   </el-drawer>
 </template>
 
@@ -76,6 +93,25 @@ const visible = computed({
 })
 
 /** 状态徽标文案：显式三态，缺 doingLabel 的页面回退 wantLabel（地点无中间态） */
+/** 无封面兜底：与卡片网格的 A 影像封面同一形制（电影/电视剧/书籍） */
+const fallbackType = computed(() => {
+  switch (props.item?.itemType) {
+    case 'MOVIE': return 'movie'
+    case 'TV': return 'tv'
+    case 'BOOK': return 'book'
+    default: return 'note'
+  }
+})
+
+const fallbackBand = computed(() => {
+  switch (props.item?.itemType) {
+    case 'MOVIE': return '电影'
+    case 'TV': return '电视剧'
+    case 'BOOK': return '书籍'
+    default: return '记录'
+  }
+})
+
 const statusText = computed(() => {
   if (props.item?.status === 'DONE') return props.doneLabel
   if (props.item?.status === 'DOING') return props.doingLabel || props.wantLabel
@@ -98,189 +134,137 @@ function onHeroError(): void {
 
 <!-- 抽屉传送至 body 且默认插槽内容需复用样式，故用非 scoped 并以 .media-drawer 作命名空间 -->
 <style lang="scss">
-.media-drawer {
-  .el-drawer__body {
-    padding: 0;
-  }
-}
-.drawer-inner {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  text-align: left;
-}
-.md-hero {
+/* 0.0.6 详情抽屉（影视/书籍）：与足迹地点抽屉同一张纸——纸底 + 胶带 + 抖线框 + 影；
+   封面区 200px，有图压暗角叠标题，无图走 A 形制默认封面；滚动条隐藏。 */
+.detail-sheet {
   position: relative;
-  height: 216px;
-  flex: none;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-  background: linear-gradient(160deg, var(--sgj-primary-soft), var(--sgj-cover));
-
-  &.is-empty .md-hero-glyph {
-    font-family: var(--sgj-font-serif);
-    font-size: 96px;
-    font-weight: 700;
-    color: var(--sgj-primary-dark);
-    opacity: 0.28;
-  }
+  margin: 14px 16px 16px;
+  max-height: calc(100vh - 30px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--hd-paper);
+  background-image: var(--hd-grain);
+  border: 2.2px solid var(--hd-line);
+  border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+  box-shadow: var(--hd-shadow-lift);
+  scrollbar-width: none;
 }
-.md-hero-img {
+.detail-sheet::-webkit-scrollbar { width: 0; height: 0; display: none }
+
+.detail-sheet > .hd-tape {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 92px;
+  z-index: 4;
+}
+
+.sheet-hero {
+  position: relative;
+  height: 210px;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--hd-amber-soft), var(--hd-paper-3));
+}
+.hero-img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.md-hero-glyph {
+.hero-mask {
   position: absolute;
   inset: 0;
+  background: linear-gradient(180deg, rgba(30, 24, 18, .06) 0%, rgba(30, 24, 18, 0) 35%, rgba(30, 24, 18, .68) 100%);
+}
+.hero-st { position: absolute; top: 12px; left: 12px; z-index: 2 }
+.hero-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 0 18px 14px;
+}
+.hero-bottom h2 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.3;
+  color: #FBF6EC;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hero-meta {
+  margin-top: 6px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: rgba(251, 246, 236, .94);
 }
-.md-hero-mask {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(23, 27, 26, 0.08) 0%, rgba(23, 27, 26, 0) 35%, rgba(23, 27, 26, 0.66) 100%);
-}
-.md-status {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  padding: 3px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  backdrop-filter: blur(4px);
+.hero-stars { color: #F2D9A8; letter-spacing: 1px }
 
-  &.DONE {
-    background: rgba(93, 111, 102, 0.92);
-  }
-
-  /* 在看/在读：暖陶色，介于 WANT 琥珀与 DONE 鼠尾草之间 */
-  &.DOING {
-    background: rgba(168, 95, 82, 0.92);
-  }
-
-  &.WANT {
-    background: rgba(192, 138, 62, 0.92);
-  }
-}
-.md-close {
+.sheet-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 0;
-  background: var(--sgj-bg-card);
-  color: var(--sgj-text);
+  border: 1.6px solid var(--hd-line-soft);
+  background: var(--hd-paper);
+  color: var(--hd-ink-soft);
   font-size: 14px;
   cursor: pointer;
-
-  &:hover {
-    background: #fff;
-  }
 }
-.md-hero-bottom {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  padding: 0 18px 14px;
+.sheet-close:hover { color: var(--hd-red); border-color: var(--hd-red) }
 
-  h2 {
-    margin: 0;
-    font: 700 24px/1.3 var(--sgj-font-serif);
-    color: #fff;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
+.sheet-body { padding: 14px 20px 20px }
+.sheet-status { display: flex; align-items: center; gap: 10px; margin-bottom: 10px }
+.sheet-status .kind { font-size: 13px; letter-spacing: 2px; color: var(--hd-ink-faint) }
 
-  .md-meta-line {
-    margin-top: 6px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    font-size: 12.5px;
-    color: rgba(255, 255, 255, 0.94);
-  }
+.sheet-memory {
+  margin-top: 16px;
+  padding: 12px 16px 15px;
+  background: var(--hd-paper-2);
+  border-left: 3px solid var(--hd-red);
+  border-radius: 0 3px 3px 0;
 }
-.md-body {
-  padding: 16px 18px 26px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  flex: 1;
-}
-.md-chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.memory-label { font-size: 12.5px; letter-spacing: 2px; color: var(--hd-ink-faint); margin-bottom: 6px }
+.sheet-memory p { margin: 0; font-size: 15px; line-height: 1.9; color: var(--hd-ink-soft) }
 
-  .md-chip {
-    padding: 3px 12px;
-    border-radius: 999px;
-    background: var(--sgj-primary-soft);
-    color: var(--sgj-primary-dark);
-    font-size: 12px;
-  }
-}
-.md-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  .md-row {
-    display: flex;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--sgj-text-2);
-    line-height: 1.7;
-
-    .md-ico {
-      flex: none;
-    }
-
-    .md-label {
-      flex: none;
-      color: var(--sgj-text);
-      font-weight: 600;
-    }
-  }
-}
-.md-memory {
-  padding: 13px 16px 15px;
-  background: var(--sgj-bg-card);
-  border-radius: 4px 16px 16px 16px;
-  border-left: 3px solid var(--sgj-primary);
-
-  .md-memory-label {
-    font-size: 10.5px;
-    letter-spacing: 2px;
-    color: var(--sgj-text-4);
-    margin-bottom: 6px;
-  }
-
-  p {
-    margin: 0;
-    font-family: var(--sgj-font-serif);
-    font-size: 13.5px;
-    line-height: 1.8;
-    color: var(--sgj-text);
-    white-space: pre-wrap;
-  }
-}
-.md-actions {
+.sheet-actions {
+  margin-top: 20px;
   display: flex;
   gap: 10px;
-  padding-top: 4px;
+  justify-content: flex-end;
 }
+
+/* 页面插槽内容（父级作用域，需非 scoped 才能命中） */
+.md-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px }
+.md-chip {
+  font-size: 13px;
+  padding: 2px 11px;
+  color: var(--hd-ink-soft);
+  border: 1.5px solid var(--hd-line-soft);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+  font-family: var(--hd-hand);
+}
+.md-rows { margin-top: 6px; border-top: 1.5px dashed var(--hd-line-soft) }
+.md-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 0;
+  font-size: 14px;
+  color: var(--hd-ink);
+  border-bottom: 1.5px dashed var(--hd-line-soft);
+}
+.md-ico { flex: none; width: 18px; text-align: center; color: var(--hd-ink-faint) }
+.md-label { flex: none; width: 64px; color: var(--hd-ink-soft) }
 </style>

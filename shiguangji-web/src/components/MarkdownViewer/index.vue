@@ -110,11 +110,12 @@ function markImageMissing(img: HTMLImageElement): void {
 </script>
 
 <style scoped lang="scss">
-/* 颜色全部走 --sgj-* 设计令牌，html.dark 下随主题自动翻转 */
+/* 0.0.6 长文排版（D-46）：纸面阅读节奏——行距更松，层级靠字号与手绘线，
+   颜色只用 --hd-* 令牌，暗色随主题自动翻转；代码高亮 token 改成暖色系。 */
 .markdown-body {
-  font-size: 14px;
-  line-height: 1.75;
-  color: var(--sgj-text-2);
+  font-size: 16.5px;
+  line-height: 2.02;
+  color: var(--hd-ink);
   word-break: break-word;
 
   :deep(h1),
@@ -123,153 +124,207 @@ function markImageMissing(img: HTMLImageElement): void {
   :deep(h4),
   :deep(h5),
   :deep(h6) {
-    margin: 18px 0 10px;
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--sgj-text);
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--hd-ink);
+    letter-spacing: .5px;
   }
 
   :deep(h1) {
-    font-size: 22px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--sgj-border-card);
+    font-size: 30px;
+    margin: 1.6em 0 .5em;
   }
 
   :deep(h2) {
-    font-size: 18px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--sgj-border-card);
+    position: relative;
+    font-size: 24px;
+    margin: 1.9em 0 .5em;
+    padding-bottom: 8px;
+
+    &::after {
+      content: "";
+      position: absolute;
+      left: -2px;
+      bottom: 0;
+      width: 118px;
+      height: 0;
+      border-top: 3px solid var(--hd-red);
+      border-radius: 50%;
+      opacity: .7;
+    }
   }
 
   :deep(h3) {
-    font-size: 16px;
+    font-size: 19.5px;
+    margin: 1.6em 0 .4em;
   }
 
   :deep(h4),
   :deep(h5),
-  :deep(h6) {
-    font-size: 14px;
-  }
+  :deep(h6) { font-size: 17px; margin: 1.4em 0 .3em }
 
-  :deep(p) {
-    margin: 8px 0;
-  }
+  :deep(p) { margin: .95em 0 }
 
   :deep(a) {
-    color: var(--sgj-link);
+    color: var(--hd-red);
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-thickness: 1.3px;
+    text-underline-offset: 4px;
+
+    &:hover { text-decoration-style: solid }
+  }
+
+  /* 互链（[[标题]] 渲染后的 a.note-link）：设计图口径——陶红波浪线 + 尾部 ↗ */
+  :deep(a.note-link) {
+    color: var(--hd-red);
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-thickness: 1.4px;
+    text-underline-offset: 4px;
+    cursor: pointer;
+  }
+  :deep(a.note-link::after) {
+    content: " ↗";
+    font-size: .8em;
     text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
   }
+  :deep(a.note-link:hover) { text-decoration-style: solid }
+  /* 降级互链（未找到 / 重名）：灰虚线 + 问号，保留标题与原因提示 */
+  :deep(.note-link.is-broken) {
+    color: var(--hd-ink-faint);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1.2px;
+    text-underline-offset: 4px;
+    cursor: help;
+  }
+  :deep(.note-link.is-broken::after) {
+    content: " ?";
+    font-size: .8em;
+    text-decoration: none;
+  }
+  /* 列表标记也用陶红（设计图 li::marker） */
+  :deep(li)::marker { color: var(--hd-red) }
 
+  /* 图片 = 贴上去的照片：白边 + 轻微旋转 + 纸色阴影 */
   :deep(img) {
-    max-width: 100%;
-    border-radius: 8px;
     display: block;
-    margin: 10px auto;
+    max-width: 100%;
+    margin: 18px auto;
+    padding: 7px;
+    background: var(--hd-paper);
+    border: 1.6px solid var(--hd-line-soft);
+    border-radius: 2px;
+    box-shadow: var(--hd-shadow);
+    transform: rotate(-.4deg);
   }
 
-  /* 加载失败的图片标记（DOM 里现造的节点没有 scoped 属性，必须走 :deep） */
   :deep(.md-img-missing) {
     display: inline-flex;
     align-items: center;
     padding: 2px 9px;
     margin: 4px 0;
-    font-size: 12px;
-    color: var(--sgj-text-4);
+    font-size: 13px;
+    color: var(--hd-ink-faint);
     cursor: help;
-    background: var(--sgj-bg-deep);
-    border: 1px dashed var(--sgj-border-card);
+    background: var(--hd-paper-2);
+    border: 1.4px dashed var(--hd-line-soft);
     border-radius: 5px;
   }
 
   :deep(ul),
   :deep(ol) {
-    margin: 8px 0;
-    padding-left: 24px;
+    margin: .8em 0;
+    padding-left: 1.4em;
 
-    li {
-      margin: 4px 0;
-    }
+    li { margin: .3em 0 }
   }
 
+  /* 引用 = 红色侧笔 */
   :deep(blockquote) {
-    margin: 10px 0;
-    padding: 8px 14px;
-    border-left: 4px solid var(--sgj-amber);
-    background: var(--sgj-amber-soft);
-    border-radius: 0 8px 8px 0;
-    color: var(--sgj-text-2);
+    margin: 1.2em 0;
+    padding: 2px 0 2px 18px;
+    border-left: 3px solid var(--hd-red);
+    background: none;
+    border-radius: 0;
+    color: var(--hd-ink-soft);
+    font-size: 16px;
 
-    p {
-      margin: 4px 0;
-    }
+    p { margin: .3em 0 }
+  }
+
+  :deep(hr) {
+    margin: 2em 0;
+    border: 0;
+    border-top: 2px dashed var(--hd-line-soft);
   }
 
   :deep(code) {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    background: var(--sgj-cover);
+    background: var(--hd-paper-2);
+    border: 1.2px dashed var(--hd-line-soft);
     border-radius: 4px;
-    padding: 2px 5px;
-    font-size: 13px;
-    color: var(--sgj-primary);
+    padding: 1px 6px;
+    font-size: 14.5px;
+    color: var(--hd-red);
   }
 
+  /* 代码块 = 方格纸 */
   :deep(pre) {
-    background: #282c34;
-    color: #e6e6e6;
-    border-radius: 10px;
-    padding: 14px 16px;
+    margin: 1.2em 0;
+    padding: 16px 18px;
     overflow-x: auto;
-    margin: 12px 0;
-    line-height: 1.6;
+    line-height: 1.65;
+    background-color: var(--hd-paper-3);
+    background-image:
+      linear-gradient(rgba(122, 112, 102, .10) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(122, 112, 102, .10) 1px, transparent 1px);
+    background-size: 18px 18px;
+    border: 1.8px solid var(--hd-line);
+    border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px;
+    box-shadow: var(--hd-shadow-sm);
 
     code {
-      background: transparent;
-      color: inherit;
+      background: none;
+      border: 0;
       padding: 0;
-      font-size: 13px;
+      font-size: 14px;
+      color: var(--hd-ink);
     }
   }
 
   :deep(table) {
     width: 100%;
+    margin: 1.4em 0;
     border-collapse: collapse;
-    margin: 12px 0;
-    font-size: 13px;
+    font-size: 15px;
 
     th,
     td {
-      border: 1px solid var(--sgj-border-card);
-      padding: 8px 12px;
+      padding: 7px 10px;
+      border: 1.5px dashed var(--hd-line-soft);
       text-align: left;
     }
 
     th {
-      background: var(--sgj-amber-soft);
-      font-weight: 600;
-      color: var(--sgj-text);
-    }
-
-    tr:nth-child(even) td {
-      background: var(--sgj-bg);
+      font-weight: 400;
+      color: var(--hd-ink-soft);
+      border-bottom: 2px solid var(--hd-line);
     }
   }
 
-  :deep(hr) {
-    border: none;
-    border-top: 1px solid var(--sgj-border-card);
-    margin: 16px 0;
-  }
-
-  :deep(input[type="checkbox"]) {
-    margin-right: 6px;
-  }
-
-  :deep(del) {
-    color: var(--sgj-text-4);
-  }
+  /* highlight.js 暖色 token：纸面上仍能分清关键字 / 字符串 / 注释 */
+  :deep(.hljs-keyword),
+  :deep(.hljs-selector-tag),
+  :deep(.hljs-built_in) { color: var(--hd-red) }
+  :deep(.hljs-string),
+  :deep(.hljs-attr) { color: var(--hd-amber-ink) }
+  :deep(.hljs-comment),
+  :deep(.hljs-quote) { color: var(--hd-ink-faint); font-style: italic }
+  :deep(.hljs-number),
+  :deep(.hljs-literal) { color: var(--hd-ochre) }
+  :deep(.hljs-title),
+  :deep(.hljs-function) { color: var(--hd-ink) }
 }
 </style>

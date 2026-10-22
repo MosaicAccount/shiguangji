@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.0.6 手绘 · 设计说明与页面索引 — 拾光记</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+.page-index .cover { position: relative; padding: 44px 46px 40px; margin-top: 10px }
+.page-index .cover .eyebrow { font-size: 13px; letter-spacing: 5px; color: var(--hd-red) }
+.page-index .cover h1 { margin-top: 12px; font-size: 48px; letter-spacing: 3px; line-height: 1.24 }
+.page-index .cover .lead { margin-top: 16px; font-size: 18px; line-height: 1.9; color: var(--hd-ink-soft); max-width: 760px }
+.page-index .cover .meta { margin-top: 22px; display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 13.5px; color: var(--hd-ink-soft) }
+.page-index .cover .meta .chip { border: 1.6px solid var(--hd-line-soft); border-radius: 10px 3px 9px 4px / 4px 9px 3px 10px; padding: 0 10px }
+.page-index .cover .hd-tape { top: -12px; width: 118px }
+
+.page-index .sec { margin-top: 44px }
+.page-index .sec > h2 { font-size: 25px; letter-spacing: 1px; display: flex; align-items: baseline; gap: 12px }
+.page-index .sec > h2 .no { font-size: 13px; letter-spacing: 2px; color: var(--hd-red) }
+.page-index .sec > .sub { margin-top: 6px; font-size: 15px; color: var(--hd-ink-soft); max-width: 640px; line-height: 1.8 }
+
+.page-index .word-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 24px }
+.page-index .word { padding: 20px 22px; position: relative }
+.page-index .word .k { font-size: 26px; letter-spacing: 3px; color: var(--hd-red) }
+.page-index .word p { margin-top: 8px; font-size: 14.5px; color: var(--hd-ink-soft); line-height: 1.8 }
+
+.page-index .pages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 24px }
+.page-index .page-card { display: block; text-decoration: none; color: var(--hd-ink); padding: 18px 18px 16px; transition: transform .12s }
+.page-index .page-card:hover { transform: translateY(-2px) rotate(-.3deg) }
+.page-index .page-card .thumb {
+  height: 108px; border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px;
+  border: 1.8px solid var(--hd-line-soft); background-color: var(--hd-paper-2);
+  background-image: var(--hd-grain); position: relative; overflow: hidden; margin-bottom: 12px;
+}
+.page-index .page-card .thumb .mini { position: absolute; inset: 14px 16px; border: 1.6px dashed var(--hd-line-soft); border-radius: 3px }
+.page-index .page-card .thumb .mini::before { content: ""; position: absolute; left: 10px; top: 10px; right: 10px; height: 8px; background: var(--hd-line-soft); border-radius: 2px }
+.page-index .page-card .thumb .mini::after { content: ""; position: absolute; left: 10px; top: 26px; width: 52%; height: 26px; background: var(--hd-paper-3); border-radius: 2px }
+.page-index .page-card .t { font-size: 18px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.page-index .page-card .d { margin-top: 4px; font-size: 13.5px; color: var(--hd-ink-soft); line-height: 1.65 }
+.page-index .page-card .tags { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap }
+.page-index .risk { font-size: 12.5px; padding: 0 8px; border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px; border: 1.5px solid var(--hd-line-soft); color: var(--hd-ink-soft) }
+.page-index .risk.high { color: var(--hd-red-ink); border-color: var(--hd-red); background: var(--hd-red-soft) }
+.page-index .risk.mid { color: var(--hd-amber-ink); border-color: var(--hd-amber-ink); background: var(--hd-amber-soft) }
+.page-index .risk.low { color: var(--hd-moss); border-color: var(--hd-moss); background: var(--hd-moss-soft) }
+
+.page-index .swatches { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-top: 22px }
+.page-index .swatch { font-size: 12.5px; color: var(--hd-ink-soft) }
+.page-index .swatch .c { height: 58px; border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px; border: 1.8px solid var(--hd-line); margin-bottom: 6px }
+.page-index .swatch b { display: block; font-weight: 400; color: var(--hd-ink); font-size: 13.5px }
+
+.page-index .type-spec { margin-top: 22px; padding: 24px 26px }
+.page-index .type-spec .row { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 16px; padding: 9px 0; border-bottom: 1.5px dashed var(--hd-line-soft); align-items: baseline }
+.page-index .type-spec .row:last-child { border-bottom: 0 }
+.page-index .type-spec .k { font-size: 12.5px; color: var(--hd-ink-faint); letter-spacing: 1px }
+.page-index .type-spec .display { font-size: 34px; letter-spacing: 2px }
+.page-index .type-spec .h2 { font-size: 24px }
+
+.page-index .materials { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 22px }
+.page-index .mat { padding: 18px; min-height: 128px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; font-size: 13px; color: var(--hd-ink-soft); position: relative }
+.page-index .mat .demo-tape { width: 76px; height: 22px; background: var(--hd-tape); clip-path: polygon(0 4%,5% 0,95% 2%,100% 6%,98% 96%,93% 100%,4% 98%,0 94%); transform: rotate(-3deg) }
+.page-index .mat .demo-stamp { border: 2px solid var(--hd-red); color: var(--hd-red); padding: 1px 8px; letter-spacing: 2px; transform: rotate(-4deg); border-radius: 6px 2px 7px 3px / 3px 7px 2px 6px; font-size: 13px }
+.page-index .mat .demo-cover { width: 58px; height: 78px; border: 2px solid var(--hd-line); border-radius: 4px 2px 5px 2px; background: linear-gradient(155deg, #A75B47, #84402F); position: relative; box-shadow: var(--hd-shadow) }
+.page-index .mat .demo-cover::before { content: ""; position: absolute; top: -7px; left: 50%; width: 40px; height: 14px; transform: translateX(-50%) rotate(-2deg); background: rgba(255,253,246,.55) }
+.page-index .mat .demo-frame { width: 74px; height: 46px; border: 2.2px solid var(--hd-line); border-radius: 9px 3px 10px 4px / 4px 10px 3px 9px; filter: url(#rough) }
+
+.page-index .map-table { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: 14.5px }
+.page-index .map-table th, .page-index .map-table td { border: 1.6px solid var(--hd-line-soft); padding: 9px 12px; text-align: left; vertical-align: top; line-height: 1.7 }
+.page-index .map-table th { border-color: var(--hd-line); color: var(--hd-ink-soft); font-weight: 400; white-space: nowrap }
+.page-index .map-table td:first-child { white-space: nowrap; color: var(--hd-ink-soft) }
+
+.page-index .notes-list { margin-top: 20px; padding: 22px 26px }
+.page-index .notes-list h3 { font-size: 16px; margin-top: 14px }
+.page-index .notes-list h3:first-child { margin-top: 0 }
+.page-index .notes-list p, .page-index .notes-list li { font-size: 14.5px; color: var(--hd-ink-soft); line-height: 1.8; max-width: 600px }
+.page-index .notes-list ul { margin: 6px 0 0; padding-left: 1.4em }
+.page-index .notes-list li { margin: 4px 0 }
+.page-index .notes-list code { font-family: ui-monospace, Menlo, monospace; font-size: .88em; background: var(--hd-paper-2); padding: 1px 4px; border-radius: 4px }
+
+
+.page-index .iter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; margin-top: 22px }
+.page-index .iter-item { padding: 18px 20px 20px }
+.page-index .iter-item h3 { font-size: 17px; margin-bottom: 4px }
+.page-index .iter-item p { font-size: 13.5px; color: var(--hd-ink-soft); line-height: 1.75 }
+.page-index .demo-fbs { display: flex; gap: 10px; margin: 12px 0 6px }
+.page-index .demo-fb { position: relative; width: 84px; height: 114px; overflow: hidden; border: 1.8px solid var(--hd-line); border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px; box-shadow: var(--hd-shadow) }
+.page-index .demo-fb .hd-fallback { padding: 8px 9px }
+.page-index .demo-fb .hd-fallback .fc-band { display: none }
+.page-index .demo-fb .hd-fallback .fc-title { font-size: 13px; -webkit-line-clamp: 2 }
+.page-index .demo-fb .hd-fallback .fc-meta { display: none }
+.page-index .demo-fb .hd-fallback .fc-motif { top: 12%; opacity: .45 }
+.page-index .demo-sum { margin-top: 14px }
+.page-index .demo-sum .hd-summary { margin-top: 0; padding: 7px 12px; font-size: 13px; gap: 4px 10px }
+.page-index .demo-sum .hd-summary .item b { font-size: 17px }
+.page-index .demo-sum .hd-summary .recent { width: 100%; margin-left: 0; padding-top: 4px; border-top: 1px dashed var(--hd-line-soft) }
+@media (max-width: 1000px) {
+  .page-index .iter-grid { grid-template-columns: 1fr }
+}
+@media (max-width: 1000px) {
+  .page-index .pages { grid-template-columns: repeat(2, minmax(0,1fr)) }
+  .page-index .word-grid { grid-template-columns: 1fr }
+  .page-index .swatches { grid-template-columns: repeat(3, 1fr) }
+  .page-index .materials { grid-template-columns: repeat(2, 1fr) }
+}
+@media (max-width: 720px) {
+  .page-index .cover { padding: 30px 22px }
+  .page-index .cover h1 { font-size: 34px }
+  .page-index .pages { grid-template-columns: 1fr }
+  .page-index .type-spec .row { grid-template-columns: 1fr; gap: 4px }
+  .page-index .map-table { font-size: 13.5px }
+  .page-index .map-table th, .page-index .map-table td { padding: 7px 8px }
+}
+</style>
+</head>
+<body class="hd-app page-index" data-page="index">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html">首页</a><a href="movie.html">影单</a><a href="book.html">书单</a><a href="travel.html">足迹</a><a href="notes.html">笔记</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="cover hd-paper">
+    <span class="hd-tape"></span>
+    <div class="eyebrow">0.0.6 · 设计图</div>
+    <h1>手绘 · 一个人的手账</h1>
+    <p class="lead">前台视觉从「冷雾胶片」整体切换为手绘手账风格，色彩同时换成一套「暖忆」色板：米纸、暖白、墨褐、陶红、赭石、橄榄——回忆是暖的，页面也该是暖的。不是把样式刷匀，而是换一套设计语言：纸是静的，贴纸是全的；线是抖的，字是清楚的。本组图覆盖首页 / 影单 / 书单 / 足迹 / 笔记（列表 · 详情 · 编辑）/ 搜索 / 登录注册，以及共享组件的形制层。</p>
+    <div class="meta">
+      <span class="chip">设计评审中 · 尚未进入编码</span>
+      <span>2026-10-19</span>
+      <span>·</span>
+      <span>对应需求 docs/requirements/0.0.6-handdrawn.md</span>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">01</span>方向</h2>
+    <p class="sub">拾光记本来就是一本「一个人的手账」。手绘不是装饰，是内容本来的样子：照片贴进去、胶带粘住、字写在格子里、完成盖个章。页面只做三件事——把内容摆成纸，把状态写成字，把动作留在手边。</p>
+    <div class="word-grid">
+      <div class="word hd-paper"><div class="k">暖</div><p>页面底是奶油米，纸是暖白，阴影带一点咖啡色；陶红、赭石、橄榄都退掉饱和度，像旧相册与旧书封。暗色不是反相，是夜里点灯：暖炭底 + 纸色字。</p></div>
+      <div class="word hd-paper"><div class="k">手写</div><p>全站霞鹜文楷；线是抖的（SVG 位移滤镜只上边框与分隔线），字是清楚的（文字层不套滤镜）。状态与日期用批注的口气写。</p></div>
+      <div class="word hd-paper"><div class="k">克制</div><p>每屏一个主角；红色只给主动作与当前状态，橄榄给「完成 / 书」，赭石给「地点 / 评分」。其余保持墨色与纸色，不用第二套装饰语言。</p></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">02</span>页面索引</h2>
+    <p class="sub">十张图，逐页对应现有路由与真实字段。点击进入设计图；★ 为高风险页（手绘最容易闯不过的两关）。本轮按反馈迭代了四件事：暖忆色板、默认封面、页面小结条、足迹取消双模式。</p>
+    <div class="pages">
+      <a class="page-card hd-paper" href="home.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">首页 <span class="risk mid">中风险</span></div>
+        <div class="d">hero + 统计 + 心愿条；我的时光时间线；心愿单 / 最近笔记侧栏。</div>
+        <div class="tags"><span class="hd-tag plain">/home</span><span class="hd-tag plain">首屏重心</span></div>
+      </a>
+      <a class="page-card hd-paper" href="movie.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">影单 <span class="risk high">★ 高风险</span></div>
+        <div class="d">密度最高的网格页：封面、状态、评分、短评、动作同挤一张卡。</div>
+        <div class="tags"><span class="hd-tag plain">/movie</span><span class="hd-tag plain">扫读</span></div>
+      </a>
+      <a class="page-card hd-paper" href="book.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">书单 <span class="risk high">★ 高风险</span></div>
+        <div class="d">与影单同构、更密：2:3 封面 + 作者 + 读后感，移动端双列最难读。</div>
+        <div class="tags"><span class="hd-tag plain">/book</span><span class="hd-tag plain">密度</span></div>
+      </a>
+      <a class="page-card hd-paper" href="travel.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">足迹 <span class="risk mid">中风险</span></div>
+        <div class="d">地图是唯一「非卡片」版式：瓦片不手绘，用手账裱框融进来（D-45）。</div>
+        <div class="tags"><span class="hd-tag plain">/travel</span><span class="hd-tag plain">地图</span></div>
+      </a>
+      <a class="page-card hd-paper" href="notes.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">笔记列表 <span class="risk mid">中风险</span></div>
+        <div class="d">草稿条、搜索、标签与笔记卡；标题 / 摘要双高亮要压住 meta。</div>
+        <div class="tags"><span class="hd-tag plain">/note</span><span class="hd-tag plain">检索</span></div>
+      </a>
+      <a class="page-card hd-paper" href="note-detail.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">笔记详情 <span class="risk high">★ 高风险</span></div>
+        <div class="d">长文阅读：16.5px / 2.0 行高、手绘标题下划线、票根图、反链与目录（D-46）。</div>
+        <div class="tags"><span class="hd-tag plain">/note/detail</span><span class="hd-tag plain">长文</span></div>
+      </a>
+      <a class="page-card hd-paper" href="note-edit.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">笔记编辑 <span class="risk mid">中风险</span></div>
+        <div class="d">分栏编辑 + 同步态 + 标题互链提示；信息密度全站最高。</div>
+        <div class="tags"><span class="hd-tag plain">/note/edit</span><span class="hd-tag plain">编辑器</span></div>
+      </a>
+      <a class="page-card hd-paper" href="search.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">全站搜索 <span class="risk low">低风险</span></div>
+        <div class="d">搜索 hero + 四组同构结果；高亮在亮 / 暗两套下都要可读。</div>
+        <div class="tags"><span class="hd-tag plain">/search</span><span class="hd-tag plain">高亮</span></div>
+      </a>
+      <a class="page-card hd-paper" href="auth.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">登录 / 注册 <span class="risk mid">中风险</span></div>
+        <div class="d">独立于前台外壳：手账封面 + 表单纸片；注册用 ?mode=register 查看。</div>
+        <div class="tags"><span class="hd-tag plain">/login</span><span class="hd-tag plain">/register</span></div>
+      </a>
+      <a class="page-card hd-paper" href="components.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">共享组件 <span class="risk low">地基</span></div>
+        <div class="d">按钮 / 表单 / 日期 / 评分 / 弹窗 / 抽屉 / 提示 / 空态 + EP 映射（D-43）。</div>
+        <div class="tags"><span class="hd-tag plain">FR-007-1</span><span class="hd-tag plain">FR-007-3</span></div>
+      </a>
+      <a class="page-card hd-paper" href="plan.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">心愿 <span class="risk mid">宽版重排</span></div>
+        <div class="d">860 单列改为 1120 两栏：左侧四组清单，右侧本月小结 / 类型分布 / 下一个日子。</div>
+        <div class="tags"><span class="hd-tag plain">/plan</span><span class="hd-tag plain">两栏</span></div>
+      </a>
+      <a class="page-card hd-paper" href="review.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">年度回顾 <span class="risk mid">宽版重排</span></div>
+        <div class="d">900 单列改为 1120 多栏报告：统计四卡、地图 + 评分榜、标签 + 年度笔记。</div>
+        <div class="tags"><span class="hd-tag plain">/review</span><span class="hd-tag plain">多栏</span></div>
+      </a>
+      <a class="page-card hd-paper" href="travel-map.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">足迹地图 <span class="risk mid">终版方案</span></div>
+        <div class="d">手绘足迹图（真实坐标相对投影 + 编号图钉 + 方向箭标 + 城市叠针 + 月份胶囊）；点叠针弹「这一片」纸卡；详情里可单点打开高德。可交互。</div>
+        <div class="tags"><span class="hd-tag plain">/travel</span><span class="hd-tag plain">终版</span></div>
+      </a>
+      <a class="page-card hd-paper" href="covers.html">
+        <div class="thumb"><div class="mini"></div></div>
+        <div class="t">封面选型 <span class="risk low">已定 A+C</span></div>
+        <div class="d">影像 / 字体 / 拼贴三个方向并排；已定 A 模块网格 + C 小图，页面已按此铺开。</div>
+        <div class="tags"><span class="hd-tag plain">默认封面</span><span class="hd-tag plain">三方向</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">03</span>设计语言</h2>
+    <p class="sub">暖忆 v3：暖而不黄。页面底从奶油米调回近中性的暖白灰 #F5F2EC，纸是暖白，墨是暖褐；陶红 / 赭石 / 橄榄全部压低饱和，旧玫瑰只做装饰。暗色是中性暖炭 #1B1B1C（纸 #242426、字 #ECEBE8），不再带棕黄罩层。明暗两套都按 WCAG AA 校准正文对比度，所有页面共用这一套令牌。</p>
+    <div class="swatches">
+      <div class="swatch"><div class="c" style="background:#F5F2EC"></div><b>页面底 · 暖白灰</b>#F5F2EC</div>
+      <div class="swatch"><div class="c" style="background:#FFFDF9"></div><b>纸</b>#FFFDF9</div>
+      <div class="swatch"><div class="c" style="background:#37322C"></div><b>墨褐</b>#37322C</div>
+      <div class="swatch"><div class="c" style="background:#96503F"></div><b>陶红 · 主动作</b>#96503F</div>
+      <div class="swatch"><div class="c" style="background:#8A5C31"></div><b>赭石 · 地点/评分</b>#8A5C31</div>
+      <div class="swatch"><div class="c" style="background:#5A6350"></div><b>橄榄 · 完成</b>#5A6350</div>
+    </div>
+
+    <div class="type-spec hd-paper">
+      <div class="row"><span class="k">Display</span><span class="display">下午好，拾光人。</span></div>
+      <div class="row"><span class="k">H1 / 页标题</span><span class="hd-h1">影单 · 光影收藏</span></div>
+      <div class="row"><span class="k">H2 / 区块</span><span class="h2">我的时光</span></div>
+      <div class="row"><span class="k">正文</span><span>你已经记录了 128 件值得记住的小事，日子正在被你慢慢写成照片。正文 16px / 1.72；笔记详情单独放大到 16.5px / 2.0。</span></div>
+      <div class="row"><span class="k">小字</span><span class="hd-small">meta · 标签 · 辅助说明，最小 13px，不使用更小字号。</span></div>
+    </div>
+
+    <h3 style="margin-top:30px;font-size:17px">全局令牌映射（前台与后台共用一套暖忆色）</h3>
+    <p class="sub" style="max-width:600px">后台管理端本版不换装（D-41），但颜色是项目级的：后续后台换肤只做 Element Plus 变量映射，不再定第二套色板。</p>
+    <table class="map-table">
+      <thead><tr><th>语义</th><th>站点令牌</th><th>手绘形制</th><th>亮色 / 暗色</th></tr></thead>
+      <tbody>
+        <tr><td>页面底</td><td><code>--sgj-bg</code></td><td><code>--hd-page</code></td><td>#F4EBDD / #221D18</td></tr>
+        <tr><td>卡片 / 纸</td><td><code>--sgj-bg-card</code></td><td><code>--hd-paper</code></td><td>#FFFAF1 / #2B251E</td></tr>
+        <tr><td>正文</td><td><code>--sgj-text</code></td><td><code>--hd-ink</code></td><td>#3B2F26 / #F1E7D7</td></tr>
+        <tr><td>主色 · 主动作</td><td><code>--sgj-primary</code></td><td><code>--hd-brick</code></td><td>#9C523F / #D69B86</td></tr>
+        <tr><td>完成 · 书籍</td><td><code>--sgj-moss</code></td><td><code>--hd-olive</code></td><td>#55613F / #A9B08A</td></tr>
+        <tr><td>地点 · 评分</td><td><code>--sgj-amber</code></td><td><code>--hd-ochre</code></td><td>#B07A3C（文本 #8C5A26）/ #D8AC70</td></tr>
+        <tr><td>边框 / 分隔</td><td><code>--sgj-border</code></td><td><code>--hd-line</code></td><td>#DCCDB8 / rgba(241,231,215,.55)</td></tr>
+        <tr><td>后台 EP</td><td><code>--el-color-primary</code> 等</td><td>同一批 hex</td><td>映射到上面的值，不另起色板</td></tr>
+      </tbody>
+    </table>
+
+    <div class="materials">
+      <div class="mat hd-paper"><span class="demo-cover"></span>封面：贴进来的照片</div>
+      <div class="mat hd-paper"><span class="demo-tape"></span>胶带：连接纸片与页面</div>
+      <div class="mat hd-paper"><span class="demo-frame"></span>抖线框：只上装饰层</div>
+      <div class="mat hd-paper"><span class="demo-stamp">已完成</span>印章：一次性判定</div>
+    </div>
+  </section>
+
+
+  <section class="sec">
+    <h2><span class="no">04</span>本轮迭代：暖色、默认封面、小结条、足迹去双模式</h2>
+    <p class="sub">这三处是这一轮根据反馈改的，改动都收在共享令牌与共享组件里，页面只拼装。</p>
+    <div class="iter-grid">
+
+      <div class="iter-item hd-paper">
+        <span class="hd-tape left"></span>
+        <h3>默认封面</h3>
+        <p>没有上传图时不再用色块：模块网格用 A 影像封面（照片 + 标题压暗角），首页时间线 / 回顾小图用 C 手账拼贴（纸卡贴照片、不放字）。<a href="covers.html" style="color:var(--hd-red)">三个封面方向对照 →</a></p>
+        <div class="demo-fbs">
+          <span class="demo-fb"><span class="hd-fallback movie"><span class="fc-body"><span class="fc-title">沙丘 2</span></span><span class="fc-motif"></span></span></span>
+          <span class="demo-fb"><span class="hd-fallback book"><span class="fc-body"><span class="fc-title">失明症漫记</span></span><span class="fc-motif"></span></span></span>
+          <span class="demo-fb"><span class="hd-fallback place"><span class="fc-body"><span class="fc-title">洱海</span></span><span class="fc-motif"></span></span></span>
+        </div>
+      </div>
+
+      <div class="iter-item hd-paper">
+        <span class="hd-tape right"></span>
+        <h3>页面小结条</h3>
+        <p>影单 / 书单 / 足迹 / 笔记都在页头放同一行小结：这段时间攒下了什么、最近一次是什么。像手账页脚的一行铅笔字。</p>
+        <div class="demo-sum">
+          <div class="hd-summary">
+            <span class="item">看过 <b>87</b> 部</span><span class="sep">·</span>
+            <span class="item">剧集 <b>32</b> 部</span><span class="sep">·</span>
+            <span class="item">在看 <b>1</b> 部</span>
+            <span class="recent">最近 <b>沙丘 2</b></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="iter-item hd-paper">
+        <h3>心愿 / 回顾：宽度归位</h3>
+        <p>这两页此前是 860 / 900 的单列——那是设计稿屏幕宽，不是产品口径；在 1320 的前台壳里两侧各空近 200px。现在统一到 1120：心愿改两栏（清单 + 侧栏），回顾改多栏报告，和别的模块一样铺满。</p>
+      </div>
+
+      <div class="iter-item hd-paper">
+        <h3>足迹：取消双模式</h3>
+        <p>不再让用户在「卡片 / 地图」之间来回切：一页里地图看方位、时间线看年份、卡片看细节。点地图上的点可以定位到下面那张卡。</p>
+        <p style="margin-top:8px">浏览与编辑都留在同一屏，少一次模式切换，也少一次「我刚才是哪个视图」。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">05</span>需求落点与待拍板决策</h2>
+    <p class="sub">需求文档只写了「做什么」，这里给「怎么落」；D-41 ~ D-46 是本轮设计评审要确认的口径。</p>
+    <table class="map-table">
+      <thead><tr><th>需求 / 决策</th><th>本组图的落法</th></tr></thead>
+      <tbody>
+        <tr><td>FR-007-1 设计语言升格</td><td><code>handdrawn-site.css</code> 一套 <code>--hd-*</code> 令牌 + 纸片 / 胶带 / 抖线 / 按钮 / 表单 / 浮层；页面只拼装，不各画一遍。</td></tr>
+        <tr><td>FR-007-2 页面全量换装</td><td>首页 / 影单 / 书单 / 足迹 / 笔记三页 / 搜索 / 登录注册全部换装；封面与照片按「贴进手账」处理（胶带 + 手绘框）。</td></tr>
+        <tr><td>FR-007-3 EP 组件手绘化</td><td>D-43 建议：表单控件换肤为主，弹窗 / 抽屉 / 日期 / 消息自绘；映射表见 <a href="components.html">共享组件</a>。</td></tr>
+        <tr><td>FR-007-4 字体全站加载</td><td>沿用自托管霞鹜文楷分片；本组图直接引产品字体 CSS。实现时并入全局，并按脚本重跑核心片、给出体积与首屏量化结论（D-44）。</td></tr>
+        <tr><td>FR-007-5 暗色与移动端</td><td>每页都有暗色令牌与 960 / 720 断点；移动底部 tab 仍是首页 / 影单 / 足迹 / 笔记四项。</td></tr>
+        <tr><td>FR-007-6 笔记长文排版</td><td>D-46 建议：正文 16.5px / 2.0、标题 24px + 手绘下划线、代码块方格纸、表格抖线、引用红侧笔、图片贴胶带；见笔记详情。</td></tr>
+        <tr><td>默认封面（已定 A + C）</td><td>模块网格用 A：一张照片 + 标题压暗角（影单 / 书单 / 足迹）；首页时间线 / 回顾小图用 C：纸卡 + 胶带照片、不放字。两者共用 <code>hd-fallback</code>，三种方向对照见 <a href="covers.html">默认封面三方向</a>。</td></tr>
+        <tr><td>页面宽度口径（本轮修正）</td><td>心愿 / 回顾此前沿用设计稿屏幕宽 860 / 900，单列在 1248 的内容区两侧各空约 190px；统一改为全站 1120：心愿两栏（清单 + 侧栏），回顾多栏报告。</td></tr>
+        <tr><td>页面小结（本轮新增）</td><td>影单 / 书单 / 足迹 / 笔记统一用 <code>hd-summary</code>：一行说明累计数量与最近一次，和足迹原有的「去过 12 城 / 留下 214 张照片」同一形制。</td></tr>
+        <tr><td>足迹结构（本轮调整）</td><td>取消卡片 / 地图双模式：地图看方位、时间线看年份、卡片看细节，同页完成。</td></tr>
+        <tr><td>FR-007-7 后台管理端</td><td>D-41 建议维持「不纳入」：后台访客不可见、受众不同，不一致不构成体验割裂。</td></tr>
+        <tr><td>D-42 灰度策略</td><td>沿用需求 §7：影单网格与笔记详情两页高风险先行，评审通过后再逐页铺开；每页停下都是完整可发布状态。</td></tr>
+        <tr><td>D-45 足迹地图</td><td>瓦片不手绘；用胶带 + 抖线把「真地图」裱进手账，配手绘图钉与时间线。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">06</span>评审要点</h2>
+    <div class="notes-list hd-paper">
+      <h3>先看两页</h3>
+      <ul>
+        <li><b>影单 / 书单</b>：手绘在「密度页」能不能扫读——封面、标题、评分、短评、动作是否还分得清；移动端双列是否还看得清。</li>
+        <li><b>笔记详情</b>：手绘在「长文」能不能读——行高、标题层级、引用与代码块、目录与反链是否安静；图片与票根是否像「贴进去的」而不是「放进去的」。</li>
+      </ul>
+      <h3>再看四件事</h3>
+      <ul>
+        <li><b>暖色板</b>：米纸 / 墨褐 / 陶红 / 赭石 / 橄榄是否够「回忆的温馨」，又不至于甜腻或发黄。</li>
+        <li><b>默认封面</b>：没有图时，票根 / 布封 / 老照片 / 纸页是否还像一件「作品」，而不是占位块。</li>
+        <li><b>暗色</b>：夜间是暖炭 + 纸色，不是反相；每页都有暗色图。</li>
+        <li><b>移动端</b>：390px 宽不横向溢出；底部 tab 四项不变。</li>
+        <li><b>可读性</b>：正文对比度 ≥ 4.5:1（大字号 ≥ 3:1），最小字号 13px；截图工具的 lint 已按此处理。</li>
+      </ul>
+      <h3>本组图不覆盖</h3>
+      <ul>
+        <li>后台管理端（D-41 建议不纳入）；</li>
+        <li>心愿页 /plan 与年度回顾 /review：已落地手绘皮肤，本版只并入全站令牌、视觉不变，不在本组图重画；</li>
+        <li>草稿箱 /note/draft：沿用笔记列表语言，不出独立图；</li>
+        <li>交互与动效（悬停、主题圆形扩散、加载态过渡）不在静态设计图范围，实现阶段按现有交互规范补。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">07</span>默认做法提示的处理</h2>
+    <div class="notes-list hd-paper">
+      <ul>
+        <li><b>标题上方眉标 / 英文大写小字</b>：保留。手账扉页的日期眉标、票根上的印刷字是形制的一部分，不是「AI 味」标签；全部为装饰性小字，不承载关键信息。</li>
+        <li><b>卡片里套卡片</b>：仅组件谱的「展台」如此，是刻意的陈列层级（展品放在纸卡上）；业务页面不叠卡。</li>
+        <li><b>彩色单侧边线</b>：目录当前项的笔触与引用块的红侧笔，来自手写批注，不用于装饰卡片。</li>
+        <li><b>对比度</b>：亮 / 暗两套令牌都按 AA 校准；亮色次级墨 <code>#665C50</code>、三级墨 <code>#756B5E</code>，暗色对应 <code>#B8B1A2</code> / <code>#A9A295</code>。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">08</span>下一步</h2>
+    <div class="notes-list hd-paper">
+      <p>本组图用于「设计图先行」评审。方向确认后按顺序补：</p>
+      <ul>
+        <li>四件套文档：<code>handdrawn-architecture.md</code>、<code>handdrawn-design.md</code>、<code>handdrawn-testcases.md</code>（需求文档已就位）；</li>
+        <li>高风险两页的落地实现与视觉回归；</li>
+        <li>逐页换装，每页一次提交、一次截图对比。</li>
+      </ul>
+      <p style="margin-top:12px">截图证据：<code>_shots/</code>（桌面 1440、移动 390、亮 / 暗两套）。设计图均为静态保真，不连接口。</p>
+    </div>
+  </section>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 0.0.6 手绘 · 设计说明</span>
+    <span>© 2026 SHIGUANGJI</span>
+    <a href="components.html">共享组件 →</a>
+  </div>
+</footer>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>

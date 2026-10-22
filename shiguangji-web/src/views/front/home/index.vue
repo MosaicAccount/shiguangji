@@ -1,154 +1,159 @@
 <template>
-  <div v-loading="loading" class="front-home">
+  <div v-loading="loading" class="front-home page-home">
     <div v-if="loadError" class="load-error">
       <span>加载失败，请稍后重试</span>
       <el-button size="small" round @click="getData">重试</el-button>
     </div>
     <template v-else>
-    <section class="hero">
-      <div class="hero-blob hero-blob-1" aria-hidden="true"></div>
-      <div class="hero-blob hero-blob-2" aria-hidden="true"></div>
-      <div class="hero-text">
-        <h1 class="anim" :style="{ '--d': '0ms' }">{{ greeting }}，拾光人</h1>
-        <p class="hero-sub anim" :style="{ '--d': '32ms' }">你已经记录了 {{ data?.summary?.allTotal || 0 }} 件值得记住的小事，</p>
-        <p class="hero-sub anim" :style="{ '--d': '64ms' }">日子正在被你慢慢写成照片。</p>
-        <div class="hero-actions">
-          <!-- 旅行足迹地图入口卡：点击直达地图模式 -->
-          <div class="hero-map-entry anim" :style="{ '--d': '96ms' }" @click="goTravelMap">
-            <span class="hero-map-icon">✈</span>
-            <span class="hero-map-body">
-              <span class="hero-map-text">旅行足迹地图</span>
-              <span class="hero-map-sub">{{ mapSummary }}</span>
-            </span>
-            <span class="hero-map-arrow">↘</span>
+      <section class="hero">
+        <div class="hero-card hd-rough">
+          <span class="hd-tape"></span>
+          <span class="hd-tape right amber"></span>
+          <div class="hero-note" aria-hidden="true">
+            <div class="n-day">{{ todayMonthDay }}</div>
+            <div class="n-wd">{{ todayWeekday }} · 手账第 {{ dayOfYear }} 天</div>
+            <div class="n-say">今天也记一笔。</div>
+            <svg viewBox="0 0 42 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 26 Q6 14 16 10 Q26 6 30 14 Q33 21 24 22 Q18 23 18 17"/><path d="M30 14 Q36 12 36 6"/></svg>
           </div>
-          <!-- 年度回顾入口（0.0.4；仅登录态渲染，访客不出现私人内容入口） -->
-          <div v-if="isLogin" class="hero-map-entry anim" :style="{ '--d': '112ms' }" @click="goReview">
-            <span class="hero-map-icon">✦</span>
-            <span class="hero-map-body">
-              <span class="hero-map-text">年度回顾</span>
-              <span class="hero-map-sub">把一年攒成一面墙</span>
-            </span>
-            <span class="hero-map-arrow">↘</span>
+          <div class="hero-eyebrow">一个人的手账 · {{ currentYear }}</div>
+          <h1 class="hero-title">{{ greeting }}，拾光人<span class="hd-dot">。</span></h1>
+          <p class="hero-sub">你已经记录了 <b>{{ data?.summary?.allTotal || 0 }}</b> 件值得记住的小事，日子正在被你慢慢写成照片。</p>
+          <div class="hero-actions">
+            <button class="hero-cta" type="button" @click="scrollToTimeline">开始记录 <span aria-hidden="true">→</span></button>
+            <a class="entry-card" href="#" @click.prevent="goTravelMap">
+              <span class="ico" aria-hidden="true">✈</span>
+              <span><span class="t">旅行足迹地图</span><br><span class="s">{{ mapSummary }}</span></span>
+              <span class="arr" aria-hidden="true">↘</span>
+            </a>
+            <a v-if="isLogin" class="entry-card" href="#" @click.prevent="goReview">
+              <span class="ico" aria-hidden="true">✦</span>
+              <span><span class="t">年度回顾</span><br><span class="s">把一年攒成一面墙</span></span>
+              <span class="arr" aria-hidden="true">↘</span>
+            </a>
           </div>
-          <button class="hero-cta anim" :style="{ '--d': '128ms' }" type="button" @click="scrollToTimeline">开始记录 →</button>
         </div>
-      </div>
-      <div class="hero-stats">
-        <div class="stat-item anim" :style="{ '--d': '160ms' }">
-          <span class="stat-icon">影</span>
-          <span class="stat-value">{{ doneTotal('MOVIE') + doneTotal('TV') }}</span>
-          <span class="stat-label">看过 · 电影/剧集</span>
+
+        <div class="stat-strip">
+          <div class="stat hd-rough"><span class="glyph">影</span><div class="num">{{ doneTotal('MOVIE') + doneTotal('TV') }}</div><div class="label">看过 · 电影 / 剧集</div></div>
+          <div class="stat hd-rough"><span class="glyph">书</span><div class="num">{{ doneTotal('BOOK') }}</div><div class="label">读过 · 书籍</div></div>
+          <div class="stat hd-rough"><span class="glyph">地</span><div class="num">{{ doneTotal('PLACE') }}</div><div class="label">去过 · 地点</div></div>
+          <div class="stat hd-rough"><span class="glyph">文</span><div class="num">{{ data?.summary?.noteTotal || 0 }}</div><div class="label">写过 · 笔记</div></div>
         </div>
-        <div class="stat-item anim" :style="{ '--d': '192ms' }">
-          <span class="stat-icon">书</span>
-          <span class="stat-value">{{ doneTotal('BOOK') }}</span>
-          <span class="stat-label">读过 · 书籍</span>
-        </div>
-        <div class="stat-item anim" :style="{ '--d': '224ms' }">
-          <span class="stat-icon">地</span>
-          <span class="stat-value">{{ doneTotal('PLACE') }}</span>
-          <span class="stat-label">去过 · 地点</span>
-        </div>
-        <div class="stat-item anim" :style="{ '--d': '256ms' }">
-          <span class="stat-icon">文</span>
-          <span class="stat-value">{{ data?.summary?.noteTotal || 0 }}</span>
-          <span class="stat-label">写过 · 笔记</span>
-        </div>
-        <!-- 0.0.3：心愿条数字 = 在想 + 在做，入口指向 /plan（原误指 /note，一并修） -->
-        <router-link v-if="isLogin" to="/plan" class="wish-bar anim" :style="{ '--d': '288ms' }">
-          <span class="wish-bar-icon">愿</span>
-          <span class="wish-bar-num">{{ wishBarTotal }}</span>
-          <span class="wish-bar-label">心愿 · 在想 {{ data?.summary?.wishTotal || 0 }} / 在做 {{ data?.summary?.doingTotal || 0 }}</span>
-          <span class="wish-bar-more">待完成 →</span>
+
+        <router-link v-if="isLogin" to="/plan" class="wish-note hd-rough">
+          <span class="seal">愿</span>
+          <span class="big">{{ wishBarTotal }}</span>
+          <span class="txt">心愿 · 在想 {{ data?.summary?.wishTotal || 0 }} / 在做 {{ data?.summary?.doingTotal || 0 }}</span>
+          <span class="more">待完成 →</span>
         </router-link>
-      </div>
-    </section>
-
-    <div class="home-content">
-      <!-- 沉浸式分段标题 + 胶片齿孔 -->
-      <div class="section-head">
-        <h2 class="section-title">我的时光</h2>
-        <div class="section-strip" aria-hidden="true">
-          <span v-for="i in 16" :key="i" class="perf" />
-        </div>
-        <div class="section-sub">EVERYDAY MEMOIR</div>
-      </div>
-
-      <section class="timeline-section">
-        <div v-if="!timelineGroups.length" class="empty-tip">还没有完成记录，去添加一些想看/想读/想去的事情吧。</div>
-        <div v-for="(group, gi) in timelineGroups" :key="group.date" class="timeline-group">
-          <div class="timeline-date">{{ groupDateLabel(group.date) }}</div>
-          <div class="timeline-rail">
-            <div v-for="(item, ii) in group.items" :key="item.itemId" class="timeline-item" @click="openItemDetail(item)">
-              <span class="tl-dot" aria-hidden="true"></span>
-              <div class="timeline-card">
-                <img
-                  v-if="item.coverUrl && item.itemId !== undefined && !brokenCovers[item.itemId]"
-                  :src="photoUrl(item.coverUrl)"
-                  class="timeline-thumb"
-                  :alt="item.title"
-                  loading="lazy"
-                  @error="markCoverBroken(item.itemId)"
-                />
-                <span v-else class="timeline-cover" :style="coverStyle(gi * 2 + ii)">{{ coverGlyph(item.itemType) }}</span>
-                <div class="timeline-body">
-                  <div class="timeline-title">{{ item.title }}</div>
-                  <div class="timeline-meta">{{ typeName(item.itemType) }}{{ metaSuffix(item) }}</div>
-                  <span v-if="item.rating" class="timeline-rating">★ {{ item.rating }}</span>
-                  <div v-if="item.comment" class="timeline-comment">{{ item.comment }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 分页加载：渐进式“加载更多”，保持时间线的阅读节奏 -->
-        <div v-if="hasMoreTimeline" class="timeline-more">
-          <button class="timeline-more-btn" type="button" :disabled="loadingMore" @click="loadMoreTimeline">
-            {{ loadingMore ? '加载中…' : '展开更多时光 ↓' }}
-          </button>
-          <span class="timeline-more-count">已展示 {{ timelineItems.length }} / 共 {{ timelineTotal }} 条</span>
-        </div>
-        <div v-else-if="timelineItems.length" class="timeline-end">—— 已到底部 · 共 {{ timelineTotal }} 条时光 ——</div>
       </section>
 
-      <aside class="side-section">
-        <section v-if="isLogin" class="wishlist-card">
-          <h2 class="card-title">心愿单 · WISH LIST</h2>
-          <div v-if="!wishlist.length" class="empty-tip">暂无心愿</div>
-          <div v-for="item in wishlist" :key="item.itemId" class="wish-item">
-            <span class="wish-icon" :class="'wish-icon-' + item.itemType">{{ wishGlyph(item.itemType) }}</span>
-            <div class="wish-body">
-              <div class="wish-title">{{ item.title }}</div>
-              <div class="wish-meta">
-                <!-- 状态做成胶囊：在做是暖色高亮（可行动的那一档），其余中性底（实测反馈：11px 灰字看不清） -->
-                <span class="wish-status" :class="{ 'is-doing': item.status === 'DOING' }">{{ statusText(item) }}</span>
-                <plan-date-badge :item="item" @saved="loadWishlist" />
+      <div class="content">
+        <section id="timeline">
+          <div class="section-head">
+            <h2>我的时光</h2>
+            <span class="line" aria-hidden="true"></span>
+            <span class="en">EVERYDAY MEMOIR</span>
+          </div>
+
+          <div v-if="!timelineGroups.length" class="hd-empty">
+            <p>还没有完成记录 —— 去添加一些想看 / 想读 / 想去的事情吧。</p>
+            <div class="acts"><router-link class="hd-btn go" to="/movie">去影单</router-link></div>
+          </div>
+
+          <div v-else class="timeline">
+            <div v-for="group in timelineGroups" :key="group.date" class="tl-group">
+              <div class="tl-date">
+                <b>{{ groupMonthDay(group.date) }}</b>{{ groupWeekday(group.date) }}
+                <span class="wd">{{ groupYear(group.date) }}</span>
+              </div>
+              <div class="tl-rail">
+                <a
+                  v-for="item in group.items"
+                  :key="item.itemId"
+                  class="tl-item"
+                  href="#"
+                  @click.prevent="openItemDetail(item)"
+                >
+                  <div class="tl-card hd-rough">
+                    <span class="tl-cover">
+                      <img
+                        v-if="item.coverUrl && item.itemId !== undefined && !brokenCovers[item.itemId]"
+                        :src="photoUrl(item.coverUrl)"
+                        :alt="item.title"
+                        loading="lazy"
+                        @error="markCoverBroken(item.itemId)"
+                      />
+                      <span v-else class="hd-fallback sm" :class="coverTypeClass(item.itemType)">
+                        <span class="fc-body"><span class="fc-title">{{ item.title }}</span></span>
+                        <span class="fc-motif"></span>
+                      </span>
+                    </span>
+                    <div class="tl-body">
+                      <div class="tl-title">
+                        {{ item.title }}
+                        <span class="hd-st done">{{ doneLabel(item.itemType) }}</span>
+                      </div>
+                      <div class="tl-meta">
+                        <span>{{ typeName(item.itemType) }}{{ metaSuffix(item) }}</span>
+                        <span v-if="item.rating" class="tl-stars" :aria-label="`评分 ${item.rating} 分，满分 10 分`">{{ starText(item.rating) }}</span>
+                      </div>
+                      <div v-if="item.comment" class="tl-comment">{{ item.comment }}</div>
+                    </div>
+                  </div>
+                </a>
               </div>
             </div>
-            <el-button link class="wish-complete" @click="openComplete(item)">完成 →</el-button>
+
+            <div v-if="hasMoreTimeline" class="tl-more">
+              <button class="hd-btn" type="button" :disabled="loadingMore" @click="loadMoreTimeline">
+                {{ loadingMore ? '加载中…' : '展开更多时光 ↓' }}
+              </button>
+              <span class="hd-tiny hd-muted">已展示 {{ timelineItems.length }} / 共 {{ timelineTotal }} 条</span>
+            </div>
+            <div v-else-if="timelineItems.length" class="tl-end">—— 已到底部 · 共 {{ timelineTotal }} 条时光 ——</div>
           </div>
-          <!-- 与「最近笔记」同一模式：侧栏只放首屏一页，完整列表（含分页）去 /plan 看 -->
-          <router-link v-if="wishlist.length" to="/plan" class="note-more">查看全部心愿 →</router-link>
         </section>
 
-        <section class="notes-card">
-          <h2 class="card-title">最近笔记 · NOTES</h2>
-          <div v-if="!data?.recentNotes || !data.recentNotes.length" class="empty-tip">暂无笔记</div>
-          <div v-for="note in data?.recentNotes || []" :key="note.noteId" class="note-item" @click="openNoteDetail(note)">
-            <div class="note-title">{{ note.title }}</div>
-            <div class="note-meta">
-              {{ note.itemId ? '关联条目：' + (note.itemName || '#' + note.itemId) : '独立笔记' }} · {{ formatDate(note.createTime) }}
+        <aside class="aside">
+          <section v-if="isLogin" class="hd-paper">
+            <span class="hd-tape left"></span>
+            <h2 class="card-title">心愿单 <span class="en">WISH LIST</span></h2>
+            <div v-if="!wishlist.length" class="empty-tip">暂无心愿</div>
+            <div v-for="item in wishlist" :key="item.itemId" class="wish-item">
+              <span class="hd-glyph-round" :class="coverTypeClass(item.itemType)">{{ wishGlyph(item.itemType) }}</span>
+              <div class="wish-body">
+                <div class="wish-title">{{ item.title }}</div>
+                <div class="wish-meta">
+                  <span class="hd-st" :class="{ doing: item.status === 'DOING' }">{{ statusText(item) }}</span>
+                  <plan-date-badge :item="item" @saved="loadWishlist" />
+                </div>
+              </div>
+              <button class="wish-done" type="button" @click="openComplete(item)">完成 →</button>
             </div>
-          </div>
-          <router-link v-if="data?.recentNotes?.length" to="/note" class="note-more">查看全部笔记 →</router-link>
-        </section>
-      </aside>
-    </div>
+            <router-link v-if="wishlist.length" to="/plan" class="more">查看全部心愿 →</router-link>
+          </section>
+
+          <section class="hd-paper">
+            <span class="hd-tape right"></span>
+            <h2 class="card-title">最近笔记 <span class="en">NOTES</span></h2>
+            <div v-if="!data?.recentNotes?.length" class="empty-tip">暂无笔记</div>
+            <a
+              v-for="note in data?.recentNotes || []"
+              :key="note.noteId"
+              class="note-item"
+              href="#"
+              @click.prevent="openNoteDetail(note)"
+            >
+              <div class="note-title">{{ note.title }}</div>
+              <div class="note-meta">{{ note.itemId ? '关联条目：' + (note.itemName || '#' + note.itemId) : '独立笔记' }} · {{ formatDate(note.createTime) }}</div>
+            </a>
+            <router-link v-if="data?.recentNotes?.length" to="/note" class="more">查看全部笔记 →</router-link>
+          </section>
+        </aside>
+      </div>
     </template>
 
-    <!-- 心愿单「完成 →」统一完成弹窗（与各模块页同一份组件） -->
     <item-complete-dialog v-model="completeOpen" :item="completeItem" @submitted="onCompleted" />
   </div>
 </template>
@@ -157,6 +162,7 @@
 import { getToken } from '@/utils/auth'
 import { photoUrl } from '@/utils/sgj'
 import { itemStatusLabel } from '@/utils/itemStatus'
+import { starText } from '@/utils/rating'
 import { getFrontHomeData, listFrontHomeTimeline } from '@/api/front/home'
 import { listPlanItems } from '@/api/front/item'
 import ItemCompleteDialog from '@/components/ItemCompleteDialog/index.vue'
@@ -354,6 +360,54 @@ function formatDate(time?: string): string {
   return time.slice(0, 10)
 }
 
+/** 手账扉页日期（设计图：MM.DD + 周几 + 年内第 N 天） */
+const now = new Date()
+const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+const currentYear = now.getFullYear()
+const todayMonthDay = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`
+const todayWeekday = weekdays[now.getDay()]
+const dayOfYear = Math.floor((now.getTime() - new Date(currentYear, 0, 0).getTime()) / 86400000)
+
+function parseDate(value: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (!m) return null
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function groupMonthDay(value: string): string {
+  const d = parseDate(value)
+  return d ? `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}` : value
+}
+
+function groupWeekday(value: string): string {
+  const d = parseDate(value)
+  return d ? weekdays[d.getDay()] : ''
+}
+
+function groupYear(value: string): string {
+  const d = parseDate(value)
+  return d ? String(d.getFullYear()) : ''
+}
+
+/** 条目类型 → hd-fallback / hd-glyph-round 的形制类 */
+function coverTypeClass(type?: string): string {
+  switch (type) {
+    case 'MOVIE': return 'movie'
+    case 'TV': return 'tv'
+    case 'BOOK': return 'book'
+    case 'PLACE': return 'place'
+    default: return 'note'
+  }
+}
+
+/** 时间线条目的完成态文案（顶栏统计口径：看过 / 读过 / 去过） */
+function doneLabel(type?: string): string {
+  if (type === 'BOOK') return '读过'
+  if (type === 'PLACE') return '去过'
+  return '看过'
+}
+
 const greeting = computed(() => {
   const hour = new Date().getHours()
   if (hour < 6) return '夜深了'
@@ -414,818 +468,197 @@ if (isLogin.value) {
 </script>
 
 <style scoped lang="scss">
-.front-home {
-  color: var(--sgj-text-2);
-  font-family: var(--sgj-font-sans);
+/* 0.0.6 首页：样式取自设计图 home.html（.page-home 作用域），共享形制来自 handdrawn-site.css */
+
+/* ===== 首页 ===== */
+.page-home .hero { position: relative; padding: 34px 0 6px }
+.page-home .hero-card {
+  position: relative; background: var(--hd-paper); padding: 38px 40px 30px;
+  border-radius: 4px; box-shadow: var(--hd-shadow-lift);
+}
+.page-home .hero-card .hd-tape { top: -12px; width: 110px }
+.page-home .hero-card .hd-tape.right { top: -10px; right: -18px; left: auto }
+.page-home .hero-eyebrow { font-size: 13px; letter-spacing: 4px; color: var(--hd-red) }
+.page-home .hero-title { margin-top: 12px; font-size: 46px; letter-spacing: 3px; line-height: 1.2 }
+.page-home .hero-sub { margin-top: 14px; font-size: 18px; line-height: 1.85; color: var(--hd-ink-soft); max-width: 620px }
+.page-home .hero-sub b { color: var(--hd-ink); font-weight: 400; border-bottom: 2px dashed var(--hd-red-soft) }
+.page-home .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 24px }
+.page-home .hero-cta {
+  border: 2px solid var(--hd-ink); background: var(--hd-ink); color: var(--hd-paper);
+  padding: 9px 22px; font-size: 17px; letter-spacing: 2px;
+  border-radius: 12px 4px 10px 5px / 5px 10px 4px 12px;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 3px 4px 0 var(--hd-line-soft);
+}
+.page-home .hero-cta:hover { background: var(--hd-red); border-color: var(--hd-red); color: var(--hd-paper); transform: translateY(-1px) rotate(-.5deg) }
+.page-home .entry-card {
+  display: inline-flex; align-items: center; gap: 12px; text-decoration: none;
+  border: 2px solid var(--hd-line); background: var(--hd-paper); padding: 7px 16px;
+  border-radius: 10px 4px 12px 5px / 5px 12px 4px 10px; color: var(--hd-ink);
+  transition: border-color .12s, transform .12s;
+}
+.page-home .entry-card:hover { border-color: var(--hd-red); transform: translateY(-1px) rotate(.4deg) }
+.page-home .entry-card .ico { font-size: 19px; color: var(--hd-red) }
+.page-home .entry-card .t { font-size: 16px; line-height: 1.3 }
+.page-home .entry-card .s { font-size: 13px; color: var(--hd-ink-soft) }
+.page-home .entry-card .arr { color: var(--hd-ink-faint); font-size: 15px }
+
+/* 扉页便签：不是数据，是手账上的日期戳 */
+.page-home .hero-note {
+  position: absolute; right: 36px; top: 34px; width: 196px; padding: 14px 16px 12px;
+  background: var(--hd-paper-3); transform: rotate(2.4deg);
+  box-shadow: var(--hd-shadow); border-radius: 3px;
+}
+.page-home .hero-note::before {
+  content: ""; position: absolute; top: -9px; left: 50%; width: 58px; height: 18px;
+  transform: translateX(-50%) rotate(-2deg); background: var(--hd-tape);
+  clip-path: polygon(0 4%, 5% 0, 95% 2%, 100% 6%, 98% 96%, 93% 100%, 4% 98%, 0 94%);
+}
+.page-home .hero-note .n-day { font-size: 30px; line-height: 1.1; letter-spacing: 1px }
+.page-home .hero-note .n-wd { font-size: 13px; color: var(--hd-ink-soft); margin-top: 2px }
+.page-home .hero-note .n-say { font-size: 14.5px; color: var(--hd-ink-soft); margin-top: 8px; padding-top: 8px; border-top: 1.5px dashed var(--hd-line-soft) }
+.page-home .hero-note svg { position: absolute; right: 10px; bottom: 8px; width: 42px; height: 32px; color: var(--hd-amber-ink) }
+
+/* 统计：四枚贴纸 + 一张心愿便签 */
+.page-home .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 22px }
+.page-home .stat {
+  position: relative; background: var(--hd-paper); padding: 14px 10px 12px; text-align: center;
+  border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px; box-shadow: var(--hd-shadow);
+}
+.page-home .stat .glyph {
+  width: 34px; height: 34px; margin: 0 auto 2px; display: grid; place-items: center;
+  font-size: 18px; border: 2px solid currentColor;
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.page-home .stat:nth-child(1) .glyph { color: var(--hd-red) }
+.page-home .stat:nth-child(2) .glyph { color: var(--hd-moss) }
+.page-home .stat:nth-child(3) .glyph { color: var(--hd-amber-ink) }
+.page-home .stat:nth-child(4) .glyph { color: var(--hd-ink-soft) }
+.page-home .stat .num { font-size: 30px; line-height: 1.1; letter-spacing: 1px }
+.page-home .stat .label { font-size: 13px; color: var(--hd-ink-soft); margin-top: 2px }
+.page-home .wish-note {
+  position: relative; margin-top: 18px; background: var(--hd-paper-3); padding: 12px 18px;
+  border-radius: 3px; transform: rotate(-.5deg);
+  box-shadow: var(--hd-shadow); display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  text-decoration: none; color: var(--hd-ink);
+}
+.page-home .wish-note::before { content: ""; position: absolute; top: -9px; left: 34px; width: 62px; height: 18px; transform: rotate(-3deg); background: var(--hd-tape-2);
+  clip-path: polygon(0 5%, 5% 0, 95% 2%, 100% 7%, 97% 95%, 92% 100%, 4% 97%, 0 93%); }
+.page-home .wish-note .seal { color: var(--hd-red); border: 2px solid var(--hd-red); border-radius: 6px 2px 7px 3px / 3px 7px 2px 6px; padding: 0 7px; font-size: 14px }
+.page-home .wish-note .big { font-size: 24px }
+.page-home .wish-note .txt { font-size: 14.5px; color: var(--hd-ink-soft) }
+.page-home .wish-note .more { margin-left: auto; font-size: 14px; color: var(--hd-red) }
+
+/* 我的时光 */
+.page-home .content { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 44px; margin-top: 44px }
+.page-home .section-head { position: relative; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 0 2px }
+.page-home .section-head h2 { font-size: 27px; letter-spacing: 2px }
+.page-home .section-head .en { font-size: 13px; letter-spacing: 3px; color: var(--hd-ink-soft) }
+.page-home .section-head .line { flex: 1; min-width: 40px; border-top: 2px dashed var(--hd-line-soft); transform: translateY(-6px) }
+.page-home .timeline { margin-top: 18px }
+.page-home .tl-group { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 18px; padding: 18px 0 6px }
+.page-home .tl-date { font-size: 15px; color: var(--hd-ink-soft); text-align: right; padding-top: 6px; line-height: 1.5 }
+.page-home .tl-date b { display: block; font-size: 22px; font-weight: 400; color: var(--hd-ink); letter-spacing: 1px }
+.page-home .tl-date .wd { display: block; margin-top: 2px; font-size: 13px; color: var(--hd-ink-soft) }
+.page-home .tl-rail { position: relative; border-left: 2px dashed var(--hd-line-soft); padding-left: 26px; display: flex; flex-direction: column; gap: 18px }
+.page-home .tl-item { position: relative; text-decoration: none; color: var(--hd-ink) }
+.page-home .tl-item::before {
+  content: ""; position: absolute; left: -33px; top: 24px; width: 13px; height: 13px;
+  border: 2px solid var(--hd-red); background: var(--hd-paper);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.page-home .tl-card::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 62px;
+  height: 16px;
+  transform: translateX(-50%) rotate(-2.5deg);
+  background: var(--hd-tape);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  pointer-events: none;
+}
+
+.page-home .tl-card {
+  position: relative; background: var(--hd-paper); padding: 14px 16px;
+  border-radius: 5px; box-shadow: var(--hd-shadow); display: flex; gap: 16px;
+  transition: transform .12s, box-shadow .12s;
+}
+.page-home .tl-item:nth-child(odd) .tl-card { transform: rotate(-.25deg) }
+.page-home .tl-item:nth-child(even) .tl-card { transform: rotate(.2deg) }
+.page-home .tl-item:hover .tl-card { transform: translateY(-2px) rotate(0); box-shadow: var(--hd-shadow-lift) }
+.page-home .tl-cover {
+  flex: none; width: 84px; height: 108px; position: relative; overflow: hidden;
+  border: 2px solid var(--hd-line); border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px;
+  background: var(--hd-paper-3);
+  display: grid; place-items: center;
+}
+.page-home .tl-cover img { width: 100%; height: 100%; object-fit: cover; display: block }
+.page-home .tl-cover .tape { display: none }
+.page-home .tl-body { min-width: 0; flex: 1 }
+.page-home .tl-title { font-size: 19px; line-height: 1.45; display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-home .tl-meta { margin-top: 3px; font-size: 13px; color: var(--hd-ink-soft); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center }
+.page-home .tl-comment { margin-top: 7px; font-size: 14.5px; color: var(--hd-ink-soft); line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.page-home .tl-stars { color: var(--hd-amber-ink); font-size: 13px; letter-spacing: 1px }
+.page-home .tl-more { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 26px 0 0; padding-left: 26px }
+.page-home .tl-end { text-align: center; font-size: 13px; color: var(--hd-ink-faint); margin-top: 26px; letter-spacing: 1px }
+
+/* 侧栏 */
+.page-home .aside { display: flex; flex-direction: column; gap: 26px }
+.page-home .aside .hd-paper { padding: 16px 18px }
+.page-home .aside .card-title { display: flex; align-items: baseline; gap: 8px; font-size: 18px; letter-spacing: 1px }
+.page-home .aside .card-title .en { font-size: 10.5px; letter-spacing: 2px; color: var(--hd-ink-faint) }
+.page-home .wish-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1.5px dashed var(--hd-line-soft) }
+.page-home .wish-item:last-of-type { border-bottom: 0 }
+.page-home .wish-glyph {
+  flex: none; width: 27px; height: 27px; display: grid; place-items: center; font-size: 13px;
+  border: 1.8px solid currentColor; border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.page-home .wish-glyph.movie, .page-home .wish-glyph.tv { color: var(--hd-red) }
+.page-home .wish-glyph.book { color: var(--hd-moss) }
+.page-home .wish-glyph.place { color: var(--hd-amber-ink) }
+.page-home .wish-body { min-width: 0; flex: 1 }
+.page-home .wish-title { font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-home .wish-meta { display: flex; align-items: center; gap: 6px; margin-top: 1px; font-size: 13px; color: var(--hd-ink-soft); flex-wrap: wrap }
+.page-home .wish-done { border: 0; background: none; color: var(--hd-ink-soft); font-size: 13px; padding: 2px }
+.page-home .wish-done:hover { color: var(--hd-red) }
+.page-home .aside .more { display: block; margin-top: 10px; font-size: 13.5px; color: var(--hd-ink-soft); text-decoration: none }
+.page-home .aside .more:hover { color: var(--hd-red) }
+.page-home .note-item { padding: 9px 0; border-bottom: 1.5px dashed var(--hd-line-soft); text-decoration: none; color: var(--hd-ink); display: block }
+.page-home .note-item:last-of-type { border-bottom: 0 }
+.page-home .note-item:hover .note-title { color: var(--hd-red) }
+.page-home .note-title { font-size: 15.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.page-home .note-meta { margin-top: 2px; font-size: 13px; color: var(--hd-ink-soft) }
+
+@media (max-width: 960px) {
+  .page-home .hero-note { display: none }
+  .page-home .content { grid-template-columns: minmax(0, 1fr); gap: 30px }
+  .page-home .aside { display: grid; grid-template-columns: 1fr 1fr; gap: 20px }
+  .page-home .hero-title { font-size: 38px }
+}
+@media (max-width: 720px) {
+  .page-home .hero { padding-top: 16px }
+  .page-home .hero-card { padding: 26px 20px 22px }
+  .page-home .hero-title { font-size: 30px; letter-spacing: 2px }
+  .page-home .hero-sub { font-size: 16px }
+  .page-home .stat-strip { grid-template-columns: repeat(2, 1fr); gap: 12px }
+  .page-home .content { margin-top: 30px }
+  .page-home .tl-group { grid-template-columns: minmax(0, 1fr); gap: 10px }
+  .page-home .tl-date { text-align: left; display: flex; align-items: baseline; gap: 8px; padding-top: 0 }
+  .page-home .tl-date b { font-size: 19px }
+  .page-home .tl-rail { padding-left: 20px }
+  .page-home .tl-item::before { left: -27px }
+  .page-home .tl-cover { width: 66px; height: 88px }
+  .page-home .tl-title { font-size: 17px }
+  .page-home .aside { grid-template-columns: 1fr }
+  .page-home .wish-note .more { margin-left: 0 }
 }
 
 .load-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 60px 0;
-  color: var(--sgj-text-4);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 60px 0; color: var(--hd-ink-soft);
 }
-
-/* 进入动效（设计稿：240ms · 同组错峰 32ms · prefers-reduced-motion 降级） */
-.anim {
-  opacity: 0;
-  animation: sgj-rise 0.24s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-  animation-delay: var(--d, 0ms);
-}
-
-@keyframes sgj-rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .anim {
-    animation-duration: 0.16s;
-  }
-}
-
-/* ===== Hero：左文案 + 右统计矩阵（设计稿） ===== */
-.hero {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 452px;
-  gap: 48px;
-  padding: 56px 0 24px;
-  margin-bottom: 24px;
-
-  .hero-blob {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-  }
-
-  .hero-blob-1 {
-    right: 96px;
-    top: 0;
-    width: 340px;
-    height: 340px;
-    background: var(--sgj-primary-soft);
-  }
-
-  .hero-blob-2 {
-    right: -40px;
-    top: 260px;
-    width: 160px;
-    height: 160px;
-    background: var(--sgj-moss-soft);
-  }
-
-  .hero-text {
-    position: relative;
-    z-index: 1;
-    align-self: center;
-
-    h1 {
-      margin: 0 0 14px;
-      color: var(--sgj-text);
-      font-family: var(--sgj-font-serif);
-      font-size: 52px;
-      font-weight: 700;
-      line-height: 1.4;
-    }
-
-    .hero-sub {
-      margin: 0;
-      color: var(--sgj-text-2);
-      font-family: var(--sgj-font-serif);
-      font-size: 20px;
-      line-height: 1.35;
-    }
-
-    .hero-actions {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-top: 36px;
-      flex-wrap: wrap;
-    }
-  }
-
-  /* 地图入口卡：320x62 胶囊 */
-  .hero-map-entry {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 22px;
-    height: 62px;
-    background: var(--sgj-bg-card);
-    border: 1px solid var(--sgj-border-card);
-    border-radius: 31px;
-    cursor: pointer;
-    transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
-    box-shadow: var(--sgj-shadow-sm);
-
-    .hero-map-icon {
-      font-size: 20px;
-      color: var(--sgj-primary);
-    }
-
-    .hero-map-body {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.25;
-    }
-
-    .hero-map-text {
-      font-family: var(--sgj-font-serif);
-      font-weight: 700;
-      font-size: 14px;
-      color: var(--sgj-text);
-    }
-
-    .hero-map-sub {
-      font-size: 11px;
-      color: var(--sgj-text-3);
-      margin-top: 2px;
-    }
-
-    .hero-map-arrow {
-      font-size: 17px;
-      color: var(--sgj-primary);
-    }
-
-    &:hover {
-      transform: translateY(-2px);
-    }
-  }
-
-  /* 主 CTA：160x48 灰陶红胶囊 */
-  .hero-cta {
-    border: none;
-    cursor: pointer;
-    padding: 0 30px;
-    height: 48px;
-    border-radius: 24px;
-    background: var(--sgj-primary);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 1px;
-    transition: background 0.14s, transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
-
-    &:hover {
-      background: var(--sgj-primary-dark);
-      transform: translateY(-2px);
-    }
-
-    &:active {
-      transform: scale(0.97);
-    }
-  }
-
-  /* 统计矩阵：2x2 + 宽心愿条 */
-  .hero-stats {
-    position: relative;
-    z-index: 1;
-    display: grid;
-    grid-template-columns: repeat(2, 216px);
-    grid-template-rows: repeat(2, auto) auto;
-    justify-content: end;
-    gap: 18px;
-
-    .stat-item {
-      background: var(--sgj-bg-card);
-      border: 1px solid var(--sgj-border-card);
-      border-radius: 16px;
-      padding: 20px;
-      width: 216px;
-      box-sizing: border-box;
-
-      .stat-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        font-family: var(--sgj-font-serif);
-        font-weight: 700;
-        font-size: 18px;
-        color: var(--sgj-primary-dark);
-        background: var(--sgj-primary-soft);
-      }
-
-      .stat-value {
-        display: block;
-        margin-top: 14px;
-        font-family: var(--sgj-font-serif);
-        font-weight: 700;
-        font-size: 34px;
-        line-height: 1.2;
-        color: var(--sgj-text);
-      }
-
-      .stat-label {
-        display: block;
-        margin-top: 6px;
-        font-size: 13px;
-        color: var(--sgj-text-3);
-      }
-    }
-
-    /* 心愿条：452x96 灰铜 */
-    .wish-bar {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 20px;
-      background: var(--sgj-bg-card);
-      border: 1px solid var(--sgj-border-card);
-      border-radius: 18px;
-      text-decoration: none;
-      transition: box-shadow 0.16s;
-
-      &:hover {
-        box-shadow: var(--sgj-shadow-hover);
-      }
-
-      .wish-bar-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 56px;
-        height: 56px;
-        border-radius: 14px;
-        font-family: var(--sgj-font-serif);
-        font-weight: 700;
-        font-size: 20px;
-        color: var(--sgj-amber);
-        background: var(--sgj-amber-soft);
-        flex-shrink: 0;
-      }
-
-      .wish-bar-num {
-        font-family: var(--sgj-font-serif);
-        font-weight: 700;
-        font-size: 30px;
-        color: var(--sgj-amber);
-      }
-
-      .wish-bar-label {
-        flex: 1;
-        font-size: 12px;
-        color: var(--sgj-text-3);
-      }
-
-      .wish-bar-more {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--sgj-primary);
-        white-space: nowrap;
-      }
-    }
-  }
-}
-
-/* ===== 沉浸式分段标题 ===== */
-.home-content {
-  scroll-margin-top: 96px;
-}
-
-.section-head {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 28px;
-
-  .section-title {
-    font-family: var(--sgj-font-serif);
-    font-size: 30px;
-    font-weight: 700;
-    color: var(--sgj-text);
-    margin: 0;
-    flex-shrink: 0;
-  }
-
-  .section-strip {
-    flex: 1;
-    display: flex;
-    gap: 14px;
-    justify-content: center;
-    min-width: 0;
-
-    .perf {
-      width: 26px;
-      height: 10px;
-      border-radius: 5px;
-      background: var(--sgj-bg-deep);
-      flex-shrink: 0;
-    }
-  }
-
-  .section-sub {
-    font-size: 11px;
-    letter-spacing: 4px;
-    color: var(--sgj-text-4);
-    flex-shrink: 0;
-  }
-}
-
-/* ===== 时间线：日期 左栏 + 轨道圆点 + 卡片（设计稿） ===== */
-.timeline-section {
-  min-width: 0;
-}
-
-/* 加载更多 / 到底提示 */
-.timeline-more {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0 12px;
-
-  .timeline-more-btn {
-    padding: 0 34px;
-    height: 44px;
-    border-radius: 22px;
-    background: transparent;
-    border: 1px solid var(--sgj-primary);
-    color: var(--sgj-primary);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 2px;
-    cursor: pointer;
-    transition: background 0.16s, color 0.16s, transform 0.16s cubic-bezier(0.23, 1, 0.32, 1);
-
-    &:hover:not(:disabled) {
-      background: var(--sgj-primary);
-      color: #fff;
-      transform: translateY(-2px);
-    }
-
-    &:active:not(:disabled) {
-      transform: scale(0.97);
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-  }
-
-  .timeline-more-count {
-    font-size: 11px;
-    letter-spacing: 1px;
-    color: var(--sgj-text-4);
-  }
-}
-
-.timeline-end {
-  text-align: center;
-  padding: 4px 0 12px;
-  font-size: 12px;
-  letter-spacing: 1.5px;
-  color: var(--sgj-text-4);
-}
-
-.timeline-group {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 36px;
-  width: 100%;
-  margin-bottom: 48px;
-
-  .timeline-date {
-    text-align: right;
-    font-family: var(--sgj-font-serif);
-    font-weight: 700;
-    font-size: 22px;
-    color: var(--sgj-text);
-    padding-top: 8px;
-    white-space: nowrap;
-  }
-
-  .timeline-rail {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding-left: 30px;
-
-    &::before {
-      content: '';
-      position: absolute;
-      left: 9px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: var(--sgj-border);
-    }
-  }
-
-  .timeline-item {
-    position: relative;
-
-    .tl-dot {
-      position: absolute;
-      left: -30px;
-      top: 26px;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: var(--sgj-primary);
-
-      &::after {
-        content: '';
-        position: absolute;
-        left: 6px;
-        top: 6px;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--sgj-bg-card);
-      }
-    }
-
-    .timeline-card {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      gap: 14px;
-      background: var(--sgj-bg-card);
-      border: 1px solid var(--sgj-border-card);
-      border-radius: 16px;
-      padding: 14px;
-      cursor: pointer;
-      transition: box-shadow 0.16s, transform 0.16s;
-
-      &:hover {
-        box-shadow: var(--sgj-shadow-hover);
-        transform: translateY(-2px);
-      }
-
-      /* 封面色块：120x120 */
-      .timeline-cover {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 120px;
-        height: 120px;
-        border-radius: 12px;
-        flex-shrink: 0;
-        font-family: var(--sgj-font-serif);
-        font-size: 40px;
-        line-height: 1;
-      }
-
-      .timeline-thumb {
-        width: 120px;
-        height: 120px;
-        object-fit: cover;
-        border-radius: 12px;
-        flex-shrink: 0;
-      }
-
-      .timeline-body {
-        flex: 1;
-        min-width: 0;
-
-        .timeline-title {
-          font-family: var(--sgj-font-serif);
-          font-weight: 700;
-          font-size: 16px;
-          color: var(--sgj-text);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .timeline-meta {
-          font-size: 12px;
-          color: var(--sgj-text-3);
-          margin-top: 6px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        /* 评分：灰铜浅底胶囊 */
-        .timeline-rating {
-          display: inline-block;
-          margin-top: 12px;
-          padding: 1px 10px;
-          border-radius: 11px;
-          background: var(--sgj-amber-soft);
-          color: var(--sgj-amber);
-          font-family: var(--sgj-font-serif);
-          font-weight: 700;
-          font-size: 12px;
-        }
-
-        .timeline-comment {
-          font-size: 12px;
-          color: var(--sgj-text-2);
-          margin-top: 10px;
-          line-height: 1.5;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-      }
-    }
-  }
-}
-
-/* ===== 右侧：心愿单 / 最近笔记（radius 20） ===== */
-.side-section {
-  display: none;
-}
-
-/* 桌面端：区块标题横贯顶部，时间线居左、心愿/笔记固定在右侧栏（设计稿） */
-@media (min-width: 1101px) {
-  .home-content {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-areas:
-      'head head'
-      'timeline side';
-    gap: 0 40px;
-    align-items: start;
-  }
-
-  .section-head {
-    grid-area: head;
-  }
-
-  .timeline-section {
-    grid-area: timeline;
-    min-width: 0;
-  }
-
-  .timeline-group {
-    grid-template-columns: 120px minmax(0, 1fr);
-  }
-
-  .side-section {
-    grid-area: side;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    position: sticky;
-    top: 96px;
-  }
-}
-
-.card-title {
-  font-family: var(--sgj-font-serif);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--sgj-text);
-  margin: 0 0 16px;
-}
-
-.wishlist-card,
-.notes-card {
-  background: var(--sgj-bg-card);
-  border: 1px solid var(--sgj-border-card);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: var(--sgj-shadow-sm);
-}
-
-.wish-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--sgj-border-card);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  .wish-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    font-family: var(--sgj-font-serif);
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--sgj-primary-dark);
-    background: var(--sgj-primary-soft);
-    flex-shrink: 0;
-
-    &.wish-icon-BOOK {
-      color: var(--sgj-moss);
-      background: var(--sgj-moss-soft);
-    }
-
-    &.wish-icon-PLACE {
-      color: var(--sgj-amber);
-      background: var(--sgj-amber-soft);
-    }
-  }
-
-  .wish-body {
-    flex: 1;
-    min-width: 0;
-
-    .wish-title {
-      font-family: var(--sgj-font-serif);
-      font-weight: 700;
-      font-size: 14px;
-      color: var(--sgj-text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* 状态与计划日期同一行：状态是「这条现在处于哪一步」，日期是「打算什么时候」。
-       状态做成胶囊而非 11px 灰字（实测反馈根本看不清）；在做 = 暖色高亮，是可行动的那一档 */
-    .wish-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    .wish-status {
-      display: inline-block;
-      font-size: 11px;
-      line-height: 1.6;
-      padding: 0 8px;
-      border-radius: 999px;
-      background: var(--sgj-bg-deep);
-      color: var(--sgj-text-2);
-
-      &.is-doing {
-        background: var(--sgj-primary-soft);
-        color: var(--sgj-primary);
-        font-weight: 600;
-      }
-    }
-  }
-
-  .wish-complete {
-    white-space: nowrap;
-    flex-shrink: 0;
-    font-size: 12px;
-    color: var(--sgj-primary);
-  }
-}
-
-.note-item {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--sgj-border-card);
-  cursor: pointer;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  .note-title {
-    font-family: var(--sgj-font-serif);
-    font-weight: 500;
-    font-size: 14px;
-    color: var(--sgj-text);
-  }
-
-  .note-meta {
-    font-size: 11px;
-    color: var(--sgj-text-3);
-    margin-top: 4px;
-  }
-}
-
-.note-more {
-  display: block;
-  text-align: right;
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--sgj-primary);
-  text-decoration: none;
-}
-
-.empty-tip {
-  color: var(--sgj-text-4);
-  text-align: center;
-  padding: 30px 0;
-  font-size: 13px;
-}
-
-@media (max-width: 1100px) {
-  .hero {
-    grid-template-columns: 1fr;
-    gap: 8px;
-
-    .hero-blob-1 {
-      right: 40px;
-      width: 220px;
-      height: 220px;
-    }
-
-    .hero-text h1 {
-      font-size: 40px;
-    }
-  }
-
-  .hero-stats {
-    margin-top: 40px;
-  }
-
-  /* 窄屏改为横向滚动？不——改为 2 列网格 */
-  .hero-stats {
-    grid-template-columns: repeat(2, 1fr);
-    width: 100%;
-
-    .stat-item {
-      width: auto;
-    }
-  }
-
-  .timeline-group {
-    grid-template-columns: 120px minmax(0, 1fr);
-    gap: 20px;
-  }
-
-  .section-head .section-strip {
-    display: none;
-  }
-}
-
-/* 移动端（设计稿 04）：hero 改冷炭灰横幅，隐藏统计矩阵 / 心愿条，标题 28px */
-@media (max-width: 768px) {
-  .hero {
-    padding: 24px 20px;
-    border-radius: 16px;
-    background: #282e2c;
-    display: block;
-
-    .hero-blob {
-      display: none;
-    }
-
-    .hero-text h1 {
-      font-size: 28px;
-      color: #e7ece9;
-    }
-
-    .hero-sub {
-      font-size: 13px;
-      color: #aeb8b3;
-    }
-
-    .hero-actions {
-      margin-top: 20px;
-    }
-
-    .hero-map-entry {
-      border-color: var(--sgj-border);
-    }
-
-    .hero-map-text {
-      color: #e7ece9;
-    }
-
-    .hero-cta {
-      padding: 0 22px;
-    }
-
-    .hero-stats {
-      display: none;
-    }
-  }
-
-  .section-head .section-sub {
-    display: none;
-  }
-
-  .timeline-group {
-    grid-template-columns: 96px minmax(0, 1fr);
-    gap: 12px;
-
-    .timeline-date {
-      font-size: 17px;
-    }
-  }
-
-  /* 与基础规则 .timeline-group .timeline-item .timeline-card 保持同级优先级才能覆盖 */
-  .timeline-group .timeline-item .timeline-card {
-    padding: 10px;
-
-    .timeline-cover,
-    .timeline-thumb {
-      width: 64px;
-      height: 64px;
-      font-size: 24px;
-    }
-  }
-}
+.tl-more .hd-tiny { margin-top: 2px; }
 </style>

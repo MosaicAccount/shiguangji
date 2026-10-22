@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手绘足迹图 · 设计提案 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 足迹地图重设计提案：双层地图（手绘示意 ⇄ 真实地图） ===== */
+.page-mapdoc .hd-banner { margin-top: 4px }
+.page-mapdoc .demo { margin-top: 26px; padding: 18px 20px 16px; position: relative }
+.page-mapdoc .demo .hd-tape { top: -10px }
+
+/* 工具条：月份胶囊 + 模式切换 */
+.page-mapdoc .map-toolbar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap }
+.page-mapdoc .map-toolbar .hd-chips { gap: 7px }
+.page-mapdoc .mode-toggle { margin-left: auto; display: flex; gap: 8px; flex: none }
+.page-mapdoc .map-note { margin-top: 10px; font-size: 13px; color: var(--hd-ink-faint) }
+
+/* 地图画布 */
+.page-mapdoc .map-stage { position: relative; margin-top: 12px; aspect-ratio: 720 / 440; overflow: hidden; border-radius: 3px }
+.page-mapdoc .map-stage svg.map-art { display: block; width: 100%; height: 100% }
+.page-mapdoc .map-stage svg.map-art pattern circle { fill: var(--hd-ink-faint); opacity: .38 }
+.page-mapdoc .map-grid path { fill: none; stroke: var(--hd-line-soft); stroke-width: 1.1; stroke-dasharray: 3 9; opacity: .8 }
+.page-mapdoc .map-art .deco { stroke: var(--hd-ink-faint); stroke-width: 2; stroke-linecap: round; opacity: .5; fill: none }
+.page-mapdoc .map-art .deco.wave { stroke: var(--hd-olive); opacity: .45; stroke-width: 1.8 }
+.page-mapdoc .map-route { fill: none; stroke: var(--hd-ochre); stroke-width: 2.4; stroke-dasharray: 8 7; stroke-linecap: round; opacity: .8 }
+.page-mapdoc .map-pin { cursor: pointer }
+.page-mapdoc .map-pin circle.bubble {
+  fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2;
+}
+.page-mapdoc .map-pin text { fill: var(--hd-amber-ink); font-size: 13px; font-family: var(--hd-hand) }
+.page-mapdoc .map-pin.wish circle.bubble { stroke-dasharray: 4 3; stroke: var(--hd-ink-soft) }
+.page-mapdoc .map-pin.wish text { fill: var(--hd-ink-soft) }
+.page-mapdoc .map-pin:hover circle.bubble { stroke: var(--hd-red) }
+.page-mapdoc .map-pin:hover text { fill: var(--hd-red) }
+.page-mapdoc .cluster-pin { cursor: pointer }
+.page-mapdoc .cluster-pin circle.bubble { fill: var(--hd-paper); stroke: var(--hd-amber-ink); stroke-width: 2.2 }
+.page-mapdoc .cluster-pin .ring { fill: none; stroke: var(--hd-amber-ink); stroke-width: 1.5; stroke-dasharray: 3 4; opacity: .75 }
+.page-mapdoc .cluster-pin .cnt { fill: var(--hd-amber-ink); font-size: 13.5px; font-family: var(--hd-hand) }
+.page-mapdoc .cluster-pin .cap {
+  fill: var(--hd-ink-soft); font-size: 12.5px; font-family: var(--hd-hand);
+  paint-order: stroke; stroke: var(--hd-paper); stroke-width: 3.5px;
+}
+.page-mapdoc .cluster-pin:hover circle.bubble { stroke: var(--hd-red) }
+.page-mapdoc .cluster-pin:hover .ring { stroke: var(--hd-red) }
+.page-mapdoc .cluster-pin:hover .cnt, .page-mapdoc .cluster-pin:hover .cap { fill: var(--hd-red) }
+.page-mapdoc .map-arrow { stroke: var(--hd-ochre); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round }
+.page-mapdoc .map-legend {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3;
+  display: flex; align-items: center; gap: 12px; padding: 2px 10px;
+  font-size: 13px; color: var(--hd-ink-soft); background: var(--hd-paper);
+  border: 1.6px solid var(--hd-line-soft); border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px;
+}
+.page-mapdoc .lg-dot { width: 11px; height: 11px; margin-right: 5px; display: inline-block; vertical-align: -1px;
+  background: var(--hd-paper); border: 1.8px solid var(--hd-amber-ink); border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%; }
+.page-mapdoc .lg-dot.wish { border: 1.8px dashed var(--hd-ink-soft) }
+.page-mapdoc .lg-dot.cluster { box-shadow: 3px 3px 0 -1px var(--hd-paper), 3px 3px 0 0 var(--hd-amber-ink), -3px -3px 0 -1px var(--hd-paper), -3px -3px 0 0 var(--hd-amber-ink) }
+
+/* 放大镜层 */
+
+/* 真实地图模式（伪高德：浅灰路网 + 照片图钉） */
+.page-mapdoc .real-map {
+  position: absolute; inset: 0; overflow: hidden;
+  background-color: #EDEAE3;
+  background-image:
+    linear-gradient(90deg, rgba(125, 132, 138, .16) 1.5px, transparent 1.5px),
+    linear-gradient(rgba(125, 132, 138, .16) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(125, 132, 138, .10) 2px, transparent 2.5px);
+  background-size: 72px 72px, 72px 72px, 24px 24px;
+}
+.page-mapdoc .real-map .road { position: absolute; background: rgba(255, 255, 255, .75); box-shadow: 0 0 0 1px rgba(150, 155, 160, .18) }
+.page-mapdoc .real-map .water { position: absolute; background: #D7DFDF; border-radius: 40% 55% 60% 45% / 55% 40% 50% 50%; opacity: .8 }
+.page-mapdoc .real-map .park { position: absolute; background: #DDE3D2; border-radius: 45% 60% 50% 55% / 60% 45% 55% 50%; opacity: .9 }
+.page-mapdoc .real-svg { position: absolute; inset: 0; width: 100%; height: 100% }
+.page-mapdoc .real-pin {
+  position: absolute; width: 48px; height: 48px; transform: translate(-50%, -58%);
+  border-radius: 8px 8px 8px 2px; overflow: visible; cursor: pointer;
+}
+.page-mapdoc .real-pin img {
+  width: 48px; height: 48px; object-fit: cover; display: block;
+  border-radius: 8px 8px 8px 2px; border: 2.5px solid var(--hd-paper);
+  box-shadow: 0 2px 6px rgba(40, 36, 30, .28);
+  transition: transform .14s;
+}
+.page-mapdoc .real-pin:hover img { transform: scale(1.1) }
+.page-mapdoc .real-pin .cnt {
+  position: absolute; right: -6px; bottom: -6px; min-width: 18px; height: 18px;
+  padding: 0 4px; display: grid; place-items: center;
+  font-size: 11.5px; color: var(--hd-paper); background: var(--hd-amber-ink);
+  border-radius: 9px 4px 8px 3px; font-family: var(--hd-hand);
+}
+.page-mapdoc .real-pin.stack img.sec { position: absolute; left: 5px; top: -5px; z-index: -1; transform: rotate(6deg) }
+.page-mapdoc .real-pin.stack img.thi { position: absolute; left: -4px; top: 4px; z-index: -2; transform: rotate(-7deg) }
+.page-mapdoc .real-pin.wish-pin img { filter: grayscale(.9); opacity: .8; border-style: dashed }
+.page-mapdoc .real-attrib { position: absolute; right: 8px; bottom: 6px; font-size: 11px; color: #7C8288; z-index: 3 }
+
+/* 详情抽屉（演示用） */
+.page-mapdoc .mock-drawer {
+  position: fixed; top: 14px; right: 14px; bottom: 14px; width: 400px; z-index: 60;
+  background-color: var(--hd-paper); background-image: var(--hd-grain);
+  border: 2.2px solid var(--hd-line); border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+  box-shadow: var(--hd-shadow-lift); padding: 22px 22px 18px; overflow-y: auto;
+  transform: translateX(30px); opacity: 0; pointer-events: none; transition: transform .2s, opacity .2s;
+}
+.page-mapdoc .mock-drawer.open { transform: none; opacity: 1; pointer-events: auto }
+.page-mapdoc .mock-drawer .hd-tape { top: -9px; width: 86px }
+.page-mapdoc .mock-drawer .x { position: absolute; top: 10px; right: 12px; border: 0; background: none; color: var(--hd-ink-soft); font-size: 18px; cursor: pointer }
+.page-mapdoc .mock-drawer .st-row { display: flex; gap: 10px; align-items: center }
+.page-mapdoc .mock-drawer h3 { font-size: 26px; margin-top: 6px }
+.page-mapdoc .mock-drawer .meta { margin-top: 6px; font-size: 13.5px; color: var(--hd-ink-soft); display: flex; gap: 12px; flex-wrap: wrap }
+.page-mapdoc .mock-drawer .ph { margin-top: 14px; border: 1.6px solid var(--hd-line-soft); border-radius: 3px; background: var(--hd-paper-2); height: 150px; display: grid; place-items: center; color: var(--hd-ink-faint); font-size: 13px }
+.page-mapdoc .mock-drawer .say { margin-top: 14px; padding: 10px 14px; background: var(--hd-paper-2); border-left: 3px solid var(--hd-red); font-size: 14.5px; color: var(--hd-ink-soft); line-height: 1.8 }
+.page-mapdoc .mock-drawer .acts { margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end }
+
+/* 「这一片」纸卡：簇内地点列表 + 小路线示意 */
+.page-mapdoc .clu-sub { margin-top: 4px; font-size: 13px; color: var(--hd-ink-faint) }
+.page-mapdoc .clu-strip { margin-top: 14px; border: 1.6px dashed var(--hd-line-soft); border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px; background: var(--hd-paper-2) }
+.page-mapdoc .clu-rows { margin-top: 12px }
+.page-mapdoc .clu-row { display: flex; gap: 12px; align-items: center; padding: 10px 2px; border-bottom: 1.5px dashed var(--hd-line-soft); cursor: pointer }
+.page-mapdoc .clu-row:last-child { border-bottom: 0 }
+.page-mapdoc .clu-row img { width: 44px; height: 56px; object-fit: cover; border: 1.6px solid var(--hd-line); border-radius: 3px 1px 4px 2px }
+.page-mapdoc .clu-t { font-size: 16px }
+.page-mapdoc .clu-row:hover .clu-t { color: var(--hd-red) }
+.page-mapdoc .clu-m { font-size: 13px; color: var(--hd-ink-soft); margin-top: 2px }
+.page-mapdoc .clu-arrow { margin-left: auto; color: var(--hd-ink-faint); font-size: 16px }
+.page-mapdoc .clu-row:hover .clu-arrow { color: var(--hd-red) }
+.page-mapdoc .back-link { border: 0; background: none; padding: 0 0 2px; font-size: 13px; color: var(--hd-ink-soft); cursor: pointer; border-bottom: 1.4px dashed var(--hd-line-soft); font-family: var(--hd-hand) }
+.page-mapdoc .back-link:hover { color: var(--hd-red) }
+
+/* 无照片默认封面（列表小图 / 详情大图共用形制） */
+.page-mapdoc .clu-fb, .page-mapdoc .ph.ph-fb {
+  flex: none; position: relative; overflow: hidden;
+  width: 44px; height: 56px;
+  background: var(--hd-amber-soft);
+  border: 1.6px solid var(--hd-line); border-radius: 3px 1px 4px 2px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.page-mapdoc .ph.ph-fb { width: 100%; height: 150px; border-radius: 3px; justify-content: flex-end }
+.page-mapdoc .fb-band {
+  position: absolute; top: 0; left: 0; font-style: normal;
+  font-size: 11px; padding: 1px 7px; color: var(--hd-paper);
+  background: var(--hd-ochre); border-radius: 2px 0 3px 0; font-family: var(--hd-hand);
+}
+.page-mapdoc .ph .fb-band { font-size: 13px; padding: 2px 10px }
+.page-mapdoc .fb-t {
+  font-weight: 400; font-size: 12.5px; color: var(--hd-ink);
+  padding: 2px 6px 4px; line-height: 1.3;
+  background: linear-gradient(180deg, transparent, rgba(255, 253, 249, .9) 38%);
+  font-family: var(--hd-hand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.page-mapdoc .ph .fb-t { font-size: 17px; padding: 6px 12px 8px }
+.page-mapdoc .ph-img { width: 100%; height: 150px; object-fit: cover; border-radius: 3px; display: block }
+
+/* 高德单点视图 */
+.page-mapdoc .amap-back { position: absolute; left: 12px; top: 12px; z-index: 5 }
+.page-mapdoc .amap-title {
+  position: absolute; left: 50%; top: calc(44% + 40px); transform: translateX(-50%);
+  z-index: 4; padding: 3px 12px; font-size: 13.5px; color: var(--hd-ink);
+  background: var(--hd-paper); border: 1.6px solid var(--hd-line);
+  border-radius: 9px 3px 8px 3px / 3px 8px 3px 9px; font-family: var(--hd-hand);
+  white-space: nowrap;
+}
+
+/* 状态机 / 规则 */
+.page-mapdoc .logic { margin-top: 26px; padding: 20px 24px 18px }
+.page-mapdoc .logic h2 { font-size: 21px; letter-spacing: 1px; margin: 14px 0 0 }
+.page-mapdoc .flow {
+  margin-top: 14px; padding: 16px 20px; font-size: 14.5px; line-height: 2.05;
+  background: var(--hd-paper-2); border: 1.6px dashed var(--hd-line-soft);
+  border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px; color: var(--hd-ink);
+  overflow-x: auto; white-space: pre; font-family: var(--hd-hand);
+}
+.page-mapdoc .rule-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px }
+.page-mapdoc .rule-table th, .page-mapdoc .rule-table td { text-align: left; padding: 8px 10px; border-bottom: 1.5px dashed var(--hd-line-soft); vertical-align: top }
+.page-mapdoc .rule-table th { color: var(--hd-ink-soft); font-weight: 400; white-space: nowrap }
+.page-mapdoc .rule-table td.k { color: var(--hd-red); white-space: nowrap }
+.page-mapdoc .edges { margin-top: 14px; font-size: 14px; color: var(--hd-ink-soft); line-height: 1.9; max-width: 46em }
+.page-mapdoc .edges b { color: var(--hd-ink); font-weight: 400 }
+
+/* 同坐标兜底示例 */
+.page-mapdoc .fallback-fig { margin-top: 26px; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 26px; align-items: center }
+.page-mapdoc .fallback-fig .fig-cap { font-size: 14px; color: var(--hd-ink-soft); line-height: 2; max-width: 46em }
+.page-mapdoc .fallback-fig svg text { font-family: var(--hd-hand) }
+</style>
+</head>
+<body class="hd-app page-mapdoc" data-page="travel">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html">首页</a>
+      <a href="movie.html">影单</a>
+      <a href="book.html">书单</a>
+      <a href="travel.html" class="on">足迹</a>
+      <a href="notes.html">笔记</a>
+      <a href="plan.html">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="hd-banner">
+    <span class="hd-tape left"></span>
+    <span class="hd-tape right amber"></span>
+    <div>
+      <div class="eyebrow">足迹地图 · 终版方案</div>
+      <h1>手绘足迹图</h1>
+      <p class="desc">真实坐标相对投影 + 编号图钉 + 方向箭标 + 城市叠针；点叠针看「这一片」纸卡；要看精确位置，在详情里点「在高德地图上查看」。下面这页可以点：切月份、点图钉、点叠针、进详情开高德。</p>
+    </div>
+    <div class="acts">
+      <a class="hd-btn" href="travel.html">现有足迹页 →</a>
+    </div>
+  </section>
+
+  <!-- ===== 可交互演示 ===== -->
+  <section class="demo hd-paper">
+    <span class="hd-tape"></span>
+    <div class="map-toolbar">
+      <div class="hd-chips" id="monthChips" role="group" aria-label="按月份筛选"></div>
+    </div>
+    <div class="map-stage" id="mapStage">
+      <svg class="map-art" id="handMap" viewBox="0 0 720 440" role="img" aria-label="手绘足迹示意图"></svg>
+      <div class="real-map" id="realMap" hidden></div>
+      <div class="map-legend">
+        <span><i class="lg-dot"></i>去过（编号 = 到访顺序）</span>
+        <span><i class="lg-dot cluster"></i>叠针 = 附近 N 处</span>
+      </div>
+    </div>
+    <p class="map-note">示意位置 · 非比例 —— 方位关系真实，距离不是；要看精确位置就点右上「真实地图」。</p>
+  </section>
+
+  <!-- ===== 业务逻辑 ===== -->
+  <section class="logic hd-paper">
+    <span class="hd-tape right"></span>
+    <h2>业务逻辑</h2>
+
+    <div class="flow" aria-label="交互状态机">全国手绘图（默认 · 全年）
+├─ 点月份胶囊 ──→ 重画路径与图钉（投影框不动，地图不跳）
+├─ 点编号图钉 ──→ 详情抽屉
+├─ 点叠针 ──────→ 「这一片」纸卡（簇内地点列表 + 小路线示意）
+│    └─ 点条目 → 详情抽屉（纸卡里可返回列表）
+└─ 详情抽屉 ────→ 点「在高德地图上查看」→ 高德单点视图
+                     （照片图钉，沿用原样式）→ 「返回手绘示意」</div>
+
+    <table class="rule-table">
+      <thead><tr><th style="width:120px">环节</th><th>规则</th></tr></thead>
+      <tbody>
+        <tr><td class="k">投影</td><td>等距圆柱<b>相对投影</b>：把全部足迹的经纬度包围盒映射到纸面（国内外地点通吃），保持方位关系；页角常驻「示意位置 · 非比例」。投影框按<b>全部足迹</b>计算，月份筛选不改变它。</td></tr>
+        <tr><td class="k">防重叠 · 位移</td><td>图钉最小间距 52px；力导向互斥微位移，单针位移上限 26px——只「挪半步」，方位感不破坏。</td></tr>
+        <tr><td class="k">防重叠 · 聚合</td><td>位移后仍 &lt;30px（同城多点）→ 合成<b>叠针</b>（三针叠放 + 数量角标），停在真实位置；不去伪造间隔。</td></tr>
+        <tr><td class="k">叠针 → 纸卡</td><td>点叠针弹<b>「这一片」纸卡</b>：簇内地点按到访先后排列（照片 + 日期 + 张数），顶部一条编号小路线示意，标注跨度 km；点条目进详情抽屉，纸卡内可返回。同坐标多次到访在列表里天然可表达，无需特殊兜底。</td></tr>
+        <tr><td class="k">月份口径</td><td>按 finishDate 归月；胶囊只列<b>有足迹的月份</b>并带数量（空月不出现）；默认「全年」；切换只重画路径与图钉。</td></tr>
+        <tr><td class="k">路径</td><td>选中范围按日期升序串联成虚线路径，<b>每段中点带方向箭标</b>（先后顺序一眼可读）；仅 1 个点不画线；想去不进路径。</td></tr>
+        <tr><td class="k">想去</td><td>不上地图——足迹图只画走过的路；想去在地点卡片区与详情里管理（定日子 / 标记去过）。</td></tr>
+        <tr><td class="k">空态</td><td>一个足迹都没有 → 手绘空态 +「＋ 添加想去」；坐标缺失的地点不上图，仍在卡片与时间线里。</td></tr>
+        <tr><td class="k">高德按需</td><td>不再做整图模式切换；详情抽屉里的<b>「在高德地图上查看」</b>打开单点高德视图（照片图钉沿用原样式 + 地名签 + 返回），看完即回手绘示意。</td></tr>
+        <tr><td class="k">无照片兜底</td><td>详情与「这一片」列表没有封面 / 照片时显示手绘默认封面（赭石类型签 + 名称压角），不留空块。</td></tr>
+        <tr><td class="k">回顾复用</td><td>回顾页的年度足迹地图换用<b>同一套手绘示意组件</b>（投影 / 叠针 / 箭标 / 纸卡一致），跨页视觉统一。</td></tr>
+        <tr><td class="k">性能</td><td>个人站量级（≤ 数百点），投影 / 松弛 / 聚合全在前端一次算完，无接口改动。</td></tr>
+      </tbody>
+    </table>
+
+    <p class="edges">
+      <b>为什么点图钉不直接跳高德：</b>点图钉时用户要的是信息（照片 / 日期 / 短评），不是地理核查；逐点击在「手账跨页」和「工具地图」两种心智模型间跳，连看五个地方就要跳五次。地理核查是低频需求，用一次显式切换满足——两种地图里「点图钉 / 点照片 = 开详情」保持同一个动作。
+    </p>
+  </section>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<!-- 详情抽屉（演示） -->
+<aside class="mock-drawer" id="mockDrawer" aria-label="地点详情（演示）">
+  <span class="hd-tape"></span>
+  <button class="x" type="button" id="drawerClose" aria-label="关闭">✕</button>
+  <div id="drawerBody"></div>
+</aside>
+
+<script>
+/* ===== 演示数据：一年足迹 + 想去（坐标真实，用于驱动投影演示） ===== */
+var PLACES = [
+  { id: 1, t: '松花江', city: '哈尔滨', lng: 126.63, lat: 45.75, d: '2026-01-18', photos: 6 },
+  { id: 2, t: '开元寺', city: '泉州', lng: 118.58, lat: 24.91, d: '2026-03-16', photos: 14 },
+  { id: 3, t: '鸭川', city: '京都', lng: 135.77, lat: 35.01, d: '2026-04-08', photos: 22 },
+  { id: 5, t: '洱海', city: '大理', lng: 100.18, lat: 25.75, d: '2026-09-22', photos: 18 },
+  { id: 6, t: '喜洲', city: '大理', lng: 100.13, lat: 25.99, d: '2026-09-23', photos: 9 },
+  { id: 7, t: '古城', city: '大理', lng: 100.16, lat: 25.69, d: '2026-09-24', photos: 12, cover: null },
+  { id: 4, t: '阿那亚', city: '秦皇岛', lng: 119.30, lat: 39.78, d: '2026-09-27', photos: 31 },
+  { id: 8, t: '外滩', city: '上海', lng: 121.48, lat: 31.23, d: '2026-10-12', photos: 7 },
+  { id: 9, t: '西湖', city: '杭州', lng: 120.15, lat: 30.25, wish: true, photos: 0 }
+];
+var PHOTOS = ['assets/covers/place-lake.jpg', 'assets/covers/place-garden.jpg', 'assets/covers/movie-garden.jpg', 'assets/covers/tv-city.jpg'];
+
+var VB = { w: 720, h: 440, pad: 52 };
+var state = { month: 'all', mode: 'hand' };
+
+/* 等距圆柱相对投影：包围盒来自全部点（筛选不改变投影框） */
+var BOX = (function () {
+  var xs = PLACES.map(function (p) { return p.lng }), ys = PLACES.map(function (p) { return p.lat });
+  return { x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs), y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys) };
+})();
+function project() {
+  PLACES.forEach(function (p) {
+    p.x = VB.pad + (p.lng - BOX.x0) / (BOX.x1 - BOX.x0) * (VB.w - VB.pad * 2);
+    p.y = VB.pad + (BOX.y1 - p.lat) / (BOX.y1 - BOX.y0) * (VB.h - VB.pad * 2);
+  });
+}
+project();
+
+/* 防重叠：先按真实距离聚簇（同城），散点再对簇心/彼此微位移（上限 26px） */
+var MIN = 52, PUSH_MAX = 26, SAME_SPOT = 34, CLUSTER_AT = 30;
+function decluster(list) {
+  var items = list.filter(function (p) { return !p.wish; });
+  /* 1) 真实投影距离 < SAME_SPOT 的并成一组（同城多点），不去伪造间隔 */
+  var groups = [];
+  items.forEach(function (p) {
+    var g = groups.find(function (G) { return G.items.some(function (q) { return Math.hypot(p.x - q.x, p.y - q.y) < SAME_SPOT; }); });
+    if (g) g.items.push(p); else groups.push({ items: [p], multi: false });
+  });
+  groups.forEach(function (G) {
+    G.cx = G.items.reduce(function (s, q) { return s + q.x; }, 0) / G.items.length;
+    G.cy = G.items.reduce(function (s, q) { return s + q.y; }, 0) / G.items.length;
+  });
+  /* 2) 散点微位移：避开簇心与已放好的散点；仍贴着某簇（<CLUSTER_AT）就并进去 */
+  var fixed = groups.filter(function (G) { return G.items.length > 1; });
+  var singles = groups.filter(function (G) { return G.items.length === 1; });
+  var placed = [];
+  singles.forEach(function (G) {
+    var it = G.items[0], mx = it.x, my = it.y;
+    var obs = fixed.map(function (F) { return { x: F.cx, y: F.cy }; }).concat(placed);
+    for (var i = 0; i < 40; i++) {
+      var moved = false;
+      obs.forEach(function (q) {
+        var dx = mx - q.x, dy = my - q.y, d = Math.hypot(dx, dy);
+        if (d < MIN) { var ang = Math.atan2(dy || .01, dx || .01), step = (MIN - d) / 2; mx += Math.cos(ang) * step; my += Math.sin(ang) * step; moved = true; }
+      });
+      var ddx = mx - it.x, ddy = my - it.y, dd = Math.hypot(ddx, ddy);
+      if (dd > PUSH_MAX) { mx = it.x + ddx / dd * PUSH_MAX; my = it.y + ddy / dd * PUSH_MAX; }
+      if (!moved) break;
+    }
+    var near = fixed.find(function (F) { return Math.hypot(mx - F.cx, my - F.cy) < CLUSTER_AT; });
+    if (near) { near.items.push(it); near.cx = (near.cx * (near.items.length - 1) + mx) / near.items.length; near.cy = (near.cy * (near.items.length - 1) + my) / near.items.length; G.absorbed = true; return; }
+    G.cx = mx; G.cy = my; placed.push({ x: mx, y: my });
+  });
+  return { groups: groups.filter(function (G) { return !G.absorbed; }), pins: placed };
+}
+
+function filtered() {
+  var v = PLACES.filter(function (p) { return !p.wish && (state.month === 'all' || (p.d || '').slice(5, 7) === state.month); });
+  v.sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); });
+  return v;
+}
+
+/* ===== SVG 渲染 ===== */
+var SVGNS = 'http://www.w3.org/2000/svg';
+function el(name, attrs, parent) {
+  var n = document.createElementNS(SVGNS, name);
+  for (var k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+var handMap = document.getElementById('handMap');
+
+/* 路线方向：每段 55% 处一枚 › 箭标，沿行进方向旋转 */
+function routeArrows(pts, parent) {
+  for (var i = 0; i < pts.length - 1; i++) {
+    var x1 = pts[i][0], y1 = pts[i][1], x2 = pts[i + 1][0], y2 = pts[i + 1][1];
+    var mx = x1 + (x2 - x1) * .55, my = y1 + (y2 - y1) * .55;
+    var ang = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+    el('path', { class: 'map-arrow', d: 'M-4.5 -4.5 L2.5 0 L-4.5 4.5', transform: 'translate(' + mx + ' ' + my + ') rotate(' + ang + ')' }, parent);
+  }
+}
+
+function drawHand() {
+  handMap.innerHTML = '';
+  var defs = el('defs', {}, handMap);
+  window._mdDefs = defs;
+  var pat = el('pattern', { id: 'mdots', width: 15, height: 15, patternUnits: 'userSpaceOnUse' }, defs);
+  el('circle', { cx: 2, cy: 2, r: 1.1 }, pat);
+  /* 底图整组：放大镜里 <use> 它并放大——比例尺真的变了 */
+  var base = el('g', { id: 'md-basemap' }, handMap);
+  el('rect', { width: VB.w, height: VB.h, fill: 'url(#mdots)', 'fill-opacity': .5 }, base);
+  var grid = el('g', { class: 'map-grid' }, base);
+  [140, 280, 420, 560].forEach(function (x) { el('path', { d: 'M' + x + ' 24 V416' }, grid); });
+  [110, 220, 330].forEach(function (y) { el('path', { d: 'M30 ' + y + ' H690' }, grid); });
+  el('path', { class: 'deco', d: 'M40 78 q14 -18 28 0 q12 -14 24 2' }, base);
+  el('path', { class: 'deco wave', d: 'M600 380 q12 6 24 0 t24 0' }, base);
+  el('path', { class: 'deco wave', d: 'M640 400 q10 5 20 0 t20 0' }, base);
+
+  var visited = filtered();
+  var groups = decluster(visited).groups;
+
+  /* 到访序号（全年口径，月份切换不重编） */
+  var order = {};
+  PLACES.filter(function (p) { return !p.wish; }).sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); })
+    .forEach(function (p, i) { order[p.id] = i + 1; });
+
+  /* 路径：选中范围按日期串联（经过组心），每段带方向箭标 */
+  if (visited.length > 1) {
+    var pts = visited.map(function (p) {
+      var G = groups.find(function (G) { return G.items.includes(p); });
+      return [G.cx, G.cy];
+    });
+    el('path', { class: 'map-route', d: 'M' + pts.map(function (q) { return q[0] + ',' + q[1]; }).join(' L') }, handMap);
+    routeArrows(pts, handMap);
+  }
+
+  /* 图钉：单点组 = 编号针；多点组 = 叠针 */
+  groups.forEach(function (G) {
+    if (G.items.length === 1) {
+      var p = G.items[0];
+      var g = el('g', { class: 'map-pin', transform: 'translate(' + G.cx + ',' + G.cy + ')' }, handMap);
+      el('circle', { class: 'bubble', r: 13 }, g);
+      var t = el('text', { y: 4.5, 'text-anchor': 'middle' }, g);
+      t.textContent = order[p.id];
+      g.addEventListener('click', function (e) { e.stopPropagation(); renderPlace(p); });
+    } else {
+      var gc = el('g', { class: 'cluster-pin', transform: 'translate(' + G.cx + ',' + G.cy + ')' }, handMap);
+      el('circle', { class: 'ring', r: 19 }, gc);
+      el('circle', { class: 'bubble', r: 15 }, gc);
+      var bt = el('text', { class: 'cnt', y: 5, 'text-anchor': 'middle' }, gc);
+      bt.textContent = G.items.length;
+      var cap = el('text', { class: 'cap', y: 36, 'text-anchor': 'middle' }, gc);
+      cap.textContent = (G.items[0].city || '') + ' · ' + G.items.length + ' 处';
+      gc.addEventListener('click', function (e) { e.stopPropagation(); openCluster(G); });
+      G.node = gc;
+    }
+  });
+
+}
+
+/* 「这一片」纸卡：点叠针弹出簇内地点列表 + 小路线示意，地图一个像素不动；
+   点条目进详情抽屉（可返回列表）。同坐标多次到访在列表里天然可表达。 */
+function openCluster(G) {
+  var members = G.items.slice().sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); });
+  var lngs = members.map(function (p) { return p.lng; }), lats = members.map(function (p) { return p.lat; });
+  var kmW = (Math.max.apply(null, lngs) - Math.min.apply(null, lngs)) * 111 * Math.cos((members[0].lat || 30) * Math.PI / 180);
+  var kmH = (Math.max.apply(null, lats) - Math.min.apply(null, lats)) * 111;
+  var km = Math.round(Math.max(kmW, kmH, 0.5));
+
+  var order = {};
+  PLACES.filter(function (p) { return !p.wish; }).sort(function (a, b) { return (a.d || '').localeCompare(b.d || ''); })
+    .forEach(function (p, i) { order[p.id] = i + 1; });
+
+  var body = document.getElementById('drawerBody');
+  body.innerHTML = '';
+
+  var st = document.createElement('div');
+  st.className = 'st-row';
+  st.innerHTML = '<span class="hd-st done">去过</span><span style="font-size:13px;color:var(--hd-ink-faint)">同一片</span>';
+  body.appendChild(st);
+
+  var h = document.createElement('h3');
+  h.textContent = (members[0].city || '这一片') + ' · ' + members.length + ' 处足迹';
+  body.appendChild(h);
+
+  var sub = document.createElement('div');
+  sub.className = 'clu-sub';
+  sub.textContent = '跨度约 ' + km + ' km · 示意非等比 —— 按到访先后排列';
+  body.appendChild(sub);
+
+  /* 小路线示意：编号针 + 虚线行程 */
+  var strip = document.createElementNS(SVGNS, 'svg');
+  strip.setAttribute('class', 'clu-strip');
+  strip.setAttribute('viewBox', '0 0 336 78');
+  strip.setAttribute('style', 'display:block;width:100%');
+  var xs = members.map(function (m, i) { return 336 * (i + 1) / (members.length + 1); });
+  if (members.length > 1) {
+    el('path', { d: 'M' + xs.map(function (x, i) { return x + ' ' + (40 + (i % 2 ? -6 : 6)); }).join(' L'), class: 'map-route' }, strip);
+  }
+  members.forEach(function (m, i) {
+    var y = 40 + (i % 2 ? -6 : 6);
+    el('circle', { cx: xs[i], cy: y, r: 12, fill: 'var(--hd-paper)', stroke: 'var(--hd-red)', 'stroke-width': 2 }, strip);
+    var t = el('text', { x: xs[i], y: y + 4.5, 'text-anchor': 'middle', fill: 'var(--hd-red)', 'font-size': 12.5, 'font-family': 'var(--hd-hand)' }, strip);
+    t.textContent = order[m.id];
+    var lb = el('text', { x: xs[i], y: y + 28, 'text-anchor': 'middle', fill: 'var(--hd-ink-soft)', 'font-size': 12, 'font-family': 'var(--hd-hand)' }, strip);
+    lb.textContent = m.t;
+  });
+  body.appendChild(strip);
+
+  var rows = document.createElement('div');
+  rows.className = 'clu-rows';
+  members.forEach(function (m) {
+    var r = document.createElement('div');
+    r.className = 'clu-row';
+    if (m.cover) {
+      var img = document.createElement('img');
+      img.src = m.cover; img.alt = m.t;
+      r.appendChild(img);
+    } else {
+      var fb = document.createElement('span');
+      fb.className = 'clu-fb';
+      fb.innerHTML = '<i class="fb-band">地点</i><b class="fb-t">' + m.t + '</b>';
+      r.appendChild(fb);
+    }
+    var tx = document.createElement('div');
+    tx.style.minWidth = '0';
+    tx.innerHTML = '<div class="clu-t">' + m.t + '</div><div class="clu-m">' + m.city + ' · ' + (m.d || '').slice(5).replace('-', '/') + ' · ' + (m.photos || 0) + ' 张照片</div>';
+    r.appendChild(tx);
+    var ar = document.createElement('span');
+    ar.className = 'clu-arrow'; ar.setAttribute('aria-hidden', 'true'); ar.textContent = '→';
+    r.appendChild(ar);
+    r.addEventListener('click', function () { renderPlace(m, G); });
+    rows.appendChild(r);
+  });
+  body.appendChild(rows);
+
+  document.getElementById('mockDrawer').classList.add('open');
+}
+
+/* 单个地点详情（可从纸卡返回列表） */
+function renderPlace(p, fromCluster) {
+  var body = document.getElementById('drawerBody');
+  body.innerHTML = '';
+  if (fromCluster) {
+    var back = document.createElement('button');
+    back.className = 'back-link';
+    back.textContent = '← 返回' + (fromCluster.items[0].city || '') + '的足迹';
+    back.addEventListener('click', function () { openCluster(fromCluster); });
+    body.appendChild(back);
+  }
+  var st = document.createElement('div');
+  st.className = 'st-row';
+  st.innerHTML = '<span class="hd-st' + (p.wish ? '' : ' done') + '">' + (p.wish ? '想去' : '去过') + '</span><span style="font-size:13px;color:var(--hd-ink-faint)">地点</span>';
+  body.appendChild(st);
+  var h = document.createElement('h3'); h.textContent = p.t; body.appendChild(h);
+  var meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.innerHTML = '<span>' + p.city + ' · 中国</span><span>' + (p.d ? (Number(p.d.slice(5, 7)) + ' 月 ' + Number(p.d.slice(8, 10)) + ' 日') : '还没定日子') + '</span><span>' + (p.photos || 0) + ' 张照片</span>';
+  body.appendChild(meta);
+  var ph = document.createElement('div');
+  ph.className = 'ph';
+  if (p.cover) {
+    var phImg = document.createElement('img');
+    phImg.className = 'ph-img'; phImg.src = p.cover; phImg.alt = p.t;
+    ph.appendChild(phImg);
+  } else {
+    ph.classList.add('ph-fb');
+    ph.innerHTML = '<i class="fb-band">地点</i><b class="fb-t">' + p.t + '</b>';
+  }
+  body.appendChild(ph);
+  var say = document.createElement('div');
+  say.className = 'say';
+  say.textContent = '赶在日落前骑到码头，风把耳朵吹得发烫。水面上有一条很长的金色拉链。';
+  body.appendChild(say);
+  var acts = document.createElement('div');
+  acts.className = 'acts';
+  var amapBtn = document.createElement('button');
+  amapBtn.className = 'hd-btn go'; amapBtn.type = 'button';
+  amapBtn.textContent = '在高德地图上查看';
+  amapBtn.addEventListener('click', function () {
+    document.getElementById('mockDrawer').classList.remove('open');
+    drawAmap(p);
+  });
+  acts.appendChild(amapBtn);
+  var edit = document.createElement('button');
+  edit.className = 'hd-btn sub'; edit.type = 'button'; edit.textContent = '编辑';
+  acts.appendChild(edit);
+  var del = document.createElement('button');
+  del.className = 'hd-btn sub'; del.type = 'button'; del.textContent = '删除';
+  acts.appendChild(del);
+  body.appendChild(acts);
+  document.getElementById('mockDrawer').classList.add('open');
+}
+
+/* ===== 高德单点视图（按需）：详情里点「在高德地图上查看」打开，只看这一个点 ===== */
+function drawAmap(p) {
+  handMap.hidden = true;
+  realMap.hidden = false;
+  realMap.innerHTML = '';
+  [['road', '8%', '30%', '70%', '3px', '-6deg'], ['road', '30%', '80%', '50%', '2px', '4deg'], ['road', '60%', '10%', '60%', '2.5px', '10deg'],
+   ['water', 'left:2%;top:55%;width:180px;height:110px'], ['park', 'right:6%;top:8%;width:150px;height:100px']]
+   .forEach(function (d) {
+     var n = document.createElement('div');
+     if (d[0] === 'road') { n.className = 'road'; n.style.cssText = 'left:' + d[1] + ';top:' + d[2] + ';width:' + d[3] + ';height:' + d[4] + ';transform:rotate(' + d[5] + ')'; }
+     else { n.className = d[0]; n.style.cssText = d[1]; }
+     realMap.appendChild(n);
+   });
+  /* 返回按钮 */
+  var back = document.createElement('button');
+  back.className = 'hd-btn amap-back';
+  back.type = 'button';
+  back.textContent = '← 返回手绘示意';
+  back.addEventListener('click', closeAmap);
+  realMap.appendChild(back);
+  /* 单点照片图钉（沿用原样式）+ 地名签 */
+  var pin = document.createElement('div');
+  pin.className = 'real-pin';
+  pin.style.left = '50%'; pin.style.top = '44%';
+  var im = document.createElement('img');
+  im.src = p.cover || PHOTOS[p.id % PHOTOS.length];
+  im.alt = p.t;
+  pin.appendChild(im);
+  var c = document.createElement('span');
+  c.className = 'cnt'; c.textContent = p.photos || 1;
+  pin.appendChild(c);
+  pin.addEventListener('click', function () { renderPlace(p); });
+  realMap.appendChild(pin);
+  var title = document.createElement('div');
+  title.className = 'amap-title';
+  title.textContent = p.t + ' · ' + p.city;
+  realMap.appendChild(title);
+  var attrib = document.createElement('div');
+  attrib.className = 'real-attrib';
+  attrib.textContent = '高德地图 · 演示底图';
+  realMap.appendChild(attrib);
+}
+function closeAmap() {
+  realMap.hidden = true;
+  handMap.hidden = false;
+  drawHand();
+}
+
+/* ===== 月份胶囊 / 抽屉 ===== */
+var chips = document.getElementById('monthChips');
+function drawChips() {
+  var counts = {};
+  PLACES.filter(function (p) { return !p.wish && p.d; }).forEach(function (p) { var m = p.d.slice(5, 7); counts[m] = (counts[m] || 0) + 1; });
+  var html = '<button class="hd-chip' + (state.month === 'all' ? ' on' : '') + '" data-m="all">全年</button>';
+  Object.keys(counts).sort().forEach(function (m) {
+    html += '<button class="hd-chip' + (state.month === m ? ' on' : '') + '" data-m="' + m + '">' + Number(m) + '月 · ' + counts[m] + '</button>';
+  });
+  chips.innerHTML = html;
+  chips.querySelectorAll('button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.month = b.dataset.m;
+      drawChips(); drawHand();
+    });
+  });
+}
+document.getElementById('drawerClose').addEventListener('click', function () { document.getElementById('mockDrawer').classList.remove('open'); });
+
+drawChips(); drawHand();
+</script>
+</body>
+</html>

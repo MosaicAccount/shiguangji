@@ -1,103 +1,110 @@
 <template>
-  <div class="note-page">
-    <div class="page-banner anim">
-      <div class="banner-blob" aria-hidden="true"></div>
-      <div class="banner-blob2" aria-hidden="true"></div>
-      <div class="banner-text">
+  <div class="note-page page-notes">
+    <section class="hd-banner anim">
+      <span class="hd-tape"></span>
+      <div>
+        <div class="eyebrow">写下即记得</div>
         <h1>笔记</h1>
-        <p>记录你的思考与学习笔记。</p>
+        <p class="desc">记录你的思考与学习笔记。</p>
       </div>
-      <!-- 操作区合并到一处：导入 md 与写笔记都是「创建」类动作；筛选栏留给「找」 -->
-      <div v-if="isLogin" class="banner-acts">
-        <el-button class="banner-import" @click="pickImportFile">⤒ 导入 md</el-button>
-        <el-button type="primary" class="banner-add" @click="openAdd">＋ 写笔记</el-button>
+      <div v-if="isLogin" class="acts">
+        <button class="hd-btn" type="button" @click="pickImportFile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 17 L12 5 M7 9 L12 4 L17 9 M5 20 L19 20"/></svg>
+          导入 md
+        </button>
+        <button class="hd-btn go" type="button" @click="openAdd">＋ 写笔记</button>
       </div>
-    </div>
+    </section>
 
-    <!-- 草稿箱入口：仅登录且有草稿时显示；数量取草稿列表长度（接口只回 excerpt，不拉正文） -->
-    <button v-if="draftCount > 0" class="draft-entry" @click="openDrafts">
-      <span class="draft-entry-icon" aria-hidden="true">🗂</span>
-      <span class="draft-entry-text">草稿箱里有 {{ draftCount }} 份没写完的笔记</span>
-      <span class="draft-entry-arrow" aria-hidden="true">→</span>
+    <button v-if="draftCount > 0" class="draft-strip" type="button" @click="openDrafts">
+      <span class="hd-tape" aria-hidden="true"></span>
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7 L20 7 L20 20 L4 20 Z"/><path d="M7 7 L7 4 L17 4 L17 7"/><path d="M9 12 L15 12 M9 16 L13 16"/></svg>
+      <span class="stamp">草稿箱</span>
+      <span class="txt">有 <b>{{ draftCount }}</b> 份没写完的笔记，接着写？</span>
+      <span class="arr" aria-hidden="true">→</span>
     </button>
 
-    <div class="filter-bar">
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索标题与正文"
-        clearable
-        class="search-input"
-        @keyup.enter="loadData"
-        @clear="loadData"
-      >
-        <template #prefix><span class="search-icon">⌕</span></template>
-        <template #append>
-          <el-button @click="loadData">搜索</el-button>
-        </template>
-      </el-input>
+    <div class="hd-summary">
+      <span class="item">共 <b>{{ noteTotal }}</b> 篇</span>
+      <template v-if="total !== noteTotal">
+        <span class="sep" aria-hidden="true">·</span>
+        <span class="item">筛选后 <b>{{ total }}</b> 篇</span>
+      </template>
+      <span v-if="recentNoteTitle" class="recent">最近 <b>{{ recentNoteTitle }}</b></span>
     </div>
+
+    <div class="hd-toolbar">
+      <div class="hd-search hd-input-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+        <input
+          v-model="searchKeyword"
+          class="hd-input"
+          type="search"
+          placeholder="搜索标题与正文"
+          aria-label="搜索标题与正文"
+          @keyup.enter="loadData"
+        />
+      </div>
+      <div class="right"><span class="hd-tiny hd-muted">共 {{ total }} 篇</span></div>
+    </div>
+
     <input ref="importInputRef" type="file" accept=".md" hidden @change="onImportFileChange" />
-    <!-- 图片搬运（#56）：正文有本地图片引用时的第二步，放在两个既有确认框之后、预填之前 -->
     <note-image-carry-dialog ref="carryRef" />
 
-    <!-- 标签筛选：豆瓣式标签行（NOTE 模块），点击选中、再点取消 -->
-    <tag-pills v-model="searchTag" module="NOTE" @update:model-value="loadData" />
+    <tag-pills v-model="searchTag" module="NOTE" class="tag-row" @update:model-value="loadData" />
 
     <div v-if="filterItemId" class="filter-tip">
       <span>正在查看条目「{{ filterItemName || '#' + filterItemId }}」的关联笔记</span>
-      <el-button link type="primary" size="small" @click="clearFilter">查看全部笔记</el-button>
+      <button class="hd-btn sm" type="button" @click="clearFilter">查看全部笔记</button>
     </div>
 
-    <div v-loading="loading" class="note-list">
-      <el-empty v-if="!loading && !list.length && !loadError" description="暂无笔记" />
+    <div v-loading="loading" class="hd-grid note-grid">
+      <div v-if="!loading && !list.length && !loadError" class="hd-empty">
+        <p>还没有笔记 —— 看见什么，随手记一句。</p>
+        <div class="acts">
+          <button v-if="isLogin" class="hd-btn go" type="button" @click="openAdd">＋ 写笔记</button>
+        </div>
+      </div>
       <div v-if="loadError" class="load-error">
         <span>加载失败，请稍后重试</span>
-        <el-button size="small" round @click="loadData">重试</el-button>
+        <button class="hd-btn sm" type="button" @click="loadData">重试</button>
       </div>
-      <div v-for="note in list" :key="note.noteId" class="note-card" @click="openDetail(note)">
-        <div class="note-header">
-          <div class="note-title">
-            <!-- 关键词高亮：切片段循环渲染（只命中标题时标题本身高亮），不拼 HTML、不走 v-html -->
+
+      <article v-for="note in list" :key="note.noteId" class="hd-card note-card" @click="openDetail(note)">
+        <div class="note-sheet hd-grain hd-rough">
+          <span class="hd-tape" aria-hidden="true"></span>
+          <span v-if="note.hitTotal" class="nt-hit">{{ hitCountText(note.hitTotal) }}</span>
+          <h3 class="nt-title">
             <template v-for="(seg, si) in titleSegments(note)" :key="si">
               <mark v-if="seg.hit">{{ seg.text }}</mark>
               <template v-else>{{ seg.text }}</template>
             </template>
-            <!-- 公开标识仅登录态展示 -->
-            <el-tag v-if="isLogin && note.isPublic === '1'" size="small" type="success" class="public-tag">公开</el-tag>
+            <span v-if="isLogin && note.isPublic === '1'" class="hd-stamp">公开</span>
+          </h3>
+          <p v-if="note.excerpt" class="nt-excerpt">
+            <template v-for="(seg, si) in excerptSegments(note)" :key="si">
+              <mark v-if="seg.hit">{{ seg.text }}</mark>
+              <template v-else>{{ seg.text }}</template>
+            </template>
+          </p>
+          <div class="nt-meta">
+            <span v-if="note.itemId" class="item">条目：{{ note.itemName || '#' + note.itemId }}</span>
+            <span v-else class="item">独立笔记</span>
+            <span v-if="note.tags" class="hd-tag plain">{{ note.tags }}</span>
+            <span class="time">{{ formatTime(note.updateTime || note.createTime) }}</span>
           </div>
-          <!-- 删除角标与标题首行对齐；编辑入口统一在详情页 -->
-          <el-button
-            v-if="isLogin"
-            class="note-delete"
-            circle
-            size="small"
-            :icon="Delete"
-            title="删除"
-            @click.stop="handleDelete(note)"
-          />
+          <div v-if="isLogin" class="nt-acts" @click.stop>
+            <button class="hd-btn sm sub" type="button" title="删除" @click="handleDelete(note)">删除</button>
+          </div>
         </div>
-        <!-- 纯文本摘要常显（后端生成）；最多 2 行，超出由浏览器以省略号收尾 -->
-        <p v-if="note.excerpt" class="note-excerpt">
-          <template v-for="(seg, si) in excerptSegments(note)" :key="si">
-            <mark v-if="seg.hit">{{ seg.text }}</mark>
-            <template v-else>{{ seg.text }}</template>
-          </template>
-        </p>
-        <div class="note-meta">
-          <!--  图标区分：🔗 关联笔记 / 📝 独立笔记 -->
-          <span v-if="note.itemId" class="note-link">🔗 {{ note.itemName || '#' + note.itemId }}</span>
-          <span v-else class="note-link">📝 独立笔记</span>
-          <span v-if="note.tags" class="note-tags">{{ note.tags }}</span>
-          <span class="note-time">{{ formatTime(note.updateTime || note.createTime) }}</span>
-          <!-- 有关键词即提示命中次数（1 次也显示：用户能确认这篇是因命中而返回的）；贴 meta 行右端 -->
-          <span v-if="note.hitTotal" class="note-hit">{{ hitCountText(note.hitTotal) }}</span>
-        </div>
-      </div>
+      </article>
     </div>
 
-    <div v-if="hasMore" class="load-more-wrap">
-      <el-button :loading="loadingMore" round @click="loadMore">加载更多</el-button>
+    <div v-if="hasMore" class="load-more">
+      <button class="hd-btn" type="button" :disabled="loadingMore" @click="loadMore">{{ loadingMore ? '加载中…' : '加载更多 ↓' }}</button>
+      <span class="hd-tiny hd-muted">已展示 {{ list.length }} / 共 {{ total }} 篇</span>
     </div>
+    <div v-else-if="list.length" class="grid-end">—— 已到底部 · 共 {{ total }} 篇 ——</div>
   </div>
 </template>
 
@@ -107,6 +114,8 @@ import { Delete } from '@element-plus/icons-vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontNote, delFrontNote } from '@/api/front/note'
 import { countNoteDrafts } from '@/api/front/noteDraft'
+import { getFrontHomeData } from '@/api/front/home'
+import type { FrontHomeSummary } from '@/types/api/front/home'
 import { getFrontItem } from '@/api/front/item'
 import { splitByKeyword } from '@/utils/sgj'
 import { ElMessageBox } from 'element-plus'
@@ -147,6 +156,19 @@ const filterItemId = ref<number | undefined>(undefined)
 const filterItemName = ref('')
 /** 草稿份数（入口条用；未登录不发请求，失败也不提示） */
 const draftCount = ref(0)
+/** 页头小结：全站笔记总数与最近一篇（取首页汇总；取不到时回退当前列表口径） */
+const homeSummary = ref<FrontHomeSummary | null>(null)
+const recentNoteTitle = ref('')
+const noteTotal = computed(() => homeSummary.value?.noteTotal ?? total.value)
+
+function loadSummary(): void {
+  getFrontHomeData().then(response => {
+    homeSummary.value = response.data?.summary || null
+    recentNoteTitle.value = response.data?.recentNotes?.[0]?.title || ''
+  }).catch(() => {
+    // 小结失败不阻塞列表；回退当前列表口径
+  })
+}
 
 /**
  * 拉草稿份数：匿名访客不发（本页免登录，拉了会因失效 token 弹「登录状态已过期」）；
@@ -418,331 +440,113 @@ function handleDelete(note: SgjNote): void {
 }
 
 loadData()
+loadSummary()
 handleRouteQuery()
 loadDraftCount()
 </script>
 
 <style scoped lang="scss">
-/* 内容栏收窄：120 字摘要在全宽（1248px）下会铺成一整行，读起来像裸文本 */
-.note-page {
-  max-width: 1080px;
-  margin: 0 auto;
-  color: var(--sgj-text);
+/* 0.0.6 笔记列表：样式取自设计图 notes.html（.page-notes 作用域） */
+
+/* ===== 笔记列表 ===== */
+.page-notes mark {
+  color: inherit; padding: 0 1px;
+  background: linear-gradient(transparent 62%, var(--hd-amber-soft) 62%, var(--hd-amber-soft) 92%, transparent 92%);
+}
+.page-notes .hd-banner { margin-top: 4px }
+.page-notes .hd-banner .hd-tape { top: -11px; left: 44px; width: 96px; transform: rotate(-3deg) }
+.page-notes .hd-banner .acts .hd-btn svg { width: 17px; height: 17px }
+
+/* 草稿条：整宽暖色便签，与 banner 拉开一层 */
+.page-notes .draft-strip {
+  position: relative; display: flex; align-items: center; gap: 14px;
+  width: 100%; min-height: 58px; margin-top: 24px; padding: 12px 20px;
+  text-align: left; cursor: pointer; color: var(--hd-ink);
+  background-color: var(--hd-paper-3); background-image: var(--hd-grain);
+  border: 1.8px solid var(--hd-line-soft);
+  border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
+  box-shadow: var(--hd-shadow);
+  font-family: var(--hd-hand);
+  transition: transform .12s, border-color .14s;
+}
+.page-notes .draft-strip:hover { transform: translateY(-1px); border-color: var(--hd-red) }
+.page-notes .draft-strip .hd-tape {
+  top: -9px; left: 28px; width: 88px; height: 20px; transform: rotate(-2.5deg);
+}
+.page-notes .draft-strip .ico { flex: none; width: 24px; height: 24px; color: var(--hd-amber-ink) }
+.page-notes .draft-strip .stamp {
+  flex: none; font-size: 13px; letter-spacing: 1px; color: var(--hd-amber-ink);
+  padding: 1px 9px; border: 1.5px solid var(--hd-amber-ink);
+  border-radius: 8px 3px 7px 3px / 3px 7px 3px 8px;
+}
+.page-notes .draft-strip .txt { font-size: 15.5px; line-height: 1.6 }
+.page-notes .draft-strip .txt b { font-weight: 400; color: var(--hd-red) }
+.page-notes .draft-strip .arr { margin-left: auto; color: var(--hd-red); font-size: 18px }
+
+/* 工具条：搜索框与影单/书单同宽（右侧留给计数） */
+.page-notes .hd-toolbar .hd-search { max-width: 420px }
+
+/* 卡片 */
+.page-notes .hd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px 26px; margin-top: 26px }
+.page-notes .note-card { text-decoration: none; color: var(--hd-ink) }
+.page-notes .note-sheet {
+  position: relative; height: 100%; display: flex; flex-direction: column; gap: 7px;
+  background-color: var(--hd-paper); padding: 20px 20px 15px;
+  border-radius: 6px; box-shadow: var(--hd-shadow);
+  transition: transform .12s, box-shadow .12s;
+}
+.page-notes .note-card:hover .note-sheet { transform: translateY(-2px); box-shadow: var(--hd-shadow-lift) }
+.page-notes .note-sheet .hd-tape { top: -9px; width: 84px; height: 20px }
+.page-notes .nt-hit {
+  position: absolute; top: 16px; right: 17px;
+  font-size: 13px; letter-spacing: .5px; color: var(--hd-ink-faint);
+}
+.page-notes .nt-title { font-size: 18.5px; line-height: 1.45; padding-right: 74px }
+.page-notes .nt-title .hd-stamp { margin-left: 5px; vertical-align: 3px }
+.page-notes .nt-excerpt {
+  font-size: 14.5px; line-height: 1.75; color: var(--hd-ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.page-notes .nt-meta {
+  margin-top: auto; padding-top: 10px;
+  display: flex; align-items: center; gap: 5px 8px; flex-wrap: wrap;
+  font-size: 13.5px; color: var(--hd-ink-soft);
+}
+.page-notes .nt-meta .item { display: inline-flex; align-items: center; gap: 5px; min-width: 0 }
+.page-notes .nt-meta .item svg { flex: none; width: 14px; height: 14px; color: var(--hd-amber-ink) }
+.page-notes .nt-meta .time { margin-left: auto; font-size: 13px; color: var(--hd-ink-faint); white-space: nowrap }
+
+.page-notes .load-more { margin-top: 40px; display: flex; flex-direction: column; align-items: center; gap: 8px }
+
+@media (max-width: 960px) {
+  .page-notes .hd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 20px }
+  .page-notes .nt-title { padding-right: 62px }
+}
+@media (max-width: 720px) {
+  .page-notes .hd-banner { padding: 20px 18px }
+  .page-notes .hd-banner h1 { font-size: 31px }
+  .page-notes .draft-strip { margin-top: 24px; padding: 10px 14px; transform: none }
+  .page-notes .draft-strip .txt { font-size: 14.5px }
+  .page-notes .hd-summary .sep:nth-last-child(2) { display: none }
+  .page-notes .hd-grid { grid-template-columns: minmax(0, 1fr); gap: 26px }
+  .page-notes .nt-title { font-size: 18px }
+  .page-notes .load-more { margin-top: 32px }
 }
 
-.load-more-wrap {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
+/* 产品补充：工具条、标签行、过滤提示、加载/空态、卡片删除按钮 */
+.page-notes .tag-row { margin-top: 16px }
+.page-notes .filter-tip {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 16px; padding: 9px 16px; font-size: 13.5px; color: var(--hd-ink-soft);
+  background: var(--hd-paper-2); border: 1.6px dashed var(--hd-line-soft);
+  border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px;
 }
+.page-notes .filter-tip .hd-btn { padding: 1px 9px; font-size: 13px }
+.page-notes .note-sheet { cursor: pointer; position: relative }
+.page-notes .nt-acts { position: absolute; right: 14px; bottom: 12px; opacity: 0; transition: opacity .15s }
+.page-notes .note-card:hover .nt-acts, .page-notes .note-card:focus-within .nt-acts { opacity: 1 }
+.page-notes .grid-end { margin-top: 34px; text-align: center; font-size: 13.5px; color: var(--hd-ink-soft) }
+.page-notes .load-error { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 0; color: var(--hd-ink-soft) }
+.page-notes .hd-empty { grid-column: 1 / -1 }
 
-.load-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 40px 0;
-  color: var(--sgj-text-4);
-}
-
-.page-banner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 56px;
-  height: 176px;
-  margin-bottom: 24px;
-  border-radius: 24px;
-  background: #282e2c;
-  color: #e7ece9;
-  overflow: hidden;
-
-  .banner-blob {
-    position: absolute;
-    right: -40px;
-    top: -120px;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background: rgba(168, 95, 82, 0.35);
-    pointer-events: none;
-  }
-
-  .banner-blob2 {
-    position: absolute;
-    right: 140px;
-    bottom: -90px;
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    background: rgba(93, 111, 102, 0.4);
-    pointer-events: none;
-  }
-
-  .banner-text {
-    position: relative;
-    z-index: 1;
-
-    h1 {
-      margin: 0;
-      font-family: var(--sgj-font-serif);
-      font-weight: 700;
-      font-size: 36px;
-      line-height: 1.3;
-    }
-
-    p {
-      margin: 12px 0 0;
-      font-size: 14px;
-      color: #aeb8b3;
-      letter-spacing: 0.5px;
-    }
-  }
-
-  /* 创建类动作合并成一组，靠 banner 右端 */
-  .banner-acts {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .banner-add {
-    height: 46px;
-    padding: 0 28px;
-    border-radius: 23px;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 1px;
-  }
-
-  /* 深色 banner 上的次级按钮：描边 + 浅色字，不抢主按钮 */
-  .banner-import {
-    height: 46px;
-    padding: 0 22px;
-    border-radius: 23px;
-    font-size: 13px;
-    background: transparent;
-    color: #e7ece9;
-    border-color: rgba(231, 236, 233, 0.4);
-
-    &:hover,
-    &:focus {
-      background: rgba(231, 236, 233, 0.12);
-      color: #e7ece9;
-      border-color: rgba(231, 236, 233, 0.6);
-    }
-  }
-
-}
-
-html.dark .page-banner {
-  background: var(--sgj-bg-deep);
-}
-
-.filter-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 20px;
-
-  .search-input {
-    width: 280px;
-  }
-}
-
-/* 草稿箱入口条：与卡片同风格，整条可点，键盘可达 */
-.draft-entry {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  background: var(--sgj-bg);
-  border: 1px solid var(--sgj-border);
-  border-radius: 12px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--sgj-text-2);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.16s, background 0.16s;
-
-  &:hover {
-    border-color: var(--sgj-primary);
-    background: var(--sgj-bg-card);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--sgj-primary);
-    outline-offset: 2px;
-  }
-
-  .draft-entry-icon {
-    font-size: 15px;
-  }
-
-  .draft-entry-text {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .draft-entry-arrow {
-    color: var(--sgj-primary);
-  }
-}
-
-.filter-tip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--sgj-bg);
-  border: 1px solid var(--sgj-border);
-  border-radius: 12px;
-  padding: 8px 14px;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: var(--sgj-primary);
-}
-
-/* 卡片网格：minmax 的 min 用 min(320px, 100%) 兜住窄屏，避免 320px 撑破容器 */
-.note-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-  gap: 14px;
-  min-height: 200px;
-
-  /* 空态与错误态横跨整行，不被挤进一个网格单元 */
-  :deep(.el-empty),
-  .load-error {
-    grid-column: 1 / -1;
-  }
-}
-
-/* 竖直 flex：配合网格的拉伸让同行卡片等高，meta 行贴底对齐 */
-.note-card {
-  display: flex;
-  flex-direction: column;
-  background: var(--sgj-bg-card);
-  border: 1px solid var(--sgj-border-card);
-  border-radius: 16px;
-  padding: 16px 18px;
-  box-shadow: var(--sgj-shadow-sm);
-  cursor: pointer;
-  transition: box-shadow 0.16s, transform 0.16s;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sgj-shadow-hover);
-  }
-
-  .note-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-
-    .note-title {
-      flex: 1;
-      min-width: 0;
-      font-family: var(--sgj-font-serif);
-      font-weight: 600;
-      font-size: 17px;
-      line-height: 25px;
-      color: var(--sgj-text);
-      word-break: break-word;
-
-      mark {
-        background: var(--sgj-amber-soft);
-        color: var(--sgj-amber);
-        border-radius: 3px;
-        padding: 0 2px;
-        font-weight: 600;
-      }
-
-      .public-tag {
-        margin-left: 8px;
-        font-weight: 400;
-      }
-    }
-
-    /* 删除角标：与标题首行垂直居中对齐，不随长标题换行 */
-    .note-delete {
-      flex-shrink: 0;
-      margin-top: 0;
-      border-color: var(--sgj-border-card);
-      background: var(--sgj-bg);
-      color: var(--sgj-text-3);
-
-      &:hover {
-        border-color: var(--sgj-danger);
-        background: var(--sgj-bg-card);
-        color: var(--sgj-danger);
-      }
-    }
-  }
-
-  /* 摘要最多 2 行（约 120 字，字数上限由后端摘要窗口决定）；超出由浏览器以省略号收尾 */
-  .note-excerpt {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin: 8px 0 10px;
-    font-size: 13px;
-    color: var(--sgj-text-3);
-    line-height: 1.7;
-    word-break: break-word;
-
-    mark {
-      background: var(--sgj-amber-soft);
-      color: var(--sgj-amber);
-      border-radius: 3px;
-      padding: 0 2px;
-      font-weight: 600;
-    }
-  }
-
-  /* margin-top:auto：同行等高后，各卡的 meta 行落在同一条基线上 */
-  .note-meta {
-    margin-top: auto;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    font-size: 12px;
-    color: var(--sgj-text-4);
-
-    .note-tags {
-      color: var(--sgj-amber);
-    }
-
-    /* 命中次数：贴 meta 行右端 */
-    .note-hit {
-      margin-left: auto;
-      color: var(--sgj-amber);
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
-  }
-}
-
-/* 移动端最小适配：搜索框占满整行、过滤提示与卡片标题行可换行 */
-@media (max-width: 768px) {
-  .filter-bar {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-
-    .search-input {
-      width: 100% !important;
-    }
-  }
-
-  .filter-tip {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-}
 </style>

@@ -1,86 +1,121 @@
 <template>
-  <div class="book-page">
-    <div class="page-banner anim">
-      <div class="banner-blob" aria-hidden="true"></div>
-      <div class="banner-blob2" aria-hidden="true"></div>
-      <div class="banner-text">
+  <div class="book-page page-book">
+    <section class="hd-banner anim">
+      <span class="hd-tape left"></span>
+      <span class="hd-tape right amber"></span>
+      <div>
+        <div class="eyebrow">纸页之间</div>
         <h1>书单</h1>
-        <p>记录你读过的书和想读的书。</p>
+        <p class="desc">记录你读过的书和想读的书。</p>
       </div>
-      <el-button v-if="isLogin" type="primary" class="banner-add" @click="openAdd">＋ 添加想读</el-button>
+      <div class="acts">
+        <button v-if="isLogin" class="hd-btn go lg" type="button" @click="openAdd">＋ 添加想读</button>
+      </div>
+    </section>
+
+    <div class="hd-summary">
+      <span class="item">读过 <b>{{ doneCount }}</b> 本</span><span class="sep" aria-hidden="true">·</span>
+      <span class="item">在读 <b>{{ doingCount }}</b> 本</span><span class="sep" aria-hidden="true">·</span>
+      <span class="item">想读 <b>{{ wishCount }}</b> 本</span>
+      <span class="recent">最近 <b>{{ recentTitle || '—' }}</b></span>
     </div>
 
-    <div class="filter-bar">
-      <div v-if="isLogin" class="filter-group">
+    <div class="hd-toolbar">
+      <div v-if="isLogin" class="hd-chips" role="group" aria-label="状态">
         <button
-          v-for="(s, si) in sgj_book_status"
+          v-for="s in sgj_book_status"
           :key="s.value"
-          class="filter-pill anim"
-          :style="{ '--d': ((si + 1) * 30) + 'ms' }"
-          :class="{ active: activeStatus === s.value }"
+          class="hd-chip"
+          :class="{ on: activeStatus === s.value }"
+          type="button"
           @click="switchStatus(s.value)"
         >{{ s.label }}</button>
       </div>
-      <el-input
-        v-model="searchTitle"
-        placeholder="搜索书名"
-        clearable
-        class="search-input"
-        @keyup.enter="loadData"
-        @clear="loadData"
-      >
-        <template #prefix><span class="search-icon">⌕</span></template>
-        <template #append>
-          <el-button @click="loadData">搜索</el-button>
-        </template>
-      </el-input>
+      <div class="hd-search hd-input-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+        <input
+          v-model="searchTitle"
+          class="hd-input"
+          type="search"
+          placeholder="搜索书名"
+          aria-label="搜索书名"
+          @keyup.enter="loadData"
+        />
+      </div>
+      <div class="right"><span class="hd-tiny hd-muted">共 {{ total }} 本</span></div>
     </div>
 
-    <!-- 标签筛选：豆瓣式标签行（BOOK 模块），点击选中、再点取消 -->
-    <tag-pills v-model="searchTag" module="BOOK" @update:model-value="loadData" />
+    <tag-pills v-model="searchTag" module="BOOK" class="tag-filter" @update:model-value="loadData" />
 
-    <div v-loading="loading" class="card-grid">
-      <el-empty v-if="!loading && !list.length && !loadError" description="暂无数据" />
+    <div v-loading="loading" class="hd-grid book-grid">
+      <div v-if="!loading && !list.length && !loadError" class="hd-empty">
+        <p>暂无数据 —— 先把想读的那本记下来。</p>
+        <div class="acts">
+          <button v-if="isLogin" class="hd-btn go" type="button" @click="openAdd">＋ 添加想读</button>
+        </div>
+      </div>
       <div v-if="loadError" class="load-error">
         <span>加载失败，请稍后重试</span>
-        <el-button size="small" round @click="loadData">重试</el-button>
+        <button class="hd-btn sm" type="button" @click="loadData">重试</button>
       </div>
-      <div v-for="(item, idx) in list" :key="item.itemId" class="book-card anim" :style="{ '--d': ((idx % 4) * 30) + 'ms' }" @click="openDetail(item)">
-        <div class="card-cover" :style="coverStyle(idx)">
-          <!-- ：封面加载失败兜底（隐藏 img 显示占位图标） -->
-          <img v-if="item.coverUrl && !isCoverError(item)" :src="photoUrl(item.coverUrl)" class="card-cover-img" :alt="item.title" loading="lazy" @error="onCoverError(item)" />
-          <template v-else>
-            <span class="card-glyph">书</span>
-            <span class="card-type-pill">书籍</span>
+
+      <article
+        v-for="(item, idx) in list"
+        :key="item.itemId"
+        class="hd-card book-card hd-rough anim"
+        :style="{ '--d': ((idx % 4) * 30) + 'ms' }"
+        @click="openDetail(item)"
+      >
+        <span class="hd-tape"></span>
+        <a class="hd-cover" href="#" @click.prevent="openDetail(item)">
+          <template v-if="item.coverUrl && !isCoverError(item)">
+            <img
+            :src="photoUrl(item.coverUrl)"
+            :alt="item.title"
+            loading="lazy"
+            @error="onCoverError(item)"
+          />
+            <span class="cover-shade" aria-hidden="true"></span>
+            <span class="cover-txt">
+              <span class="cover-title">{{ item.title }}</span>
+              <span class="cover-meta">{{ item.author || '' }}</span>
+            </span>
           </template>
-        </div>
-        <div class="card-body">
-          <div class="card-title">{{ item.title }}</div>
-          <div v-if="item.author" class="card-author">{{ item.author }}</div>
-          <div class="card-meta">
+          <span v-else class="hd-fallback book">
+            <span class="fc-band">书籍</span>
+            <span class="fc-body">
+              <span class="fc-title">{{ item.title }}</span>
+              <span class="fc-meta">{{ item.author || '' }}</span>
+            </span>
+            <span class="fc-motif"></span>
+          </span>
+        </a>
+        <div class="body">
+          <h3 class="title">
+            <span class="t-title">{{ item.title }}</span>
+            <span class="hd-st" :class="{ done: item.status === 'DONE', doing: item.status === 'DOING' }">{{ statusLabel(item) }}</span>
+          </h3>
+          <div class="meta-row"><span>{{ item.author || '—' }}</span></div>
+          <div class="stars-row">
             <plan-date-badge :item="item" @saved="loadData" />
-            <span v-if="item.rating" class="rating-pill">★ {{ item.rating }}</span>
+            <span v-if="item.rating" class="hd-stars" :aria-label="`评分 ${item.rating} 分，满分 10 分`">{{ starText(item.rating) }}</span>
+            <span v-else class="no-rating">未评分</span>
           </div>
-          <div v-if="item.comment" class="card-comment">{{ item.comment }}</div>
+          <p v-if="item.comment" class="card-comment">{{ item.comment }}</p>
+          <div class="card-acts" @click.stop>
+            <button v-if="item.status === 'WANT' && isLogin" class="hd-btn sm" type="button" @click="startDoing(item)">开始读 →</button>
+            <button v-if="item.status !== 'DONE' && isLogin" class="hd-btn sm go" type="button" @click="openComplete(item)">标记已读</button>
+            <button v-if="item.status === 'DONE' && isLogin" class="hd-btn sm sub" type="button" @click="handleUncomplete(item)">取消完成</button>
+          </div>
         </div>
-        <!-- ：整卡点击已开详情，操作区只留高频操作（去重「查看详情」按钮） -->
-        <div class="card-actions" @click.stop>
-          <el-button v-if="item.status === 'WANT' && isLogin" size="small" round @click="startDoing(item)">
-            开始读 →
-          </el-button>
-          <el-button v-if="item.status !== 'DONE' && isLogin" type="primary" size="small" round @click="openComplete(item)">
-            标记已读
-          </el-button>
-          <el-button v-if="item.status === 'DONE' && isLogin" type="warning" size="small" round @click="handleUncomplete(item)">
-            取消完成
-          </el-button>
-        </div>
-      </div>
+      </article>
     </div>
 
-    <div v-if="hasMore" class="load-more-wrap">
-      <el-button :loading="loadingMore" round @click="loadMore">加载更多</el-button>
+    <div v-if="hasMore" class="load-more">
+      <button class="hd-btn" type="button" :disabled="loadingMore" @click="loadMore">{{ loadingMore ? '加载中…' : '加载更多 ↓' }}</button>
+      <span class="hd-tiny hd-muted">已展示 {{ list.length }} / 共 {{ total }} 本</span>
     </div>
+    <div v-else-if="list.length" class="grid-end">—— 已到底部 · 共 {{ total }} 本 ——</div>
 
     <!-- 添加想读 -->
     <el-dialog v-model="addOpen" title="添加想读" width="560px" append-to-body>
@@ -168,6 +203,10 @@ import MediaDetailDrawer from '@/components/MediaDetailDrawer/index.vue'
 import TagSelect from '@/components/TagSelect/index.vue'
 import TagPills from '@/components/TagPills/index.vue'
 import { listFrontItem, getFrontItem, addFrontItem, delFrontItem, uncompleteFrontItem, updateFrontItem } from '@/api/front/item'
+import { getFrontHomeData } from '@/api/front/home'
+import { itemStatusLabel } from '@/utils/itemStatus'
+import { starText } from '@/utils/rating'
+import type { FrontHomeSummary } from '@/types/api/front/home'
 import type { SgjItem, ItemStatus } from '@/types/api/business/item'
 import { planDateLabel, localDateKey } from '@/utils/plan'
 
@@ -192,6 +231,27 @@ const loadError = ref(false)
 const pageNum = ref(1)
 const pageSize = 10
 const total = ref(0)
+
+/** 页头小结条：取首页汇总的 BOOK 口径，不另造接口 */
+const homeSummary = ref<FrontHomeSummary | null>(null)
+const recentTitle = ref('')
+const doneCount = computed(() => homeSummary.value?.done?.BOOK || 0)
+const doingCount = computed(() => homeSummary.value?.doing?.BOOK || 0)
+const wishCount = computed(() => homeSummary.value?.wish?.BOOK || 0)
+
+function loadSummary(): void {
+  getFrontHomeData().then(response => {
+    homeSummary.value = response.data?.summary || null
+    recentTitle.value = response.data?.timeline?.find(i => i.itemType === 'BOOK')?.title || ''
+  }).catch(() => {
+    // 小结条失败不阻塞列表
+  })
+}
+
+/** 状态胶囊文案：字典优先，缺失时用类型兜底 */
+function statusLabel(item: SgjItem): string {
+  return itemStatusLabel(item, { sgj_book_status: sgj_book_status.value })
+}
 const hasMore = computed(() => list.value.length < total.value)
 
 const addOpen = ref(false)
@@ -468,287 +528,83 @@ function handleDelete(item?: SgjItem): void {
 }
 
 loadData()
+loadSummary()
 handleRouteQuery()
 </script>
 
 <style scoped lang="scss">
-.book-page {
-  color: var(--sgj-text);
+/* 0.0.6 书单：样式取自设计图 book.html（.page-book 作用域），形制来自 handdrawn-site.css */
+
+/* ===== 书单：封面统一 2:3，书脊用内阴影做一条暗边；纸卡 + 胶带 + 抖线 ===== */
+.page-book .hd-banner .hd-tape.left { left: 18%; width: 90px }
+.page-book .hd-banner .hd-tape.right { left: 86% }
+.page-book .hd-search { max-width: 300px }
+.page-book .book-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 26px }
+
+.page-book .book-card {
+  display: flex; flex-direction: column; min-width: 0;
+  background-color: var(--hd-paper); background-image: var(--hd-grain);
+  border-radius: 6px; box-shadow: var(--hd-shadow);
+  padding: 10px 10px 14px;
+  transition: transform .14s, box-shadow .14s;
+}
+.page-book .book-card:hover { transform: translateY(-3px) rotate(0); box-shadow: var(--hd-shadow-lift) }
+.page-book .book-card > .hd-tape { z-index: 3; top: -8px; width: 64px; height: 18px }
+.page-book .book-card:nth-child(even) > .hd-tape { left: 32%; transform: translateX(-50%) rotate(2.6deg) }
+.page-book .book-card:nth-child(3n) > .hd-tape { left: 68%; transform: translateX(-50%) rotate(-1.2deg) }
+.page-book .book-card .hd-cover { aspect-ratio: 2 / 3; z-index: 1 }
+.page-book .book-card .hd-cover .hd-fallback { transition: transform .25s }
+.page-book .book-card:hover .hd-fallback { transform: scale(1.03) }
+.page-book .book-card .hd-fallback .fc-band { font-size: 13px; line-height: 1.4; letter-spacing: 1px }
+.page-book .book-card .hd-fallback .fc-meta { font-size: 13px; opacity: .84 }
+.page-book .book-card .body { display: flex; flex-direction: column; flex: 1; padding: 12px 2px 0 }
+.page-book .book-card .title { font-size: 18.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-book .book-card .title .hd-st { margin-left: auto; flex: none; font-size: 13px }
+.page-book .meta-row { margin-top: 4px; font-size: 13.5px; color: var(--hd-ink-soft); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px }
+.page-book .meta-row .sep { color: var(--hd-ink-faint) }
+.page-book .stars-row { margin-top: 6px; display: flex; align-items: center; gap: 6px; min-height: 21px }
+.page-book .hd-stars svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round }
+.page-book .hd-stars svg.on { fill: currentColor; stroke-width: 1 }
+.page-book .no-rating { font-size: 13px; color: var(--hd-ink-faint) }
+.page-book .card-comment {
+  margin-top: 8px; font-size: 14px; line-height: 1.7; color: var(--hd-ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: 3.4em;
+}
+.page-book .card-acts { margin-top: auto; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap }
+.page-book .load-more { margin-top: 44px; display: flex; flex-direction: column; align-items: center; gap: 10px }
+
+@media (max-width: 960px) {
+  .page-book .book-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px 18px }
+}
+@media (max-width: 720px) {
+  .page-book .book-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; margin-top: 20px }
+  .page-book .book-card { padding: 8px 8px 12px }
+  .page-book .book-card .title { font-size: 16.5px }
+  .page-book .card-comment { font-size: 13.5px; min-height: 3.3em; -webkit-line-clamp: 3 }
+  .page-book .card-acts .hd-btn { flex: 1 1 100% }
+  .page-book .hd-banner .hd-tape.left { left: 24% }
+  .page-book .hd-banner .hd-tape.right { left: 76% }
 }
 
-.load-more-wrap {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
+/* 产品补充：真实封面图、标签行、加载态与空态 */
+.page-book .book-card .hd-cover img { width: 100%; height: 100%; object-fit: cover; display: block }
+.page-book .tag-filter { margin-top: 16px }
+.page-book .grid-end { margin-top: 34px; text-align: center; font-size: 13.5px; color: var(--hd-ink-soft) }
+.page-book .load-error {
+  grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 48px 0; color: var(--hd-ink-soft);
 }
+.page-book .hd-empty { grid-column: 1 / -1 }
 
-.load-error {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 40px 0;
-  color: var(--sgj-text-4);
-}
-
-.page-banner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 56px;
-  height: 176px;
-  margin-bottom: 24px;
-  border-radius: 24px;
-  background: #282e2c;
-  color: #e7ece9;
-  overflow: hidden;
-
-  .banner-blob {
-    position: absolute;
-    right: -40px;
-    top: -120px;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background: rgba(168, 95, 82, 0.35);
-    pointer-events: none;
-  }
-
-  .banner-blob2 {
-    position: absolute;
-    right: 140px;
-    bottom: -90px;
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    background: rgba(93, 111, 102, 0.4);
-    pointer-events: none;
-  }
-
-  .banner-text {
-    position: relative;
-    z-index: 1;
-
-    h1 {
-      margin: 0;
-      font-family: var(--sgj-font-serif);
-      font-weight: 700;
-      font-size: 36px;
-      line-height: 1.3;
-    }
-
-    p {
-      margin: 12px 0 0;
-      font-size: 14px;
-      color: #aeb8b3;
-      letter-spacing: 0.5px;
-    }
-  }
-
-  .banner-add {
-    position: relative;
-    z-index: 1;
-    height: 46px;
-    padding: 0 28px;
-    border-radius: 23px;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 1px;
-  }
-
-}
-
-html.dark .page-banner {
-  background: var(--sgj-bg-deep);
-}
-
-
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-
-  .filter-group {
-    display: flex;
-    gap: 8px;
-  }
-
-  .filter-pill {
-    padding: 8px 18px;
-    border: 1px solid var(--sgj-border-card);
-    border-radius: 17px;
-    background: var(--sgj-bg-card);
-    color: var(--sgj-text-2);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.16s;
-
-    &:hover {
-      border-color: var(--sgj-primary);
-      color: var(--sgj-primary);
-    }
-
-    &.active {
-      background: var(--sgj-primary);
-      border-color: var(--sgj-primary);
-      color: #fff;
-    }
-  }
-
-  .search-input {
-    width: 220px;
-    margin-left: auto;
-  }
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  min-height: 200px;
-}
-
-.book-card {
-  background: var(--sgj-bg-card);
-  border: 1px solid var(--sgj-border-card);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--sgj-shadow-sm);
-  cursor: pointer;
-  transition: box-shadow 0.16s, transform 0.16s;
-  display: flex;
-  flex-direction: column;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--sgj-shadow-hover);
-  }
-
-  .card-cover {
-    /* ：封面统一 2:3 竖向比例（书封） */
-    position: relative;
-    aspect-ratio: 2 / 3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-
-    .card-cover-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .card-glyph {
-      font-family: var(--sgj-font-serif);
-      font-size: 56px;
-      line-height: 1;
-    }
-
-    .card-type-pill {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      padding: 2px 10px;
-      border-radius: 10px;
-      background: var(--sgj-bg-card);
-      color: var(--sgj-text-2);
-      font-size: 11px;
-    }
-  }
-
-  .card-body {
-    padding: 16px;
-    flex: 1;
-
-    .card-title {
-      font-family: var(--sgj-font-serif);
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--sgj-text);
-      margin-bottom: 4px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .card-author {
-      font-size: 12px;
-      color: var(--sgj-text-3);
-      margin-bottom: 8px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .card-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-
-      /* 评分：灰铜浅底胶囊 */
-      .rating-pill {
-        padding: 1px 10px;
-        border-radius: 11px;
-        background: var(--sgj-amber-soft);
-        color: var(--sgj-amber);
-        font-family: var(--sgj-font-serif);
-        font-weight: 700;
-        font-size: 12px;
-      }
-    }
-
-    .card-comment {
-      font-size: 12px;
-      color: var(--sgj-text-2);
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-  }
-
-  .card-actions {
-    padding: 0 16px 16px;
-    display: flex;
-    gap: 8px;
-  }
-}
-
-
-/* 移动端最小适配：筛选换行、搜索框占满整行、卡片操作按钮可换行 */
-@media (max-width: 768px) {
-  .page-banner {
-    padding: 24px 20px;
-  }
-
-  .filter-bar {
-    .search-input {
-      width: 100%;
-      margin-left: 0;
-    }
-  }
-
-  /*  移动端卡片栅格：minmax(160px,1fr) */
-  .card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-  }
-
-  .card-actions {
-    flex-wrap: wrap;
-
-    .el-button + .el-button {
-      margin-left: 0;
-    }
-  }
-
-}
+/* 卡片骨架：标题一行（状态章右侧固定）、按钮贴底、短评两行截断 */
+.page-book .hd-card { display: flex; flex-direction: column }
+.page-book .hd-card .body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 0 }
+.page-book .hd-card .title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px }
+.page-book .hd-card .title .t-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-book .hd-card .title .hd-st { flex: none }
+.page-book .hd-card .meta-row { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-book .hd-card .stars-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-book .hd-card .card-comment { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.page-book .hd-card .card-acts { margin-top: auto }
 </style>

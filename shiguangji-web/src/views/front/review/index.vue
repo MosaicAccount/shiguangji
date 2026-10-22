@@ -121,11 +121,12 @@
           </div>
         </div>
 
-        <!-- 足迹 -->
-        <ReviewMap :places="data.places" @locate="openLocate" @open-place="openPlace" />
+        <div class="hd-mid">
+          <!-- 足迹 -->
+          <ReviewMap :places="data.places" @locate="openLocate" @open-place="openPlace" />
 
-        <!-- 评分榜 -->
-        <section class="hd-sec">
+          <!-- 评分榜 -->
+          <section class="hd-sec hd-sec-tight">
           <div class="g-head">
             <h2 class="g-title">评分最高<svg viewBox="0 0 100 9" preserveAspectRatio="none"><path d="M2 5 Q12 1 24 4 T48 4 T74 3 T98 5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/></svg></h2>
             <span class="g-count">{{ ratedTotal }} 条里 {{ ratedCount }} 条有评分</span>
@@ -164,7 +165,8 @@
               </div>
             </div>
           </div>
-        </section>
+          </section>
+        </div>
 
         <!-- 标签 -->
         <section class="hd-sec">
@@ -341,8 +343,56 @@ onMounted(() => load())
 </script>
 
 <style scoped>
+/* 0.0.6：900 单列 → 1120 多栏——统计四卡 / 地图 + 评分榜并排 / 标签整宽 */
+/* 旧 plan 皮肤在 .plan-page 上定义了一套冷色令牌；这里用暖忆值覆盖（.hd-page 带 scoped 属性，优先级更高） */
+.hd-page {
+  --hd-page: var(--sgj-bg);
+  --hd-paper: var(--sgj-bg-card);
+  --hd-paper-2: #FBF7EE;
+  --hd-ink: var(--sgj-text);
+  --hd-ink-soft: var(--sgj-text-2);
+  --hd-ink-faint: var(--sgj-text-3);
+  --hd-line: rgba(55, 50, 44, .5);
+  --hd-line-soft: rgba(55, 50, 44, .26);
+  --hd-red: var(--sgj-primary);
+  --hd-red-soft: rgba(150, 80, 63, .12);
+  --hd-amber: var(--sgj-amber);
+  --hd-amber-soft: rgba(156, 107, 63, .14);
+  --hd-moss: var(--sgj-moss);
+  --hd-moss-soft: rgba(90, 99, 80, .14);
+  --hd-tape: rgba(150, 80, 63, .18);
+}
+html.dark .hd-page {
+  --hd-page: var(--sgj-bg);
+  --hd-paper: var(--sgj-bg-card);
+  --hd-paper-2: #2B2B2D;
+  --hd-ink: var(--sgj-text);
+  --hd-ink-soft: var(--sgj-text-2);
+  --hd-ink-faint: var(--sgj-text-3);
+  --hd-line: rgba(236, 235, 232, .5);
+  --hd-line-soft: rgba(236, 235, 232, .24);
+  --hd-red: var(--sgj-primary);
+  --hd-red-soft: rgba(201, 149, 133, .16);
+  --hd-amber: var(--sgj-amber);
+  --hd-amber-soft: rgba(201, 172, 128, .16);
+  --hd-moss: var(--sgj-moss);
+  --hd-moss-soft: rgba(166, 174, 155, .16);
+  --hd-tape: rgba(201, 149, 133, .2);
+}
+.hd-mid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: 26px;
+  margin-top: 26px;
+  align-items: start;
+}
+.hd-mid .hd-sec { margin-top: 0 }
+.hd-mid .hd-cols { grid-template-columns: minmax(0, 1fr); gap: 18px }
+@media (max-width: 1060px) {
+  .hd-mid { grid-template-columns: minmax(0, 1fr) }
+}
 
-.hd-page { max-width: 900px }
+.hd-page { max-width: 1120px }
 .hd-sec { margin-top: 30px }
 
 /* 报头：年份与说明句共用一条基线（说明句是年份的题注） */
@@ -388,7 +438,7 @@ onMounted(() => load())
 .hd-cols .paper { padding: 6px 16px 10px }
 .hd-score { margin-left: auto; font-size: 20px; color: var(--hd-amber); flex: none }
 /* 共享皮肤缺口：handdrawn.css 只给影视的 glyph 圈设了 stroke，书籍/地点的圈因此不可见；
-   这里统一成类型色，0.0.7 应收敛回 handdrawn.css */
+   这里统一成类型色，0.0.6 应收敛回 handdrawn.css */
 .hd-page .row .glyph .ring ellipse { stroke: currentColor }
 .hd-tags { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 26px; position: relative; z-index: 1; padding: 4px 0 8px }
 .hd-tag { display: grid; grid-template-columns: 68px 1fr 26px; align-items: center; gap: 10px }

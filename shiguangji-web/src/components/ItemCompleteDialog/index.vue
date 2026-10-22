@@ -25,8 +25,8 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button type="primary" :loading="submitting" @click="submit">确 定</el-button>
-      <el-button @click="close">取 消</el-button>
+      <el-button type="primary" :loading="submitting" @click="submit">记下这一刻</el-button>
+      <el-button @click="close">取消</el-button>
     </template>
   </el-dialog>
 </template>

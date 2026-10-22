@@ -1,5 +1,5 @@
 <template>
-  <div class="note-edit-page">
+  <div class="note-edit-page page-edit">
     <div class="edit-card" v-loading="initializing">
       <!-- 顶栏：返回 + 标题 + 保存 -->
       <div class="edit-header">
@@ -587,140 +587,95 @@ async function confirmTitleChangeIfNeeded(): Promise<boolean> {
 </script>
 
 <style scoped lang="scss">
+/* 0.0.6 写笔记：整页一张纸——报头 / 同步态条 / 表单 / 编辑器 */
 .note-edit-page {
-  color: var(--sgj-text);
+  max-width: 1120px;
+  margin: 0 auto;
 }
-
 .edit-card {
-  background: var(--sgj-bg-card);
-  border: 1px solid var(--sgj-border-card);
-  border-radius: 20px;
-  padding: 24px 28px;
+  position: relative;
+  padding: 26px 30px 30px;
 }
-
 .edit-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 12px;
 
   .back-btn {
-    border-color: var(--sgj-border-card);
-    background: var(--sgj-bg);
-    color: var(--sgj-text-2);
+    flex: none;
+    border: 1.6px solid var(--hd-line-soft);
+    background: none;
+    color: var(--hd-ink-soft);
+    &:hover { color: var(--hd-red); border-color: var(--hd-red-soft); background: none }
   }
 
   .edit-title {
-    flex: 1;
-    margin: 0;
-    font-family: var(--sgj-font-serif);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--sgj-text);
+    font-size: 26px;
+    letter-spacing: 1px;
+    color: var(--hd-ink);
   }
 }
+.header-actions { margin-left: auto; display: flex; gap: 8px }
 
-/* 草稿状态条：三态 + 恢复提示（恢复提示优先，可关闭） */
 .sync-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  min-height: 24px;
-  margin-bottom: 12px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  background: var(--sgj-bg);
-  border: 1px solid var(--sgj-border-card);
-  font-size: 12.5px;
-  color: var(--sgj-text-2);
+  margin-top: 16px;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  color: var(--hd-ink-soft);
+  background: var(--hd-paper-2);
+  border: 1.5px dashed var(--hd-line-soft);
+  border-radius: 4px 2px 5px 3px / 3px 5px 2px 4px;
 
-  .sync-state.is-synced {
-    color: var(--sgj-moss);
-  }
-
-  // 恢复草稿：与「同步三态」区分开，别让用户以为是已保存状态；这是「这些内容还没正式保存」的唯一提示
-  &.is-restored {
-    background: var(--sgj-primary-soft);
-    border-color: transparent;
-
-    .restore-dot {
-      width: 7px;
-      height: 7px;
-      flex-shrink: 0;
-      border-radius: 50%;
-      background: var(--sgj-primary);
-    }
-  }
-
+  &.is-restored { background: var(--hd-amber-soft); border-color: var(--hd-amber-soft) }
+  .sync-state.is-synced { color: var(--hd-olive) }
   .sync-state.is-failed,
-  .sync-deleted {
-    color: var(--sgj-danger);
-  }
+  .sync-deleted { color: var(--hd-red) }
+  .restore-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hd-amber-ink); flex: none }
 }
 
 .edit-form {
+  margin-top: 18px;
+
   .title-input {
-    max-width: 560px;
+    :deep(.el-input__wrapper) {
+      background: none;
+      box-shadow: none;
+      border-bottom: 2px dashed var(--hd-line-soft);
+      border-radius: 0;
+      padding: 0 2px;
+    }
+    :deep(.el-input__inner) {
+      font-size: 26px;
+      color: var(--hd-ink);
+      height: 44px;
+    }
   }
 
-  /* 标题引用检测提示（0.0.5，按原型 .proto-hint 的两态）：info 中性 / warn 琥珀 */
   .title-change-hint {
-    width: 100%;
-    max-width: 560px;
-    margin: 8px 0 0;
-    padding: 7px 12px;
-    border: 1px dashed var(--sgj-border);
-    border-radius: 8px;
-    background: var(--sgj-bg);
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--sgj-text-3);
-
-    &.is-warn {
-      border-color: rgba(177, 132, 88, 0.55);
-      background: var(--sgj-amber-soft);
-      color: var(--sgj-text-2);
-    }
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--hd-ink-soft);
+    &.is-warn { color: var(--hd-red) }
   }
 
   .meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 28px;
-
-    .el-form-item {
-      margin-right: 0;
-    }
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 20px;
+    margin-top: 8px;
   }
 
-  .content-item {
-    margin-bottom: 0;
-
-    :deep(.el-form-item__content) {
-      display: block;
-    }
-  }
-
-  .limit-warn {
-    margin: 8px 0 0;
-    font-size: 12.5px;
-    color: var(--sgj-danger);
-  }
+  .content-item { margin-top: 6px }
+  .limit-warn { margin-top: 6px; font-size: 13.5px; color: var(--hd-red) }
 }
 
-@media (max-width: 768px) {
-  .edit-card {
-    padding: 16px 14px;
-    border-radius: 14px;
-  }
-
-  .edit-header {
-    flex-wrap: wrap;
-
-    .edit-title {
-      font-size: 18px;
-    }
-  }
+@media (max-width: 900px) {
+  .edit-card { padding: 18px 16px 22px }
+  .edit-form .meta-row { grid-template-columns: minmax(0, 1fr) }
+  .edit-header .edit-title { font-size: 22px }
 }
 </style>

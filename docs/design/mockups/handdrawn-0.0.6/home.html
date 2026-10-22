@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>首页 · 手绘手账设计图 — 拾光记 0.0.6</title>
+<link rel="stylesheet" href="../../../../shiguangji-web/src/assets/fonts/handdrawn/lxgw-wenkai/lxgw-wenkai.css">
+<link rel="stylesheet" href="handdrawn-site.css">
+<style>
+/* ===== 首页 ===== */
+.page-home .hero { position: relative; padding: 34px 0 6px }
+.page-home .hero-card {
+  position: relative; background: var(--hd-paper); padding: 38px 40px 30px;
+  border-radius: 4px; box-shadow: var(--hd-shadow-lift);
+}
+.page-home .hero-card .hd-tape { top: -12px; width: 110px }
+.page-home .hero-card .hd-tape.right { top: -10px; right: -18px; left: auto }
+.page-home .hero-eyebrow { font-size: 13px; letter-spacing: 4px; color: var(--hd-red) }
+.page-home .hero-title { margin-top: 12px; font-size: 46px; letter-spacing: 3px; line-height: 1.2 }
+.page-home .hero-sub { margin-top: 14px; font-size: 18px; line-height: 1.85; color: var(--hd-ink-soft); max-width: 620px }
+.page-home .hero-sub b { color: var(--hd-ink); font-weight: 400; border-bottom: 2px dashed var(--hd-red-soft) }
+.page-home .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 24px }
+.page-home .hero-cta {
+  border: 2px solid var(--hd-ink); background: var(--hd-ink); color: var(--hd-paper);
+  padding: 9px 22px; font-size: 17px; letter-spacing: 2px;
+  border-radius: 12px 4px 10px 5px / 5px 10px 4px 12px;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 3px 4px 0 var(--hd-line-soft);
+}
+.page-home .hero-cta:hover { background: var(--hd-red); border-color: var(--hd-red); color: var(--hd-paper); transform: translateY(-1px) rotate(-.5deg) }
+.page-home .entry-card {
+  display: inline-flex; align-items: center; gap: 12px; text-decoration: none;
+  border: 2px solid var(--hd-line); background: var(--hd-paper); padding: 7px 16px;
+  border-radius: 10px 4px 12px 5px / 5px 12px 4px 10px; color: var(--hd-ink);
+  transition: border-color .12s, transform .12s;
+}
+.page-home .entry-card:hover { border-color: var(--hd-red); transform: translateY(-1px) rotate(.4deg) }
+.page-home .entry-card .ico { font-size: 19px; color: var(--hd-red) }
+.page-home .entry-card .t { font-size: 16px; line-height: 1.3 }
+.page-home .entry-card .s { font-size: 13px; color: var(--hd-ink-soft) }
+.page-home .entry-card .arr { color: var(--hd-ink-faint); font-size: 15px }
+
+/* 扉页便签：不是数据，是手账上的日期戳 */
+.page-home .hero-note {
+  position: absolute; right: 36px; top: 34px; width: 196px; padding: 14px 16px 12px;
+  background: var(--hd-paper-3); transform: rotate(2.4deg);
+  box-shadow: var(--hd-shadow); border-radius: 3px;
+}
+.page-home .hero-note::before {
+  content: ""; position: absolute; top: -9px; left: 50%; width: 58px; height: 18px;
+  transform: translateX(-50%) rotate(-2deg); background: var(--hd-tape);
+  clip-path: polygon(0 4%, 5% 0, 95% 2%, 100% 6%, 98% 96%, 93% 100%, 4% 98%, 0 94%);
+}
+.page-home .hero-note .n-day { font-size: 30px; line-height: 1.1; letter-spacing: 1px }
+.page-home .hero-note .n-wd { font-size: 13px; color: var(--hd-ink-soft); margin-top: 2px }
+.page-home .hero-note .n-say { font-size: 14.5px; color: var(--hd-ink-soft); margin-top: 8px; padding-top: 8px; border-top: 1.5px dashed var(--hd-line-soft) }
+.page-home .hero-note svg { position: absolute; right: 10px; bottom: 8px; width: 42px; height: 32px; color: var(--hd-amber-ink) }
+
+/* 统计：四枚贴纸 + 一张心愿便签 */
+.page-home .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 22px }
+.page-home .stat {
+  position: relative; background: var(--hd-paper); padding: 14px 10px 12px; text-align: center;
+  border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px; box-shadow: var(--hd-shadow);
+}
+.page-home .stat .glyph {
+  width: 34px; height: 34px; margin: 0 auto 2px; display: grid; place-items: center;
+  font-size: 18px; border: 2px solid currentColor;
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.page-home .stat:nth-child(1) .glyph { color: var(--hd-red) }
+.page-home .stat:nth-child(2) .glyph { color: var(--hd-moss) }
+.page-home .stat:nth-child(3) .glyph { color: var(--hd-amber-ink) }
+.page-home .stat:nth-child(4) .glyph { color: var(--hd-ink-soft) }
+.page-home .stat .num { font-size: 30px; line-height: 1.1; letter-spacing: 1px }
+.page-home .stat .label { font-size: 13px; color: var(--hd-ink-soft); margin-top: 2px }
+.page-home .wish-note {
+  position: relative; margin-top: 18px; background: var(--hd-paper-3); padding: 12px 18px;
+  border-radius: 3px; transform: rotate(-.5deg);
+  box-shadow: var(--hd-shadow); display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  text-decoration: none; color: var(--hd-ink);
+}
+.page-home .wish-note::before { content: ""; position: absolute; top: -9px; left: 34px; width: 62px; height: 18px; transform: rotate(-3deg); background: var(--hd-tape-2);
+  clip-path: polygon(0 5%, 5% 0, 95% 2%, 100% 7%, 97% 95%, 92% 100%, 4% 97%, 0 93%); }
+.page-home .wish-note .seal { color: var(--hd-red); border: 2px solid var(--hd-red); border-radius: 6px 2px 7px 3px / 3px 7px 2px 6px; padding: 0 7px; font-size: 14px }
+.page-home .wish-note .big { font-size: 24px }
+.page-home .wish-note .txt { font-size: 14.5px; color: var(--hd-ink-soft) }
+.page-home .wish-note .more { margin-left: auto; font-size: 14px; color: var(--hd-red) }
+
+/* 我的时光 */
+.page-home .content { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 44px; margin-top: 44px }
+.page-home .section-head { position: relative; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 0 2px }
+.page-home .section-head h2 { font-size: 27px; letter-spacing: 2px }
+.page-home .section-head .en { font-size: 13px; letter-spacing: 3px; color: var(--hd-ink-soft) }
+.page-home .section-head .line { flex: 1; min-width: 40px; border-top: 2px dashed var(--hd-line-soft); transform: translateY(-6px) }
+.page-home .timeline { margin-top: 18px }
+.page-home .tl-group { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 18px; padding: 18px 0 6px }
+.page-home .tl-date { font-size: 15px; color: var(--hd-ink-soft); text-align: right; padding-top: 6px; line-height: 1.5 }
+.page-home .tl-date b { display: block; font-size: 22px; font-weight: 400; color: var(--hd-ink); letter-spacing: 1px }
+.page-home .tl-date .wd { display: block; margin-top: 2px; font-size: 13px; color: var(--hd-ink-soft) }
+.page-home .tl-rail { position: relative; border-left: 2px dashed var(--hd-line-soft); padding-left: 26px; display: flex; flex-direction: column; gap: 18px }
+.page-home .tl-item { position: relative; text-decoration: none; color: var(--hd-ink) }
+.page-home .tl-item::before {
+  content: ""; position: absolute; left: -33px; top: 24px; width: 13px; height: 13px;
+  border: 2px solid var(--hd-red); background: var(--hd-paper);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.page-home .tl-card {
+  position: relative; background: var(--hd-paper); padding: 14px 16px;
+  border-radius: 5px; box-shadow: var(--hd-shadow); display: flex; gap: 16px;
+  transition: transform .12s, box-shadow .12s;
+}
+.page-home .tl-item:nth-child(odd) .tl-card { transform: rotate(-.25deg) }
+.page-home .tl-item:nth-child(even) .tl-card { transform: rotate(.2deg) }
+.page-home .tl-item:hover .tl-card { transform: translateY(-2px) rotate(0); box-shadow: var(--hd-shadow-lift) }
+.page-home .tl-cover {
+  flex: none; width: 84px; height: 108px; position: relative; overflow: hidden;
+  border: 2px solid var(--hd-line); border-radius: 4px 2px 5px 2px / 2px 5px 2px 4px;
+  background: var(--hd-paper-3);
+  display: grid; place-items: center;
+}
+.page-home .tl-cover .tape { display: none }
+.page-home .tl-body { min-width: 0; flex: 1 }
+.page-home .tl-title { font-size: 19px; line-height: 1.45; display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.page-home .tl-meta { margin-top: 3px; font-size: 13px; color: var(--hd-ink-soft); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center }
+.page-home .tl-comment { margin-top: 7px; font-size: 14.5px; color: var(--hd-ink-soft); line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.page-home .tl-stars { color: var(--hd-amber-ink); font-size: 13px; letter-spacing: 1px }
+.page-home .tl-more { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 26px 0 0; padding-left: 26px }
+.page-home .tl-end { text-align: center; font-size: 13px; color: var(--hd-ink-faint); margin-top: 26px; letter-spacing: 1px }
+
+/* 侧栏 */
+.page-home .aside { display: flex; flex-direction: column; gap: 26px }
+.page-home .aside .hd-paper { padding: 16px 18px }
+.page-home .aside .card-title { display: flex; align-items: baseline; gap: 8px; font-size: 18px; letter-spacing: 1px }
+.page-home .aside .card-title .en { font-size: 10.5px; letter-spacing: 2px; color: var(--hd-ink-faint) }
+.page-home .wish-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1.5px dashed var(--hd-line-soft) }
+.page-home .wish-item:last-of-type { border-bottom: 0 }
+.page-home .wish-glyph {
+  flex: none; width: 27px; height: 27px; display: grid; place-items: center; font-size: 13px;
+  border: 1.8px solid currentColor; border-radius: 50% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.page-home .wish-glyph.movie, .page-home .wish-glyph.tv { color: var(--hd-red) }
+.page-home .wish-glyph.book { color: var(--hd-moss) }
+.page-home .wish-glyph.place { color: var(--hd-amber-ink) }
+.page-home .wish-body { min-width: 0; flex: 1 }
+.page-home .wish-title { font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.page-home .wish-meta { display: flex; align-items: center; gap: 6px; margin-top: 1px; font-size: 13px; color: var(--hd-ink-soft); flex-wrap: wrap }
+.page-home .wish-done { border: 0; background: none; color: var(--hd-ink-soft); font-size: 13px; padding: 2px }
+.page-home .wish-done:hover { color: var(--hd-red) }
+.page-home .aside .more { display: block; margin-top: 10px; font-size: 13.5px; color: var(--hd-ink-soft); text-decoration: none }
+.page-home .aside .more:hover { color: var(--hd-red) }
+.page-home .note-item { padding: 9px 0; border-bottom: 1.5px dashed var(--hd-line-soft); text-decoration: none; color: var(--hd-ink); display: block }
+.page-home .note-item:last-of-type { border-bottom: 0 }
+.page-home .note-item:hover .note-title { color: var(--hd-red) }
+.page-home .note-title { font-size: 15.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.page-home .note-meta { margin-top: 2px; font-size: 13px; color: var(--hd-ink-soft) }
+
+@media (max-width: 960px) {
+  .page-home .hero-note { display: none }
+  .page-home .content { grid-template-columns: minmax(0, 1fr); gap: 30px }
+  .page-home .aside { display: grid; grid-template-columns: 1fr 1fr; gap: 20px }
+  .page-home .hero-title { font-size: 38px }
+}
+@media (max-width: 720px) {
+  .page-home .hero { padding-top: 16px }
+  .page-home .hero-card { padding: 26px 20px 22px }
+  .page-home .hero-title { font-size: 30px; letter-spacing: 2px }
+  .page-home .hero-sub { font-size: 16px }
+  .page-home .stat-strip { grid-template-columns: repeat(2, 1fr); gap: 12px }
+  .page-home .content { margin-top: 30px }
+  .page-home .tl-group { grid-template-columns: minmax(0, 1fr); gap: 10px }
+  .page-home .tl-date { text-align: left; display: flex; align-items: baseline; gap: 8px; padding-top: 0 }
+  .page-home .tl-date b { font-size: 19px }
+  .page-home .tl-rail { padding-left: 20px }
+  .page-home .tl-item::before { left: -27px }
+  .page-home .tl-cover { width: 66px; height: 88px }
+  .page-home .tl-title { font-size: 17px }
+  .page-home .aside { grid-template-columns: 1fr }
+  .page-home .wish-note .more { margin-left: 0 }
+}
+</style>
+</head>
+<body class="hd-app page-home" data-page="home">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
+
+<header class="hd-top">
+  <div class="hd-top-in">
+    <a class="hd-brand" href="home.html"><span class="seal">拾</span>拾光记</a>
+    <nav class="hd-nav">
+      <a href="home.html" data-nav="home">首页</a>
+      <a href="movie.html" data-nav="movie">影单</a>
+      <a href="book.html" data-nav="book">书单</a>
+      <a href="travel.html" data-nav="travel">足迹</a>
+      <a href="notes.html" data-nav="note">笔记</a>
+      <a href="plan.html" data-nav="plan">心愿</a>
+    </nav>
+    <div class="hd-top-acts">
+      <button class="hd-iconbtn" type="button" aria-label="全站搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 Q18 18 21 21"/></svg>
+      </button>
+      <button class="hd-iconbtn" type="button" data-theme-btn aria-label="切换到夜间模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14 A8.5 8.5 0 1 1 10 4 A7 7 0 0 0 20 14 Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="hd-main">
+
+  <section class="hero">
+    <div class="hero-card hd-rough">
+      <span class="hd-tape"></span>
+      <span class="hd-tape right amber"></span>
+      <div class="hero-note" aria-hidden="true">
+        <div class="n-day">10.19</div>
+        <div class="n-wd">周一 · 手账第 292 天</div>
+        <div class="n-say">今天也记一笔。</div>
+        <svg viewBox="0 0 42 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 26 Q6 14 16 10 Q26 6 30 14 Q33 21 24 22 Q18 23 18 17"/><path d="M30 14 Q36 12 36 6"/></svg>
+      </div>
+      <div class="hero-eyebrow">一个人的手账 · 2026</div>
+      <h1 class="hero-title">下午好，拾光人<span class="hd-dot">。</span></h1>
+      <p class="hero-sub">你已经记录了 <b>128</b> 件值得记住的小事，日子正在被你慢慢写成照片。</p>
+      <div class="hero-actions">
+        <a class="hero-cta" href="#timeline">开始记录 <span aria-hidden="true">→</span></a>
+        <a class="entry-card" href="travel.html">
+          <span class="ico" aria-hidden="true">✈</span>
+          <span><span class="t">旅行足迹地图</span><br><span class="s">12 座城市 · 16 个地点</span></span>
+          <span class="arr" aria-hidden="true">↘</span>
+        </a>
+        <a class="entry-card" href="review.html">
+          <span class="ico" aria-hidden="true">✦</span>
+          <span><span class="t">年度回顾</span><br><span class="s">把一年攒成一面墙</span></span>
+          <span class="arr" aria-hidden="true">↘</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="stat-strip">
+      <div class="stat hd-rough"><span class="glyph">影</span><div class="num">87</div><div class="label">看过 · 电影 / 剧集</div></div>
+      <div class="stat hd-rough"><span class="glyph">书</span><div class="num">23</div><div class="label">读过 · 书籍</div></div>
+      <div class="stat hd-rough"><span class="glyph">地</span><div class="num">12</div><div class="label">去过 · 地点</div></div>
+      <div class="stat hd-rough"><span class="glyph">文</span><div class="num">36</div><div class="label">写过 · 笔记</div></div>
+    </div>
+
+    <a class="wish-note hd-rough" href="plan.html">
+      <span class="seal">愿</span>
+      <span class="big">16</span>
+      <span class="txt">心愿 · 在想 15 / 在做 1</span>
+      <span class="more">待完成 →</span>
+    </a>
+  </section>
+
+  <div class="content">
+    <section id="timeline">
+      <div class="section-head">
+        <h2>我的时光</h2>
+        <span class="line" aria-hidden="true"></span>
+        <span class="en">EVERYDAY MEMOIR</span>
+      </div>
+
+      <div class="timeline">
+        <div class="tl-group">
+          <div class="tl-date"><b>10/18</b>周日<span class="wd">2026</span></div>
+          <div class="tl-rail">
+            <a class="tl-item" href="movie.html">
+              <div class="tl-card hd-rough">
+                <span class="tl-cover"><span class="hd-fallback movie sm"><span class="fc-body"><span class="fc-title">沙丘 2</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
+                <div class="tl-body">
+                  <div class="tl-title">沙丘 2 <span class="hd-st done">看过</span></div>
+                  <div class="tl-meta"><span>电影</span><span>·</span><span>丹尼斯·维伦纽瓦</span><span class="tl-stars">★★★★★</span></div>
+                  <div class="tl-comment">沙虫从沙丘里立起来的那一刻，影院的低频像从座位底下长出来的。散场后在路边站了很久。</div>
+                </div>
+              </div>
+            </a>
+            <a class="tl-item" href="book.html">
+              <div class="tl-card hd-rough">
+                <span class="tl-cover"><span class="hd-fallback book sm"><span class="fc-body"><span class="fc-title">克拉拉与太阳</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
+                <div class="tl-body">
+                  <div class="tl-title">克拉拉与太阳 <span class="hd-st done">读过</span></div>
+                  <div class="tl-meta"><span>书籍</span><span>·</span><span>石黑一雄</span><span class="tl-stars">★★★★</span></div>
+                  <div class="tl-comment">一个永远不会被替换的视角，看人心怎么在日光里显影。看完把书放在窗台上晒了一下午。</div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <div class="tl-group">
+          <div class="tl-date"><b>10/12</b>周一<span class="wd">2026</span></div>
+          <div class="tl-rail">
+            <a class="tl-item" href="travel.html">
+              <div class="tl-card hd-rough">
+                <span class="tl-cover"><span class="hd-fallback place sm"><span class="fc-body"><span class="fc-title">洱海 · 才村码头</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
+                <div class="tl-body">
+                  <div class="tl-title">洱海 · 才村码头 <span class="hd-st done">去过</span></div>
+                  <div class="tl-meta"><span>地点</span><span>·</span><span>大理 · 云南</span><span>·</span><span class="hd-tag plain">湖</span><span class="hd-tag plain">日落</span></div>
+                  <div class="tl-comment">赶在日落前骑到码头，风把耳朵吹得发烫。水面上有一条很长的金色拉链。</div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <div class="tl-group">
+          <div class="tl-date"><b>10/05</b>周一<span class="wd">2026</span></div>
+          <div class="tl-rail">
+            <a class="tl-item" href="movie.html">
+              <div class="tl-card hd-rough">
+                <span class="tl-cover"><span class="hd-fallback tv sm"><span class="fc-body"><span class="fc-title">黑镜 · 第七季</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
+                <div class="tl-body">
+                  <div class="tl-title">黑镜 · 第七季 <span class="hd-st done">看过</span></div>
+                  <div class="tl-meta"><span>剧集</span><span>·</span><span>Netflix</span><span class="tl-stars">★★★★</span></div>
+                  <div class="tl-comment">最喜欢第二集，技术只是引子，真正扎人的是人的选择。看完把手机反扣了一会儿。</div>
+                </div>
+              </div>
+            </a>
+            <a class="tl-item" href="notes.html">
+              <div class="tl-card hd-rough">
+                <span class="tl-cover"><span class="hd-fallback note sm"><span class="fc-body"><span class="fc-title">纸质票根</span></span><span class="fc-motif"></span></span><span class="tape"></span></span>
+                <div class="tl-body">
+                  <div class="tl-title">写笔记：为什么我还在用纸质票根</div>
+                  <div class="tl-meta"><span>笔记</span><span>·</span><span>关联条目：沙丘 2</span></div>
+                  <div class="tl-comment">数字票根不会皱、不会褪色，但也不会在某个下午从书里掉出来。</div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <div class="tl-more">
+          <button class="hd-btn" type="button">展开更多时光 ↓</button>
+          <span class="hd-tiny hd-muted">已展示 5 / 共 128 条</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="aside">
+      <section class="hd-paper">
+        <span class="hd-tape left"></span>
+        <h2 class="card-title">心愿单 <span class="en">WISH LIST</span></h2>
+        <div class="wish-item">
+          <span class="wish-glyph tv">剧</span>
+          <div class="wish-body"><div class="wish-title">三体 · 第二季</div><div class="wish-meta"><span class="hd-st want">想看</span><span>10 月 24 日</span></div></div>
+          <button class="wish-done" type="button">完成 →</button>
+        </div>
+        <div class="wish-item">
+          <span class="wish-glyph book">书</span>
+          <div class="wish-body"><div class="wish-title">失明症漫记</div><div class="wish-meta"><span class="hd-st doing">在读</span><span>这周</span></div></div>
+          <button class="wish-done" type="button">完成 →</button>
+        </div>
+        <div class="wish-item">
+          <span class="wish-glyph place">地</span>
+          <div class="wish-body"><div class="wish-title">泉州 · 开元寺</div><div class="wish-meta"><span class="hd-st want">想去</span><span>没定日子</span></div></div>
+          <button class="wish-done" type="button">完成 →</button>
+        </div>
+        <a class="more" href="plan.html">查看全部心愿 →</a>
+      </section>
+
+      <section class="hd-paper">
+        <span class="hd-tape right"></span>
+        <h2 class="card-title">最近笔记 <span class="en">NOTES</span></h2>
+        <a class="note-item" href="note-detail.html"><div class="note-title">为什么我还在用纸质票根</div><div class="note-meta">关联条目：沙丘 2 · 10 月 05 日</div></a>
+        <a class="note-item" href="note-detail.html"><div class="note-title">洱海骑行的路线和几个停下来的理由</div><div class="note-meta">关联条目：洱海 · 才村码头 · 10 月 12 日</div></a>
+        <a class="note-item" href="note-detail.html"><div class="note-title">独立笔记：这个月想明白的三件小事</div><div class="note-meta">独立笔记 · 09 月 28 日</div></a>
+        <a class="more" href="notes.html">查看全部笔记 →</a>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<footer class="hd-foot">
+  <div class="hd-foot-in">
+    <span>拾光记 · 把平凡的日子，写成值得回看的照片</span>
+    <span>© 2026 SHIGUANGJI —— 记录电影、书、旅程与每一个瞬间</span>
+    <a href="auth.html">登录后台</a>
+  </div>
+</footer>
+
+<nav class="hd-tabbar" aria-label="移动端导航">
+  <a href="home.html" data-nav="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11 Q4 6 12 5 Q20 6 20 11 L20 20 L4 20 Z"/><path d="M9 20 L9 14 L15 14 L15 20"/></svg><span>首页</span></a>
+  <a href="movie.html" data-nav="movie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10 L21 10 M8 6 L8 19 M16 6 L16 19"/></svg><span>影单</span></a>
+  <a href="travel.html" data-nav="travel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21 Q12 14 8 10 Q4 6 12 4 Q20 6 16 10 Q12 14 12 21 Z"/><circle cx="12" cy="9" r="2"/></svg><span>足迹</span></a>
+  <a href="notes.html" data-nav="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3 L18 3 L18 21 L6 21 Z"/><path d="M9 8 L15 8 M9 12 L15 12 M9 16 L13 16"/></svg><span>笔记</span></a>
+</nav>
+
+<script src="handdrawn-site.js"></script>
+</body>
+</html>

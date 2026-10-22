@@ -1,5 +1,5 @@
 <template>
-  <div class="register">
+  <div class="register hd-app">
     <el-form ref="registerRef" :model="registerForm" :rules="registerRules" class="register-form">
       <div class="brand-title">
         <span class="brand-icon">☀️</span>
@@ -237,5 +237,41 @@ getCode()
 .register-code-img {
   height: 40px;
   padding-left: 12px;
+}
+
+/* ===== 0.0.6 手绘换装：注册 = 一张居中纸卡 ===== */
+.register.hd-app {
+  background-color: var(--hd-page);
+  background-image: radial-gradient(var(--hd-dot) 1px, transparent 1px);
+  background-size: 16px 16px;
+  font-family: var(--hd-hand);
+
+  .register-form {
+    position: relative;
+    width: 420px;
+    max-width: calc(100vw - 40px);
+    padding: 32px 34px 26px;
+    background-color: var(--hd-paper);
+    border: 2.2px solid var(--hd-line);
+    border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+    box-shadow: var(--hd-shadow-lift);
+  }
+
+  .register-form::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 92px;
+    height: 22px;
+    transform: translateX(-50%) rotate(-2deg);
+    background: var(--hd-tape);
+    pointer-events: none;
+  }
+
+  .brand-title .title { color: var(--hd-ink); font-family: var(--hd-hand); letter-spacing: 1px }
+  .brand-title .brand-icon { display: none }
+  .el-input__icon { color: var(--hd-ink-faint) }
+  .register-btn.el-button { width: 100%; height: 44px; font-size: 15px; letter-spacing: 2px }
 }
 </style>

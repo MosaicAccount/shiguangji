@@ -111,7 +111,7 @@ describe('T-83 提交回传用户改的日期', () => {
     const wrapper = await mountDialog({ itemId: 1, itemType: 'MOVIE', title: '肖申克的救赎' })
 
     await wrapper.find('.date-input').setValue('2026-10-01')
-    await wrapper.findAll('button').find(b => b.text().includes('确 定'))!.trigger('click')
+    await wrapper.findAll('button').find(b => b.text().includes('记下这一刻'))!.trigger('click')
     await flushPromises()
 
     expect(mockedComplete).toHaveBeenCalledTimes(1)
@@ -126,9 +126,9 @@ describe('T-83 提交回传用户改的日期', () => {
     wrapper.unmount()
   })
 
-  it('item 为 null 时点确定不发起请求', async () => {
+  it('item 为 null 时点提交不发起请求', async () => {
     const wrapper = await mountDialog({})
-    await wrapper.findAll('button').find(b => b.text().includes('确 定'))!.trigger('click')
+    await wrapper.findAll('button').find(b => b.text().includes('记下这一刻'))!.trigger('click')
     await flushPromises()
     expect(mockedComplete).not.toHaveBeenCalled()
     wrapper.unmount()

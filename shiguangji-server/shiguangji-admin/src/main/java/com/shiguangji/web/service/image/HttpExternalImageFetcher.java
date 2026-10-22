@@ -27,7 +27,7 @@ import com.shiguangji.common.exception.ServiceException;
 import com.shiguangji.common.utils.StringUtils;
 
 /**
- * 外链图片抓取器真实现（0.0.6 FR-006-5，issue #68；行为规格见设计文档 §4）。
+ * 外链图片抓取器真实现（FR-006-5，issue #68；行为规格见设计文档 §4）。
  *
  * <p>SSRF 防护的核心取舍：<b>连接必须绑到已校验的 IP</b>（rebinding 对策）——JDK HttpClient
  * 没有公开的 DNS resolver 钩子，按主机名请求会留下「解析两次答案不同」的 TOCTOU 窗口，

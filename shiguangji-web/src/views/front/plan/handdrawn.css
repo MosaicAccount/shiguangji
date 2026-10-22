@@ -1,4 +1,7 @@
-/* 心愿页手绘皮肤 —— 唯一来源：设计图与产品共用本文件。
+/* 注意：0.0.6 起产品 /plan 改用全局手绘皮肤（src/assets/styles/handdrawn/handdrawn-site.css），
+ * 本文件仅保留给 docs/design/mockups/plan-0.0.3 的历史设计图引用，产品不再 import。
+ *
+ * 心愿页手绘皮肤 —— 唯一来源：设计图与产品共用本文件。
  * 设计图 docs/design/mockups/plan-0.0.3/handdrawn-checklist.html 通过 <link> 引用它，
  * 页面 shiguangji-web/src/views/front/plan/index.vue 也 import 它；
  * 因此「实现即设计图」，不存在两份样式各自漂移的可能。

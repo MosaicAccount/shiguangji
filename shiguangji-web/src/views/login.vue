@@ -1,28 +1,26 @@
 <template>
-  <div class="login">
-    <!-- 左：品牌面板（冷炭灰 studio） -->
+  <div class="login hd-app">
+    <!-- 左：手账封面（深墨 + 虚线内框 + 手绘相机） -->
     <aside class="login-brand">
       <div class="brand-top">
-        <div class="film-strip" aria-hidden="true">
-          <span v-for="i in 10" :key="i" class="perf" />
-        </div>
-        <div class="brand-logo">拾光记</div>
-        <div class="brand-logo-en">S H I G U A N G J I  ·  C O N S O L E</div>
+        <span class="brand-seal">拾</span>
+        <span class="brand-name">拾光记<small>SHIGUANGJI</small></span>
       </div>
       <div class="brand-slogan">
-        <div class="brand-h">把日子，过成照片</div>
+        <div class="brand-h">把日子，<br />过成照片</div>
         <div class="brand-sub">管理后台 · 内容 / 用户 / 数据，一处安放。</div>
       </div>
-      <div class="brand-stats">
-        <div class="brand-stat">
-          <span class="brand-num">1,286</span>
-          <span class="brand-label">条时光记录</span>
-        </div>
-        <div class="brand-stat">
-          <span class="brand-num">12</span>
-          <span class="brand-label">个活跃用户</span>
-        </div>
+      <div class="brand-mark" aria-hidden="true">
+        <span class="up">↑</span>
+        <span class="line"></span>
       </div>
+      <svg class="brand-doodle" viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <rect x="14" y="30" width="66" height="42" rx="6" />
+        <circle cx="47" cy="51" r="13" />
+        <path d="M30 30 L37 20 L60 20 L66 30" />
+        <path d="M84 24 q8 -8 16 -2" /><path d="M92 12 q6 6 12 2" />
+        <path d="M8 80 q30 8 62 2 q26 -5 42 2" />
+      </svg>
       <div class="brand-footer">© 2026 SHIGUANGJI</div>
     </aside>
 
@@ -93,6 +91,7 @@
         </el-form-item>
       </el-form>
     </main>
+    <div class="auth-foot">拾光记 · 把平凡的日子，写成值得回看的照片</div>
   </div>
 </template>
 
@@ -343,7 +342,7 @@ html.dark .login-brand {
   width: 400px;
   max-width: 100%;
 
-  .form-title {
+  .login.hd-app .form-title {
     font-family: var(--sgj-font-serif);
     font-weight: 700;
     font-size: 32px;
@@ -520,7 +519,7 @@ html.dark .login-brand {
 
   /* 画布常暗，表单文字固定奶油色系，不随日夜主题翻转 */
   .login-form {
-    .form-title {
+    .login.hd-app .form-title {
       color: #e7ece9;
     }
 
@@ -567,7 +566,7 @@ html.dark .login-brand {
   }
 
   .login-form {
-    .form-title {
+    .login.hd-app .form-title {
       font-size: 26px;
     }
 
@@ -575,5 +574,131 @@ html.dark .login-brand {
       margin: 8px 0 28px;
     }
   }
+}
+
+/* ===== 0.0.6 手绘换装：深墨封面 + 右侧纸卡表单 ===== */
+.login.hd-app {
+  position: relative;
+  background-color: var(--hd-page);
+  background-image: radial-gradient(var(--hd-dot) 1px, transparent 1px);
+  background-size: 16px 16px;
+  font-family: var(--hd-hand);
+}
+
+.login-brand {
+  width: 50%;
+  min-width: 0;
+  background-color: #37322C;
+  background-image: radial-gradient(rgba(245, 242, 236, .07) 1px, transparent 1px);
+  background-size: 16px 16px;
+  color: #F5F2EC;
+  padding: 36px 48px 30px;
+  position: relative;
+  overflow: visible;
+}
+
+.login-brand::before { content: none; }
+
+.login-brand::after {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  width: auto;
+  height: auto;
+  border: 1.6px dashed rgba(245, 242, 236, .35);
+  border-radius: 3px;
+  background: none;
+  pointer-events: none;
+}
+
+.brand-top { display: flex; align-items: center; gap: 12px; }
+.brand-seal {
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  font-size: 24px; color: #F5F2EC;
+  border: 2px solid rgba(245, 242, 236, .8);
+  border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+}
+.brand-name { font-size: 24px; letter-spacing: 2px; line-height: 1.1; display: flex; flex-direction: column; }
+.brand-name small { font-size: 10px; letter-spacing: 4px; color: rgba(245, 242, 236, .55); margin-top: 3px; }
+
+.brand-slogan { margin-top: auto; }
+.brand-h { font-size: 44px; line-height: 1.35; letter-spacing: 3px; color: #F5F2EC; }
+.brand-sub { margin-top: 14px; font-size: 15px; color: rgba(245, 242, 236, .72); letter-spacing: 1px; }
+
+.brand-mark { display: flex; align-items: center; gap: 10px; margin-top: 22px; color: rgba(245, 242, 236, .55); }
+.brand-mark .up { font-size: 20px; line-height: 1; }
+.brand-mark .line { width: 160px; border-top: 1.6px dashed rgba(245, 242, 236, .45); }
+
+.brand-doodle {
+  position: absolute;
+  right: 34px;
+  bottom: 44px;
+  width: 120px;
+  height: 90px;
+  color: rgba(245, 242, 236, .62);
+}
+
+.login.hd-app .login-brand .brand-footer { margin-top: auto; font-size: 12.5px; letter-spacing: 2px; color: rgba(245, 242, 236, .78); }
+
+.login-main { background: transparent; }
+
+.login-form {
+  position: relative;
+  width: 408px;
+  max-width: calc(100vw - 40px);
+  padding: 34px 36px 30px;
+  background-color: var(--hd-paper);
+  border: 2.2px solid var(--hd-line);
+  border-radius: 6px 3px 7px 4px / 4px 7px 3px 6px;
+  box-shadow: var(--hd-shadow-lift);
+}
+
+.login-form::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 92px;
+  height: 22px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: var(--hd-tape);
+  pointer-events: none;
+}
+
+.login.hd-app .login.hd-app .login-form .form-title { font-size: 32px; color: var(--hd-ink); letter-spacing: 2px; font-weight: 400 }
+.login.hd-app .login-form .form-sub { color: var(--hd-ink-soft); font-size: 14px; margin-top: 6px }
+.login.hd-app .login-form .form-label { color: var(--hd-ink-soft); font-size: 13.5px }
+.login.hd-app .form-forgot { color: var(--hd-ink-faint); font-size: 13px }
+.login.hd-app .form-register .link-type { color: var(--hd-red) }
+
+.login.hd-app .login-btn.el-button {
+  width: 100%;
+  height: 46px;
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: #F5F2EC;
+  background: #37322C;
+  border-color: #37322C;
+}
+.login.hd-app .login-btn.el-button:hover {
+  color: #F5F2EC;
+  background: #26221D;
+  border-color: #26221D;
+}
+
+.auth-foot {
+  position: absolute;
+  left: 0; right: 0; bottom: 14px;
+  text-align: center;
+  font-size: 12.5px;
+  letter-spacing: 1px;
+  color: var(--hd-ink-faint);
+}
+
+@media (max-width: 900px) {
+  .login-brand { display: none; }
+  .brand-doodle { display: none; }
+  .auth-foot { display: none; }
 }
 </style>
