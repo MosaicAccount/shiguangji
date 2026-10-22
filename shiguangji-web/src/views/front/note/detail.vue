@@ -2,7 +2,8 @@
   <div class="note-detail-page page-detail">
     <div class="detail-layout">
       <div class="detail-main">
-        <div v-loading="loading" class="article-card">
+        <div v-loading="loading" class="article-card hd-paper hd-grain">
+          <span class="hd-tape" aria-hidden="true"></span>
           <template v-if="note">
             <!-- 文章头：冷炭灰胶片带，与笔记列表页 banner 同视觉语言；返回与操作收进带内保持页面整洁 -->
             <header class="article-hero">
@@ -413,7 +414,26 @@ function formatTime(time?: string): string {
 
 .article-card {
   position: relative;
-  padding: 0;
+  padding: 34px 52px 44px;
+  border-radius: 4px;
+  box-shadow: var(--hd-shadow-lift);
+  scrollbar-width: none;
+}
+.article-card::-webkit-scrollbar { width: 0; height: 0; display: none }
+.article-card::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  border: 2.3px solid var(--hd-line);
+  border-radius: inherit;
+  filter: url(#rough);
+}
+.article-card > .hd-tape {
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 112px;
 }
 .article-hero {
   position: relative;
@@ -481,9 +501,10 @@ function formatTime(time?: string): string {
 /* 桌面大纲 */
 .outline-card {
   padding: 16px 18px;
-  background-color: var(--hd-paper);
-  border: 1.6px solid var(--hd-line-soft);
+  background-color: var(--hd-paper-2);
+  border: 1.6px dashed var(--hd-line-soft);
   border-radius: 5px 2px 6px 3px / 3px 6px 2px 5px;
+  box-shadow: var(--hd-shadow-sm);
 }
 .outline-title { font-size: 15px; letter-spacing: 2px; color: var(--hd-ink-soft) }
 .outline-list { margin: 10px 0 0; padding: 0; list-style: none }
@@ -499,7 +520,7 @@ function formatTime(time?: string): string {
   &.is-active { color: var(--hd-red) }
   &:hover { color: var(--hd-red) }
 }
-.item-index { color: var(--hd-ink-faint); font-variant-numeric: tabular-nums }
+.item-index { color: var(--hd-ink-soft); font-variant-numeric: tabular-nums }
 
 /* 移动内嵌目录 */
 .outline-inline { display: none }
@@ -588,6 +609,7 @@ function formatTime(time?: string): string {
 
 @media (max-width: 1100px) {
   .detail-layout { grid-template-columns: minmax(0, 1fr) }
+  .article-card { padding: 24px 22px 32px }
   .detail-aside { display: none }
   .outline-inline { display: block; margin-top: 20px }
 }
