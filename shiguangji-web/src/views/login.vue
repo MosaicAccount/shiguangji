@@ -639,7 +639,7 @@ html.dark .login-brand {
   color: rgba(245, 242, 236, .62);
 }
 
-.brand-footer { margin-top: auto; font-size: 12.5px; letter-spacing: 2px; color: rgba(245, 242, 236, .55); }
+.login.hd-app .login-brand .brand-footer { margin-top: auto; font-size: 12.5px; letter-spacing: 2px; color: rgba(245, 242, 236, .78); }
 
 .login-main { background: transparent; }
 
@@ -667,7 +667,7 @@ html.dark .login-brand {
 }
 
 .login.hd-app .login.hd-app .login-form .form-title { font-size: 32px; color: var(--hd-ink); letter-spacing: 2px; font-weight: 400 }
-.login.hd-app .login-form .form-sub { color: #6A6158; font-size: 14px; margin-top: 6px }
+.login.hd-app .login-form .form-sub { color: var(--hd-ink-soft); font-size: 14px; margin-top: 6px }
 .login.hd-app .login-form .form-label { color: var(--hd-ink-soft); font-size: 13.5px }
 .login.hd-app .form-forgot { color: var(--hd-ink-faint); font-size: 13px }
 .login.hd-app .form-register .link-type { color: var(--hd-red) }
